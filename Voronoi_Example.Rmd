@@ -1,0 +1,627 @@
+---
+title: "NBA Shot Plot Analysis with Voronoi Diagrams"
+author: "McCade Pearson"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: null
+    highlight: null
+---
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@300;400;600;700&display=swap');
+
+body {
+  background-color: #0D1117;
+  color: #F0F3F5;
+  font-family: 'Barlow Semi Condensed', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+}
+
+.main-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: #1C1F26;
+  padding: 40px;
+  border: 2px solid #3E92CC;
+  border-radius: 8px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #C3DDFD;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+h1 {
+  font-size: 2.2em;
+  text-align: center;
+  border-bottom: 3px solid #3E92CC;
+  padding-bottom: 10px;
+}
+
+h2 {
+  font-size: 1.8em;
+  color: #6FB1FC;
+}
+
+h3 {
+  font-size: 1.4em;
+  color: #326DA8;
+}
+
+pre {
+  background-color: #0D1117;
+  border: 1px solid #3E92CC;
+  border-radius: 5px;
+  padding: 15px;
+  overflow-x: auto;
+}
+
+code {
+  background-color: #1C1F26;
+  color: #C3DDFD;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+a {
+  color: #6FB1FC;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #C3DDFD;
+  text-decoration: underline;
+}
+
+blockquote {
+  border-left: 4px solid #3E92CC;
+  margin: 20px 0;
+  padding-left: 20px;
+  color: #C3DDFD;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+
+th, td {
+  border: 1px solid #3E92CC;
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #326DA8;
+  color: #F0F3F5;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background-color: #1C1F26;
+}
+
+.author, .date {
+  text-align: center;
+  color: #6FB1FC;
+  font-size: 1.1em;
+}
+</style>
+
+```{r Setup, warning = FALSE, message = FALSE, include = FALSE}
+knitr::opts_chunk$set(
+  fig.align = "center",
+  dev.args = list(bg = "transparent"))
+
+library(tidyverse)
+library(ggforce)
+library(hoopR)
+library(ggvoronoi)
+library(showtext)
+library(sysfonts)
+library(ggimage)
+library(devtools)
+library(ggrepel)
+options(scipen = 99)
+
+Teams <- espn_nba_teams()
+Teams <- Teams %>%
+  mutate(color = paste0("#",color),
+         alternate_color = paste0("#",alternate_color))
+```
+
+```{r Theme, warning = FALSE, message = FALSE, include = FALSE}
+McCadeP8_theme_colors <- c(
+  background = '#0D1117',   # dark slate gray (background)
+  text       = '#F0F3F5',   # very light gray (text)
+  panel      = '#1C1F26',   # near-black with blue hint (panel)
+  border     = '#3E92CC',   # strong blue (border)
+  strip_text = '#0D1117',   # matches background (strip text on light facet)
+  lighter    = '#C3DDFD',   # baby blue
+  light      = '#6FB1FC',   # sky blue
+  medium     = '#326DA8',   # Jazz navy
+  dark       = '#1D3557'    # deep indigo/navy
+)
+
+McCadeP8_palette <- c(
+  '#C3DDFD', '#F94144', '#6A4C93', '#F9C74F', '#43AA8B',
+  '#577590', '#F3722C', '#277DA1', '#264653'
+)
+
+## McCade Pearson
+## theme_McCadeP8
+## Date Created: June 10, 2025
+
+# THEME COLOR PALETTE --------------------------------------
+
+#' McCadeP8 Inspired Theme Color Palette
+#'
+#' @format character vector of hex code strings
+#' @export
+#' @concept McCadeP8
+#'
+McCadeP8_theme_colors <- c(
+  background = '#0D1117',
+  text       = '#F0F3F5',
+  panel      = '#1C1F26',
+  border     = '#3E92CC',
+  strip_text = '#0D1117',
+  lighter    = '#C3DDFD',
+  light      = '#6FB1FC',
+  medium     = '#326DA8',
+  dark       = '#1D3557'
+)
+
+# DISCRETE COLOR PALETTE -----------------------------------
+
+#' McCadeP8 Inspired Color Palette
+#'
+#' @format character vector of hex code strings
+#' @export
+#' @concept McCadeP8
+#'
+McCadeP8_palette <- c(
+  '#C3DDFD', '#F94144', '#6A4C93', '#F9C74F', '#43AA8B',
+  '#577590', '#F3722C', '#277DA1', '#264653'
+)
+
+# MAIN THEME ------------------------------------------------
+
+#' McCadeP8 Inspired Theme
+#'
+#' @param McCadeP8_font should `theme_McCadeP8` use custom font? Default is `TRUE`.
+#' @param ... additional parameters to pass to `ggplot2::theme()`
+#'
+#' @return a `ggplot2` `theme` object
+#' @export
+#' @concept McCadeP8
+#'
+theme_McCadeP8 <- function(McCadeP8_font = TRUE, ...) {
+
+  # Load custom Google Font
+  font_family <- ifelse(McCadeP8_font, "Barlow Semi Condensed", "sans")
+  if (McCadeP8_font) {
+  font_add_google(name = "Barlow Semi Condensed", family = "Barlow Semi Condensed")
+  showtext_auto()
+  }
+
+  # Define the theme
+  ggplot2::theme(
+    plot.background = element_rect(fill = McCadeP8_theme_colors["background"], color = NA),
+    panel.background = element_rect(fill = McCadeP8_theme_colors["panel"], color = NA),
+    panel.border = element_rect(color = McCadeP8_theme_colors["border"], fill = NA, linewidth = 1.2),
+    panel.grid.major = element_line(color = "#2D3748", size = 0.25),
+    panel.grid.minor = element_blank(),
+    
+    text = element_text(color = McCadeP8_theme_colors["text"], family = font_family),
+    title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 17),
+    axis.text = element_text(size = 13, color = McCadeP8_theme_colors["text"]),
+    axis.ticks = element_line(color = McCadeP8_theme_colors["border"], linewidth = 1),
+    
+    legend.background = element_rect(fill = McCadeP8_theme_colors["panel"], color = NA),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 14, face = "bold"),
+    
+    strip.background = element_rect(fill = McCadeP8_theme_colors["lighter"], colour = McCadeP8_theme_colors["border"]),
+    strip.text = element_text(colour = McCadeP8_theme_colors["strip_text"], size = 10)
+  )
+}
+
+# COLOR SCALES ---------------------------------------------
+
+#' McCadeP8 Inspired Color Scales
+#'
+#' @param ... Additional arguments to pass to `ggplot2::binned_scale` for `_b`,
+#' `ggplot2::scale_[fill/color]_gradient` for `_c`, or `ggplot2::discrete_scale`
+#' for `_d`
+#'
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_c <- function(...) {
+  ggplot2::scale_color_gradient(..., low = McCadeP8_theme_colors["light"], high = McCadeP8_theme_colors["dark"])
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_c <- function(...) {
+  ggplot2::scale_fill_gradient(..., low = McCadeP8_theme_colors["light"], high = McCadeP8_theme_colors["dark"])
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_b <- function(...) {
+  if (!requireNamespace('scales', quietly = TRUE)) {
+    stop('This function requires the `scales` R package.')
+  }
+  ramp <- scales::colour_ramp(c(McCadeP8_theme_colors["light"], McCadeP8_theme_colors["dark"]))
+  ggplot2::binned_scale('color', 'McCadeP8', palette = ramp, ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_b <- function(...) {
+  if (!requireNamespace('scales', quietly = TRUE)) {
+    stop('This function requires the `scales` R package.')
+  }
+  ramp <- scales::colour_ramp(c(McCadeP8_theme_colors["light"], McCadeP8_theme_colors["dark"]))
+  ggplot2::binned_scale('fill', 'McCadeP8', palette = ramp, ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_d <- function(...) {
+  ggplot2::discrete_scale(aesthetics = 'color',
+                          palette = rot_pal(McCadeP8_palette), ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_d <- function(...) {
+  ggplot2::discrete_scale(aesthetics = 'fill',
+                          palette = rot_pal(McCadeP8_palette), ...)
+}
+
+# Aliases
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_d <- scale_color_McCadeP8_d
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_c <- scale_color_McCadeP8_c
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_b <- scale_color_McCadeP8_b
+
+```
+
+```{r Court, warning = FALSE, message = FALSE, include = FALSE}
+Court <- function(Color1) {
+  list(
+  geom_segment(color = Color1, aes(x = 0, xend = 0, y= 0, yend = 50), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 94, y = 0, yend = 0), size = 1),
+  geom_segment(color = Color1, aes(x = 94, xend = 94, y = 0, yend = 50), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 94, y = 50, yend = 50), size = 1),
+  geom_segment(color = Color1, aes(x = 47, xend = 47, y = 0, yend = 50), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 14, y = 3, yend = 3), size = 1),
+  geom_segment(color = Color1, aes(x = 80, xend = 94, y = 3, yend = 3), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 14, y = 47, yend = 47), size = 1),
+  geom_segment(color = Color1, aes(x = 80, xend = 94, y = 47, yend = 47), size = 1),
+  geom_segment(color = Color1, aes(x = 28, xend = 28, y = 0, yend = 3), size = 1),
+  geom_segment(color = Color1, aes(x = 28, xend = 28, y = 47, yend = 50), size = 1),
+  geom_segment(color = Color1, aes(x = 66, xend = 66, y = 0, yend = 3), size = 1),
+  geom_segment(color = Color1, aes(x = 66, xend = 66, y = 47, yend = 50), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 19, y = 17, yend = 17), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 19, y = 33, yend = 33), size = 1),
+  geom_segment(color = Color1, aes(x = 75, xend = 94, y = 17, yend = 17), size = 1),
+  geom_segment(color = Color1, aes(x = 75, xend = 94, y = 33, yend = 33), size = 1),
+  geom_segment(color = Color1, aes(x = 19, xend = 19, y = 17, yend = 33), size = 1),
+  geom_segment(color = Color1, aes(x = 75, xend = 75, y = 17, yend = 33), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 0.5, y = 14, yend = 14), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 0.5, y = 36, yend = 36), size = 1),
+  geom_segment(color = Color1, aes(x = 93.5, xend = 94, y = 14, yend = 14), size = 1),
+  geom_segment(color = Color1, aes(x = 93.5, xend = 94, y = 36, yend = 36), size = 1),
+  #geom_segment(color = "red", aes(x = 4, xend = 4, y = 22, yend = 28), size = 1),
+  #geom_segment(color = "red", aes(x = 90, xend = 90, y = 22, yend = 28), size = 1),
+  geom_segment(color = Color1, aes(x = 7, xend = 7, y = 17, yend = 16.5), size = 1),
+  geom_segment(color = Color1, aes(x = 7, xend = 7, y = 33, yend = 33.5), size = 1),
+  geom_segment(color = Color1, aes(x = 8, xend = 8, y =17, yend = 16.5), size = 1),
+  geom_segment(color = Color1, aes(x = 8, xend = 8, y = 33, yend = 33.5), size = 1),
+  geom_segment(color = Color1, aes(x = 11, xend = 11, y = 17, yend = 16.5), size = 1),
+  geom_segment(color = Color1, aes(x = 11, xend = 11, y = 33, yend = 33.5), size = 1),
+  geom_segment(color = Color1, aes(x = 14, xend = 14, y = 17, yend = 16.5), size = 1),
+  geom_segment(color = Color1, aes(x = 14, xend = 14, y = 33, yend = 33.5), size = 1),
+  geom_segment(color = Color1, aes(x = 87, xend = 87, y = 17, yend = 16.5), size = 1),
+  geom_segment(color = Color1, aes(x = 87, xend = 87, y = 33, yend = 33.5), size = 1),
+  geom_segment(color = Color1, aes(x = 86, xend = 86, y = 17, yend = 16.5), size = 1),
+  geom_segment(color = Color1, aes(x = 86, xend = 86, y = 33, yend = 33.5), size = 1),
+  geom_segment(color = Color1, aes(x = 83, xend = 83, y = 17, yend = 16.5), size = 1),
+  geom_segment(color = Color1, aes(x = 83, xend = 83, y = 33, yend = 33.5), size = 1),
+  geom_segment(color = Color1, aes(x = 80, xend = 80, y = 17, yend = 16.5), size = 1),
+  geom_segment(color = Color1, aes(x = 80, xend = 80, y = 33, yend = 33.5), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 19, y = 19, yend = 19), size = 1),
+  geom_segment(color = Color1, aes(x = 0, xend = 19, y = 31, yend = 31), size = 1),
+  geom_segment(color = Color1, aes(x = 75, xend = 94, y = 19, yend = 19), size = 1),
+  geom_segment(color = Color1, aes(x = 75, xend = 94, y = 31, yend = 31), size = 1),
+  geom_segment(color = Color1, aes(x = 4, xend = 5.25, y = 21, yend = 21), size = 1),
+  geom_segment(color = Color1, aes(x = 4, xend = 5.25, y = 29, yend = 29), size = 1),
+  geom_segment(color = Color1, aes(x = 88.75, xend = 90, y = 21, yend = 21), size = 1),
+  geom_segment(color = Color1, aes(x = 88.75, xend = 90, y = 29, yend = 29), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = 0, end = pi), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = pi*15/15, end = pi*16/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = pi*17/15, end = pi*18/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = pi*19/15, end = pi*20/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = pi*21/15, end = pi*22/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = pi*23/15, end = pi*24/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = pi*25/15, end = pi*26/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = pi*27/15, end = pi*28/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 19, y0 = 25, r = 6, start = pi*29/15, end = pi*30/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi*0/15, end = pi*1/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi*2/15, end = pi*3/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi*4/15, end = pi*5/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi*6/15, end = pi*7/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi*8/15, end = pi*9/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi*10/15, end = pi*11/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi*12/15, end = pi*13/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi*14/15, end = pi*15/15), size = 1),
+  geom_arc(color = Color1, aes(x0 = 75, y0 = 25, r = 6, start = pi, end = 2*pi), size = 1),
+  geom_arc(color = Color1, aes(x0 = 5.25, y0 = 25, r = 4, start = 0, end = pi), size = 1),
+  geom_arc(color = Color1, aes(x0 = 88.75, y0 = 25, r = 4, start = pi, end = 2*pi), size = 1),
+  geom_circle(color = Color1, aes(x0 = 47, y0 = 25, r = 6), size = 1),
+  geom_circle(color = Color1, aes(x0 = 47, y0 = 25, r = 2), size = 1),
+  #geom_circle(color = "red", fill = "white", aes(x0 = 5.25, y0 = 25, r = 0.75), size = 1),
+  #geom_circle(color = "red", fill = "white", aes(x0 = 88.75, y0 = 25, r = 0.75), size = 1),
+  geom_arc(color = Color1, aes(x0 = 5.25, y0 = 25, r = 23.75, start = atan(8.5/22), end = pi-atan(8.5/22)), size = 1),
+  geom_arc(color = Color1, aes(x0 = 88.75, y0 = 25, r = 23.75, start = pi+atan(8.5/22), end = (2*pi)-atan(8.5/22)), size = 1),
+  theme(legend.position = "none",
+        axis.line=element_blank(),
+        axis.text.x=element_blank(), axis.title.x=element_blank(),
+        axis.text.y=element_blank(), axis.title.y=element_blank(),
+        axis.ticks=element_blank(),
+        panel.background = element_blank()))}
+
+half_court_outline <- data.frame(
+  x = c(0, 47, 47, 0),
+  y = c(0,  0, 50, 50))
+```
+
+The following code collects shot location data for all active NBA players during the 2024–25 season. The loop queries each player individually from the NBA Stats API using their player_id, waits briefly between requests to avoid rate limiting, and combines all player shot data into a single data frame. The final dataset is saved locally as a CSV file for reuse. For efficiency, the script below reads from that saved file rather than re-pulling the data each time.
+
+```{r GetShots, warning = FALSE, message = FALSE}
+# Players <- nba_commonallplayers()
+# Players <- Players$CommonAllPlayers %>%
+#   filter(TO_YEAR == "2024") %>%
+#   select(PERSON_ID) %>%
+#   pull()
+#
+# Shots <- data.frame()
+# 
+# for(i in 1:length(Players)) {
+#   Sys.sleep(0.6)
+#   ShotsT <- nba_shotchartdetail(season = '2024-25', player_id = Players[i])
+#   ShotsT <- ShotsT$Shot_Chart_Detail
+#   Shots <- rbind(Shots,ShotsT)
+#   print(i)}
+# 
+# Shots <- Shots %>%
+#   mutate(LOC_X = as.numeric(LOC_X),
+#          LOC_Y = as.numeric(LOC_Y))
+# 
+# write.csv(Shots, "Shots.csv", row.names = FALSE)
+#
+Shots <- read.csv("Shots.csv")
+# remove(Players)
+```
+
+This section performs k-means clustering on NBA shot data to identify common shooting zones within 30 feet of the basket. Shots beyond 30 feet are grouped into a single "long shot" cluster (Cluster 20) and excluded from the clustering process. All shot coordinates are transformed for visualization, and the clustering algorithm is applied to the adjusted shot locations using 19 clusters. Cluster centers are stored for later use, and all shots are re-combined into a unified dataset with their assigned cluster labels.
+
+```{r Clustering, warning = FALSE, message = FALSE}
+ShotsLong <- Shots %>%
+  filter(SHOT_DISTANCE > 30) %>%
+  mutate(Cluster = 20,
+         Cluster = as.factor(Cluster),
+         LOC_X = LOC_X/10+25,
+         LOC_Y = LOC_Y/10)
+
+ShotsToCluster <- Shots %>%
+  filter(SHOT_DISTANCE <= 30) %>%
+  mutate(LOC_X = LOC_X/10+25,
+         LOC_Y = LOC_Y/10)
+
+set.seed(8)
+Clusters <- kmeans(ShotsToCluster[, c("LOC_X", "LOC_Y")], centers = 19)
+ClusterCenters <- Clusters$centers %>%
+  as.data.frame() %>%
+  mutate(Cluster = 1:19,
+         Cluster = as.factor(Cluster))
+LongCluster <- data.frame(LOC_X = 0, LOC_Y = 400, Cluster = as.factor(20))
+ClusterCenters <- rbind(ClusterCenters, LongCluster)
+remove(LongCluster)
+
+ShotsToCluster <- ShotsToCluster %>%
+  mutate(Cluster = Clusters$cluster)
+Shots <- rbind(ShotsToCluster,ShotsLong)
+remove(ShotsLong,ShotsToCluster,Clusters)
+```
+
+Using the previously defined clusters, this plot visualizes effective field goal percentage (eFG%) across different shooting zones. Made three-pointers are weighted by 1.5 to reflect their added value in eFG%. The resulting percentages are displayed using a Voronoi diagram, where each region is colored based on the shooting efficiency of its corresponding cluster. Labels indicate each zone’s eFG%, and the plot is overlaid on a half-court diagram for intuitive interpretation.
+
+This visualization makes it crystal clear: the rim and the three-point line are still the most valuable areas on the floor. Even shots under and behind the rim show strong efficiency. What stands out is how sharply effectiveness drops off just a few feet away from the basket—some research suggests that decline begins as close as six feet out.
+
+```{r Part1, warning = FALSE, fig.align = 'center', message = FALSE}
+ShotsAll <- Shots %>%
+  mutate(SHOT_MADE_FLAG = ifelse(SHOT_MADE_FLAG == 1 & SHOT_TYPE == "3PT Field Goal", 1.5, SHOT_MADE_FLAG)) %>%
+  group_by(Cluster) %>%
+  dplyr::summarize(Percent = sum(SHOT_MADE_FLAG)/sum(SHOT_ATTEMPTED_FLAG)) %>%
+  ungroup() %>%
+  mutate(Cluster = as.factor(Cluster),
+         Percent = round(Percent*100,2)) %>%
+  left_join(ClusterCenters, by = c('Cluster'))
+
+ggplot(ShotsAll) +
+  geom_voronoi(aes(x = LOC_Y, y = LOC_X, fill = Percent), outline = half_court_outline, color = "black") + 
+  Court("white") +
+  geom_label_repel(aes(x = LOC_Y, y = LOC_X, label = paste0(Percent,"%")), size = 7) +
+  scale_fill_gradientn(colors = c("#e6b8af", "#ffe599", "#b6d7a8")) +
+  scale_x_continuous(limits = c(0, 47), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 50), expand = c(0, 0)) +
+  coord_fixed() +
+  theme_McCadeP8() +
+  labs(title = "Regular Season eFG% By Zone",
+       caption = "@McCadeP8 | Data: nba.com")
+```
+
+This visualization identifies which NBA player scored the most total points in each shooting zone during the 2024–25 regular season. It assigns made shots twi or three points based on shot type, aggregates player totals within each cluster, and highlights the top scorer per zone. Headshots of these players are placed at the cluster centers using team color-coded Voronoi tiles for visual context. Labels display each player’s total points scored from that zone.
+
+No surprise to see MVP-caliber players dominating the interior—Giannis and Jokic own the paint. On the perimeter, Steph Curry stands out as expected. One of the most impressive jumps this year came from Anthony Edwards, making his presence known across the court. And for longtime fans, DeMar DeRozan’s mastery of the short mid-range is on full display, not just once, but in five different zones near the basket.
+
+```{r Part2, warning = FALSE, fig.align = 'center', message = FALSE}
+GetTeams <- Shots %>%
+  arrange(GAME_DATE) %>%
+  group_by(PLAYER_ID) %>%
+  mutate(Shot = n():1) %>%
+  filter(Shot == 1) %>%
+  select(PLAYER_ID, TEAM_NAME)
+
+ShotsAll <- Shots %>%
+  mutate(Points = ifelse(SHOT_MADE_FLAG == 1, 2, 0),
+         Points = ifelse(SHOT_TYPE == "3PT Field Goal" & Points == 2, 3, Points)) %>%
+  group_by(Cluster, PLAYER_ID) %>%
+  dplyr::summarize(TotalPts = sum(Points)) %>%
+  mutate(Rk = rank(-TotalPts, ties.method = "random")) %>%
+  filter(Rk == 1) %>%
+  select(-Rk) %>%
+  ungroup() %>%
+  mutate(Cluster = as.factor(Cluster),
+         Headshot = nba_playerheadshot(PLAYER_ID)) %>%
+  left_join(ClusterCenters, by = c('Cluster')) %>%
+  left_join(GetTeams, by = c("PLAYER_ID")) %>%
+  left_join(Teams, by = c("TEAM_NAME" = "display_name"))
+
+ggplot(ShotsAll) +
+  geom_voronoi(aes(x = LOC_Y, y = LOC_X, fill = color), outline = half_court_outline, color = "black") + 
+  Court("white") +
+  geom_image(aes(x = LOC_Y, y = LOC_X, image = Headshot), size = 0.13) +
+  geom_label_repel(aes(x = LOC_Y, y = LOC_X - 0.5, label = format(TotalPts, big.mark = ",")), nudge_y = -0.3,  direction = "y", hjust = 0.5) +
+  scale_fill_identity() +
+  scale_x_continuous(limits = c(0, 47), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 50), expand = c(0, 0)) +
+  coord_fixed() +
+  theme_McCadeP8() +
+  labs(title = "Regular Season Player Points Leaders By Zone",
+       caption = "@McCadeP8 | Data: nba.com")
+```
+
+This plot highlights the top-scoring NBA team in each shooting zone for the 2024–25 regular season. It calculates total team points per zone based on made field goals, identifies the highest-scoring team for each cluster, and overlays team logos at the corresponding cluster centers. Zones are colored using team colors, with a special highlight for the Utah Jazz new color scheme. The result offers a visual breakdown of where each team thrives offensively on the court.
+
+The Boston Celtics’ three-point dominance over the past two seasons is unmistakable—they own the perimeter. The Indiana Pacers, now in the Finals, showcase a dynamic mix of pull-up shooting from Tyrese Haliburton and pick-and-pop action from the supporting cast. Meanwhile, the individual brilliance of Stephen Curry, Klay Thompson, and DeMar DeRozan is on full display—each was so effective in their respective zones that they all-but carried their teams to the top spots in those areas single-handedly.
+
+```{r Part3, warning = FALSE, fig.align = 'center', message = FALSE}
+ShotsAll <- Shots %>%
+  mutate(Points = ifelse(SHOT_MADE_FLAG == 1, 2, 0),
+         Points = ifelse(SHOT_TYPE == "3PT Field Goal" & Points == 2, 3, Points)) %>%
+  group_by(Cluster, TEAM_NAME) %>%
+  dplyr::summarize(TotalPts = sum(Points)) %>%
+  mutate(Rk = rank(-TotalPts, ties.method = "random")) %>%
+  filter(Rk == 1) %>%
+  select(-Rk) %>%
+  ungroup() %>%
+  mutate(Cluster = as.factor(Cluster)) %>%
+  left_join(ClusterCenters, by = c('Cluster')) %>%
+  left_join(Teams, by = c("TEAM_NAME" = "display_name")) %>%
+  mutate(color = ifelse(TEAM_NAME == "Utah Jazz", "#310370", color))
+
+ggplot(ShotsAll) +
+  geom_voronoi(aes(x = LOC_Y, y = LOC_X, fill = color), outline = half_court_outline, color = "black") + 
+  Court("white") +
+  geom_image(aes(x = LOC_Y, y = LOC_X, image = logo), size = 0.1) +
+  geom_label_repel(aes(x = LOC_Y, y = LOC_X - 0.5, label = format(TotalPts, big.mark = ",")), nudge_y = -0.3,  direction = "y", hjust = 0.5) +
+  scale_fill_identity() +
+  scale_x_continuous(limits = c(0, 47), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 50), expand = c(0, 0)) +
+  coord_fixed() +
+  theme_McCadeP8() +
+  labs(title = "Regular Season Team Points Leaders By Zone",
+       caption = "@McCadeP8 | Data: nba.com")
+```
+
+This section highlights players who most exceeded league-average efficiency in each shooting zone during the 2024–25 regular season. Using effective field goal percentage (eFG%), it calculates expected points for each player based on league norms, adjusting for both shooting percentage and shot volume. The difference between a player’s actual and expected contribution is expressed in Points Above Expected, identifying not just volume scorers, but highly efficient ones. Each zone is color-coded by team, and headshots indicate the most overperforming player in that cluster.
+
+This visualization reveals some fun insights—most notably Jamal Murray, who absolutely lit up the left wing with elite efficiency. It’s also encouraging to see significant overlap between high scorers and high-efficiency scorers. While some correlation is expected, this reinforces the idea that NBA teams do a great job of putting their best scorers in positions to succeed.
+
+```{r Part4, warning = FALSE, fig.align = 'center', message = FALSE}
+LeagueAverage <- Shots %>%
+  mutate(SHOT_MADE_FLAG = ifelse(SHOT_MADE_FLAG == 1 & SHOT_TYPE == "3PT Field Goal", 1.5, SHOT_MADE_FLAG)) %>%
+  group_by(Cluster) %>%
+  dplyr::summarize(Percent2 = sum(SHOT_MADE_FLAG)/sum(SHOT_ATTEMPTED_FLAG),
+                   Points = sum(SHOT_MADE_FLAG*2),
+                   Makes = sum(SHOT_MADE_FLAG >= 1),
+                   PPM = Points/Makes) %>%
+  ungroup() %>%
+  mutate(Cluster = as.factor(Cluster),
+         Percent2 = round(Percent2*100,2)) %>%
+  left_join(ClusterCenters, by = c('Cluster')) %>%
+  select(Cluster, Percent2, PPM)
+
+GetTeams <- Shots %>%
+  arrange(GAME_DATE) %>%
+  group_by(PLAYER_ID) %>%
+  mutate(Shot = n():1) %>%
+  filter(Shot == 1) %>%
+  select(PLAYER_ID, TEAM_NAME)
+
+PlayerAverage <- Shots %>%
+  mutate(SHOT_MADE_FLAG = ifelse(SHOT_MADE_FLAG == 1 & SHOT_TYPE == "3PT Field Goal", 1.5, SHOT_MADE_FLAG)) %>%
+  group_by(Cluster, PLAYER_ID) %>%
+  dplyr::summarize(Percent = sum(SHOT_MADE_FLAG)/sum(SHOT_ATTEMPTED_FLAG),
+                   Attempts = sum(SHOT_ATTEMPTED_FLAG)) %>%
+  ungroup() %>%
+  mutate(Cluster = as.factor(Cluster),
+         Percent = round(Percent*100,2)) %>%
+  left_join(ClusterCenters, by = c('Cluster')) %>%
+  select(Cluster, PLAYER_ID, Attempts, Percent) %>%
+  left_join(LeagueAverage, by = c('Cluster')) %>%
+  mutate(Percent = Percent-Percent2,
+         Points = Percent*Attempts*PPM/100) %>%
+  group_by(Cluster) %>%
+  mutate(Rk = rank(-Points, ties.method = "random")) %>%
+  filter(Rk == 1) %>%
+  select(-Rk) %>%
+  ungroup() %>%
+  mutate(Cluster = as.factor(Cluster),
+         Headshot = nba_playerheadshot(PLAYER_ID),
+         Points = round(Points,2),
+         Points = paste0("+",Points)) %>%
+  left_join(ClusterCenters, by = c('Cluster')) %>%
+  left_join(GetTeams, by = c("PLAYER_ID")) %>%
+  left_join(Teams, by = c("TEAM_NAME" = "display_name"))
+
+ggplot(PlayerAverage) +
+  geom_voronoi(aes(x = LOC_Y, y = LOC_X, fill = color), outline = half_court_outline, color = "black") + 
+  Court("white") +
+  geom_image(aes(x = LOC_Y, y = LOC_X, image = Headshot), size = 0.13) +
+  geom_label_repel(aes(x = LOC_Y, y = LOC_X - 0.5, label = format(Points, big.mark = ",")), nudge_y = -0.3,  direction = "y", hjust = 0.5) +
+  scale_fill_identity() +
+  scale_x_continuous(limits = c(0, 47), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 50), expand = c(0, 0)) +
+  coord_fixed() +
+  theme_McCadeP8() +
+  labs(title = "Regular Season Points Above Expected Leaders Per Zone",
+       caption = "@McCadeP8 | Data: nba.com")
+```
+
+There are plenty of other fun directions this dataset could go—whether breaking things down by quarter, month, season type, or exploring countless other metrics. The structure of the data makes it easy to slice and analyze in a variety of ways, opening the door to deeper insights with just a few tweaks. I might circle back in the future to continue exploring and building with this tool—there’s still a lot of court left to cover.
