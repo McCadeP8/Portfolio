@@ -4,6 +4,7 @@ author: "McCade Pearson"
 date: "`r Sys.Date()`"
 output:
   html_document:
+    output_dir: docs
     theme: null
     highlight: null
 ---
@@ -122,4 +123,4 @@ tr:nth-child(even) {
 }
 </style>
 
-The first link is this: BOOM
+The first link is this: https://mccadep8.github.io/Portfolio/Voronoi_Example.html
