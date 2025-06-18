@@ -599,10 +599,10 @@ ggplot() +
     labs(title = "NBA Standings: Octopus Point Format", 
          x = "", 
          y = "") +
-    facet_wrap(~Conf, ncol = 1) +
-    transition_states(Frame) +
-    ease_aes('linear') +
-    view_follow(fixed_x = FALSE)
+    facet_wrap(~Conf, ncol = 1)
+    #transition_states(Frame) +
+    #ease_aes('linear') +
+    #view_follow(fixed_x = FALSE)
 
 #animate(p, width = 1600, height = 1200, fps = 4, duration = 36, renderer = gifski_renderer("nba_standings_animation.gif"))
 ```
@@ -671,10 +671,10 @@ ggplot(TotalSchedule) +
        caption = "@McCadeP8 | Data: nba.com") +
   theme_McCadeP8() +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) +
-  geom_line(aes(x = date, y = RollAvg), color = "#CC0000", size = 1.2) +
-  transition_states(Frame,
-                   transition_length = 1,
-                   state_length = 1)
+  geom_line(aes(x = date, y = RollAvg), color = "#CC0000", size = 1.2)
+  #transition_states(Frame,
+                   #transition_length = 1,
+                   #state_length = 1)
 
 #animate(p, duration = 8, fps = 10, width = 1000, height = 616, start_pause = 5, end_pause = 10, renderer = gifski_renderer("game_value.gif"))
 ```
