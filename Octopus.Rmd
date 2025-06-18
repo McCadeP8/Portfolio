@@ -1,0 +1,1037 @@
+---
+title: "Octopus Format Analysis"
+author: "McCade Pearson"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: null
+    highlight: null
+  pdf_document: default
+---
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@300;400;600;700&display=swap');
+
+body {
+  background-color: #0D1117;
+  color: #F0F3F5;
+  font-family: 'Barlow Semi Condensed', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+}
+
+.main-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: #1C1F26;
+  padding: 40px;
+  border: 2px solid #3E92CC;
+  border-radius: 8px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #C3DDFD;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+h1 {
+  font-size: 2.2em;
+  text-align: center;
+  border-bottom: 3px solid #3E92CC;
+  padding-bottom: 10px;
+}
+
+h2 {
+  font-size: 1.8em;
+  color: #6FB1FC;
+}
+
+h3 {
+  font-size: 1.4em;
+  color: #326DA8;
+}
+
+pre {
+  background-color: #0D1117;
+  border: 1px solid #3E92CC;
+  border-radius: 5px;
+  padding: 15px;
+  overflow-x: auto;
+}
+
+code {
+  background-color: #1C1F26;
+  color: #C3DDFD;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+a {
+  color: #6FB1FC;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #C3DDFD;
+  text-decoration: underline;
+}
+
+blockquote {
+  border-left: 4px solid #3E92CC;
+  margin: 20px 0;
+  padding-left: 20px;
+  color: #C3DDFD;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+
+th, td {
+  border: 1px solid #3E92CC;
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #326DA8;
+  color: #F0F3F5;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background-color: #1C1F26;
+}
+
+.author, .date {
+  text-align: center;
+  color: #6FB1FC;
+  font-size: 1.1em;
+}
+</style>
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(gt)
+library(gtExtras)
+library(hoopR)
+library(shiny)
+library(readxl)
+library(bslib)
+library(scales)
+library(gganimate)
+library(ggrepel)
+library(bsicons)
+library(thematic)
+library(googlesheets4)
+library(ggimage)
+library(ggtext)
+library(conflicted)
+library(showtext)
+library(sysfonts)
+library(zoo)
+library(ggpath)
+library(ggdark)
+conflicts_prefer(dplyr::filter)
+Today <- Sys.Date()
+```
+
+```{r Theme, warning = FALSE, message = FALSE, include = FALSE}
+McCadeP8_theme_colors <- c(
+  background = '#0D1117',   # dark slate gray (background)
+  text       = '#F0F3F5',   # very light gray (text)
+  panel      = '#1C1F26',   # near-black with blue hint (panel)
+  border     = '#3E92CC',   # strong blue (border)
+  strip_text = '#0D1117',   # matches background (strip text on light facet)
+  lighter    = '#C3DDFD',   # baby blue
+  light      = '#6FB1FC',   # sky blue
+  medium     = '#326DA8',   # Jazz navy
+  dark       = '#1D3557'    # deep indigo/navy
+)
+
+McCadeP8_palette <- c(
+  '#C3DDFD', '#F94144', '#6A4C93', '#F9C74F', '#43AA8B',
+  '#577590', '#F3722C', '#277DA1', '#264653'
+)
+
+## McCade Pearson
+## theme_McCadeP8
+## Date Created: June 10, 2025
+
+# THEME COLOR PALETTE --------------------------------------
+
+#' McCadeP8 Inspired Theme Color Palette
+#'
+#' @format character vector of hex code strings
+#' @export
+#' @concept McCadeP8
+#'
+McCadeP8_theme_colors <- c(
+  background = '#0D1117',
+  text       = '#F0F3F5',
+  panel      = '#1C1F26',
+  border     = '#3E92CC',
+  strip_text = '#0D1117',
+  lighter    = '#C3DDFD',
+  light      = '#6FB1FC',
+  medium     = '#326DA8',
+  dark       = '#1D3557'
+)
+
+# DISCRETE COLOR PALETTE -----------------------------------
+
+#' McCadeP8 Inspired Color Palette
+#'
+#' @format character vector of hex code strings
+#' @export
+#' @concept McCadeP8
+#'
+McCadeP8_palette <- c(
+  '#C3DDFD', '#F94144', '#6A4C93', '#F9C74F', '#43AA8B',
+  '#577590', '#F3722C', '#277DA1', '#264653'
+)
+
+# MAIN THEME ------------------------------------------------
+
+#' McCadeP8 Inspired Theme
+#'
+#' @param McCadeP8_font should `theme_McCadeP8` use custom font? Default is `TRUE`.
+#' @param ... additional parameters to pass to `ggplot2::theme()`
+#'
+#' @return a `ggplot2` `theme` object
+#' @export
+#' @concept McCadeP8
+#'
+theme_McCadeP8 <- function(McCadeP8_font = TRUE, ...) {
+
+  # Load custom Google Font
+  font_family <- ifelse(McCadeP8_font, "Barlow Semi Condensed", "sans")
+  if (McCadeP8_font) {
+  font_add_google(name = "Barlow Semi Condensed", family = "Barlow Semi Condensed")
+  showtext_auto()
+  }
+
+  # Define the theme
+  ggplot2::theme(
+    plot.background = element_rect(fill = McCadeP8_theme_colors["background"], color = NA),
+    panel.background = element_rect(fill = McCadeP8_theme_colors["panel"], color = NA),
+    panel.border = element_rect(color = McCadeP8_theme_colors["border"], fill = NA, linewidth = 1.2),
+    panel.grid.major = element_line(color = "#2D3748", size = 0.25),
+    panel.grid.minor = element_blank(),
+    
+    text = element_text(color = McCadeP8_theme_colors["text"], family = font_family),
+    title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 17),
+    axis.text = element_text(size = 13, color = McCadeP8_theme_colors["text"]),
+    axis.ticks = element_line(color = McCadeP8_theme_colors["border"], linewidth = 1),
+    
+    legend.background = element_rect(fill = McCadeP8_theme_colors["panel"], color = NA),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 14, face = "bold"),
+    
+    strip.background = element_rect(fill = McCadeP8_theme_colors["lighter"], colour = McCadeP8_theme_colors["border"]),
+    strip.text = element_text(colour = McCadeP8_theme_colors["strip_text"], size = 10)
+  )
+}
+
+# COLOR SCALES ---------------------------------------------
+
+#' McCadeP8 Inspired Color Scales
+#'
+#' @param ... Additional arguments to pass to `ggplot2::binned_scale` for `_b`,
+#' `ggplot2::scale_[fill/color]_gradient` for `_c`, or `ggplot2::discrete_scale`
+#' for `_d`
+#'
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_c <- function(...) {
+  ggplot2::scale_color_gradient(..., low = McCadeP8_theme_colors["light"], high = McCadeP8_theme_colors["dark"])
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_c <- function(...) {
+  ggplot2::scale_fill_gradient(..., low = McCadeP8_theme_colors["light"], high = McCadeP8_theme_colors["dark"])
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_b <- function(...) {
+  if (!requireNamespace('scales', quietly = TRUE)) {
+    stop('This function requires the `scales` R package.')
+  }
+  ramp <- scales::colour_ramp(c(McCadeP8_theme_colors["light"], McCadeP8_theme_colors["dark"]))
+  ggplot2::binned_scale('color', 'McCadeP8', palette = ramp, ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_b <- function(...) {
+  if (!requireNamespace('scales', quietly = TRUE)) {
+    stop('This function requires the `scales` R package.')
+  }
+  ramp <- scales::colour_ramp(c(McCadeP8_theme_colors["light"], McCadeP8_theme_colors["dark"]))
+  ggplot2::binned_scale('fill', 'McCadeP8', palette = ramp, ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_d <- function(...) {
+  ggplot2::discrete_scale(aesthetics = 'color',
+                          palette = rot_pal(McCadeP8_palette), ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_d <- function(...) {
+  ggplot2::discrete_scale(aesthetics = 'fill',
+                          palette = rot_pal(McCadeP8_palette), ...)
+}
+
+# Aliases
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_d <- scale_color_McCadeP8_d
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_c <- scale_color_McCadeP8_c
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_b <- scale_color_McCadeP8_b
+```
+
+```{r Part1, warning = FALSE, message = FALSE}
+legs <- sort(c(rep(seq(1, 7), 10), rep(8, 12)))
+getPoints <- function(wins) {
+  case_when(wins == 0 ~ 0,
+            wins == 1 ~ 1,
+            wins == 2 ~ 1,
+            wins == 3 ~ 2, 
+            wins == 4 ~ 2, 
+            wins == 5 ~ 3, 
+            wins == 6 ~ 3, 
+            wins == 7 ~ 4, 
+            wins == 8 ~ 4, 
+            wins == 9 ~ 5, 
+            wins == 10 ~ 5, 
+            wins == 11 ~ 6, 
+            wins == 12 ~ 6)}
+getPoints2 <- function(wins) {
+  case_when(wins == 0 ~ 0,
+            wins == 1 ~ 1,
+            wins == 2 ~ 2,
+            wins == 3 ~ 4, 
+            wins == 4 ~ 6, 
+            wins == 5 ~ 9, 
+            wins == 6 ~ 12, 
+            wins == 7 ~ 16, 
+            wins == 8 ~ 20, 
+            wins == 9 ~ 25, 
+            wins == 10 ~ 30, 
+            wins == 11 ~ 36, 
+            wins == 12 ~ 42)}
+all_schedule <- hoopR::load_nba_schedule()
+all_schedule <- all_schedule %>%
+  mutate(date = lubridate::ymd_hm(date)-28800) %>%
+  filter(type_abbreviation == "STD") %>%
+  filter(season_type == 2) %>%
+  filter(status_type_id == 3)
+east <- c("MIL", "BOS", "PHI", "CLE", "BKN", "NY", "MIA", "DET", "ATL", "TOR", "WSH", "IND", "CHI", "ORL", "CHA")
+Teams <- all_schedule %>%
+  select(home_name, home_color, home_logo, home_color, home_alternate_color, home_display_name, home_abbreviation) %>%
+  distinct()
+```
+
+```{r Part2, warning = FALSE, message = FALSE}
+get_schedule <- function(TeamName) {
+  HomeGames <- all_schedule %>%
+  filter(home_name == TeamName) %>%
+  select(date, home_name, home_score, away_name, away_abbreviation, away_logo, away_score, away_color, away_alternate_color, game_id) %>%
+  mutate(Team = home_name,
+         TeamScore = home_score,
+         OpponentScore = away_score,
+         Opponent = away_name,
+         Opponent2 = away_abbreviation,
+         OpponentLogo = away_logo) %>%
+  mutate(TeamWin = ifelse(home_score > away_score, 1, 0),
+         Game = "Home") %>%
+  select(date, Team, TeamScore, OpponentScore, Opponent, Opponent2, OpponentLogo,TeamWin, Game, game_id)
+AwayGames <- all_schedule %>%
+  filter(away_name == TeamName) %>%
+  select(date, away_name, away_score, home_name, home_abbreviation, home_logo, home_score, home_color, home_alternate_color, game_id) %>%
+  mutate(Team = away_name,
+         TeamScore = away_score,
+         OpponentScore = home_score,
+         Opponent = home_name,
+         Opponent2 = home_abbreviation,
+         OpponentLogo = home_logo) %>%
+  mutate(TeamWin = ifelse(away_score > home_score, 1, 0),
+         Game = "Away") %>%
+  select(date, Team, TeamScore, OpponentScore, Opponent, Opponent2, OpponentLogo, TeamWin, Game, game_id)
+Games <- rbind(HomeGames, AwayGames)
+Games <- Games %>%
+  arrange((date)) %>%
+  mutate(Leg = legs) %>%
+  group_by(Leg) %>%
+  mutate(RunWins = cumsum(TeamWin),
+         Points = ifelse(TeamWin == 1, getPoints(RunWins), 0),
+         PointsPlaying = ifelse(TeamWin == 1, getPoints(RunWins), getPoints(RunWins+1)),
+         GameLeg = 1:n()) %>%
+  ungroup() %>%
+  mutate(RunningPts = cumsum(Points))
+return(Games)}
+Schedules <- list()
+for (team in Teams$home_name) {
+  Schedules[[team]] <- get_schedule(team)}
+```
+
+```{r Part3, warning = FALSE, message = FALSE}
+Standings <- data.frame()
+for(team_name in Teams$home_name) {
+Standings2 <- Schedules[[team_name]] %>%
+  ungroup() %>%
+  group_by(Leg) %>%
+  mutate(AllWins = ifelse(date >= Today, 1, TeamWin),
+         RunWins = cumsum(TeamWin),
+         Points = ifelse(TeamWin == 1, getPoints(RunWins), 0),
+         MaxRunWins = cumsum(AllWins),
+         MaxPoints = ifelse(AllWins == 1, getPoints(MaxRunWins), 0),
+         PointsPlayedFor = ifelse(TeamScore > 0, getPoints(RunWins+1), 0)) %>%
+  ungroup() %>%
+  group_by(Team) %>%
+  summarise(GP = sum(TeamScore > 0),
+            W = sum(TeamWin),
+            L = GP-W,
+            Pts = sum(Points),
+            MPts = sum(MaxPoints),
+            PtsPlayed = sum(PointsPlayedFor),
+            PtsLost = PtsPlayed-Pts,
+            AdjWP = Pts/PtsPlayed,
+            WP = W/GP,
+            PPG = Pts/GP,
+            PPW = Pts/W,
+            PD = (sum(TeamScore)/GP)-(sum(OpponentScore)/GP),
+            WL = paste0(W,"-",L),
+            AdjWL = paste0(Pts,"-",PtsLost),
+            PD = round(PD,2),
+            PtsPlayed = PtsPlayed/GP,
+            PD = ifelse(PD >= 0, paste0("+",PD), PD)) %>%
+  left_join(Teams, by = c('Team' = 'home_name')) %>%
+  select(home_logo, home_abbreviation, Pts, WL, WP, AdjWL, AdjWP, PPG, PPW, MPts, PD, Team)
+  Standings <- rbind(Standings, Standings2)}
+
+
+EastStandings <- Standings %>%
+  filter(home_abbreviation %in% east) %>%
+  select(-home_abbreviation) %>%
+  arrange(-Pts, PPW, -AdjWP) %>%
+  mutate(Rk = 1:15) %>%
+  select(12, 1:11)
+gt(EastStandings) %>%
+  gt_theme_espn() %>%
+  cols_align(columns = everything(), align = c('center')) %>%
+  cols_align(columns = c(Rk), align = c('right')) %>%
+  text_transform(
+    locations = cells_body(columns = home_logo),
+    fn = function(x) {
+      web_image(url = EastStandings$home_logo, height = as.numeric(40))}) %>%
+  fmt_percent(columns = c(WP, AdjWP), decimals = 2) %>%
+  fmt_number(columns = c(PPG, PPW)) %>%
+  gt_highlight_rows(rows = 1:6, fill = "#8CD47E") %>%
+  gt_highlight_rows(rows = 7:10, fill = "#F8D66D") %>%
+  gt_highlight_rows(rows = 11:15, fill = "#FF6961") %>%
+  tab_style(style = list(cell_fill(color = "black"), cell_text(color = "white", align = "center")), locations = cells_column_labels()) %>%
+  cols_label(home_logo = "", 
+             WL = "W-L",
+             WP = "Pct",
+             AdjWL = "Adj. W-L",
+             AdjWP = "Adj. Pct",
+             MPts = "Max Pts") %>%
+  cols_width(Rk ~ px(25), home_logo ~ px(67), Pts ~ px(50), WL ~ px(60), WP ~ px(60), AdjWL ~ px(75), AdjWP ~ px(75), PPG ~ px(50), PPW ~ px(50), MPts ~ px(75), PD ~ px(60)) %>%
+  tab_header(title = "EASTERN CONFERENCE STANDINGS") %>%
+  tab_style(style = list(cell_fill(color = "#17408B"), cell_text(color = "white", align = "center")), locations = cells_title()) %>%
+  cols_hide(Team)
+
+WestStandings <- Standings %>%
+  filter(!home_abbreviation %in% east) %>%
+  select(-home_abbreviation) %>%
+  arrange(-Pts, PPW, -AdjWP) %>%
+  mutate(Rk = 1:15) %>%
+  select(12, 1:11)
+gt(WestStandings) %>%
+    gt_theme_espn() %>%
+    cols_align(columns = everything(), align = c('center')) %>%
+    cols_align(columns = c(Rk), align = c('right')) %>%
+    text_transform(locations = cells_body(columns = home_logo),
+      fn = function(x) {web_image(url = WestStandings$home_logo, height = as.numeric(40))}) %>%
+    fmt_percent(columns = c(WP, AdjWP), decimals = 2) %>%
+    fmt_number(columns = c(PPG, PPW)) %>%
+    gt_highlight_rows(rows = 1:6, fill = "#8CD47E") %>%
+    gt_highlight_rows(rows = 7:10, fill = "#F8D66D") %>%
+    gt_highlight_rows(rows = 11:15, fill = "#FF6961") %>%
+    tab_style(style = list(cell_fill(color = "black"), cell_text(color = "white", align = "center")), locations = cells_column_labels()) %>%
+    cols_label(home_logo = "", 
+               WL = "W-L",
+               WP = "Pct",
+               AdjWL = "Adj. W-L",
+               AdjWP = "Adj. Pct",
+               MPts = "Max Pts") %>%
+    cols_width(Rk ~ px(25), home_logo ~ px(67), Pts ~ px(50), WL ~ px(60), WP ~ px(60), AdjWL ~ px(75), AdjWP ~ px(75), PPG ~ px(50), PPW ~ px(50), MPts ~ px(75), PD ~ px(60)) %>%
+    tab_header(title = "WESTERN CONFERENCE STANDINGS") %>%
+    tab_style(style = list(cell_fill(color = "#c9082A"), cell_text(color = "white", align = "center")), locations = cells_title()) %>%
+    cols_hide(Team)
+```
+
+```{r Part4, warning = FALSE, message = FALSE, fid.width = 15, fig.align = 'center'}
+TotalSchedule <- bind_rows(Schedules)
+HomeSchedule <- TotalSchedule %>%
+  filter(Game == "Home") %>%
+  rename(HLeg = Leg,
+         HRunWins = RunWins,
+         HPoints = Points,
+         HPointsPlaying = PointsPlaying,
+         HGameLeg = GameLeg,
+         HRunningPts = RunningPts) %>%
+  select(game_id, HLeg, HRunWins, HPoints, HPointsPlaying, HGameLeg, HRunningPts)
+TotalSchedule <- TotalSchedule %>%
+  filter(Game == "Away") %>%
+  rename(ALeg = Leg,
+         ARunWins = RunWins,
+         APoints = Points,
+         APointsPlaying = PointsPlaying,
+         AGameLeg = GameLeg,
+         ARunningPts = RunningPts) %>%
+  left_join(HomeSchedule, by = "game_id") %>%
+  rename(Away = Team,
+         AScore = TeamScore,
+         HScore = OpponentScore,
+         Home = Opponent,
+         AwayWin = TeamWin) %>%
+  select(-OpponentLogo,-Opponent2, -Game) %>%
+  mutate(date = substr(date, 1, 10),
+         date = as.Date(date)) %>%
+  group_by(APointsPlaying, HPointsPlaying) %>%
+  mutate(Total = n()) %>%
+  ungroup() %>%
+  mutate(PointsPlaying = APointsPlaying+HPointsPlaying)
+
+ggplot(TotalSchedule) +
+  geom_tile(aes(x = APointsPlaying, y = HPointsPlaying), fill = "#1D3557", color = "#3E92CC") +
+  geom_text(aes(x = APointsPlaying, y = HPointsPlaying, label = Total), color = "white", size = 9) +
+  coord_fixed() +
+  theme_McCadeP8() +
+  labs(x = "Away Playing For",
+       y = "Home Playing For",
+       title = "Octopus Points Played For Each Game",
+       caption = "@McCadeP8 | Data: nba.com") +
+  theme(panel.background = element_blank())
+```
+
+```{r Part5, warning = FALSE, message = FALSE, fig.height = 15, fig.align = 'center'}
+TotalSchedule <- bind_rows(Schedules)
+TotalSchedule <- TotalSchedule %>%
+  left_join(Teams, by = c('Team' = 'home_name')) %>%
+  mutate(date = substr(date, 1, 10),
+         date = as.Date(date),
+         Conf = ifelse(home_abbreviation %in% east, "Eastern Conference", "Western Conference"),
+         home_color = paste0("#",home_color))
+BaseTable <- 
+  expand.grid(Team = unique(all_schedule$home_name), 
+              Date = seq(as.Date("2024-10-22"), as.Date("2025-04-13"), by = "day"),
+              Frame = seq(as.Date("2024-11-19"), as.Date("2025-04-13"), by = "day")) %>%
+  mutate(Team = as.character(Team),
+         DaysDiff = Frame-Date) %>%
+  filter(DaysDiff >= 0 & DaysDiff <= 28) %>%
+  select(-DaysDiff) %>%
+  mutate(Frame = Frame-as.Date("2024-11-18"),
+         Frame = as.numeric(Frame)) %>%
+  left_join(TotalSchedule, by = c('Team', 'Date' = 'date')) %>%
+  mutate(PlayedToday = ifelse(is.na(TeamScore == T), F, T)) %>%
+  select(Team, Date, RunningPts, PlayedToday, Frame) %>%
+  arrange(Team, Frame, Date)
+StandingsByDay <- BaseTable %>%
+  select(Team, Date, RunningPts) %>%
+  arrange(Team, Date) %>%
+  group_by(Team) %>%
+  fill(RunningPts, .direction = "down") %>%
+  ungroup() %>%
+  mutate(RunningPts = ifelse(is.na(RunningPts) == T, 0, RunningPts)) %>%
+  left_join(Teams, by = c('Team' = 'home_name')) %>%
+  mutate(home_color = paste0("#",home_color),
+         home_alternate_color = paste0("#",home_alternate_color),
+         Conf = ifelse(home_abbreviation %in% east, "EASTERN CONFERENCE", "WESTERN CONFERENCE")) %>%
+  distinct()
+BaseTable <- BaseTable %>%
+  select(-RunningPts) %>%
+  left_join(StandingsByDay, by = c('Team', 'Date'))
+LabelData <- BaseTable %>%
+  group_by(Team, Frame) %>%
+  mutate(Rk = n():1) %>%
+  filter(Rk == 1) %>%
+  select(-Rk)
+Games <- BaseTable %>%
+  filter(PlayedToday == T)
+
+ggplot() +
+    geom_line(data = BaseTable, aes(x = Date, y = RunningPts, group = Team, color = home_color), size = 1) +
+    geom_point(data = Games, aes(x = Date+0.5, y = RunningPts, color = home_color), size = 4) +
+    geom_label(data = LabelData, aes(x = Date, y = RunningPts, label = Team, fill = home_color, color = home_alternate_color), hjust = 0) +    
+    scale_color_identity() +
+    scale_fill_identity() +
+    scale_x_date(date_labels = "%b %e", date_breaks = "2 days") +
+    scale_y_continuous(position = "right", breaks = seq(0,180, by = 20), labels = function(x) paste0(x, "Pts")) +
+    theme_McCadeP8() +
+    theme(axis.text = element_text(size = 12), strip.text = element_text(size = 14, face = "bold")) +
+    labs(title = "NBA Standings: Octopus Point Format", 
+         x = "", 
+         y = "") +
+    facet_wrap(~Conf, ncol = 1) +
+    transition_states(Frame) +
+    ease_aes('linear') +
+    view_follow(fixed_x = FALSE)
+
+#animate(p, width = 1600, height = 1200, fps = 4, duration = 36, renderer = gifski_renderer("nba_standings_animation.gif"))
+```
+
+```{r Part6, warning = FALSE, message = FALSE, align = 'center'}
+TotalSchedule <- bind_rows(Schedules)
+HomeSchedule <- TotalSchedule %>%
+  filter(Game == "Home") %>%
+  rename(HLeg = Leg,
+         HRunWins = RunWins,
+         HPoints = Points,
+         HPointsPlaying = PointsPlaying,
+         HGameLeg = GameLeg,
+         HRunningPts = RunningPts) %>%
+  select(game_id, HLeg, HRunWins, HPoints, HPointsPlaying, HGameLeg, HRunningPts)
+TotalSchedule <- TotalSchedule %>%
+  filter(Game == "Away") %>%
+  rename(
+    ALeg = Leg,
+    ARunWins = RunWins,
+    APoints = Points,
+    APointsPlaying = PointsPlaying,
+    AGameLeg = GameLeg,
+    ARunningPts = RunningPts) %>%
+  left_join(HomeSchedule, by = "game_id") %>%
+  rename(Away = Team,
+         AScore = TeamScore,
+         HScore = OpponentScore,
+         Home = Opponent,
+         AwayWin = TeamWin) %>%
+  select(-OpponentLogo,-Opponent2, -Game) %>%
+  mutate(date = substr(date, 1, 10),
+         date = as.Date(date)) %>%
+  group_by(APointsPlaying, HPointsPlaying) %>%
+  mutate(Total = n()) %>%
+  ungroup() %>%
+  mutate(PointsPlaying = APointsPlaying + HPointsPlaying)
+DailyAvg <- TotalSchedule %>%
+  group_by(date) %>%
+  summarise(DailyPts = mean(PointsPlaying), .groups = 'drop') %>%
+  arrange(date) %>%
+  mutate(RollAvg = rollmean(DailyPts, k = 4, fill = NA, align = "right")) %>%
+  select(date, RollAvg)
+TotalSchedule <- TotalSchedule %>%
+  left_join(DailyAvg, by = "date") %>%
+  select(date, PointsPlaying, RollAvg) %>%
+  mutate(Day = as.numeric(date)-20017)
+TotalSchedule$PointsPlaying <- TotalSchedule$PointsPlaying + 
+  runif(nrow(TotalSchedule), min = -0.33, max = 0.33)
+Total <- map(1:174, ~ mutate(TotalSchedule, Frame = .x))
+TotalSchedule <- bind_rows(Total)
+TotalSchedule <- TotalSchedule %>%
+  mutate(Test = Day-Frame,
+         RollAvg = ifelse(Test > 0, NA, RollAvg)) %>%
+  select(date, PointsPlaying, RollAvg, Frame, Day, Test) %>%
+  mutate(Frame = Frame-3) %>%
+  filter(Frame >= 1) %>%
+  arrange(Frame, date)
+
+ggplot(TotalSchedule) +
+  geom_point(aes(x = date, y = PointsPlaying), color = "#CCCCCC", alpha = 0.6) +
+  scale_y_continuous(breaks = 2:12, labels = 2:12, limits = c(1,12)) +
+  labs(title = "Eight Arms of Urgency: Unveiling the OCTOPUS Point System for NBA Games",
+       y = "Combined Incentive Score",
+       x = NULL,
+       caption = "@McCadeP8 | Data: nba.com") +
+  theme_McCadeP8() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5)) +
+  geom_line(aes(x = date, y = RollAvg), color = "#CC0000", size = 1.2) +
+  transition_states(Frame,
+                   transition_length = 1,
+                   state_length = 1)
+
+#animate(p, duration = 8, fps = 10, width = 1000, height = 616, start_pause = 5, end_pause = 10, renderer = gifski_renderer("game_value.gif"))
+```
+
+```{r Part7, warning = FALSE, message = FALSE}
+team_dfs <- list()
+
+for (team_name in names(Schedules)) {
+  
+  df <- Schedules[[team_name]]
+  
+  leg_summary <- df %>%
+    group_by(Team, Leg) %>%
+    summarise(
+      TeamWins = list(TeamWin),
+      TotalWins = sum(TeamWin),
+      TotalPoints = sum(Points),
+      .groups = "drop"
+    )
+  
+  leg_summary_wide <- leg_summary %>%
+    mutate(Leg = paste0("Leg", Leg)) %>%
+    pivot_wider(
+      names_from = Leg,
+      values_from = c(TeamWins, TotalWins, TotalPoints),
+      names_glue = "{.value}_{Leg}"
+    )
+  
+  leg_cols_ordered <- c("Team", unlist(map(1:8, function(i) {
+    paste0(c("TeamWins_Leg", "TotalWins_Leg", "TotalPoints_Leg"), i)
+  })))
+  
+  team_df <- leg_summary_wide %>%
+    select(all_of(leg_cols_ordered)) %>%
+    mutate(
+      TotalWins = TotalWins_Leg1 + TotalWins_Leg2 + TotalWins_Leg3 + TotalWins_Leg4 +
+                  TotalWins_Leg5 + TotalWins_Leg6 + TotalWins_Leg7 + TotalWins_Leg8,
+      TotalPoints = TotalPoints_Leg1 + TotalPoints_Leg2 + TotalPoints_Leg3 + TotalPoints_Leg4 +
+                    TotalPoints_Leg5 + TotalPoints_Leg6 + TotalPoints_Leg7 + TotalPoints_Leg8,
+      TotalWins_Leg1 = paste0(TotalWins_Leg1, "-", 10 - TotalWins_Leg1),
+      TotalPoints_Leg1 = paste0(TotalPoints_Leg1, "pts"),
+      TotalWins_Leg2 = paste0(TotalWins_Leg2, "-", 10 - TotalWins_Leg2),
+      TotalPoints_Leg2 = paste0(TotalPoints_Leg2, "pts"),
+      TotalWins_Leg3 = paste0(TotalWins_Leg3, "-", 10 - TotalWins_Leg3),
+      TotalPoints_Leg3 = paste0(TotalPoints_Leg3, "pts"),
+      TotalWins_Leg4 = paste0(TotalWins_Leg4, "-", 10 - TotalWins_Leg4),
+      TotalPoints_Leg4 = paste0(TotalPoints_Leg4, "pts"),
+      TotalWins_Leg5 = paste0(TotalWins_Leg5, "-", 10 - TotalWins_Leg5),
+      TotalPoints_Leg5 = paste0(TotalPoints_Leg5, "pts"),
+      TotalWins_Leg6 = paste0(TotalWins_Leg6, "-", 10 - TotalWins_Leg6),
+      TotalPoints_Leg6 = paste0(TotalPoints_Leg6, "pts"),
+      TotalWins_Leg7 = paste0(TotalWins_Leg7, "-", 10 - TotalWins_Leg7),
+      TotalPoints_Leg7 = paste0(TotalPoints_Leg7, "pts"),
+      TotalWins_Leg8 = paste0(TotalWins_Leg8, "-", 12 - TotalWins_Leg8),
+      TotalPoints_Leg8 = paste0(TotalPoints_Leg8, "pts"),
+      TotalWins = paste0(TotalWins, "-", 82 - TotalWins))
+  team_dfs[[team_name]] <- team_df}
+
+FinalDF <- bind_rows(team_dfs)
+
+FinalDF <- FinalDF %>%
+  arrange(-TotalPoints) %>%
+  mutate(TotalPoints = paste0(TotalPoints,"pts")) %>%
+  left_join(Teams, by = c('Team' = 'home_name')) %>%
+  select(-Team, -home_alternate_color, -home_display_name, -home_color, -home_abbreviation) %>%
+  select(27, 1:26)
+
+gt(FinalDF) %>%
+  gt_theme_espn() %>%
+  text_transform(locations = cells_body(columns = home_logo),
+    fn = function(x) {web_image(url = FinalDF$home_logo, height = as.numeric(40))}) %>%
+  gt_plt_winloss(TeamWins_Leg1, type = "pill", max_wins = 10, palette = c("#8CD47E", "#FF6961", "gray")) %>%
+  gt_merge_stack(col1 = TotalWins_Leg1, col2 = TotalPoints_Leg1) %>%
+  gt_plt_winloss(TeamWins_Leg2, type = "pill", max_wins = 10, palette = c("#8CD47E", "#FF6961", "gray")) %>%
+  gt_merge_stack(col1 = TotalWins_Leg2, col2 = TotalPoints_Leg2) %>%
+  gt_plt_winloss(TeamWins_Leg3, type = "pill", max_wins = 10, palette = c("#8CD47E", "#FF6961", "gray")) %>%
+  gt_merge_stack(col1 = TotalWins_Leg3, col2 = TotalPoints_Leg3) %>%
+  gt_plt_winloss(TeamWins_Leg4, type = "pill", max_wins = 10, palette = c("#8CD47E", "#FF6961", "gray")) %>%
+  gt_merge_stack(col1 = TotalWins_Leg4, col2 = TotalPoints_Leg4) %>%
+  gt_plt_winloss(TeamWins_Leg5, type = "pill", max_wins = 10, palette = c("#8CD47E", "#FF6961", "gray")) %>%
+  gt_merge_stack(col1 = TotalWins_Leg5, col2 = TotalPoints_Leg5) %>%
+  gt_plt_winloss(TeamWins_Leg6, type = "pill", max_wins = 10, palette = c("#8CD47E", "#FF6961", "gray")) %>%
+  gt_merge_stack(col1 = TotalWins_Leg6, col2 = TotalPoints_Leg6) %>%
+  gt_plt_winloss(TeamWins_Leg7, type = "pill", max_wins = 10, palette = c("#8CD47E", "#FF6961", "gray")) %>%
+  gt_merge_stack(col1 = TotalWins_Leg7, col2 = TotalPoints_Leg7) %>%
+  gt_plt_winloss(TeamWins_Leg8, type = "pill", max_wins = 12, palette = c("#8CD47E", "#FF6961", "gray")) %>%
+  gt_merge_stack(col1 = TotalWins_Leg8, col2 = TotalPoints_Leg8) %>%
+  cols_label(TeamWins_Leg1 = "Game Log", 
+             TotalWins_Leg1 = "Record",
+             TeamWins_Leg2 = "Game Log", 
+             TotalWins_Leg2 = "Record",
+             TeamWins_Leg3 = "Game Log", 
+             TotalWins_Leg3 = "Record",
+             TeamWins_Leg4 = "Game Log", 
+             TotalWins_Leg4 = "Record",
+             TeamWins_Leg5 = "Game Log", 
+             TotalWins_Leg5 = "Record",
+             TeamWins_Leg6 = "Game Log", 
+             TotalWins_Leg6 = "Record",
+             TeamWins_Leg7 = "Game Log", 
+             TotalWins_Leg7 = "Record",
+             TeamWins_Leg8 = "Game Log", 
+             TotalWins_Leg8 = "Record",
+             TotalWins = "Record", 
+             TotalPoints = "Points",
+             home_logo = "") %>%
+  tab_spanner(label = "Leg 1", columns = c(TeamWins_Leg1, TotalWins_Leg1)) %>%
+  tab_spanner(label = "Leg 2", columns = c(TeamWins_Leg2, TotalWins_Leg2)) %>%
+  tab_spanner(label = "Leg 3", columns = c(TeamWins_Leg3, TotalWins_Leg3)) %>%
+  tab_spanner(label = "Leg 4", columns = c(TeamWins_Leg4, TotalWins_Leg4)) %>%
+  tab_spanner(label = "Leg 5", columns = c(TeamWins_Leg5, TotalWins_Leg5)) %>%
+  tab_spanner(label = "Leg 6", columns = c(TeamWins_Leg6, TotalWins_Leg6)) %>%
+  tab_spanner(label = "Leg 7", columns = c(TeamWins_Leg7, TotalWins_Leg7)) %>%
+  tab_spanner(label = "Leg 8", columns = c(TeamWins_Leg8, TotalWins_Leg8)) %>%
+  tab_spanner(label = "Total", columns = c(TotalWins, TotalPoints)) %>%
+  cols_align(columns = everything(), align = c('center')) %>%
+  tab_source_note(source_note = "@McCadeP8 | Data: nba.com") %>%
+  tab_header(title = md("**Big Picture View of Octopus Format in 2024-25 Season**")) %>%
+  opt_align_table_header(align = c('center'))
+```
+
+```{r Part8, warning = FALSE, message = FALSE, fig.width = 15, fig.align = 'center'}
+TotalSchedule <- bind_rows(Schedules)
+TotalResults <- TotalSchedule %>%
+  mutate(Leg2 = paste("Leg", Leg)) %>%
+  group_by(Team, Leg, Leg2) %>%
+  summarize(Total = sum(Points),
+            Total2 = sum(TeamWin)) %>%
+  left_join(Teams, by = c('Team' = 'home_name')) %>%
+  mutate(home_color = paste0("#",home_color),
+         home_alternate_color = paste0("#",home_alternate_color)) %>%
+  arrange(home_display_name)
+
+ggplot(TotalResults) +
+  geom_col(aes(x = as.character(Leg), y = Total2), width = 1, fill = TotalResults$home_color, color = TotalResults$home_alternate_color) +
+  coord_polar() +
+  scale_y_continuous(breaks = 0:12, labels = c(0, "", 2, "", 6, "", 12, "", 20, "", 30, "", 42), limits = c(0, 12)) +
+  scale_x_discrete(breaks = 1:8, labels = 1:8) +
+  theme_McCadeP8() +
+  theme(axis.text.x = element_text(face = "bold")) +
+  facet_wrap(~home_display_name, ncol = 6) +
+  theme_McCadeP8() +
+  theme(axis.text.x = element_text(face = "bold", size = 18),
+        axis.text.y = element_text(face = "bold", size = 11),
+        strip.text = element_text(face = "bold", color = "white", size = 18),
+        strip.background = element_rect(fill = "#326DA8"),
+        plot.title = element_text(face = "bold", size = 36, hjust = 0.5),
+        plot.caption = element_text(size = 24)) +
+  labs(x = NULL,
+       y = "Octopus Points",
+       title = "Who Has Success Throughout the Season by Leg (Octopus Format)",
+       caption = "@McCadeP8 | Data: nba.com")
+```
+
+```{r Part9, warning = FALSE, message = FALSE, fig.width = 15, fig.align = 'center'}
+TotalSchedule <- bind_rows(Schedules)
+TotalSchedule <- TotalSchedule %>%
+  mutate(date = as.Date(date))
+
+ListOfDates <- seq(as.Date("2024-10-22"), as.Date("2025-04-13"), by = "day")
+ResultsByDate <- vector("list", length(ListOfDates))
+for (i in seq_along(ListOfDates)) {
+  CurrentDay <- ListOfDates[i]
+  DateCheck <- TotalSchedule %>%
+    select(date, Team, TeamWin, Leg) %>%
+    group_by(Team, Leg) %>%
+    mutate(CurrentDate = CurrentDay,
+           TeamWin = ifelse(date <= CurrentDay, TeamWin, 1),
+           RunWins = cumsum(TeamWin),
+           Points = ifelse(TeamWin == 1, getPoints(RunWins), 0),
+           PointsPlaying = getPoints(RunWins),
+           PointsPlaying = ifelse(PointsPlaying == 0, 1, PointsPlaying),
+           GameLeg = 1:n(),
+           Before = ifelse(date <= CurrentDay,T,F)) %>%
+    ungroup() %>%
+    group_by(Team, Before) %>%
+    mutate(WinsToDate = sum(TeamWin),
+           PointsToDate = sum(Points)) %>%
+    ungroup() %>%
+    group_by(Team) %>%
+    mutate(MaxWins = sum(TeamWin),
+           MaxPoints = sum(Points)) %>%
+    filter(Before == TRUE) %>%
+    select(Team, CurrentDate, WinsToDate, PointsToDate, MaxWins, MaxPoints) %>%
+    distinct()
+  ResultsByDate[[i]] <- DateCheck}
+FinalResults <- bind_rows(ResultsByDate)
+FinalResults <- FinalResults %>%
+  left_join(Teams, by = c('Team' = 'home_name')) %>%
+  mutate(home_color = paste0("#",home_color),
+         home_alternate_color = paste0("#",home_alternate_color),
+         Conf = ifelse(home_abbreviation %in% east, "East", "West"))
+Wins6 <- FinalResults %>%
+  group_by(CurrentDate, Conf) %>%
+  mutate(WinsRank = rank(-WinsToDate, ties.method = "random"),
+         Place6Wins = WinsToDate) %>%
+  filter(WinsRank == 6) %>%
+  select(CurrentDate, Conf, Place6Wins)
+Wins10 <- FinalResults %>%
+  group_by(CurrentDate, Conf) %>%
+  mutate(WinsRank = rank(-WinsToDate, ties.method = "random"),
+         Place10Wins = WinsToDate) %>%
+  filter(WinsRank == 10) %>%
+  select(CurrentDate, Conf, Place10Wins)
+Pts6 <- FinalResults %>%
+  group_by(CurrentDate, Conf) %>%
+  mutate(PtsRank = rank(-PointsToDate, ties.method = "random"),
+         Place6Pts = PointsToDate) %>%
+  filter(PtsRank == 6) %>%
+  select(CurrentDate, Conf, Place6Pts)
+Pts10 <- FinalResults %>%
+  group_by(CurrentDate, Conf) %>%
+  mutate(PtsRank = rank(-PointsToDate, ties.method = "random"),
+         Place10Pts = PointsToDate) %>%
+  filter(PtsRank == 10) %>%
+  select(CurrentDate, Conf, Place10Pts)
+FinalResultsV2 <- FinalResults %>%
+  ungroup() %>%
+  left_join(Wins6, by = c('CurrentDate','Conf')) %>%
+  left_join(Wins10, by = c('CurrentDate','Conf')) %>%
+  left_join(Pts6, by = c('CurrentDate','Conf')) %>%
+  left_join(Pts10, by = c('CurrentDate','Conf')) %>%
+  mutate(Alive6Win = ifelse(MaxWins >= Place6Wins, "Yes", "No"),
+         Alive10Win = ifelse(MaxWins >= Place10Wins, "Yes", "No"),
+         Alive6Pts = ifelse(MaxPoints >= Place6Pts, "Yes", "No"),
+         Alive6Pts = ifelse(Team == "Warriors" & CurrentDate == as.Date('2025-04-13'), "No", Alive6Pts),
+         Alive10Pts = ifelse(MaxPoints >= Place10Pts, "Yes", "No")) %>%
+  arrange(CurrentDate)
+Wins6Eligible <- FinalResultsV2 %>%
+  group_by(Team, Alive6Win) %>%
+  mutate(LastDay = 1:n()) %>%
+  filter(Alive6Win == "No" & LastDay == 1) %>%
+  mutate(Type = "EligibleWins_Playoff Elimination") %>%
+  ungroup() %>%
+  select(Team, CurrentDate, home_color, home_alternate_color, home_logo, Conf, Type)
+Wins10Eligible <- FinalResultsV2 %>%
+  group_by(Team, Alive10Win) %>%
+  mutate(LastDay = 1:n()) %>%
+  filter(Alive10Win == "No" & LastDay == 1) %>%
+  mutate(Type = "EligibleWins_Play-In Elimination") %>%
+  ungroup() %>%
+  select(Team, CurrentDate, home_color, home_alternate_color, home_logo, Conf, Type)
+Pts6Eligible <- FinalResultsV2 %>%
+  group_by(Team, Alive6Pts) %>%
+  mutate(LastDay = 1:n()) %>%
+  filter(Alive6Pts == "No" & LastDay == 1) %>%
+  mutate(Type = "EligiblePts_Playoff Elimination") %>%
+  ungroup() %>%
+  select(Team, CurrentDate, home_color, home_alternate_color, home_logo, Conf, Type)
+Pts10Eligible <- FinalResultsV2 %>%
+  group_by(Team, Alive10Pts) %>%
+  mutate(LastDay = 1:n()) %>%
+  filter(Alive10Pts == "No" & LastDay == 1) %>%
+  mutate(Type = "EligiblePts_Play-In Elimination") %>%
+  ungroup() %>%
+  select(Team, CurrentDate, home_color, home_alternate_color, home_logo, Conf, Type)
+TotalResults3 <- rbind(Wins6Eligible, Wins10Eligible, Pts6Eligible, Pts10Eligible)
+TotalResults3 <- TotalResults3 %>%
+  separate(Type, into = c("Type", "Size"), sep = "_") %>%
+  pivot_wider(names_from = Type, values_from = CurrentDate) %>%
+  mutate(Size = fct_rev(factor(Size))) %>%
+  group_by(Size) %>%
+  mutate(Team = fct_reorder(Team, desc(EligibleWins))) %>%
+  ungroup()
+
+ggplot(TotalResults3) +
+  geom_segment(aes(x = EligiblePts, xend = EligibleWins, y = Team, yend = Team), color = "white", size = 1) +
+  geom_point(aes(x = EligiblePts, y = Team), color = "#C3DDFD", size = 7) +
+  geom_point(aes(x = EligibleWins, y = Team), color = "#1D3557", size = 5) +
+  facet_wrap(~Size, ncol = 1, scales = "free_y") +
+  scale_x_date(breaks = as.Date(c("2025-03-02", "2025-03-09", "2025-03-16", "2025-03-23", "2025-03-30", "2025-04-06", "2025-04-13")), minor_breaks = seq(as.Date("2025-03-01"), as.Date("2025-04-18"), by = "1 day"), labels = date_format("%b %d"), expand = expansion(mult = c(0.05, 0.08))) +
+  theme_McCadeP8() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 24),
+        axis.text.y = element_text(size = 18),
+        panel.grid.minor.x = element_line(color = "#333333", linewidth = 0.15),
+        panel.grid.major.x = element_line(color = "#666666", linewidth = 0.3),
+        strip.text = element_text(face = "bold", color = "white", size = 18),
+        strip.background = element_rect(fill = "#326DA8"),
+        plot.title = element_markdown(face = "bold", size = 48, hjust = 0.5),
+        plot.caption = element_text(size = 18)) +
+  labs(x = "", 
+       y = "", 
+       caption = "@McCadeP8 | Data: nba.com",
+       title = "Team Elimination Dates: <span style='color:#1D3557'>Actual</span> vs <span style='color:#C3DDFD'>Octopus</span> Format")
+```
+
+```{r Part10, warning = FALSE, message = FALSE}
+TotalSchedule <- bind_rows(Schedules)
+HomeSchedule <- TotalSchedule %>%
+  filter(Game == "Home") %>%
+  rename(
+    HLeg = Leg,
+    HRunWins = RunWins,
+    HPoints = Points,
+    HPointsPlaying = PointsPlaying,
+    HGameLeg = GameLeg,
+    HRunningPts = RunningPts) %>%
+  select(game_id, HLeg, HRunWins, HPoints, HPointsPlaying, HGameLeg, HRunningPts)
+TotalSchedule <- TotalSchedule %>%
+  filter(Game == "Away") %>%
+  rename(
+    ALeg = Leg,
+    ARunWins = RunWins,
+    APoints = Points,
+    APointsPlaying = PointsPlaying,
+    AGameLeg = GameLeg,
+    ARunningPts = RunningPts) %>%
+  left_join(HomeSchedule, by = "game_id") %>%
+  rename(Away = Team,
+         AScore = TeamScore,
+         HScore = OpponentScore,
+         Home = Opponent,
+         AwayWin = TeamWin) %>%
+  select(-OpponentLogo,-Opponent2, -Game) %>%
+  mutate(date = substr(date, 1, 10),
+         date = as.Date(date)) %>%
+  group_by(APointsPlaying, HPointsPlaying) %>%
+  mutate(Total = n()) %>%
+  ungroup() %>%
+  mutate(PointsPlaying = APointsPlaying + HPointsPlaying) %>%
+  arrange(date) %>%
+  filter(APointsPlaying >= 4 & HPointsPlaying >= 4) %>%
+  mutate(HRunWins = ifelse(AwayWin == 1, HRunWins, HRunWins-1),
+         ARunWins = ifelse(AwayWin == 1, ARunWins-1, ARunWins),
+         ARecord = paste0(ARunWins,"-",AGameLeg-1-ARunWins),
+         HRecord = paste0(HRunWins,"-",HGameLeg-1-HRunWins),
+         APointsPlaying = paste0(APointsPlaying,"pts"),
+         HPointsPlaying = paste0(HPointsPlaying,"pts"),
+         date = format(date, "%b %e")) %>%
+  left_join(Teams, by = c('Away' = 'home_name')) %>%
+  left_join(Teams, by = c('Home' = 'home_name')) %>%
+  select(HLeg, date, home_logo.x, ARecord, AScore, HScore, HRecord, home_logo.y, APointsPlaying, HPointsPlaying) %>%
+  mutate(win_away = ifelse(AScore > HScore, T,F))
+
+gt(TotalSchedule) %>%
+  gt_theme_espn() %>%
+  text_transform(locations = cells_body(columns = home_logo.x),
+      fn = function(x) {web_image(url = TotalSchedule$home_logo.x, height = as.numeric(40))}) %>%
+    text_transform(locations = cells_body(columns = home_logo.y),
+      fn = function(x) {web_image(url = TotalSchedule$home_logo.y, height = as.numeric(40))}) %>%
+  gt_merge_stack(col1 = ARecord, col2 = APointsPlaying) %>%
+  gt_merge_stack(col1 = HRecord, col2 = HPointsPlaying) %>%
+  cols_align(align = c('center')) %>%
+  cols_label(HLeg = "Leg",
+             home_logo.x = "Away",
+             ARecord = "Leg Record",
+             AScore = "Score",
+             HScore = "Score",
+             HRecord = "Leg Record",
+             home_logo.y = "Home") %>%
+  tab_header(title = md("**Top Games of the 2024-25 Season**")) %>%
+  opt_align_table_header(align = c('center')) %>%
+  tab_style(style = cell_fill(color = "#8CD47E"), locations = cells_body(columns = AScore, rows = AScore > HScore)) %>%
+  tab_style(style = cell_fill(color = "#8CD47E"), locations = cells_body(columns = HScore, rows = HScore > AScore)) %>%
+  tab_style(style = cell_fill(color = "#FF6961"), locations = cells_body(columns = AScore, rows = HScore > AScore)) %>%
+  tab_style(style = cell_fill(color = "#FF6961"), locations = cells_body(columns = HScore, rows = AScore > HScore)) %>%
+  cols_hide(win_away) %>%
+  tab_source_note(source_note = "@McCadeP8 | Data: nba.com")
+```
+
