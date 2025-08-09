@@ -36,5 +36,5 @@ jobs:
           packages: tidyverse, httr
           
       - name: Run R update script
-        run: Rscript TestAutomation.R
+        run: Rscript SBC_Cap_Sheets/TestAutomation.R
         shell: bash
