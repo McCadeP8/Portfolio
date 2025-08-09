@@ -1,7 +1,10 @@
+print(getwd())
+print(list.files("SBC_Cap_Sheets/SBC_Bref"))
+
 library(httr)
 library(tidyverse)
 
-Schedule <- readRDS("SBC_Bref/Games.rds")
+Games <- readRDS("SBC_Cap_Sheets/SBC_Bref/games.rds")
 
 discord_webhook <- "https://discord.com/api/webhooks/1396720354034057326/IBOVLxOQ4xKmk2VEAX6fBgWRrsc6SZJSlMlcQVF0LovCM9wpqeivQqBMdTf4kNZHYmyv"
 
