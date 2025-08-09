@@ -1,7 +1,7 @@
 library(httr)
 library(tidyverse)
 
-Schedule <- readRDS("SBC_Cap_Sheets/SBC_Bref/Games.rds")
+Schedule <- readRDS("SBC_Bref/Games.rds")
 
 discord_webhook <- "https://discord.com/api/webhooks/1396720354034057326/IBOVLxOQ4xKmk2VEAX6fBgWRrsc6SZJSlMlcQVF0LovCM9wpqeivQqBMdTf4kNZHYmyv"
 
