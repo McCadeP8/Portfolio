@@ -1,0 +1,13 @@
+name: SBCFBL_Reference
+title: SBCFBL_Reference
+username: mccadep8r
+account: mccadep8r
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14699274
+bundleId: 10679967
+url: https://mccadep8r.shinyapps.io/SBCFBL_Reference/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: court_plot.pdf|court_plot.png|SBC_Bref_Cleaning.Rmd|SBC_Bref_Setup.R|SBC_Game_Recap_Discord.Rmd

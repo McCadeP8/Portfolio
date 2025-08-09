@@ -1,0 +1,441 @@
+---
+title: "NBA Shot Plot Analysis with Voronoi Diagrams"
+author: "McCade Pearson"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: null
+    highlight: null
+---
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@300;400;600;700&display=swap');
+body {
+  background-color: #0D1117;
+  color: #F0F3F5;
+  font-family: 'Barlow Semi Condensed', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+}
+.main-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: #1C1F26;
+  padding: 40px;
+  border: 2px solid #3E92CC;
+  border-radius: 8px;
+}
+h1, h2, h3, h4, h5, h6 {
+  color: #C3DDFD;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+h1 {
+  font-size: 2.2em;
+  text-align: center;
+  border-bottom: 3px solid #3E92CC;
+  padding-bottom: 10px;
+}
+h2 {
+  font-size: 1.8em;
+  color: #6FB1FC;
+}
+h3 {
+  font-size: 1.4em;
+  color: #326DA8;
+}
+h4 {
+  font-size: 1.2em;
+  color: #6FB1FC;
+}
+h5 {
+  font-size: 1.1em;
+  color: #C3DDFD;
+}
+h6 {
+  font-size: 1em;
+  color: #C3DDFD;
+  font-weight: 400;
+}
+pre {
+  background-color: #0D1117;
+  border: 1px solid #3E92CC;
+  border-radius: 5px;
+  padding: 15px;
+  overflow-x: auto;
+}
+code {
+  background-color: #1C1F26;
+  color: #C3DDFD;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+a {
+  color: #6FB1FC;
+  text-decoration: none;
+}
+a:hover {
+  color: #C3DDFD;
+  text-decoration: underline;
+}
+blockquote {
+  border-left: 4px solid #3E92CC;
+  margin: 20px 0;
+  padding-left: 20px;
+  color: #C3DDFD;
+  font-style: italic;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+th, td {
+  border: 1px solid #3E92CC;
+  padding: 12px;
+  text-align: left;
+}
+th {
+  background-color: #326DA8;
+  color: #F0F3F5;
+  font-weight: 600;
+}
+tr:nth-child(even) {
+  background-color: #1C1F26;
+}
+.author, .date {
+  text-align: center;
+  color: #6FB1FC;
+  font-size: 1.1em;
+}
+ul, ol {
+  margin: 15px 0;
+  padding-left: 25px;
+}
+li {
+  margin: 8px 0;
+}
+hr {
+  border: none;
+  border-top: 2px solid #3E92CC;
+  margin: 30px 0;
+}
+.alert {
+  padding: 15px;
+  margin: 20px 0;
+  border-radius: 5px;
+  border-left: 4px solid;
+}
+.alert-info {
+  background-color: #1a2332;
+  border-left-color: #6FB1FC;
+  color: #C3DDFD;
+}
+.alert-warning {
+  background-color: #332a1a;
+  border-left-color: #f39c12;
+  color: #f39c12;
+}
+.alert-success {
+  background-color: #1a2e1a;
+  border-left-color: #27ae60;
+  color: #27ae60;
+}
+.alert-danger {
+  background-color: #331a1a;
+  border-left-color: #e74c3c;
+  color: #e74c3c;
+}
+</style>
+
+# R Markdown Feature Showcase
+
+This document demonstrates all the formatting options available in R Markdown with our custom NBA-themed styling.
+
+## Header Level 2 - Main Sections
+
+### Header Level 3 - Subsections
+
+#### Header Level 4 - Sub-subsections
+
+##### Header Level 5 - Minor Headings
+
+###### Header Level 6 - Smallest Headings
+
+---
+
+## Text Formatting Options
+
+This is a regular paragraph with normal text. You can make text **bold** or *italic* or even ***both bold and italic***. You can also use ~~strikethrough~~ text when needed.
+
+For inline code, you can use `single backticks` to highlight variable names or short code snippets like `ggplot()` or `library(dplyr)`.
+
+### Links and References
+
+You can create [links to external websites](https://www.nba.com) or reference internal sections. Links will appear in the blue theme color.
+
+### Horizontal Rules
+
+Use three or more dashes to create horizontal dividers:
+
+---
+
+## Lists and Bullets
+
+### Unordered Lists (Bullet Points)
+
+- First level bullet point
+- Another first level item
+  - Second level nested item
+  - Another second level item
+    - Third level deeply nested
+    - More third level content
+- Back to first level
+
+### Ordered Lists (Numbered)
+
+1. First numbered item
+2. Second numbered item
+   a. Sub-item with letter
+   b. Another sub-item
+3. Third main item
+   i. Roman numeral sub-item
+   ii. Another roman numeral
+
+### Task Lists
+
+- [x] Completed task
+- [x] Another completed item
+- [ ] Incomplete task
+- [ ] Another incomplete item
+
+---
+
+## Code Blocks
+
+### R Code Block
+
+```r
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+library(nbastatR)
+
+# Create sample NBA data
+nba_data <- data.frame(
+  player = c("LeBron James", "Stephen Curry", "Kevin Durant"),
+  points = c(25.3, 24.5, 28.7),
+  assists = c(7.4, 6.1, 5.4),
+  rebounds = c(7.9, 4.5, 7.1)
+)
+
+# Create a basic plot
+ggplot(nba_data, aes(x = points, y = assists)) +
+  geom_point(size = 3, color = "#3E92CC") +
+  theme_minimal() +
+  labs(title = "NBA Player Stats Comparison")
+```
+
+### Python Code Block
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# NBA shot data analysis
+def analyze_shot_data(data):
+    """Analyze NBA shot effectiveness"""
+    shot_pct = data.groupby('shot_type')['made'].mean()
+    return shot_pct.sort_values(ascending=False)
+
+# Create visualization
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=df, x='shot_distance', y='shot_accuracy')
+plt.title('Shot Accuracy vs Distance')
+plt.show()
+```
+
+### SQL Code Block
+
+```sql
+SELECT 
+    player_name,
+    AVG(points) as avg_points,
+    AVG(assists) as avg_assists,
+    COUNT(*) as games_played
+FROM nba_stats 
+WHERE season = '2023-24'
+GROUP BY player_name
+HAVING COUNT(*) >= 50
+ORDER BY avg_points DESC
+LIMIT 10;
+```
+
+---
+
+## Tables
+
+### Basic Table
+
+| Player | Team | PPG | APG | RPG |
+|--------|------|-----|-----|-----|
+| LeBron James | Lakers | 25.3 | 7.4 | 7.9 |
+| Stephen Curry | Warriors | 24.5 | 6.1 | 4.5 |
+| Kevin Durant | Suns | 28.7 | 5.4 | 7.1 |
+| Giannis Antetokounmpo | Bucks | 30.4 | 6.5 | 11.5 |
+
+### Advanced Table with Alignment
+
+| Player Name | Position | Salary | Contract Years | Performance Rating |
+|:------------|:--------:|-------:|:--------------:|:------------------:|
+| LeBron James | SF | $44.5M | 2 | ⭐⭐⭐⭐⭐ |
+| Stephen Curry | PG | $48.1M | 4 | ⭐⭐⭐⭐⭐ |
+| Kevin Durant | PF | $47.6M | 4 | ⭐⭐⭐⭐ |
+
+---
+
+## Blockquotes and Callouts
+
+### Simple Blockquote
+
+> "Basketball is a game of habits. If you make the right play 5 out of 10 times, you're an All-Star. If you make it 6 out of 10 times, you're a superstar."
+> 
+> — Anonymous NBA Coach
+
+### Nested Blockquotes
+
+> This is the first level of quotation.
+> 
+> > This is a nested quote within the first quote.
+> > 
+> > > And this is a third level of nesting.
+
+---
+
+## Custom Alert Boxes
+
+<div class="alert alert-info">
+**Information:** This is an informational alert box. Use this for general tips or additional context about NBA analytics.
+</div>
+
+<div class="alert alert-success">
+**Success:** Great job! Your Voronoi diagram analysis has been completed successfully.
+</div>
+
+<div class="alert alert-warning">
+**Warning:** Make sure to clean your NBA shot data before running the analysis to avoid skewed results.
+</div>
+
+<div class="alert alert-danger">
+**Error:** Failed to load NBA API data. Check your internet connection and API credentials.
+</div>
+
+---
+
+## Mathematical Expressions
+
+### Inline Math
+The shooting percentage can be calculated as $\text{FG\%} = \frac{\text{Field Goals Made}}{\text{Field Goals Attempted}} \times 100$
+
+### Display Math
+The Player Efficiency Rating (PER) formula is complex:
+
+$$PER = \frac{1}{\text{Min}} \times \left[ 3P + \frac{2}{3} \times AST + \frac{2 - factor \times \frac{team\_AST}{team\_FG}} \times FG}{2} \right]$$
+
+Where the efficiency factors are calculated based on league averages.
+
+---
+
+## Advanced Formatting
+
+### Definition Lists
+
+Term 1
+:   Definition for term 1
+
+Term 2
+:   Definition for term 2
+    with multiple lines
+
+NBA PER
+:   Player Efficiency Rating - a measure of per-minute production standardized such that the league average is 15.
+
+True Shooting Percentage
+:   A shooting percentage that factors in free throws and three-pointers: $TS\% = \frac{PTS}{2 \times (FGA + 0.44 \times FTA)}$
+
+### Line Breaks and Spacing
+
+You can force line breaks by ending a line with two spaces  
+Like this line break here.
+
+Or use a backslash\
+For another type of line break.
+
+### Superscripts and Subscripts
+
+- The formula for three-point efficiency: 3P^made^ / 3P^attempted^
+- Chemical formula for basketball court cleaner: H~2~O + C~8~H~18~
+
+---
+
+## Special Characters and Symbols
+
+### Sports Symbols
+🏀 ⛹️ 🏆 📊 📈 📉 ⭐
+
+### Arrow Symbols
+← → ↑ ↓ ↔ ↕ ⇒ ⇐
+
+### Mathematical Symbols
+≈ ≠ ≤ ≥ ± × ÷ ∞ ∑ ∏ ∫
+
+---
+
+## Images and Media
+
+### Image Reference
+![NBA Logo](https://via.placeholder.com/150x100?text=NBA+Logo)
+
+### Image with Caption
+![Shot Chart Analysis](https://via.placeholder.com/400x300?text=Voronoi+Shot+Chart)
+*Figure 1: Example Voronoi diagram showing shot distribution across the court*
+
+---
+
+## Footnotes
+
+This analysis uses advanced statistical methods[^1] to determine shot effectiveness. The Voronoi diagram approach[^2] provides unique insights into spatial shot distribution.
+
+[^1]: Statistical methods include regression analysis, clustering, and spatial analysis techniques.
+
+[^2]: Voronoi diagrams partition the court into regions based on distance to shot locations, creating natural shooting zones.
+
+---
+
+## Conclusion
+
+This showcase demonstrates the full range of formatting options available in R Markdown with our custom NBA-themed styling. The dark blue color scheme provides excellent readability while maintaining a professional sports analytics appearance.
+
+### Key Features Demonstrated:
+- Six levels of headers
+- Multiple text formatting options
+- Code blocks in various languages
+- Tables with different alignments
+- Custom alert boxes
+- Mathematical expressions
+- Lists and task items
+- Blockquotes and callouts
+- Special characters and symbols
+- Image integration
+- Footnotes and references
+
+The styling maintains consistency across all elements while providing clear visual hierarchy and excellent readability for technical NBA analysis documents.

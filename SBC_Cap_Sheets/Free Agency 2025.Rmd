@@ -1,0 +1,813 @@
+---
+title: "SBC Free Agency"
+author: "McCade Pearson"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(gt)
+options(scipen = 99)
+```
+
+
+```{r}
+Day1Bids <- read.csv("C:/Users/mppac/Downloads/2025 Free Agency_July 2, 2025_13.28.csv")
+colnames(Day1Bids) <- Day1Bids[1, ]
+Day1Bids <- Day1Bids %>%
+  tail(nrow(.)-2)
+OGNames <- colnames(Day1Bids)
+KeepNames <- OGNames[1:19]
+CleanNames <- function(Col) {
+  Type <- sub(".* - (Salary|Years) - .*", "\\1", Col)
+  Player <- sub(".* - (?:Salary|Years) - (.*?) - .*", "\\1", Col)
+  Player <- gsub(" ", "_", Player)
+  paste0(Player, "_", Type)}
+NewNames <- sapply(OGNames[20:length(OGNames)], CleanNames)
+colnames(Day1Bids) <- c(KeepNames, NewNames)
+Day1Bids <- Day1Bids %>%
+  rename(Recorded_Date = `Recorded Date`,
+         Team_Code = `Team Code`,
+         Comments = `Do_you_have_any_notes_you_would_like_to_add_on_your_bids?_Do you have any notes you would like to add on your bids?`) %>%
+  select(Recorded_Date, Team_Code, Comments, ends_with("_Salary"), ends_with("_Years")) %>%
+  pivot_longer(cols = ends_with("_Salary"), names_to = "Player", values_to = "Salary", names_pattern = "(.*)_Salary") %>%
+  pivot_longer(cols = ends_with("_Years"), names_to = "Player_Years", values_to = "Years", names_pattern = "(.*)_Years") %>%
+  filter(Player == Player_Years) %>%
+  mutate(Player = gsub("_", " ", Player)) %>%
+  select(-Player_Years) %>%
+  filter(Salary != "" | Years != "") %>%
+  mutate(Team_Code = case_when(
+    Team_Code == "TyF4LNkBNtAkEB4It2Hg" ~ "Albuquerque Armadillos",
+    Team_Code == "FcLJLFN7i8QQiLYTzKWo" ~ "Anaheim Mice",
+    Team_Code == "dGrUraAPmcqhK0m6ARWh" ~ "Anchorage Killer Whales",
+    Team_Code == "ZSHHRH81oj8sMcEdoY1l" ~ "Austin Bats",
+    Team_Code == "D1B6j2xcdgHQPMdF4QOq" ~ "Baltimore Blue Crabs",
+    Team_Code == "bxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "BxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "I6Pg736WoKYeVeI6U4e1" ~ "Boise Spuds",
+    Team_Code == "5162yikwsApWCLrX4UJs" ~ "Buffalo Daredevils",
+    Team_Code == "jMYWLR2XrzlL7I4rmUOU" ~ "Cincinnati Chili",
+    Team_Code == "rdQy1hcby0rS88x8ZNFz" ~ "Columbus Arches",
+    Team_Code == "foRQTbf7X7sPzwToUqAy" ~ "Des Moines Racoons",
+    Team_Code == "MJ41zvbgwrKeZoTB7BWS" ~ "El Paso Vipers",
+    Team_Code == "HMUEn4W03Foc41CAECZm" ~ "Honolulu Diamonds",
+    Team_Code == "45voC1imU3u8KP5dUwsf" ~ "Jacksonville Manatees",
+    Team_Code == "84F4QNW03LX2AI0s02dy" ~ "Kentucky Thoroughbreds",
+    Team_Code == "cFUiAg0LIxSESHeKgN1B" ~ "Lansing Lagoon",
+    Team_Code == "VoCm4cWh5PZm9VehkM4x" ~ "Lincoln Bully",
+    Team_Code == "bEvPh9hsVSyir9NSr6tA" ~ "Little Rock Big Foot",
+    Team_Code == "BzyHZbJO6jiPO80dACaC" ~ "Manchester Trout",
+    Team_Code == "aU1nz37NW5o0JIHilRH7" ~ "Nashville Strings",
+    Team_Code == "t5xL0w4jV8TpJwYGpjbx" ~ "Pittsburgh Bridge",
+    Team_Code == "ZsszJyXaxCGg5E8vAb86" ~ "Providence Pilgrims",
+    Team_Code == "ZsszJyXaxCGg5E8vAb96" ~ "Providence Pilgrims",
+    Team_Code == "R0v8umk3ZaNp6OXaPYnB" ~ "San Diego Seals",
+    Team_Code == "MQwfNLhUakQ13r7Ft1M4" ~ "San Jose Seagulls",
+    Team_Code == "jsY6XYU5mzjSk7laetU3" ~ "Seattle Brew",
+    Team_Code == "A8FpUrhgzTRMN1IOK4O9" ~ "St. Louis 66ers",
+    Team_Code == "NPme2qXwpi0LBcY73EFF" ~ "Tampa Bay Flamingos",
+    Team_Code == "iIwpWRN1I9fkcvki1y8N" ~ "Tulsa Tornado",
+    Team_Code == " iIwpWRN1I9fkcvki1y8" ~ "Tulsa Tornado",
+    Team_Code == "BMro1UdTd6X488MU7ket" ~ "Vancouver Forest",
+    Team_Code == "M8n43ZSLcJGCfWeF0RFn" ~ "Vegas Blackjack",
+    TRUE ~ Team_Code))
+```
+
+```{r}
+gs4_deauth()
+sheet_key <- "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE"
+FAOrder <- range_read(sheet_key, sheet = "FreeAgencyCode")
+
+Day1BidsB <- Day1Bids %>%
+  arrange(Recorded_Date) %>%
+  group_by(Team_Code, Player) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber == 1) %>%
+  left_join(FAOrder, by = c('Player')) %>%
+  arrange(Recorded_Date, -Order) %>%
+  group_by(Team_Code) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber <= 20) %>%
+  ungroup() %>%
+  mutate(Years = case_when(
+                  Years %in% c("1") ~ 1,
+                  Years %in% c("2") ~ 2,
+                  Years %in% c("3") ~ 3,
+                  Years %in% c("4") ~ 4,
+                  Years %in% c("5", "max", "Max") ~ 5,
+                  TRUE ~ 1),
+         Salary = case_when(
+                  Salary == "" ~ 1,
+                  grepl("\\.", Salary) ~ as.numeric(Salary) * 1000000,
+                  TRUE ~ as.numeric(Salary))) %>%
+  select(Recorded_Date, Team_Code, Player, Salary, Years, Order, Comments)
+
+Day1BidsC <- Day1BidsB %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total >= 5) %>%
+  arrange(Order, -Salary)
+
+Day1BidsD <- Day1BidsB %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total <= 4) %>%
+  mutate(MaxSal = max(Salary)) %>%
+  select(Player, Order, Total, MaxSal) %>%
+  distinct() %>%
+  arrange(Order)
+
+gt(Day1BidsC)
+
+Day1Signings <- Day1BidsC %>%
+  filter(Player != "Coby White") %>%
+  select(Player) %>%
+  distinct() %>%
+  pull()
+```
+
+```{r}
+Day2Bids <- read.csv("C:/Users/mppac/Downloads/2025 Free Agency_July 4, 2025_11.42.csv")
+colnames(Day2Bids) <- Day2Bids[1, ]
+Day2Bids <- Day2Bids %>%
+  tail(nrow(.)-2)
+OGNames <- colnames(Day2Bids)
+KeepNames <- OGNames[1:19]
+CleanNames <- function(Col) {
+  Type <- sub(".* - (Salary|Years) - .*", "\\1", Col)
+  Player <- sub(".* - (?:Salary|Years) - (.*?) - .*", "\\1", Col)
+  Player <- gsub(" ", "_", Player)
+  paste0(Player, "_", Type)}
+NewNames <- sapply(OGNames[20:length(OGNames)], CleanNames)
+colnames(Day2Bids) <- c(KeepNames, NewNames)
+Day2Bids <- Day2Bids %>%
+  rename(Recorded_Date = `Recorded Date`,
+         Team_Code = `Team Code`,
+         Comments = `Do_you_have_any_notes_you_would_like_to_add_on_your_bids?_Do you have any notes you would like to add on your bids?`) %>%
+  select(Recorded_Date, Team_Code, Comments, ends_with("_Salary"), ends_with("_Years")) %>%
+  pivot_longer(cols = ends_with("_Salary"), names_to = "Player", values_to = "Salary", names_pattern = "(.*)_Salary") %>%
+  pivot_longer(cols = ends_with("_Years"), names_to = "Player_Years", values_to = "Years", names_pattern = "(.*)_Years") %>%
+  filter(Player == Player_Years) %>%
+  mutate(Player = gsub("_", " ", Player)) %>%
+  select(-Player_Years) %>%
+  filter(Salary != "" | Years != "") %>%
+  mutate(Team_Code = case_when(
+    Team_Code == "TyF4LNkBNtAkEB4It2Hg" ~ "Albuquerque Armadillos",
+    Team_Code == "FcLJLFN7i8QQiLYTzKWo" ~ "Anaheim Mice",
+    Team_Code == "dGrUraAPmcqhK0m6ARWh" ~ "Anchorage Killer Whales",
+    Team_Code == "ZSHHRH81oj8sMcEdoY1l" ~ "Austin Bats",
+    Team_Code == "D1B6j2xcdgHQPMdF4QOq" ~ "Baltimore Blue Crabs",
+    Team_Code == "bxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "BxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "I6Pg736WoKYeVeI6U4e1" ~ "Boise Spuds",
+    Team_Code == "5162yikwsApWCLrX4UJs" ~ "Buffalo Daredevils",
+    Team_Code == "jMYWLR2XrzlL7I4rmUOU" ~ "Cincinnati Chili",
+    Team_Code == "rdQy1hcby0rS88x8ZNFz" ~ "Columbus Arches",
+    Team_Code == "foRQTbf7X7sPzwToUqAy" ~ "Des Moines Racoons",
+    Team_Code == "MJ41zvbgwrKeZoTB7BWS" ~ "El Paso Vipers",
+    Team_Code == "HMUEn4W03Foc41CAECZm" ~ "Honolulu Diamonds",
+    Team_Code == " HMUEn4W03Foc41CAECZ" ~ "Honolulu Diamonds",
+    Team_Code == "45voC1imU3u8KP5dUwsf" ~ "Jacksonville Manatees",
+    Team_Code == "84F4QNW03LX2AI0s02dy" ~ "Kentucky Thoroughbreds",
+    Team_Code == "cFUiAg0LIxSESHeKgN1B" ~ "Lansing Lagoon",
+    Team_Code == "VoCm4cWh5PZm9VehkM4x" ~ "Lincoln Bully",
+    Team_Code == "bEvPh9hsVSyir9NSr6tA" ~ "Little Rock Big Foot",
+    Team_Code == "BzyHZbJO6jiPO80dACaC" ~ "Manchester Trout",
+    Team_Code == "aU1nz37NW5o0JIHilRH7" ~ "Nashville Strings",
+    Team_Code == "t5xL0w4jV8TpJwYGpjbx" ~ "Pittsburgh Bridge",
+    Team_Code == "ZsszJyXaxCGg5E8vAb86" ~ "Providence Pilgrims",
+    Team_Code == "ZsszJyXaxCGg5E8vAb96" ~ "Providence Pilgrims",
+    Team_Code == "R0v8umk3ZaNp6OXaPYnB" ~ "San Diego Seals",
+    Team_Code == "MQwfNLhUakQ13r7Ft1M4" ~ "San Jose Seagulls",
+    Team_Code == "jsY6XYU5mzjSk7laetU3" ~ "Seattle Brew",
+    Team_Code == "A8FpUrhgzTRMN1IOK4O9" ~ "St. Louis 66ers",
+    Team_Code == "NPme2qXwpi0LBcY73EFF" ~ "Tampa Bay Flamingos",
+    Team_Code == "iIwpWRN1I9fkcvki1y8N" ~ "Tulsa Tornado",
+    Team_Code == " iIwpWRN1I9fkcvki1y8" ~ "Tulsa Tornado",
+    Team_Code == "BMro1UdTd6X488MU7ket" ~ "Vancouver Forest",
+    Team_Code == "M8n43ZSLcJGCfWeF0RFn" ~ "Vegas Blackjack",
+    TRUE ~ Team_Code))
+```
+
+```{r}
+gs4_deauth()
+sheet_key <- "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE"
+FAOrder <- range_read(sheet_key, sheet = "FreeAgencyCode")
+
+Day2BidsB <- Day2Bids %>%
+  filter(!Player %in% Day1Signings) %>%
+  arrange(Recorded_Date) %>%
+  group_by(Team_Code, Player) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber == 1) %>%
+  left_join(FAOrder, by = c('Player')) %>%
+  arrange(Recorded_Date, -Order) %>%
+  group_by(Team_Code) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber <= 20) %>%
+  ungroup() %>%
+  mutate(Years = case_when(
+                  Years %in% c("1") ~ 1,
+                  Years %in% c("2") ~ 2,
+                  Years %in% c("3") ~ 3,
+                  Years %in% c("4") ~ 4,
+                  Years %in% c("5", "max", "Max") ~ 5,
+                  TRUE ~ 1),
+         Salary = case_when(
+                  Salary == "" ~ 1,
+                  grepl("\\.", Salary) ~ as.numeric(Salary) * 1000000,
+                  TRUE ~ as.numeric(Salary))) %>%
+  select(Recorded_Date, Team_Code, Player, Salary, Years, Order, Comments)
+
+Day2BidsC <- Day2BidsB %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total >= 5) %>%
+  arrange(Order, -Salary)
+
+Day2BidsD <- Day2BidsB %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total <= 4) %>%
+  mutate(MaxSal = max(Salary)) %>%
+  select(Player, Order, Total, MaxSal) %>%
+  distinct() %>%
+  arrange(Order) %>%
+  ungroup()
+
+Day2Signings <- Day2BidsC %>%
+  filter(Player != "Coby White") %>%
+  select(Player) %>%
+  distinct() %>%
+  pull()
+
+gt(Day2BidsC)
+```
+
+```{r}
+Day3Bids <- read.csv("C:/Users/mppac/Downloads/2025 Free Agency_July 6, 2025_16.30.csv")
+colnames(Day3Bids) <- Day3Bids[1, ]
+Day3Bids <- Day3Bids %>%
+  tail(nrow(.)-2)
+OGNames <- colnames(Day3Bids)
+KeepNames <- OGNames[1:19]
+CleanNames <- function(Col) {
+  Type <- sub(".* - (Salary|Years) - .*", "\\1", Col)
+  Player <- sub(".* - (?:Salary|Years) - (.*?) - .*", "\\1", Col)
+  Player <- gsub(" ", "_", Player)
+  paste0(Player, "_", Type)}
+NewNames <- sapply(OGNames[20:length(OGNames)], CleanNames)
+colnames(Day3Bids) <- c(KeepNames, NewNames)
+Day3Bids <- Day3Bids %>%
+  rename(Recorded_Date = `Recorded Date`,
+         Team_Code = `Team Code`,
+         Comments = `Do_you_have_any_notes_you_would_like_to_add_on_your_bids?_Do you have any notes you would like to add on your bids?`) %>%
+  select(Recorded_Date, Team_Code, Comments, ends_with("_Salary"), ends_with("_Years")) %>%
+  pivot_longer(cols = ends_with("_Salary"), names_to = "Player", values_to = "Salary", names_pattern = "(.*)_Salary") %>%
+  pivot_longer(cols = ends_with("_Years"), names_to = "Player_Years", values_to = "Years", names_pattern = "(.*)_Years") %>%
+  filter(Player == Player_Years) %>%
+  mutate(Player = gsub("_", " ", Player)) %>%
+  select(-Player_Years) %>%
+  filter(Salary != "" | Years != "") %>%
+  mutate(Team_Code = case_when(
+    Team_Code == "TyF4LNkBNtAkEB4It2Hg" ~ "Albuquerque Armadillos",
+    Team_Code == "FcLJLFN7i8QQiLYTzKWo" ~ "Anaheim Mice",
+    Team_Code == "dGrUraAPmcqhK0m6ARWh" ~ "Anchorage Killer Whales",
+    Team_Code == "ZSHHRH81oj8sMcEdoY1l" ~ "Austin Bats",
+    Team_Code == "D1B6j2xcdgHQPMdF4QOq" ~ "Baltimore Blue Crabs",
+    Team_Code == "bxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "BxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "I6Pg736WoKYeVeI6U4e1" ~ "Boise Spuds",
+    Team_Code == "5162yikwsApWCLrX4UJs" ~ "Buffalo Daredevils",
+    Team_Code == "jMYWLR2XrzlL7I4rmUOU" ~ "Cincinnati Chili",
+    Team_Code == "rdQy1hcby0rS88x8ZNFz" ~ "Columbus Arches",
+    Team_Code == "foRQTbf7X7sPzwToUqAy" ~ "Des Moines Racoons",
+    Team_Code == "MJ41zvbgwrKeZoTB7BWS" ~ "El Paso Vipers",
+    Team_Code == "HMUEn4W03Foc41CAECZm" ~ "Honolulu Diamonds",
+    Team_Code == " HMUEn4W03Foc41CAECZ" ~ "Honolulu Diamonds",
+    Team_Code == "45voC1imU3u8KP5dUwsf" ~ "Jacksonville Manatees",
+    Team_Code == "84F4QNW03LX2AI0s02dy" ~ "Kentucky Thoroughbreds",
+    Team_Code == "cFUiAg0LIxSESHeKgN1B" ~ "Lansing Lagoon",
+    Team_Code == "VoCm4cWh5PZm9VehkM4x" ~ "Lincoln Bully",
+    Team_Code == "bEvPh9hsVSyir9NSr6tA" ~ "Little Rock Big Foot",
+    Team_Code == "BzyHZbJO6jiPO80dACaC" ~ "Manchester Trout",
+    Team_Code == "aU1nz37NW5o0JIHilRH7" ~ "Nashville Strings",
+    Team_Code == "t5xL0w4jV8TpJwYGpjbx" ~ "Pittsburgh Bridge",
+    Team_Code == "ZsszJyXaxCGg5E8vAb86" ~ "Providence Pilgrims",
+    Team_Code == "ZsszJyXaxCGg5E8vAb96" ~ "Providence Pilgrims",
+    Team_Code == "R0v8umk3ZaNp6OXaPYnB" ~ "San Diego Seals",
+    Team_Code == "MQwfNLhUakQ13r7Ft1M4" ~ "San Jose Seagulls",
+    Team_Code == "jsY6XYU5mzjSk7laetU3" ~ "Seattle Brew",
+    Team_Code == "A8FpUrhgzTRMN1IOK4O9" ~ "St. Louis 66ers",
+    Team_Code == "NPme2qXwpi0LBcY73EFF" ~ "Tampa Bay Flamingos",
+    Team_Code == "iIwpWRN1I9fkcvki1y8N" ~ "Tulsa Tornado",
+    Team_Code == " iIwpWRN1I9fkcvki1y8" ~ "Tulsa Tornado",
+    Team_Code == "BMro1UdTd6X488MU7ket" ~ "Vancouver Forest",
+    Team_Code == "M8n43ZSLcJGCfWeF0RFn" ~ "Vegas Blackjack",
+    TRUE ~ Team_Code))
+```
+
+```{r}
+gs4_deauth()
+sheet_key <- "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE"
+FAOrder <- range_read(sheet_key, sheet = "FreeAgencyCode")
+
+Day3BidsB <- Day3Bids %>%
+  arrange(Recorded_Date) %>%
+  group_by(Team_Code, Player) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber == 1) %>%
+  left_join(FAOrder, by = c('Player')) %>%
+  filter(Tier != "Signed") %>%
+  arrange(Recorded_Date, -Order) %>%
+  group_by(Team_Code) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber <= 20) %>%
+  ungroup() %>%
+  mutate(Years = case_when(
+                  Years %in% c("1") ~ 1,
+                  Years %in% c("2") ~ 2,
+                  Years %in% c("3") ~ 3,
+                  Years %in% c("4") ~ 4,
+                  Years %in% c("5", "max", "Max") ~ 5,
+                  TRUE ~ 1),
+         Salary = case_when(
+                  Salary == "" ~ 1,
+                  grepl("\\.", Salary) ~ as.numeric(Salary) * 1000000,
+                  TRUE ~ as.numeric(Salary))) %>%
+  select(Recorded_Date, Team_Code, Player, Salary, Years, Order, Comments, SignDate, Tier)
+
+Day3BidsC <- Day3BidsB %>%
+  filter(Tier != "July 9th") %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total >= 5 | SignDate == "July 6th") %>%
+  arrange(Order, -Salary) %>%
+  select(-SignDate, -Tier)
+
+Day3BidsD <- anti_join(Day3BidsB, Day3BidsC, by = intersect(names(Day3BidsB), names(Day3BidsC))) %>%
+  group_by(Player) %>%
+  mutate(Total = n(),
+         MaxSal = max(Salary)) %>%
+  select(Player, Order, Total, MaxSal) %>%
+  distinct() %>%
+  arrange(Order) %>%
+  ungroup()
+
+gt(Day3BidsC)
+```
+
+```{r}
+Day4Bids <- read.csv("C:/Users/mppac/Downloads/2025 Free Agency_July 9, 2025_11.34.csv")
+colnames(Day4Bids) <- Day4Bids[1, ]
+Day4Bids <- Day4Bids %>%
+  tail(nrow(.)-2)
+OGNames <- colnames(Day4Bids)
+KeepNames <- OGNames[1:19]
+CleanNames <- function(Col) {
+  Type <- sub(".* - (Salary|Years) - .*", "\\1", Col)
+  Player <- sub(".* - (?:Salary|Years) - (.*?) - .*", "\\1", Col)
+  Player <- gsub(" ", "_", Player)
+  paste0(Player, "_", Type)}
+NewNames <- sapply(OGNames[20:length(OGNames)], CleanNames)
+colnames(Day4Bids) <- c(KeepNames, NewNames)
+Day4Bids <- Day4Bids %>%
+  rename(Recorded_Date = `Recorded Date`,
+         Team_Code = `Team Code`,
+         Comments = `Do_you_have_any_notes_you_would_like_to_add_on_your_bids?_Do you have any notes you would like to add on your bids?`) %>%
+  select(Recorded_Date, Team_Code, Comments, ends_with("_Salary"), ends_with("_Years")) %>%
+  pivot_longer(cols = ends_with("_Salary"), names_to = "Player", values_to = "Salary", names_pattern = "(.*)_Salary") %>%
+  pivot_longer(cols = ends_with("_Years"), names_to = "Player_Years", values_to = "Years", names_pattern = "(.*)_Years") %>%
+  filter(Player == Player_Years) %>%
+  mutate(Player = gsub("_", " ", Player)) %>%
+  select(-Player_Years) %>%
+  filter(Salary != "" | Years != "") %>%
+  mutate(Team_Code = case_when(
+    Team_Code == "TyF4LNkBNtAkEB4It2Hg" ~ "Albuquerque Armadillos",
+    Team_Code == "FcLJLFN7i8QQiLYTzKWo" ~ "Anaheim Mice",
+    Team_Code == "dGrUraAPmcqhK0m6ARWh" ~ "Anchorage Killer Whales",
+    Team_Code == "ZSHHRH81oj8sMcEdoY1l" ~ "Austin Bats",
+    Team_Code == "D1B6j2xcdgHQPMdF4QOq" ~ "Baltimore Blue Crabs",
+    Team_Code == "bxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "BxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "I6Pg736WoKYeVeI6U4e1" ~ "Boise Spuds",
+    Team_Code == "5162yikwsApWCLrX4UJs" ~ "Buffalo Daredevils",
+    Team_Code == "jMYWLR2XrzlL7I4rmUOU" ~ "Cincinnati Chili",
+    Team_Code == "rdQy1hcby0rS88x8ZNFz" ~ "Columbus Arches",
+    Team_Code == "foRQTbf7X7sPzwToUqAy" ~ "Des Moines Racoons",
+    Team_Code == "MJ41zvbgwrKeZoTB7BWS" ~ "El Paso Vipers",
+    Team_Code == "HMUEn4W03Foc41CAECZm" ~ "Honolulu Diamonds",
+    Team_Code == " HMUEn4W03Foc41CAECZ" ~ "Honolulu Diamonds",
+    Team_Code == "45voC1imU3u8KP5dUwsf" ~ "Jacksonville Manatees",
+    Team_Code == "84F4QNW03LX2AI0s02dy" ~ "Kentucky Thoroughbreds",
+    Team_Code == "cFUiAg0LIxSESHeKgN1B" ~ "Lansing Lagoon",
+    Team_Code == "VoCm4cWh5PZm9VehkM4x" ~ "Lincoln Bully",
+    Team_Code == "bEvPh9hsVSyir9NSr6tA" ~ "Little Rock Big Foot",
+    Team_Code == "BzyHZbJO6jiPO80dACaC" ~ "Manchester Trout",
+    Team_Code == "aU1nz37NW5o0JIHilRH7" ~ "Nashville Strings",
+    Team_Code == "t5xL0w4jV8TpJwYGpjbx" ~ "Pittsburgh Bridge",
+    Team_Code == "ZsszJyXaxCGg5E8vAb86" ~ "Providence Pilgrims",
+    Team_Code == "ZsszJyXaxCGg5E8vAb96" ~ "Providence Pilgrims",
+    Team_Code == "R0v8umk3ZaNp6OXaPYnB" ~ "San Diego Seals",
+    Team_Code == "MQwfNLhUakQ13r7Ft1M4" ~ "San Jose Seagulls",
+    Team_Code == "jsY6XYU5mzjSk7laetU3" ~ "Seattle Brew",
+    Team_Code == "A8FpUrhgzTRMN1IOK4O9" ~ "St. Louis 66ers",
+    Team_Code == "NPme2qXwpi0LBcY73EFF" ~ "Tampa Bay Flamingos",
+    Team_Code == "iIwpWRN1I9fkcvki1y8N" ~ "Tulsa Tornado",
+    Team_Code == " iIwpWRN1I9fkcvki1y8" ~ "Tulsa Tornado",
+    Team_Code == "BMro1UdTd6X488MU7ket" ~ "Vancouver Forest",
+    Team_Code == "M8n43ZSLcJGCfWeF0RFn" ~ "Vegas Blackjack",
+    TRUE ~ Team_Code))
+```
+
+```{r}
+gs4_deauth()
+sheet_key <- "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE"
+FAOrder <- range_read(sheet_key, sheet = "FreeAgencyCode")
+
+Day4BidsB <- Day4Bids %>%
+  arrange(Recorded_Date) %>%
+  group_by(Team_Code, Player) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber == 1) %>%
+  left_join(FAOrder, by = c('Player')) %>%
+  filter(Tier != "Signed") %>%
+  arrange(Recorded_Date, -Order) %>%
+  group_by(Team_Code) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber <= 20) %>%
+  ungroup() %>%
+  mutate(Years = case_when(
+                  Years %in% c("1") ~ 1,
+                  Years %in% c("2") ~ 2,
+                  Years %in% c("3") ~ 3,
+                  Years %in% c("4") ~ 4,
+                  Years %in% c("5", "max", "Max") ~ 5,
+                  TRUE ~ 1),
+         Salary = case_when(
+                  Salary == "" ~ 1,
+                  grepl("\\.", Salary) ~ as.numeric(Salary) * 1000000,
+                  TRUE ~ as.numeric(Salary))) %>%
+  select(Recorded_Date, Team_Code, Player, Salary, Years, Order, Comments, SignDate, Tier)
+
+Day4BidsC <- Day4BidsB %>%
+  filter(Tier != "July 9th") %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total >= 5 | SignDate == "July 9th") %>%
+  arrange(Order, -Salary) %>%
+  select(-SignDate, -Tier)
+
+Day4BidsD <- anti_join(Day4BidsB, Day4BidsC, by = intersect(names(Day4BidsB), names(Day4BidsC))) %>%
+  group_by(Player) %>%
+  mutate(Total = n(),
+         MaxSal = max(Salary)) %>%
+  select(Player, Order, Total, MaxSal) %>%
+  distinct() %>%
+  arrange(Order) %>%
+  ungroup()
+
+gt(Day4BidsD)
+```
+
+```{r}
+Day5Bids <- read.csv("C:/Users/mppac/Downloads/2025 Free Agency_July 11, 2025_13.04.csv")
+colnames(Day5Bids) <- Day5Bids[1, ]
+Day5Bids <- Day5Bids %>%
+  tail(nrow(.)-2)
+OGNames <- colnames(Day5Bids)
+KeepNames <- OGNames[1:19]
+CleanNames <- function(Col) {
+  Type <- sub(".* - (Salary|Years) - .*", "\\1", Col)
+  Player <- sub(".* - (?:Salary|Years) - (.*?) - .*", "\\1", Col)
+  Player <- gsub(" ", "_", Player)
+  paste0(Player, "_", Type)}
+NewNames <- sapply(OGNames[20:length(OGNames)], CleanNames)
+colnames(Day5Bids) <- c(KeepNames, NewNames)
+Day5Bids <- Day5Bids %>%
+  rename(Recorded_Date = `Recorded Date`,
+         Team_Code = `Team Code`,
+         Comments = `Do_you_have_any_notes_you_would_like_to_add_on_your_bids?_Do you have any notes you would like to add on your bids?`) %>%
+  select(Recorded_Date, Team_Code, Comments, ends_with("_Salary"), ends_with("_Years")) %>%
+  pivot_longer(cols = ends_with("_Salary"), names_to = "Player", values_to = "Salary", names_pattern = "(.*)_Salary") %>%
+  pivot_longer(cols = ends_with("_Years"), names_to = "Player_Years", values_to = "Years", names_pattern = "(.*)_Years") %>%
+  filter(Player == Player_Years) %>%
+  mutate(Player = gsub("_", " ", Player)) %>%
+  select(-Player_Years) %>%
+  filter(Salary != "" | Years != "") %>%
+  mutate(Team_Code = case_when(
+    Team_Code == "TyF4LNkBNtAkEB4It2Hg" ~ "Albuquerque Armadillos",
+    Team_Code == "FcLJLFN7i8QQiLYTzKWo" ~ "Anaheim Mice",
+    Team_Code == "dGrUraAPmcqhK0m6ARWh" ~ "Anchorage Killer Whales",
+    Team_Code == "ZSHHRH81oj8sMcEdoY1l" ~ "Austin Bats",
+    Team_Code == "D1B6j2xcdgHQPMdF4QOq" ~ "Baltimore Blue Crabs",
+    Team_Code == "bxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "BxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "I6Pg736WoKYeVeI6U4e1" ~ "Boise Spuds",
+    Team_Code == "5162yikwsApWCLrX4UJs" ~ "Buffalo Daredevils",
+    Team_Code == "jMYWLR2XrzlL7I4rmUOU" ~ "Cincinnati Chili",
+    Team_Code == "rdQy1hcby0rS88x8ZNFz" ~ "Columbus Arches",
+    Team_Code == "foRQTbf7X7sPzwToUqAy" ~ "Des Moines Racoons",
+    Team_Code == "MJ41zvbgwrKeZoTB7BWS" ~ "El Paso Vipers",
+    Team_Code == "HMUEn4W03Foc41CAECZm" ~ "Honolulu Diamonds",
+    Team_Code == " HMUEn4W03Foc41CAECZ" ~ "Honolulu Diamonds",
+    Team_Code == "45voC1imU3u8KP5dUwsf" ~ "Jacksonville Manatees",
+    Team_Code == "84F4QNW03LX2AI0s02dy" ~ "Kentucky Thoroughbreds",
+    Team_Code == "cFUiAg0LIxSESHeKgN1B" ~ "Lansing Lagoon",
+    Team_Code == "VoCm4cWh5PZm9VehkM4x" ~ "Lincoln Bully",
+    Team_Code == "bEvPh9hsVSyir9NSr6tA" ~ "Little Rock Big Foot",
+    Team_Code == "BzyHZbJO6jiPO80dACaC" ~ "Manchester Trout",
+    Team_Code == "aU1nz37NW5o0JIHilRH7" ~ "Nashville Strings",
+    Team_Code == "t5xL0w4jV8TpJwYGpjbx" ~ "Pittsburgh Bridge",
+    Team_Code == "ZsszJyXaxCGg5E8vAb86" ~ "Providence Pilgrims",
+    Team_Code == "ZsszJyXaxCGg5E8vAb96" ~ "Providence Pilgrims",
+    Team_Code == "R0v8umk3ZaNp6OXaPYnB" ~ "San Diego Seals",
+    Team_Code == "MQwfNLhUakQ13r7Ft1M4" ~ "San Jose Seagulls",
+    Team_Code == "jsY6XYU5mzjSk7laetU3" ~ "Seattle Brew",
+    Team_Code == "A8FpUrhgzTRMN1IOK4O9" ~ "St. Louis 66ers",
+    Team_Code == "NPme2qXwpi0LBcY73EFF" ~ "Tampa Bay Flamingos",
+    Team_Code == "iIwpWRN1I9fkcvki1y8N" ~ "Tulsa Tornado",
+    Team_Code == " iIwpWRN1I9fkcvki1y8" ~ "Tulsa Tornado",
+    Team_Code == "BMro1UdTd6X488MU7ket" ~ "Vancouver Forest",
+    Team_Code == "M8n43ZSLcJGCfWeF0RFn" ~ "Vegas Blackjack",
+    TRUE ~ Team_Code))
+```
+
+```{r}
+gs4_deauth()
+sheet_key <- "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE"
+FAOrder <- range_read(sheet_key, sheet = "FreeAgencyCode")
+
+Day5BidsB <- Day5Bids %>%
+  arrange(Recorded_Date) %>%
+  group_by(Team_Code, Player) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber == 1) %>%
+  left_join(FAOrder, by = c('Player')) %>%
+  filter(Tier != "Signed") %>%
+  arrange(Recorded_Date, -Order) %>%
+  group_by(Team_Code) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber <= 20) %>%
+  ungroup() %>%
+  mutate(Years = case_when(
+                  Years %in% c("1") ~ 1,
+                  Years %in% c("2") ~ 2,
+                  Years %in% c("3") ~ 3,
+                  Years %in% c("4") ~ 4,
+                  Years %in% c("5", "max", "Max") ~ 5,
+                  TRUE ~ 1),
+         Salary = case_when(
+                  Salary == "" ~ 1,
+                  grepl("\\.", Salary) ~ as.numeric(Salary) * 1000000,
+                  TRUE ~ as.numeric(Salary))) %>%
+  select(Recorded_Date, Team_Code, Player, Salary, Years, Order, Comments, SignDate, Tier)
+
+Day5BidsC <- Day5BidsB %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total >= 5 | SignDate == "July 11th") %>%
+  arrange(Order, -Salary) %>%
+  select(-SignDate, -Tier)
+
+Day5BidsD <- anti_join(Day5BidsB, Day5BidsC, by = intersect(names(Day5BidsB), names(Day5BidsC))) %>%
+  group_by(Player) %>%
+  mutate(Total = n(),
+         MaxSal = max(Salary)) %>%
+  select(Player, Order, Total, MaxSal) %>%
+  distinct() %>%
+  arrange(Order) %>%
+  ungroup()
+
+gt(Day5BidsC)
+```
+
+```{r}
+Day6Bids <- read.csv("C:/Users/mppac/Downloads/2025 Free Agency_July 13, 2025_12.18.csv")
+colnames(Day6Bids) <- Day6Bids[1, ]
+Day6Bids <- Day6Bids %>%
+  tail(nrow(.)-2)
+OGNames <- colnames(Day6Bids)
+KeepNames <- OGNames[1:19]
+CleanNames <- function(Col) {
+  Type <- sub(".* - (Salary|Years) - .*", "\\1", Col)
+  Player <- sub(".* - (?:Salary|Years) - (.*?) - .*", "\\1", Col)
+  Player <- gsub(" ", "_", Player)
+  paste0(Player, "_", Type)}
+NewNames <- sapply(OGNames[20:length(OGNames)], CleanNames)
+colnames(Day6Bids) <- c(KeepNames, NewNames)
+Day6Bids <- Day6Bids %>%
+  rename(Recorded_Date = `Recorded Date`,
+         Team_Code = `Team Code`,
+         Comments = `Do_you_have_any_notes_you_would_like_to_add_on_your_bids?_Do you have any notes you would like to add on your bids?`) %>%
+  select(Recorded_Date, Team_Code, Comments, ends_with("_Salary"), ends_with("_Years")) %>%
+  pivot_longer(cols = ends_with("_Salary"), names_to = "Player", values_to = "Salary", names_pattern = "(.*)_Salary") %>%
+  pivot_longer(cols = ends_with("_Years"), names_to = "Player_Years", values_to = "Years", names_pattern = "(.*)_Years") %>%
+  filter(Player == Player_Years) %>%
+  mutate(Player = gsub("_", " ", Player)) %>%
+  select(-Player_Years) %>%
+  filter(Salary != "" | Years != "") %>%
+  mutate(Team_Code = case_when(
+    Team_Code == "TyF4LNkBNtAkEB4It2Hg" ~ "Albuquerque Armadillos",
+    Team_Code == "FcLJLFN7i8QQiLYTzKWo" ~ "Anaheim Mice",
+    Team_Code == "dGrUraAPmcqhK0m6ARWh" ~ "Anchorage Killer Whales",
+    Team_Code == "ZSHHRH81oj8sMcEdoY1l" ~ "Austin Bats",
+    Team_Code == "D1B6j2xcdgHQPMdF4QOq" ~ "Baltimore Blue Crabs",
+    Team_Code == "bxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "BxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "I6Pg736WoKYeVeI6U4e1" ~ "Boise Spuds",
+    Team_Code == "5162yikwsApWCLrX4UJs" ~ "Buffalo Daredevils",
+    Team_Code == "jMYWLR2XrzlL7I4rmUOU" ~ "Cincinnati Chili",
+    Team_Code == "rdQy1hcby0rS88x8ZNFz" ~ "Columbus Arches",
+    Team_Code == "foRQTbf7X7sPzwToUqAy" ~ "Des Moines Racoons",
+    Team_Code == "MJ41zvbgwrKeZoTB7BWS" ~ "El Paso Vipers",
+    Team_Code == "HMUEn4W03Foc41CAECZm" ~ "Honolulu Diamonds",
+    Team_Code == " HMUEn4W03Foc41CAECZ" ~ "Honolulu Diamonds",
+    Team_Code == "45voC1imU3u8KP5dUwsf" ~ "Jacksonville Manatees",
+    Team_Code == "84F4QNW03LX2AI0s02dy" ~ "Kentucky Thoroughbreds",
+    Team_Code == "cFUiAg0LIxSESHeKgN1B" ~ "Lansing Lagoon",
+    Team_Code == "VoCm4cWh5PZm9VehkM4x" ~ "Lincoln Bully",
+    Team_Code == "bEvPh9hsVSyir9NSr6tA" ~ "Little Rock Big Foot",
+    Team_Code == "BzyHZbJO6jiPO80dACaC" ~ "Manchester Trout",
+    Team_Code == "aU1nz37NW5o0JIHilRH7" ~ "Nashville Strings",
+    Team_Code == "t5xL0w4jV8TpJwYGpjbx" ~ "Pittsburgh Bridge",
+    Team_Code == "ZsszJyXaxCGg5E8vAb86" ~ "Providence Pilgrims",
+    Team_Code == "ZsszJyXaxCGg5E8vAb96" ~ "Providence Pilgrims",
+    Team_Code == "R0v8umk3ZaNp6OXaPYnB" ~ "San Diego Seals",
+    Team_Code == "MQwfNLhUakQ13r7Ft1M4" ~ "San Jose Seagulls",
+    Team_Code == "jsY6XYU5mzjSk7laetU3" ~ "Seattle Brew",
+    Team_Code == "A8FpUrhgzTRMN1IOK4O9" ~ "St. Louis 66ers",
+    Team_Code == "NPme2qXwpi0LBcY73EFF" ~ "Tampa Bay Flamingos",
+    Team_Code == "iIwpWRN1I9fkcvki1y8N" ~ "Tulsa Tornado",
+    Team_Code == " iIwpWRN1I9fkcvki1y8" ~ "Tulsa Tornado",
+    Team_Code == "BMro1UdTd6X488MU7ket" ~ "Vancouver Forest",
+    Team_Code == "M8n43ZSLcJGCfWeF0RFn" ~ "Vegas Blackjack",
+    TRUE ~ Team_Code))
+```
+
+```{r}
+gs4_deauth()
+sheet_key <- "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE"
+FAOrder <- range_read(sheet_key, sheet = "FreeAgencyCode")
+
+Day6BidsB <- Day6Bids %>%
+  arrange(Recorded_Date) %>%
+  group_by(Team_Code, Player) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber == 1) %>%
+  left_join(FAOrder, by = c('Player')) %>%
+  filter(Tier != "Signed") %>%
+  arrange(Recorded_Date, -Order) %>%
+  group_by(Team_Code) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber <= 20) %>%
+  ungroup() %>%
+  mutate(Years = case_when(
+                  Years %in% c("1") ~ 1,
+                  Years %in% c("2") ~ 2,
+                  Years %in% c("3") ~ 3,
+                  Years %in% c("4") ~ 4,
+                  Years %in% c("5", "max", "Max") ~ 5,
+                  TRUE ~ 1),
+         Salary = case_when(
+                  Salary == "" ~ 1,
+                  grepl("\\.", Salary) ~ as.numeric(Salary) * 1000000,
+                  TRUE ~ as.numeric(Salary))) %>%
+  select(Recorded_Date, Team_Code, Player, Salary, Years, Order, Comments, SignDate, Tier)
+
+Day6BidsC <- Day6BidsB %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total >= 5 | SignDate == "July 13th") %>%
+  arrange(Order, -Salary) %>%
+  select(-SignDate, -Tier)
+
+Day6BidsD <- anti_join(Day6BidsB, Day6BidsC, by = intersect(names(Day6BidsB), names(Day6BidsC))) %>%
+  group_by(Player) %>%
+  mutate(Total = n(),
+         MaxSal = max(Salary)) %>%
+  select(Player, Order, Total, MaxSal) %>%
+  distinct() %>%
+  arrange(Order) %>%
+  ungroup()
+
+gt(Day6BidsD)
+```
+
+```{r}
+Day7Bids <- read.csv("C:/Users/mppac/Downloads/2025 Free Agency_July 15, 2025_16.00.csv")
+colnames(Day7Bids) <- Day7Bids[1, ]
+Day7Bids <- Day7Bids %>%
+  tail(nrow(.)-2)
+OGNames <- colnames(Day7Bids)
+KeepNames <- OGNames[1:19]
+CleanNames <- function(Col) {
+  Type <- sub(".* - (Salary|Years) - .*", "\\1", Col)
+  Player <- sub(".* - (?:Salary|Years) - (.*?) - .*", "\\1", Col)
+  Player <- gsub(" ", "_", Player)
+  paste0(Player, "_", Type)}
+NewNames <- sapply(OGNames[20:length(OGNames)], CleanNames)
+colnames(Day7Bids) <- c(KeepNames, NewNames)
+Day7Bids <- Day7Bids %>%
+  rename(Recorded_Date = `Recorded Date`,
+         Team_Code = `Team Code`,
+         Comments = `Do_you_have_any_notes_you_would_like_to_add_on_your_bids?_Do you have any notes you would like to add on your bids?`) %>%
+  select(Recorded_Date, Team_Code, Comments, ends_with("_Salary"), ends_with("_Years")) %>%
+  pivot_longer(cols = ends_with("_Salary"), names_to = "Player", values_to = "Salary", names_pattern = "(.*)_Salary") %>%
+  pivot_longer(cols = ends_with("_Years"), names_to = "Player_Years", values_to = "Years", names_pattern = "(.*)_Years") %>%
+  filter(Player == Player_Years) %>%
+  mutate(Player = gsub("_", " ", Player)) %>%
+  select(-Player_Years) %>%
+  filter(Salary != "" | Years != "") %>%
+  mutate(Team_Code = case_when(
+    Team_Code == "TyF4LNkBNtAkEB4It2Hg" ~ "Albuquerque Armadillos",
+    Team_Code == "FcLJLFN7i8QQiLYTzKWo" ~ "Anaheim Mice",
+    Team_Code == "dGrUraAPmcqhK0m6ARWh" ~ "Anchorage Killer Whales",
+    Team_Code == "ZSHHRH81oj8sMcEdoY1l" ~ "Austin Bats",
+    Team_Code == "D1B6j2xcdgHQPMdF4QOq" ~ "Baltimore Blue Crabs",
+    Team_Code == "bxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "BxVOCQ1S5Q8pPrEU57xc" ~ "Birmingham Bandits",
+    Team_Code == "I6Pg736WoKYeVeI6U4e1" ~ "Boise Spuds",
+    Team_Code == "5162yikwsApWCLrX4UJs" ~ "Buffalo Daredevils",
+    Team_Code == "jMYWLR2XrzlL7I4rmUOU" ~ "Cincinnati Chili",
+    Team_Code == "rdQy1hcby0rS88x8ZNFz" ~ "Columbus Arches",
+    Team_Code == "foRQTbf7X7sPzwToUqAy" ~ "Des Moines Racoons",
+    Team_Code == "MJ41zvbgwrKeZoTB7BWS" ~ "El Paso Vipers",
+    Team_Code == "HMUEn4W03Foc41CAECZm" ~ "Honolulu Diamonds",
+    Team_Code == " HMUEn4W03Foc41CAECZ" ~ "Honolulu Diamonds",
+    Team_Code == "45voC1imU3u8KP5dUwsf" ~ "Jacksonville Manatees",
+    Team_Code == "84F4QNW03LX2AI0s02dy" ~ "Kentucky Thoroughbreds",
+    Team_Code == "cFUiAg0LIxSESHeKgN1B" ~ "Lansing Lagoon",
+    Team_Code == "VoCm4cWh5PZm9VehkM4x" ~ "Lincoln Bully",
+    Team_Code == "bEvPh9hsVSyir9NSr6tA" ~ "Little Rock Big Foot",
+    Team_Code == "BzyHZbJO6jiPO80dACaC" ~ "Manchester Trout",
+    Team_Code == "aU1nz37NW5o0JIHilRH7" ~ "Nashville Strings",
+    Team_Code == "t5xL0w4jV8TpJwYGpjbx" ~ "Pittsburgh Bridge",
+    Team_Code == "ZsszJyXaxCGg5E8vAb86" ~ "Providence Pilgrims",
+    Team_Code == "ZsszJyXaxCGg5E8vAb96" ~ "Providence Pilgrims",
+    Team_Code == "R0v8umk3ZaNp6OXaPYnB" ~ "San Diego Seals",
+    Team_Code == "MQwfNLhUakQ13r7Ft1M4" ~ "San Jose Seagulls",
+    Team_Code == "jsY6XYU5mzjSk7laetU3" ~ "Seattle Brew",
+    Team_Code == "A8FpUrhgzTRMN1IOK4O9" ~ "St. Louis 66ers",
+    Team_Code == "NPme2qXwpi0LBcY73EFF" ~ "Tampa Bay Flamingos",
+    Team_Code == "iIwpWRN1I9fkcvki1y8N" ~ "Tulsa Tornado",
+    Team_Code == " iIwpWRN1I9fkcvki1y8" ~ "Tulsa Tornado",
+    Team_Code == "BMro1UdTd6X488MU7ket" ~ "Vancouver Forest",
+    Team_Code == "M8n43ZSLcJGCfWeF0RFn" ~ "Vegas Blackjack",
+    TRUE ~ Team_Code))
+```
+
+```{r}
+gs4_deauth()
+sheet_key <- "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE"
+FAOrder <- range_read(sheet_key, sheet = "FreeAgencyCode")
+
+Day7BidsB <- Day7Bids %>%
+  arrange(Recorded_Date) %>%
+  group_by(Team_Code, Player) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber == 1) %>%
+  left_join(FAOrder, by = c('Player')) %>%
+  filter(Tier != "Signed") %>%
+  arrange(Recorded_Date, -Order) %>%
+  group_by(Team_Code) %>%
+  mutate(BidNumber = n():1) %>%
+  filter(BidNumber <= 20) %>%
+  ungroup() %>%
+  mutate(Years = case_when(
+                  Years %in% c("1") ~ 1,
+                  Years %in% c("2") ~ 2,
+                  Years %in% c("3") ~ 3,
+                  Years %in% c("4") ~ 4,
+                  Years %in% c("5", "max", "Max") ~ 5,
+                  TRUE ~ 1),
+         Salary = case_when(
+                  Salary == "" ~ 1,
+                  grepl("\\.", Salary) ~ as.numeric(Salary) * 1000000,
+                  TRUE ~ as.numeric(Salary))) %>%
+  select(Recorded_Date, Team_Code, Player, Salary, Years, Order, Comments, SignDate, Tier)
+
+Day7BidsC <- Day7BidsB %>%
+  group_by(Player) %>%
+  mutate(Total = n()) %>%
+  filter(Total >= 5 | SignDate == "July 15th") %>%
+  arrange(Order, -Salary) %>%
+  select(-SignDate, -Tier)
+
+Day7BidsD <- anti_join(Day7BidsB, Day7BidsC, by = intersect(names(Day7BidsB), names(Day7BidsC))) %>%
+  group_by(Player) %>%
+  mutate(Total = n(),
+         MaxSal = max(Salary)) %>%
+  select(Player, Order, Total, MaxSal) %>%
+  distinct() %>%
+  arrange(Order) %>%
+  ungroup()
+
+gt(Day7BidsC)
+
+```
+

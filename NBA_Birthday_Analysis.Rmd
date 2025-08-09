@@ -1,0 +1,566 @@
+---
+title: "NBA Birthday Analysis"
+author: "McCade Pearson"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@300;400;600;700&display=swap');
+
+body {
+  background-color: #0D1117;
+  color: #F0F3F5;
+  font-family: 'Barlow Semi Condensed', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+}
+
+.main-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: #1C1F26;
+  padding: 40px;
+  border: 2px solid #3E92CC;
+  border-radius: 8px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #C3DDFD;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+h1 {
+  font-size: 2.2em;
+  text-align: center;
+  border-bottom: 3px solid #3E92CC;
+  padding-bottom: 10px;
+}
+
+h2 {
+  font-size: 1.8em;
+  color: #6FB1FC;
+}
+
+h3 {
+  font-size: 1.4em;
+  color: #326DA8;
+}
+
+pre {
+  background-color: #0D1117;
+  border: 1px solid #3E92CC;
+  border-radius: 5px;
+  padding: 15px;
+  overflow-x: auto;
+}
+
+code {
+  background-color: #1C1F26;
+  color: #C3DDFD;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+a {
+  color: #6FB1FC;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #C3DDFD;
+  text-decoration: underline;
+}
+
+blockquote {
+  border-left: 4px solid #3E92CC;
+  margin: 20px 0;
+  padding-left: 20px;
+  color: #C3DDFD;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+
+th, td {
+  border: 1px solid #3E92CC;
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #326DA8;
+  color: #F0F3F5;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background-color: #1C1F26;
+}
+
+.author, .date {
+  text-align: center;
+  color: #6FB1FC;
+  font-size: 1.1em;
+}
+</style>
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(showtext)
+library(sysfonts)
+library(gt)
+library(scales)
+library(gtExtras)
+```
+
+```{r Theme, warning = FALSE, message = FALSE, include = FALSE}
+McCadeP8_theme_colors <- c(
+  background = '#0D1117',   # dark slate gray (background)
+  text       = '#F0F3F5',   # very light gray (text)
+  panel      = '#1C1F26',   # near-black with blue hint (panel)
+  border     = '#3E92CC',   # strong blue (border)
+  strip_text = '#0D1117',   # matches background (strip text on light facet)
+  lighter    = '#C3DDFD',   # baby blue
+  light      = '#6FB1FC',   # sky blue
+  medium     = '#326DA8',   # Jazz navy
+  dark       = '#1D3557'    # deep indigo/navy
+)
+
+McCadeP8_palette <- c(
+  '#C3DDFD', '#F94144', '#6A4C93', '#F9C74F', '#43AA8B',
+  '#577590', '#F3722C', '#277DA1', '#264653'
+)
+
+## McCade Pearson
+## theme_McCadeP8
+## Date Created: June 10, 2025
+
+# THEME COLOR PALETTE --------------------------------------
+
+#' McCadeP8 Inspired Theme Color Palette
+#'
+#' @format character vector of hex code strings
+#' @export
+#' @concept McCadeP8
+#'
+McCadeP8_theme_colors <- c(
+  background = '#0D1117',
+  text       = '#F0F3F5',
+  panel      = '#1C1F26',
+  border     = '#3E92CC',
+  strip_text = '#0D1117',
+  lighter    = '#C3DDFD',
+  light      = '#6FB1FC',
+  medium     = '#326DA8',
+  dark       = '#1D3557'
+)
+
+# DISCRETE COLOR PALETTE -----------------------------------
+
+#' McCadeP8 Inspired Color Palette
+#'
+#' @format character vector of hex code strings
+#' @export
+#' @concept McCadeP8
+#'
+McCadeP8_palette <- c(
+  '#C3DDFD', '#F94144', '#6A4C93', '#F9C74F', '#43AA8B',
+  '#577590', '#F3722C', '#277DA1', '#264653'
+)
+
+# MAIN THEME ------------------------------------------------
+
+#' McCadeP8 Inspired Theme
+#'
+#' @param McCadeP8_font should `theme_McCadeP8` use custom font? Default is `TRUE`.
+#' @param ... additional parameters to pass to `ggplot2::theme()`
+#'
+#' @return a `ggplot2` `theme` object
+#' @export
+#' @concept McCadeP8
+#'
+theme_McCadeP8 <- function(McCadeP8_font = TRUE, ...) {
+
+  # Load custom Google Font
+  font_family <- ifelse(McCadeP8_font, "Barlow Semi Condensed", "sans")
+  if (McCadeP8_font) {
+  font_add_google(name = "Barlow Semi Condensed", family = "Barlow Semi Condensed")
+  showtext_auto()
+  }
+
+  # Define the theme
+  ggplot2::theme(
+    plot.background = element_rect(fill = McCadeP8_theme_colors["background"], color = NA),
+    panel.background = element_rect(fill = McCadeP8_theme_colors["panel"], color = NA),
+    panel.border = element_rect(color = McCadeP8_theme_colors["border"], fill = NA, linewidth = 1.2),
+    panel.grid.major = element_line(color = "#2D3748", size = 0.25),
+    panel.grid.minor = element_blank(),
+    
+    text = element_text(color = McCadeP8_theme_colors["text"], family = font_family),
+    title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 17),
+    axis.text = element_text(size = 13, color = McCadeP8_theme_colors["text"]),
+    axis.ticks = element_line(color = McCadeP8_theme_colors["border"], linewidth = 1),
+    
+    legend.background = element_rect(fill = McCadeP8_theme_colors["panel"], color = NA),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 14, face = "bold"),
+    
+    strip.background = element_rect(fill = McCadeP8_theme_colors["lighter"], colour = McCadeP8_theme_colors["border"]),
+    strip.text = element_text(colour = McCadeP8_theme_colors["strip_text"], size = 10)
+  )
+}
+
+# COLOR SCALES ---------------------------------------------
+
+#' McCadeP8 Inspired Color Scales
+#'
+#' @param ... Additional arguments to pass to `ggplot2::binned_scale` for `_b`,
+#' `ggplot2::scale_[fill/color]_gradient` for `_c`, or `ggplot2::discrete_scale`
+#' for `_d`
+#'
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_c <- function(...) {
+  ggplot2::scale_color_gradient(..., low = McCadeP8_theme_colors["light"], high = McCadeP8_theme_colors["dark"])
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_c <- function(...) {
+  ggplot2::scale_fill_gradient(..., low = McCadeP8_theme_colors["light"], high = McCadeP8_theme_colors["dark"])
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_b <- function(...) {
+  if (!requireNamespace('scales', quietly = TRUE)) {
+    stop('This function requires the `scales` R package.')
+  }
+  ramp <- scales::colour_ramp(c(McCadeP8_theme_colors["light"], McCadeP8_theme_colors["dark"]))
+  ggplot2::binned_scale('color', 'McCadeP8', palette = ramp, ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_b <- function(...) {
+  if (!requireNamespace('scales', quietly = TRUE)) {
+    stop('This function requires the `scales` R package.')
+  }
+  ramp <- scales::colour_ramp(c(McCadeP8_theme_colors["light"], McCadeP8_theme_colors["dark"]))
+  ggplot2::binned_scale('fill', 'McCadeP8', palette = ramp, ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_color_McCadeP8_d <- function(...) {
+  ggplot2::discrete_scale(aesthetics = 'color',
+                          palette = rot_pal(McCadeP8_palette), ...)
+}
+
+#' @rdname scale_McCadeP8
+#' @export
+scale_fill_McCadeP8_d <- function(...) {
+  ggplot2::discrete_scale(aesthetics = 'fill',
+                          palette = rot_pal(McCadeP8_palette), ...)
+}
+
+# Aliases
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_d <- scale_color_McCadeP8_d
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_c <- scale_color_McCadeP8_c
+#' @rdname scale_McCadeP8
+#' @export
+scale_colour_McCadeP8_b <- scale_color_McCadeP8_b
+```
+
+```{r}
+#months <- 1:12
+#days_in_month <- c(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+#
+#Tables <- data.frame()
+#
+#for (month in months) {
+#  for (day in 1:days_in_month[month]) {
+#    filmURL <- read_html(paste("https://www.basketball-reference.com/friv/birthdays#.fcgi?month=", month, "&day=", day, sep = ""))
+#    allTables <- filmURL %>%
+#      html_table(fill = TRUE)
+#    Results <- allTables[[1]]
+#    Results <- Results %>%
+#      row_to_names(row_number = 1) %>%
+#      clean_names()
+#    Results$month <- month
+#    Results$day <- day
+#    Results <- Results %>%
+#      filter(player != "Player") %>%
+#      filter(player != "")
+#    Tables <- rbind(Results,Tables)
+#    print(paste(month, day, Sys.time(), sep = "-"))
+#    Sys.sleep(1.5)}}
+Tables <- read.csv("AllPlayers.csv")
+```
+
+
+```{r}
+Tables2 <- Tables %>%
+  mutate(
+    player = str_remove(player, "\\*$"),
+    rk = as.numeric(rk),
+    yrs = as.numeric(yrs),
+    g = as.numeric(g),
+    mp = as.numeric(mp),
+    fg = as.numeric(fg),
+    fga = as.numeric(fga),
+    x3p = as.numeric(x3p),
+    x3pa = as.numeric(x3pa),
+    ft = as.numeric(ft),
+    fta = as.numeric(fta),
+    orb = as.numeric(orb),
+    trb = as.numeric(trb),
+    ast = as.numeric(ast),
+    stl = as.numeric(stl),
+    blk = as.numeric(blk),
+    tov = as.numeric(tov),
+    pf = as.numeric(pf),
+    pts = as.numeric(pts),
+    ws = as.numeric(ws),
+    fg_percent = as.numeric(fg_percent),
+    x3p_percent = as.numeric(x3p_percent),
+    ft_percent = as.numeric(ft_percent),
+    mp_2 = as.numeric(mp_2),
+    pts_2 = as.numeric(pts_2),
+    trb_2 = as.numeric(trb_2),
+    ast_2 = as.numeric(ast_2),
+    doy = yday(make_date(year = birth, month = month, day = day)))
+
+Tables3 <- Tables2 %>%
+  filter(g >= 100) %>%
+  filter(born >= 1935) %>%
+  group_by(doy) %>%
+  mutate(RkPts = rank(-pts, ties.method = "random"),
+         RkReb = rank(-trb, ties.method = "random"),
+         RkAst = rank(-ast, ties.method = "random"),
+         WSp48 = ws/mp*48,
+         RkWS48 = rank(-WSp48, ties.method = "random")) %>%
+  select(player, born, g, pts, trb, ast, WSp48, RkPts, RkReb, RkAst, RkWS48, doy, month, day) %>%
+  ungroup()
+```
+
+
+```{r}
+GetDatesPts <- Tables3 %>%
+  filter(RkPts == 1) %>%
+  rowwise() %>%
+  mutate(Window = list(((doy - 2):(doy + 2) - 1) %% 365 + 1)) %>%
+  unnest(Window) %>%
+  select(Window, pts)
+RkPts <- Tables3 %>%
+  filter(RkPts == 1) %>%
+  left_join(GetDatesPts, by = c('doy' = 'Window')) %>%
+  group_by(doy) %>%
+  mutate(pts.z = sum(pts.y)) %>%
+  ungroup() %>%
+  arrange(-pts.z) %>%
+  select(doy, pts.z) %>%
+  head(1)
+Doy <- RkPts$doy[1]
+Value <- RkPts$pts.z[1]
+PtsResults <- Tables3 %>%
+  filter(RkPts == 1) %>%
+  filter(doy >= Doy-2 & doy <= Doy+2) %>%
+  arrange(month,day) %>%
+  mutate(date = paste0(month.abb[month], " ", day, ", ", born),
+         Pic = c("https://www.basketball-reference.com/req/202106291/images/headshots/chambwi01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/catlete01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/bryanko01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/millere01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/horryro01.jpg")) %>%
+  select(date, Pic, player, pts)
+
+
+gt(PtsResults) %>%
+  gt_theme_espn() %>%
+  text_transform(locations = cells_body(columns = Pic),
+      fn = function(x) {web_image(url = PtsResults$Pic, height = as.numeric(40))}) %>%
+  cols_align(align = c('center')) %>%
+  cols_label(date = "Birthday",
+             player = "Player",
+             pts = "Points",
+             Pic = "") %>%
+  tab_header(title = md("**The Best Five-Day Run of Basketball Birthdays**"),
+             subtitle = md("104,576 Points")) %>%
+  opt_align_table_header(align = c('center')) %>%
+  tab_source_note(source_note = "@McCadeP8 | Data: basketball-reference") %>%
+  fmt_number(columns = c(pts), use_seps = T, decimals = 0)
+
+```
+
+```{r}
+GetDatesReb <- Tables3 %>%
+  filter(RkReb == 1) %>%
+  rowwise() %>%
+  mutate(Window = list(((doy - 2):(doy + 2) - 1) %% 365 + 1)) %>%
+  unnest(Window) %>%
+  select(Window, trb)
+RkReb <- Tables3 %>%
+  filter(RkReb == 1) %>%
+  left_join(GetDatesReb, by = c('doy' = 'Window')) %>%
+  group_by(doy) %>%
+  mutate(trb.z = sum(trb.y)) %>%
+  ungroup() %>%
+  arrange(-trb.z) %>%
+  select(doy, trb.z) %>%
+  head(1)
+Doy <- RkReb$doy[1]
+Value <- RkReb$trb.z[1]
+RebResults <- Tables3 %>%
+  filter(RkReb == 1) %>%
+  filter(doy >= Doy-2 & doy <= Doy+2) %>%
+  arrange(month,day) %>%
+  select(player, born, trb, month, day)
+
+GetDatesAst <- Tables3 %>%
+  filter(RkAst == 1) %>%
+  rowwise() %>%
+  mutate(Window = list(((doy - 2):(doy + 2) - 1) %% 365 + 1)) %>%
+  unnest(Window) %>%
+  select(Window, ast)
+RkAst <- Tables3 %>%
+  filter(RkAst == 1) %>%
+  left_join(GetDatesAst, by = c('doy' = 'Window')) %>%
+  group_by(doy) %>%
+  mutate(ast.z = sum(ast.y)) %>%
+  ungroup() %>%
+  arrange(-ast.z) %>%
+  select(doy, ast.z) %>%
+  head(1)
+Doy <- RkAst$doy[1]
+Value <- RkAst$ast.z[1]
+AstResults <- Tables3 %>%
+  filter(RkAst == 1) %>%
+  filter(doy >= Doy-2 & doy <= Doy+2) %>%
+  arrange(month,day) %>%
+  left_join(RebResults, by = c('month', 'day')) %>%
+  mutate(date = paste0(month.abb[month], " ", day),
+         Pic.x = c("https://www.basketball-reference.com/req/202106291/images/headshots/shawbr01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/kiddja01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/fordtj01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/lowryky01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/stockjo01.jpg"),
+         Pic.y = c("https://www.basketball-reference.com/req/202106291/images/headshots/cambyma01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/malonmo01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/boshch01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/davisda01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/embrywa01.jpg")) %>%
+  select(date, born.x, Pic.x, player.x, ast, born.y, Pic.y, player.y, trb.y)
+
+gt(AstResults) %>%
+  gt_theme_espn() %>%
+  text_transform(locations = cells_body(columns = Pic.x),
+      fn = function(x) {web_image(url = AstResults$Pic.x, height = as.numeric(40))}) %>%
+    text_transform(locations = cells_body(columns = Pic.y),
+      fn = function(x) {web_image(url = AstResults$Pic.y, height = as.numeric(40))}) %>%
+  cols_align(align = c('center')) %>%
+  cols_label(date = "Birthday",
+             born.x = "Year",
+             born.y = "Year",
+             player.x = "Player",
+             player.y = "Player",
+             trb.y = "Rebounds",
+             ast = "Assists",
+             Pic.x = "",
+             Pic.y = "") %>%
+  tab_header(title = md("**The Best Five-Day Run of Basketball Birthdays**"),
+             subtitle = md("Remarkably, both lineups fall on March 22–26—yet share no players in common")) %>%
+  opt_align_table_header(align = c('center')) %>%
+  tab_source_note(source_note = "@McCadeP8 | Data: basketball-reference") %>%
+  fmt_number(columns = c(ast,trb.y), use_seps = T, decimals = 0) %>%
+  tab_spanner(label = "41,409 Assists", columns = c(born.x, player.x, Pic.x, ast)) %>%
+  tab_spanner(label = "51,088 Rebounds", columns = c(born.y, player.y, Pic.y, trb.y))
+```
+
+```{r}
+GetDatesWS <- Tables3 %>%
+  filter(RkWS48 == 1) %>%
+  rowwise() %>%
+  mutate(Window = list(((doy - 2):(doy + 2) - 1) %% 365 + 1)) %>%
+  unnest(Window) %>%
+  select(Window, WSp48)
+RkWS <- Tables3 %>%
+  filter(RkWS48 == 1) %>%
+  left_join(GetDatesWS, by = c('doy' = 'Window')) %>%
+  group_by(doy) %>%
+  mutate(WSp48.z = sum(WSp48.y)) %>%
+  ungroup() %>%
+  arrange(-WSp48.z) %>%
+  select(doy, WSp48.z) %>%
+  head(1)
+Doy <- RkWS$doy[1]
+Value <- RkWS$WSp48.z[1]
+WSResults <- Tables3 %>%
+  filter(RkWS48 == 1) %>%
+  filter(doy >= Doy-2 & doy <= Doy+2) %>%
+  arrange(month,day) %>%
+  mutate(date = paste0(month.abb[month], " ", day, ", ", born),
+         WSp48 = round(WSp48,4),
+         Pic = c("https://www.basketball-reference.com/req/202106291/images/headshots/jordami01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/kirilan01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/jokicni01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/barklch01.jpg","https://www.basketball-reference.com/req/202106291/images/headshots/francst01.jpg")) %>%
+  select(date, Pic, player, WSp48)
+
+gt(WSResults) %>%
+  gt_theme_espn() %>%
+  text_transform(locations = cells_body(columns = Pic),
+      fn = function(x) {web_image(url = WSResults$Pic, height = as.numeric(40))}) %>%
+  cols_align(align = c('center')) %>%
+  cols_label(date = "Birthday",
+             player = "Player",
+             WSp48 = "WS per 48min",
+             Pic = "") %>%
+  tab_header(title = md("**The Strongest Five-Day Birthday Lineup in Basketball**")) %>%
+  opt_align_table_header(align = c('center')) %>%
+  tab_source_note(source_note = "@McCadeP8 | Data: basketball-reference")
+```
+
+```{r}
+Total <- Tables2 %>%
+  group_by(doy) %>%
+  summarize(TotalG = sum(g, na.rm = TRUE))
+Total2 <- Total %>%
+  rowwise() %>%
+  mutate(Window = list(((doy - 15):(doy + 15) - 1) %% 365 + 1)) %>%
+  unnest(Window) %>%
+  group_by(Window) %>%
+  summarise(AvgG = mean(TotalG, na.rm = TRUE), .groups = "drop") %>%
+  left_join(Total, by = c("Window" = "doy"))
+
+ggplot(Total2) +
+  geom_vline(xintercept = c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 365), color = "#1D3557", linewidth = 0.5) +
+  geom_point(aes(x = Window, y = TotalG), color = "#C3DDFD", alpha = 0.6) +
+  geom_segment(aes(x = Window, xend = Window, y = AvgG, yend = TotalG), color = "#C3DDFD", alpha = 0.6) +
+  geom_line(aes(x = Window, y = AvgG), color = "#326DA8", size = 2) +
+  geom_segment(aes(x = 90, y = 11379, xend = 58, yend = 11379), arrow = arrow(length = unit(0.5, "cm"), type = "closed"), color = "#C3DDFD", size = 1) +
+  geom_segment(aes(x = 330, y = 350, xend = 358, yend = 313), arrow = arrow(length = unit(0.5, "cm"), type = "closed"), color = "#C3DDFD", size = 1) +
+  geom_segment(aes(x = 150, y = 8750, xend = 73, yend = 4900), arrow = arrow(length = unit(0.5, "cm"), type = "closed"), color = "#326DA8", size = 1) +
+  geom_segment(aes(x = 249, y = 8750, xend = 249, yend = 4800), arrow = arrow(length = unit(0.5, "cm"), type = "closed"), color = "#326DA8", size = 1) +
+  geom_label(aes(x = 75, y = 11379, label = "11,379 games played — Dr. J & Chet Walker (HoF), Rondo, Van Arsdale twins"), hjust = 0, size = 6.3, fill = "#C3DDFD") +
+  geom_label(aes(x = 240, y = 8750, label = "Peak driven by kids born early in the calendar or school year, who had early physical advantages"), size = 6.2, fill = "#326DA8", color = "white") +
+  geom_label(aes(x = 345, y = 350, label = "Only one player born this day since 1955: Briante Weber (45 games)"), hjust = 1, size = 6.2, fill = "#C3DDFD") +
+  scale_x_continuous(limits = c(0, 366), breaks = c(16, 46, 75.5, 106, 136.5, 167, 197.5, 228.5, 259, 289.5, 320, 350), labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+  scale_y_continuous(limits = c(0, 12500), breaks = c(0, 2500, 5000, 7500, 10000, 12500), expand = c(0, 0), labels = comma) +
+  labs(x = "",
+       y = "Career Games Played",
+       title = "Most Career Games Played by Birthday",
+       caption = "@McCadeP8 | Data: basketball-reference") +
+  theme_McCadeP8() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), plot.title = element_text(face = "bold", size = 24, hjust = 0.5))
+```
+

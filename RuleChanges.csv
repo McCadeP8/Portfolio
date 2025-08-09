@@ -1,0 +1,50 @@
+StartDate,EndDate,Status,IPAddress,Progress,Duration (in seconds),Finished,RecordedDate,ResponseId,RecipientLastName,RecipientFirstName,RecipientEmail,ExternalReference,LocationLatitude,LocationLongitude,DistributionChannel,UserLanguage,Q1,Q2,Q3,Q4,Q5
+Start Date,End Date,Response Type,IP Address,Progress,Duration (in seconds),Finished,Recorded Date,Response ID,Recipient Last Name,Recipient First Name,Recipient Email,External Data Reference,Location Latitude,Location Longitude,Distribution Channel,User Language,Please enter your Team ID below to verify your identity.,Do you vote to change the order in which players are signed in free agency from Alphabetical to a different system?,"If the free agency order is changed, what should it be changed to?","Do you vote to change how the League Tax funds are used?
+
+
+Current system: 100% of tax funds go to a charity chosen by the champion.
+
+Proposed change: Funds first cover the Fantrax fee and League Trophy, and the remaining amount is split 50/50 between a charity and non-tax teams.","Do you vote to change the current Fantrax roster setup from:
+
+
+17 players total → 8 starters, 14 bench, 3 IR
+to:
+
+17 players total → 8 starters, 6 bench, 3 IR
+
+
+This change aims to ensure all teams can fill a legal starting lineup to help prevent tanking."
+"{""ImportId"":""startDate"",""timeZone"":""America/Denver""}","{""ImportId"":""endDate"",""timeZone"":""America/Denver""}","{""ImportId"":""status""}","{""ImportId"":""ipAddress""}","{""ImportId"":""progress""}","{""ImportId"":""duration""}","{""ImportId"":""finished""}","{""ImportId"":""recordedDate"",""timeZone"":""America/Denver""}","{""ImportId"":""_recordId""}","{""ImportId"":""recipientLastName""}","{""ImportId"":""recipientFirstName""}","{""ImportId"":""recipientEmail""}","{""ImportId"":""externalDataReference""}","{""ImportId"":""locationLatitude""}","{""ImportId"":""locationLongitude""}","{""ImportId"":""distributionChannel""}","{""ImportId"":""userLanguage""}","{""ImportId"":""QID1_TEXT""}","{""ImportId"":""QID2""}","{""ImportId"":""QID3""}","{""ImportId"":""QID4""}","{""ImportId"":""QID5""}"
+2025-06-19 09:48:32,2025-06-19 09:48:56,0,136.36.251.184,100,23,1,2025-06-19 09:48:56,R_3fGUu7VO1VEjmq7,,,,,40.699,-111.841,anonymous,EN,M8n43ZSLcJGCfWeF0RFn,1,2,2,1
+2025-06-19 10:20:24,2025-06-19 10:21:11,0,172.59.155.184,100,47,1,2025-06-19 10:21:12,R_5y3lZyTD7mo2rz7,,,,,40.7143,-111.8894,anonymous,EN,BzyHZbJO6jiPO80dACaC,1,2,1,1
+2025-06-19 10:21:11,2025-06-19 10:21:56,0,136.226.54.184,100,45,1,2025-06-19 10:21:57,R_7hV3oXeYUNZdzEd,,,,,47.6109,-122.3303,anonymous,EN,A8FpUrhgzTRMN1IOK4O9,1,1,1,1
+2025-06-19 10:22:05,2025-06-19 10:23:12,0,69.162.249.202,100,67,1,2025-06-19 10:23:13,R_3Nyrvt8NV0PdefV,,,,,40.3693,-111.7408,anonymous,EN,NPme2qXwpi0LBcY73EFF,1,2,1,1
+2025-06-19 10:34:45,2025-06-19 10:36:03,0,108.147.92.28,100,78,1,2025-06-19 10:36:03,R_3JaIofqmft7Nup3,,,,,41.7697,-87.6985,anonymous,EN,jsY6XYU5mzjSk7laetU3,1,2,1,1
+2025-06-19 10:35:50,2025-06-19 10:40:15,0,172.226.136.25,100,265,1,2025-06-19 10:40:15,R_5h8DF6UHLUnQeGt,,,,,39.6511,-104.9921,anonymous,EN,ZSHHRH81oj8sMcEdoY1l,1,1,1,2
+2025-06-19 11:09:19,2025-06-19 11:10:01,0,172.56.46.78,100,41,1,2025-06-19 11:10:02,R_5N5ig8f2Pn2WJfb,,,,,37.7308,-122.3838,anonymous,EN,MJ41zvbgwrKeZoTB7BWS,1,2,1,1
+2025-06-19 12:07:16,2025-06-19 12:09:49,0,62.49.141.58,100,153,1,2025-06-19 12:09:50,R_21BGAoRDaSHL9RF,,,,,51.5263,-0.3559,anonymous,EN,MQwfNLhUakQ13r7Ft1M4,1,1,2,1
+2025-06-19 20:01:38,2025-06-19 20:04:00,0,66.69.179.15,100,141,1,2025-06-19 20:04:00,R_3ltSfgw96rZpMMU,,,,,33.0951,-96.8805,anonymous,EN,foRQTbf7X7sPzwToUqAy,1,1,1,2
+2025-06-19 20:25:14,2025-06-19 20:25:40,0,66.69.179.15,100,26,1,2025-06-19 20:25:40,R_6s1JMQM3C0aekCF,,,,,33.0951,-96.8805,anonymous,EN,foRQTbf7X7sPzwToUqAy,1,1,1,1
+2025-06-19 21:25:29,2025-06-19 21:27:07,0,107.191.2.16,100,98,1,2025-06-19 21:27:07,R_7syNTtg6ypmMwMy,,,,,40.7038,-111.5437,anonymous,EN,iIwpWRN1I9fkcvki1y8N,1,1,1,2
+2025-06-20 07:04:51,2025-06-20 07:06:16,0,172.58.56.52,100,85,1,2025-06-20 07:06:17,R_57OSucWpnHLZh37,,,,,39.6993,-104.8814,anonymous,EN,VoCm4cWh5PZm9VehkM4x,1,2,2,1
+2025-06-21 09:21:42,2025-06-21 09:31:44,0,74.105.141.18,100,601,1,2025-06-21 09:31:44,R_6PA7O67SCPb09ep,,,,,41.0429,-74.1004,anonymous,EN,jMYWLR2XrzlL7I4rmUOU,1,2,2,1
+2025-06-21 09:44:58,2025-06-21 09:45:40,0,23.243.47.58,100,41,1,2025-06-21 09:45:40,R_1NUrhbLji77E6EU,,,,,33.8206,-118.034,anonymous,EN,HMUEn4W03Foc41CAECZm,1,2,1,2
+2025-06-23 05:20:34,2025-06-23 05:21:54,0,67.4.83.157,100,80,1,2025-06-23 05:21:55,R_7LZt9MOj6LuO1Cb,,,,,44.8553,-93.66,anonymous,EN,45voC1imU3u8KP5dUwsf,1,2,1,1
+2025-06-23 13:06:03,2025-06-23 13:07:30,0,97.117.91.68,100,87,1,2025-06-23 13:07:31,R_31yJekUof1UN4Y8,,,,,40.699,-111.841,anonymous,EN,ZsszJyXaxCGg5E8vAb96,1,2,1,1
+2025-06-23 13:26:35,2025-06-23 13:27:44,0,166.199.152.112,100,68,1,2025-06-23 13:27:44,R_6wS1CBlT4kPUeoz,,,,,41.85,-87.7165,anonymous,EN,aU1nz37NW5o0JIHilRH7,2,1,2,1
+2025-06-23 13:31:04,2025-06-23 13:33:16,0,45.95.160.6,100,132,1,2025-06-23 13:33:17,R_5reHi3P3Pv8Zgta,,,,,25.7701,-80.1928,anonymous,EN,TyF4LNkBNtAkEB4It2Hg,1,2,1,1
+2025-06-23 13:58:47,2025-06-23 14:00:46,0,174.247.145.51,100,119,1,2025-06-23 14:00:47,R_3n8xS4BGzE0OqgX,,,,,40.7849,-111.9338,anonymous,EN,84F4QNW03LX2AI0s02dy,1,2,1,1
+2025-06-23 16:22:40,2025-06-23 16:25:29,0,74.65.16.254,100,169,1,2025-06-23 16:25:30,R_1fjGEFHAekYZrv6,,,,,42.5795,-77.9425,anonymous,EN,bxVOCQ1S5Q8pPrEU57xc,1,2,1,1
+2025-06-23 18:31:39,2025-06-23 18:33:14,0,216.82.22.215,100,94,1,2025-06-23 18:33:14,R_1QKdZNyddn8JYQH,,,,,42.9332,-85.6531,anonymous,EN,5162yikwsApWCLrX4UJs,1,2,1,1
+2025-06-23 20:47:54,2025-06-23 20:49:16,0,68.3.61.17,100,82,1,2025-06-23 20:49:16,R_7KOVBFjITdusXp5,,,,,33.4669,-111.9151,anonymous,EN,D1B6j2xcdgHQPMdF4QOq,2,2,1,1
+2025-06-24 02:44:00,2025-06-24 02:45:30,0,31.217.164.183,100,90,1,2025-06-24 02:45:31,R_2LiC9ncrJ4WLyHT,,,,,36.4151,25.4289,anonymous,EN,t5xL0w4jV8TpJwYGpjbx,1,2,1,2
+2025-06-24 03:13:45,2025-06-24 03:26:39,0,70.241.98.15,100,773,1,2025-06-24 03:26:39,R_1NBXrQDn0doV6E1,,,,,41.8719,-87.6589,anonymous,EN,FcLJLFN7i8QQiLYTzKWo,2,2,2,2
+2025-06-24 03:29:13,2025-06-24 03:31:57,0,70.241.98.15,100,163,1,2025-06-24 03:31:57,R_3faNbXVGPz62Fdn,,,,,41.8719,-87.6589,anonymous,EN,FcLJLFN7i8QQiLYTzKWo,2,2,2,2
+2025-06-24 03:32:11,2025-06-24 03:32:32,0,70.241.98.15,100,21,1,2025-06-24 03:32:32,R_3Cz7AwGZqnNxtgl,,,,,41.8719,-87.6589,anonymous,EN,FcLJLFN7i8QQiLYTzKWo,2,2,2,2
+2025-06-24 09:19:35,2025-06-24 09:21:35,0,198.200.132.56,100,120,1,2025-06-24 09:21:36,R_1OlTCKDH7ct52Pr,,,,,36.2474,-115.2185,anonymous,EN,BMro1UdTd6X488MU7ket,1,1,2,1
+2025-06-24 10:00:01,2025-06-24 10:02:00,0,137.186.113.11,100,118,1,2025-06-24 10:02:00,R_7qngUN9qPxPf1G9,,,,,53.4593,-113.6546,anonymous,EN,R0v8umk3ZaNp6OXaPYnB,1,1,1,2
+2025-06-24 10:22:49,2025-06-24 10:23:50,0,76.131.100.250,100,61,1,2025-06-24 10:23:51,R_5AQC1PoFTjuHR5v,,,,,39.696,-105.0346,anonymous,EN,rdQy1hcby0rS88x8ZNFz,1,2,1,1
+2025-06-24 12:31:29,2025-06-24 12:32:33,0,99.51.146.36,100,63,1,2025-06-24 12:32:34,R_6OUCFFF484H7XYC,,,,,34.1227,-118.7573,anonymous,EN,I6Pg736WoKYeVeI6U4e1,1,2,1,1
+2025-06-24 16:34:18,2025-06-24 16:36:06,0,63.195.230.149,100,107,1,2025-06-24 16:36:06,R_6i522PpfryOXO8D,,,,,34.0587,-118.2781,anonymous,EN,dGrUraAPmcqhK0m6ARWh,1,1,1,2
+2025-06-24 21:51:37,2025-06-24 22:05:08,0,209.147.104.34,100,810,1,2025-06-24 22:05:08,R_5mT7qWRex6hg7Pb,,,,,41.1315,-112.0469,anonymous,EN,bEvPh9hsVSyir9NSr6tA,2,1,1,2
+2025-06-24 18:17:56,2025-06-25 13:17:00,0,24.113.136.107,100,68343,1,2025-06-25 13:17:00,R_3HnAdApvV4TKl6U,,,,,47.6295,-122.3165,anonymous,EN,cFUiAg0LIxSESHeKgN1B,1,1,1,1

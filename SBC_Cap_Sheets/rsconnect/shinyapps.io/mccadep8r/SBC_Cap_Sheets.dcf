@@ -1,0 +1,13 @@
+name: SBC_Cap_Sheets
+title: SBC_Cap_Sheets
+username: mccadep8r
+account: mccadep8r
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9245891
+bundleId: 10640126
+url: https://mccadep8r.shinyapps.io/SBC_Cap_Sheets/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Draftboard.html|Free Agency 2025.Rmd|Quick Look.R|SBC_Rule_Changes.Rmd|Pictures

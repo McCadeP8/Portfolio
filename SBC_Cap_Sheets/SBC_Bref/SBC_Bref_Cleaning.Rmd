@@ -1,0 +1,748 @@
+---
+title: "SBC_Bref_Cleaning"
+author: "McCade Pearson"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(httr)
+library(jsonlite)
+library(googlesheets4)
+library(purrr)
+library(hoopR)
+```
+
+```{r Rosters 2026}
+C <- Sys.time()
+league_id <- "u9f8f7o9mavp4dt1"
+all_rosters_data <- data.frame()
+
+for (period in 1:174) {
+  cat("Processing period", period, "of 174\n")
+  roster_url <- paste0("https://www.fantrax.com/fxea/general/getTeamRosters?leagueId=", league_id, "&period=", period)
+  response <- GET(roster_url, add_headers(Cookie = paste0("JSESSIONID=")))
+  if (status_code(response) == 200) {
+    roster_json <- content(response, as = "text", encoding = "UTF-8")
+    roster_data <- fromJSON(roster_json, flatten = TRUE)
+      rosters <- roster_data$rosters
+  for (i in 1:length(rosters)) {
+      team_name <- rosters[[i]]$teamName
+      roster_items <- rosters[[i]]$rosterItems
+      if (!is.null(roster_items) && nrow(roster_items) > 0) {
+        roster_items$team_name <- team_name
+        roster_items$period <- period
+        all_rosters_data <- rbind(all_rosters_data, roster_items)}}} 
+      else {warning(paste("Failed to fetch data for period", period, "- Status code:", status_code(response)))}
+  Sys.sleep(0.1)}
+
+all_rosters_data <- all_rosters_data %>%
+  filter(status != "MINORS") %>%
+  rename(PlayerID = id,
+       Position = position,
+       Status = status,
+       Team = team_name,
+       Period = period) %>%
+  mutate(Year = 2026)
+
+A <- Sys.time()
+sheet_write(data = all_rosters_data, ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2026")
+2
+B <- Sys.time()-A
+D <- Sys.time()-C
+print(B)
+print(D)
+
+rm(list = ls())
+```
+
+```{r Team Stats By Period}
+Games <- read_sheet(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "All-Time Games")
+2
+Rosters2021 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2021")
+Rosters2022 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2022")
+Rosters2023 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2023")
+Rosters2024 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2024")
+Rosters2025 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2025")
+Rosters2026 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2026")
+Rosters <- rbind(Rosters2021,Rosters2022,Rosters2023,Rosters2024,Rosters2025,Rosters2026)
+remove(Rosters2021, Rosters2022, Rosters2023, Rosters2024, Rosters2025, Rosters2026)
+Schedule <- read_sheet(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Schedule")
+Players <- read_sheet(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Players")
+
+GameData <- load_nba_player_box(2021:2025)
+GameData <- GameData %>%
+  filter(!team_display_name %in% c("Team LeBron", "Team Durant", "Team Giannis", "Western Conf All-Stars", "Eastern Conf All-Stars", "Team Shaq", "Team Chuck", "Team Candace", "Team Kenny")) %>%
+  filter(season_type == 2) %>%
+  filter(game_id != 401734908 & game_id != 401607495)
+
+ScheduleLongA <- Games %>%
+  select(TeamA, Year, Period) %>%
+  distinct()
+ScheduleLongB <- Games %>%
+  mutate(TeamA = TeamB) %>%
+  select(TeamA, Year, Period) %>%
+  distinct()
+ScheduleLong <- rbind(ScheduleLongA, ScheduleLongB)
+remove(ScheduleLongA, ScheduleLongB)
+ScheduleLong <- ScheduleLong %>%
+  distinct() %>%
+  filter(TeamA != "Overseas Players One") %>%
+  filter(TeamA != "Overseas Players Two") %>%
+  left_join(IllegalRosterPeriods, by = c('TeamA' = 'Team', 'Year', 'Period')) %>%
+  filter(Illegal == 1)
+
+GetGameStats <- function(i) {
+  
+  TeamA <- ScheduleLong$TeamA[i]
+  GamePeriod <- ScheduleLong$Period[i]
+  GameYear <- ScheduleLong$Year[i]
+  Dates <- Schedule %>%
+    filter(Year == GameYear) %>%
+    filter(Period == GamePeriod) %>%
+    select(-Period)
+  TeamAResults <- Rosters %>%
+    filter(Team == TeamA) %>%
+    filter(Year == GameYear) %>%
+    filter(Status == "ACTIVE") %>%
+    filter(Period %in% Dates$Day) %>%
+    left_join(Players, by = c('PlayerID' = 'FantraxID')) %>%
+    left_join(Dates, by = c('Year', 'Period' = 'Day')) %>%
+    left_join(IllegalRosters, by = c('Team', 'Year', 'Period' = 'Day')) %>%
+    filter(is.na(Illegal == T)) %>%
+    select(Team, ESPNPlayer, Date) %>%
+    left_join(GameData, by = c('ESPNPlayer' = 'athlete_display_name', 'Date' = 'game_date')) %>%
+    filter(is.na(minutes) == F) %>%
+    mutate(plus_minus = as.numeric(plus_minus)) %>%
+    group_by(Team) %>%
+    summarize(PM = sum(plus_minus),
+              FGM2 = sum(field_goals_made)-sum(three_point_field_goals_made),
+              FGA2 = sum(field_goals_attempted)-sum(three_point_field_goals_attempted),
+              FGM3 = sum(three_point_field_goals_made),
+              FGA3 = sum(three_point_field_goals_attempted),
+              AST = sum(assists),
+              BLK = sum(blocks),
+              DREB = sum(defensive_rebounds),
+              FTA = sum(free_throws_attempted),
+              FTM = sum(free_throws_made),
+              MP = sum(minutes),
+              OREB = sum(offensive_rebounds),
+              PTS = sum(points),
+              STL = sum(steals),
+              TOV = sum(turnovers)) %>%
+    mutate(FGp2 = ifelse(FGA2 >= 10 & FTA >= 10 & FGA3 >= 10, FGM2/FGA2, 0),
+           FGp3 = ifelse(FGA2 >= 10 & FTA >= 10 & FGA3 >= 10, FGM3/FGA3, 0),
+           FTp = ifelse(FGA2 >= 10 & FTA >= 10 & FGA3 >= 10, FTM/FTA, 0),
+           TSp = ifelse(FGA2 >= 10 & FGA3 >= 10 & FTA >= 10, PTS/(2*(FGA2+FGA3+0.44*FTA)), 0),
+           Year = GameYear,
+           Period = GamePeriod) %>%
+    select(Period, Year, Team, MP, TSp, FGM2, FGA2, FGp2, FGM3, FGA3, FGp3, FTM, FTA, FTp, PTS, OREB, DREB, AST, STL, BLK, TOV, PM)
+  
+  print(TeamAResults)
+}
+
+B <- data.frame()
+C <- Sys.time()
+for(i in 1:nrow(ScheduleLong)) {
+  A <- GetGameStats(i)
+  B <- rbind(A,B)
+  D <- paste(i, Sys.time()-C)
+  print(D)}
+
+rm(list = ls())
+```
+
+```{r Player Career}
+GameData <- load_nba_player_box(2021:2026)
+
+GameData <- GameData %>%
+  mutate(athlete_display_name = ifelse(athlete_display_name == "GG Jackson II", "GG Jackson", athlete_display_name),
+         athlete_display_name = ifelse(athlete_display_name == "Brandon Boston Jr.", "Brandon Boston", athlete_display_name),
+         athlete_display_name = ifelse(athlete_display_name == "Jimmy Butler III", "Jimmy Butler", athlete_display_name),
+         athlete_display_name = ifelse(athlete_display_name == "KJ Martin", "Kenyon Martin Jr.", athlete_display_name),
+         athlete_display_name = ifelse(athlete_display_name == "Trey Jemison III", "Trey Jemison", athlete_display_name))
+Schedule <- read_sheet(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Schedule")
+Players <- read_sheet(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Players")
+Rosters2021 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2021")
+Rosters2022 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2022")
+Rosters2023 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2023")
+Rosters2024 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2024")
+Rosters2025 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2025")
+Rosters2026 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2026")
+Rosters <- rbind(Rosters2021,Rosters2022,Rosters2023,Rosters2024,Rosters2025,Rosters2026)
+remove(Rosters2021, Rosters2022, Rosters2023, Rosters2024, Rosters2025, Rosters2026)
+Games <- read_sheet(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "All-Time Games")
+TeamInfo <- read_sheet(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Team Information")
+
+AllPlayers <- unique(GameData$athlete_display_name)
+SeasonTypes <- unique(Schedule$Season)
+combos <- expand.grid(Player = AllPlayers, SeasonType = SeasonTypes)
+
+GetCareerStats <- function(Player, Input2) {
+  df <- GameData %>%
+    filter(athlete_display_name == Player) %>%
+    left_join(Players, by = c('athlete_display_name' = 'ESPNPlayer')) %>%
+    left_join(Schedule, by = c('game_date' = 'Date')) %>%
+    filter(Season == Input2) %>%
+    left_join(Rosters, by = c('FantraxID' = 'PlayerID', 'Year', 'Day' = 'Period')) %>%
+    filter(Status == "ACTIVE") %>%
+    left_join(Games, by = c('Period', 'Year', 'Team' = 'TeamA')) %>%
+    left_join(Games, by = c('Period', 'Year', 'Team' = 'TeamB')) %>%
+    filter(!is.na(Round.x) | !is.na(Round.y)) %>%
+    select(1:69) %>%
+    distinct() %>%
+    filter(!is.na(minutes)) %>%
+    arrange(game_date)
+
+  # Exit early if no data
+  if (nrow(df) == 0) return(NULL)
+
+  PlayerData <- df %>%
+    mutate(row_id = 1:n()) %>%
+    group_by(Team, Year) %>%
+    summarize(
+      GP = n(),
+      PM = round(mean(as.numeric(plus_minus)), 2),
+      FGM2 = round(mean(field_goals_made - three_point_field_goals_made), 2),
+      FGA2 = round(mean(field_goals_attempted - three_point_field_goals_attempted), 2),
+      FGM3 = round(mean(three_point_field_goals_made), 2),
+      FGA3 = round(mean(three_point_field_goals_attempted), 2),
+      AST = round(mean(assists), 2),
+      BLK = round(mean(blocks), 2),
+      DREB = round(mean(defensive_rebounds), 2),
+      FTA = round(mean(free_throws_attempted), 2),
+      FTM = round(mean(free_throws_made), 2),
+      MP = round(mean(minutes), 2),
+      OREB = round(mean(offensive_rebounds), 2),
+      PTS = round(mean(points), 2),
+      STL = round(mean(steals), 2),
+      TOV = round(mean(turnovers), 2),
+      Row = min(row_id),
+      .groups = "drop"
+    ) %>%
+    arrange(Row)
+
+  PlayerData2 <- df %>%
+    mutate(row_id = 1:n() + 0.1) %>%
+    group_by(Year) %>%
+    summarize(
+      GP = n(),
+      PM = round(mean(as.numeric(plus_minus)), 2),
+      FGM2 = round(mean(field_goals_made - three_point_field_goals_made), 2),
+      FGA2 = round(mean(field_goals_attempted - three_point_field_goals_attempted), 2),
+      FGM3 = round(mean(three_point_field_goals_made), 2),
+      FGA3 = round(mean(three_point_field_goals_attempted), 2),
+      AST = round(mean(assists), 2),
+      BLK = round(mean(blocks), 2),
+      DREB = round(mean(defensive_rebounds), 2),
+      FTA = round(mean(free_throws_attempted), 2),
+      FTM = round(mean(free_throws_made), 2),
+      MP = round(mean(minutes), 2),
+      OREB = round(mean(offensive_rebounds), 2),
+      PTS = round(mean(points), 2),
+      STL = round(mean(steals), 2),
+      TOV = round(mean(turnovers), 2),
+      Row = max(row_id),
+      .groups = "drop"
+    ) %>%
+    mutate(Team = "Total")
+
+  PlayerData <- bind_rows(PlayerData, PlayerData2)
+
+  PlayerData <- PlayerData %>%
+    group_by(Year) %>%
+    mutate(Total = n()) %>%
+    filter(Team != "Total" | Total != 2) %>%
+    ungroup() %>%
+    mutate(
+      `2P%` = round(FGM2 / FGA2, 4),
+      `3P%` = round(FGM3 / FGA3, 4),
+      `FT%` = round(FTM / FTA, 4),
+      `TS%` = round(PTS / (2 * (FGA2 + FGA3 + 0.44 * FTA)), 4),
+      `2P` = paste0(FGM2, "/", FGA2),
+      `3P` = paste0(FGM3, "/", FGA3),
+      `FT` = paste0(FTM, "/", FTA),
+      PM = ifelse(PM >= 0, paste0("+", PM), as.character(PM))
+    ) %>%
+    arrange(Row) %>%
+    left_join(TeamInfo, by = "Team") %>%
+    mutate(
+      PlayerName = Player,
+      SeasonType = Input2
+    ) %>%
+    select(PlayerName, SeasonType, Team, Year, GP, MP, `TS%`, `2P`, `2P%`, `3P`, `3P%`, FT, `FT%`,
+           PTS, OREB, DREB, AST, STL, BLK, TOV, PM, Color1, Color3) %>%
+    filter(!Team %in% c("Overseas Players One", "Overseas Players Two"))
+
+  return(PlayerData)
+}
+
+B <- data.frame()
+C <- Sys.time()
+for(i in 1:nrow(combos)) {
+  A <- GetCareerStats(combos$Player[i], combos$SeasonType[i])
+  B <- rbind(A,B)
+  D <- paste(i, Sys.time()-C)
+  print(D)}
+
+gs4_auth()
+2
+Q <- Sys.time()
+sheet_write(data = B, ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Player_Career_History")
+W <- Sys.time()-Q
+print(W)
+
+rm(list = ls())
+```
+
+```{r Get Wins}
+Games <- read_sheet(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "All-Time Games")
+2
+TeamStats <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Team_Stats_Current")
+IllegalRosters <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Illegal_Rosters")
+TeamStats2 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Team_Stats_History")
+TeamInfo <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Team Information")
+TeamPeriodStats <- rbind(TeamStats,TeamStats2)
+remove(TeamStats,TeamStats2)
+
+Games <- Games %>%
+  select(-TeamAScore, -TeamBScore)
+Games$Results <- NA
+for(i in 1:nrow(Games)) {
+  A <- Sys.time()
+  Games$Results[i] <- GetGameScore(i)
+  B <- paste(i, Sys.time()-A)
+  print(B)}
+Games <- Games %>%
+  separate(Results, into = c('TeamAScore', 'TeamBScore'), sep = "-") %>%
+  mutate(TeamAScore = as.numeric(TeamAScore),
+         TeamBScore = as.numeric(TeamBScore))
+
+sheet_write(data = Games, ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "All-Time Games")
+
+rm(list = ls())
+```
+
+```{r Get Standings}
+Team <- unique(Games$TeamA)
+TeamSummary <- data.frame(Team)
+TeamSummary <- TeamSummary %>%
+  filter(is.na(Team) == F)
+
+ordinal <- function(n) {
+  suffix <- ifelse(n %% 100 %in% 11:13, "th",
+                   ifelse(n %% 10 == 1, "st",
+                          ifelse(n %% 10 == 2, "nd",
+                                 ifelse(n %% 10 == 3, "rd", "th"))))
+  paste0(n, suffix)
+}
+
+YStandings <- Games %>%
+  filter(is.na(TeamA) == F) %>%
+  mutate(Winner = ifelse(TeamBScore >= TeamAScore, TeamB, TeamA)) %>%
+  filter(Round == "Regular") %>%
+  group_by(Winner, Year) %>%
+  summarize(Wins = n()) %>%
+  ungroup() %>%
+  mutate(Losses = case_when(
+                    Year == 2021 ~ 62,
+                    Year %in% c(2022, 2023) ~ 76,
+                    Year >= 2024 ~ 72),
+         Losses = Losses-Wins)
+
+
+DStandings <- Games %>%
+  filter(is.na(TeamA) == F) %>%
+  mutate(DWinner = ifelse(TeamBScore >= TeamAScore, TeamB, TeamA)) %>%
+  filter(Round == "Regular") %>%
+  filter(DivGame == TRUE) %>%
+  group_by(DWinner, Year) %>%
+  summarize(DWins = n()) %>%
+  ungroup() %>%
+  mutate(DLosses = case_when(
+    Year == 2021 ~ 16,
+    Year %in% c(2022, 2023) ~ 16,
+    Year >= 2024 ~ 12),
+    DLosses = DLosses-DWins)
+
+CStandings <- Games %>%
+  filter(is.na(TeamA) == F) %>%
+  mutate(CWinner = ifelse(TeamBScore >= TeamAScore, TeamB, TeamA)) %>%
+  filter(Round == "Regular") %>%
+  filter(ConfGame == TRUE) %>%
+  group_by(CWinner, Year) %>%
+  summarize(CWins = n()) %>%
+  ungroup() %>%
+  mutate(CLosses = case_when(
+    Year == 2021 ~ 32,
+    Year %in% c(2022, 2023) ~ 46,
+    Year >= 2024 ~ 42),
+    CLosses = CLosses-CWins)
+
+IStandings23 <- Games %>%
+  filter(is.na(TeamA) == F) %>%
+  mutate(IWinner = ifelse(TeamBScore >= TeamAScore, TeamB, TeamA)) %>%
+  filter(Round == "Group Stage") %>%
+  filter(Year == 2024) %>%
+  group_by(IWinner, Year) %>%
+  summarize(IWins = n()) %>%
+  ungroup() %>%
+  mutate(ILosses = 4-IWins) %>%
+  left_join(TeamInfo, by = c("IWinner" = "Team")) %>%
+  group_by(Cup2023) %>%
+  mutate(Rk = rank(-IWins, ties.method = "min")) %>%
+  ungroup() %>%
+  group_by(Rk, Year, Cup2023) %>%
+  mutate(ILabel = if(n() > 1) paste0("T-", ordinal(Rk)) else ordinal(Rk)) %>%
+  ungroup() %>%
+  select(IWinner, Year, IWins, ILosses, ILabel)
+  
+
+IStandings24 <- Games %>%
+  filter(is.na(TeamA) == F) %>%
+  mutate(IWinner = ifelse(TeamBScore >= TeamAScore, TeamB, TeamA)) %>%
+  filter(Round == "Group Stage") %>%
+  filter(Year == 2025) %>%
+  group_by(IWinner, Year) %>%
+  summarize(IWins = n()) %>%
+  ungroup() %>%
+  mutate(ILosses = 4-IWins) %>%
+  left_join(TeamInfo, by = c("IWinner" = "Team")) %>%
+  group_by(Cup2024) %>%
+  mutate(Rk = rank(-IWins, ties.method = "min")) %>%
+  ungroup() %>%
+  group_by(Rk, Year, Cup2024) %>%
+  mutate(ILabel = if(n() > 1) paste0("T-", ordinal(Rk)) else ordinal(Rk)) %>%
+  ungroup() %>%
+  select(IWinner, Year, IWins, ILosses, ILabel)
+
+IStandings <- rbind(IStandings23, IStandings24)
+
+TotalStandings <- YStandings %>%
+  left_join(CStandings, by = c('Winner' = 'CWinner', 'Year')) %>%
+  left_join(DStandings, by = c('Winner' = 'DWinner', 'Year')) %>%
+  left_join(IStandings, by = c('Winner' = 'IWinner', 'Year')) %>%
+  mutate(IWins = ifelse(is.na(IWins) == T & Year >= 2024, 0, IWins),
+         ILosses = ifelse(is.na(ILosses) == T & Year >= 2024, 4, ILosses),
+         ILabel = ifelse(IWins == 0, "5th", ILabel)) %>%
+group_by(Year) %>%
+  mutate(Rk = rank(-Wins, ties.method = "min")) %>%
+  ungroup() %>%
+  group_by(Rk, Year) %>%
+  mutate(YLabel = if(n() > 1) paste0("T-", ordinal(Rk)) else ordinal(Rk)) %>%
+  ungroup() %>%
+  select(-Rk) %>%
+  mutate(YRecord = paste0(Wins,"-",Losses),
+         CRecord = paste0(CWins,"-",CLosses),
+         DRecord = paste0(DWins,"-",DLosses),
+         IRecord = paste0(IWins,"-",ILosses),
+         IRecord = ifelse(IRecord == "NA-NA", NA, IRecord)) %>%
+  select(-IWins, -ILosses, -CWins, -CLosses, -DWins, -DLosses) %>%
+left_join(TeamInfo, by = c("Winner" = "Team")) %>%
+  group_by(Division, Year) %>%
+  mutate(Rk = rank(-Wins, ties.method = "min")) %>%
+  ungroup() %>%
+  group_by(Rk, Year, Division) %>%
+  mutate(DLabel = if(n() > 1) paste0("T-", ordinal(Rk)) else ordinal(Rk)) %>%
+  ungroup() %>%
+  select(1:10,28) %>%
+left_join(TeamInfo, by = c("Winner" = "Team")) %>%
+  group_by(Conference, Year) %>%
+  mutate(Rk = rank(-Wins, ties.method = "min")) %>%
+  ungroup() %>%
+  group_by(Rk, Year, Conference) %>%
+  mutate(CLabel = if(n() > 1) paste0("T-", ordinal(Rk)) else ordinal(Rk)) %>%
+  ungroup() %>%
+  select(Year, Winner, YRecord, YLabel, CLabel, DLabel, CRecord, DRecord, IRecord, ILabel)
+
+sheet_write(data = TotalStandings, ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Standings")
+
+rm(list = ls())
+```
+
+```{r Record Matrix}
+  Games2 <- Games %>%
+    filter(Type == "Regular Season") %>%
+    mutate(TeamA2 = ifelse(TeamA < TeamB, TeamA, TeamB),
+           TeamB2 = ifelse(TeamB < TeamA, TeamA, TeamB),
+           Winner = ifelse(TeamBScore >= TeamAScore, TeamB, TeamA),
+           WinnerA = ifelse(Winner == TeamA2, 1, 0),
+           WinnerB = ifelse(Winner == TeamB2, 1, 0)) %>%
+    group_by(TeamA2, TeamB2) %>%
+    summarize(WinnerA = sum(WinnerA),
+              WinnerB = sum(WinnerB)) %>%
+    filter(TeamA2 != "Overseas Players One") %>%
+    ungroup()
+  Games3 <- Games2 %>%
+    rename(TeamB2 = TeamA2,
+           TeamA2 = TeamB2,
+           WinnerA = WinnerB,
+           WinnerB = WinnerA)
+  Games2 <- rbind(Games2,Games3)
+  Games2 <- Games2 %>%
+    mutate(Record = paste0(WinnerA,"-",WinnerB)) %>%
+    left_join(TeamInfo, by = c('TeamB2' = 'Team')) %>%
+    select(TeamA2, Abb, Record) %>%
+    pivot_wider(names_from = Abb, values_from = Record) %>%
+    left_join(TeamInfo, by = c('TeamA2' = 'Team')) %>%
+    select(Logo, City, Nickname, 31, 2:30)
+  
+gs4_auth()
+2
+sheet_write(data = Games2, ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Record_Matrix")
+
+rm(list = ls())
+```
+
+```{r TeamTotalStats}
+ordinal <- function(n) {
+  suffix <- ifelse(n %% 100 %in% 11:13, "th",
+                   ifelse(n %% 10 == 1, "st",
+                          ifelse(n %% 10 == 2, "nd",
+                                 ifelse(n %% 10 == 3, "rd", "th"))))
+  paste0(n, suffix)
+}
+
+TeamTotalStats <- GameData %>%
+  left_join(Players, by = c('athlete_display_name' = 'ESPNPlayer')) %>%
+  left_join(Schedule, by = c('game_date' = 'Date')) %>%
+  left_join(Rosters, by = c('FantraxID' = 'PlayerID', 'Year', 'Day' = 'Period')) %>%
+  filter(Status == "ACTIVE") %>%
+  filter(Team != "Overseas Players One") %>%
+  filter(Team != "Overseas Players Two") %>%
+  filter(minutes >= 1) %>%
+  filter(Season == "Regular") %>%
+  group_by(Year, Team) %>%
+  dplyr::summarize(GP = n(),
+                    PM = round(sum(as.numeric(plus_minus)), 2),
+                    FGM2 = round(sum(field_goals_made - three_point_field_goals_made), 2),
+                    FGA2 = round(sum(field_goals_attempted - three_point_field_goals_attempted), 2),
+                    FGM3 = round(sum(three_point_field_goals_made), 2),
+                    FGA3 = round(sum(three_point_field_goals_attempted), 2),
+                    AST = round(sum(assists), 2),
+                    BLK = round(sum(blocks), 2),
+                    DREB = round(sum(defensive_rebounds), 2),
+                    FTA = round(sum(free_throws_attempted), 2),
+                    FTM = round(sum(free_throws_made), 2),
+                    MP = round(sum(minutes), 2),
+                    OREB = round(sum(offensive_rebounds), 2),
+                    PTS = round(sum(points), 2),
+                    STL = round(sum(steals), 2),
+                    TOV = round(sum(turnovers), 2)) %>%
+  ungroup() %>%
+  mutate(
+    `2P%` = round(FGM2 / FGA2, 4),
+    `3P%` = round(FGM3 / FGA3, 4),
+    `FT%` = round(FTM / FTA, 4),
+    `TS%` = round(PTS / (2 * (FGA2 + FGA3 + 0.44 * FTA)), 4)) %>%
+  group_by(Year) %>%
+  mutate(Rk_GP    = ordinal(rank(-GP, ties.method = "min")),
+          Rk_PM    = ordinal(rank(-PM, ties.method = "min")),
+          Rk_FGM2  = ordinal(rank(-FGM2, ties.method = "min")),
+          Rk_FGA2  = ordinal(rank(-FGA2, ties.method = "min")),
+          Rk_FGM3  = ordinal(rank(-FGM3, ties.method = "min")),
+          Rk_FGA3  = ordinal(rank(-FGA3, ties.method = "min")),
+          Rk_AST   = ordinal(rank(-AST, ties.method = "min")),
+          Rk_BLK   = ordinal(rank(-BLK, ties.method = "min")),
+          Rk_DREB  = ordinal(rank(-DREB, ties.method = "min")),
+          Rk_FTA   = ordinal(rank(-FTA, ties.method = "min")),
+          Rk_FTM   = ordinal(rank(-FTM, ties.method = "min")),
+          Rk_MP    = ordinal(rank(-MP, ties.method = "min")),
+          Rk_OREB  = ordinal(rank(-OREB, ties.method = "min")),
+          Rk_PTS   = ordinal(rank(-PTS, ties.method = "min")),
+          Rk_STL   = ordinal(rank(-STL, ties.method = "min")),
+          Rk_TOV   = ordinal(rank(TOV, ties.method = "min")),
+          Rk_2Ppct = ordinal(rank(-`2P%`, ties.method = "min")),
+          Rk_3Ppct = ordinal(rank(-`3P%`, ties.method = "min")),
+          Rk_FTpct = ordinal(rank(-`FT%`, ties.method = "min")),
+          Rk_TSpct = ordinal(rank(-`TS%`, ties.method = "min"))) %>%
+  ungroup() %>%
+  mutate(`2P`   = paste(FGM2, FGA2, sep = "/"),
+            `3P`   = paste(FGM3, FGA3, sep = "/"),
+            FT     = paste(FTM,  FTA,  sep = "/"),
+            Rk_2P = paste(Rk_FGM2, Rk_FGA2, sep = "/"),
+            Rk_3P = paste(Rk_FGM3, Rk_FGA3, sep = "/"),
+            Rk_FT  = paste(Rk_FTM,  Rk_FTA,  sep = "/")) %>%
+  select(-FGM2, -FGA2, -FGM3, -FGA3, -FTM,  -FTA, -Rk_FGM2, -Rk_FGA2, -Rk_FGM3, -Rk_FGA3, -Rk_FTM,  -Rk_FTA)
+
+gs4_auth()
+2
+sheet_write(data = TeamTotalStats, ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "TeamTotalStats")
+
+```
+
+```{r}
+PlayerAwards <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Player_Awards")
+
+awards_key <- data.frame(
+  award = c("All-NBA", "All-Defense", "All-Rookie", "All-Star", 
+            "Player of Month", "Player of Week", "Champion", "MVP",
+            "ROY", "DPOY", "6MOY", "MIP", "ASG MVP", "Finals MVP",
+            "ECF MVP", "WCF MVP", "Cup Winner", "Cup MVP", "Rookie of Month", "Clutch"),
+  icon_name = c("fas fa-star", "shield-halved", "baby-carriage", "star-half-stroke",
+                "calendar-plus", "calendar-week", "trophy", "crown", 
+                "baby", "shield", "chair", "up-long",
+                "zap", "fire", "arrow-left", "arrow-right",
+                "medal", "fire-burner", "calendar-check", "stethoscope")
+)
+
+award_order <- c("Rookie of Month", "Player of Week", "Player of Month", 
+                 "All-Rookie", "All-Defense", "All-Star", "All-NBA", 
+                 "ASG MVP", "Clutch", "MIP", "6MOY", "ROY", "DPOY", "MVP",
+                 "Cup Winner", "Cup MVP", "ECF MVP", "WCF MVP", "Finals MVP", "Champion")
+
+# Add order column to awards_key
+awards_key$order <- match(awards_key$award, award_order)
+
+
+# Function to normalize award names to match the key
+normalize_award <- function(award) {
+  case_when(
+    str_detect(award, "^All-SBC") ~ "All-NBA",
+    str_detect(award, "^All-Defense") ~ "All-Defense", 
+    str_detect(award, "^All-Rookie") ~ "All-Rookie",
+    award == "All-Star" ~ "All-Star",
+    award == "Player of Month" ~ "Player of Month",
+    award == "Player of Week" ~ "Player of Week", 
+    award == "Champion" ~ "Champion",
+    award == "MVP" ~ "MVP",
+    award == "ROY" ~ "ROY",
+    award == "DPOY" ~ "DPOY",
+    award == "6MOY" ~ "6MOY",
+    award == "MIP" ~ "MIP",
+    award == "ASG MVP" ~ "ASG MVP",
+    award == "Finals MVP" ~ "Finals MVP",
+    award == "ECF MVP" ~ "ECF MVP", 
+    award == "WCF MVP" ~ "WCF MVP",
+    award == "Cup Winner" ~ "Cup Winner",
+    award == "Cup MVP" ~ "Cup MVP",
+    award == "Rookie of Month" ~ "Rookie of Month",
+    award == "Clutch" ~ "Clutch",
+    TRUE ~ award  # Keep original if no match
+  )
+}
+
+
+
+player_season_icons <- PlayerAwards %>%
+  mutate(normalized_award = normalize_award(Award)) %>%
+  left_join(awards_key, by = c("normalized_award" = "award")) %>%
+  filter(!is.na(icon_name)) %>%
+  group_by(Winner, Year) %>%
+  summarise(
+    unique_icons = paste(icon_name[order(order)], collapse = ","),
+    all_icons = paste(icon_name, collapse = " "),
+    total_awards = n(),
+    awards_won = paste(unique(normalized_award), collapse = ", "),
+    .groups = "drop") %>%
+  arrange(Year, Winner) %>%
+  select(Winner, Year, unique_icons)
+
+sheet_write(data = player_season_icons, ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Player_Notes")
+
+```
+
+
+```{r Update Files}
+GameData <- load_nba_player_box(2021:2025)
+
+GameData <- GameData %>%
+  filter(!team_display_name %in% c("Team LeBron", "Team Durant", "Team Giannis", "Western Conf All-Stars", "Eastern Conf All-Stars", "Team Shaq", "Team Chuck", "Team Candace", "Team Kenny")) %>%
+  filter(season_type == 2) %>%
+  filter(game_id != 401734908 & game_id != 401607495)
+  
+Rosters2021 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2021")
+Rosters2022 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2022")
+Rosters2023 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2023")
+Rosters2024 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2024")
+Rosters2025 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2025")
+Rosters2026 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Rosters_2026")
+Rosters <- rbind(Rosters2021,Rosters2022,Rosters2023,Rosters2024,Rosters2025,Rosters2026)
+remove(Rosters2021, Rosters2022, Rosters2023, Rosters2024, Rosters2025, Rosters2026)
+Games <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "All-Time Games")
+Schedule <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Schedule")
+Players <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Players")
+TeamInfo <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Team Information")
+PlayoffBracket <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "PlayoffBracket")
+PlayoffLines <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "PlayoffLines")
+Careers <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Player_Career_History")
+TeamStats <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Team_Stats_Current")
+TeamStats2 <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Team_Stats_History")
+TeamPeriodStats <- rbind(TeamStats,TeamStats2)
+remove(TeamStats,TeamStats2)
+IllegalRosters <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Illegal_Rosters")
+Standings <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Standings")
+ISTStandings <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "IST_Standings")
+RecordMatrix <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Record_Matrix")
+TeamTotalStats <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "TeamTotalStats")
+TeamHistoryNotes <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Team_History_Notes")
+PlayerNotes <- range_speedread(ss = "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg", sheet = "Player_Notes")
+
+
+
+
+
+
+ActivePlayers <- GameData %>%
+  left_join(Players, by = c('athlete_display_name' = 'ESPNPlayer')) %>%
+  left_join(Schedule, by = c('game_date' = 'Date')) %>%
+  left_join(Rosters, by = c('FantraxID' = 'PlayerID', 'Year', 'Day' = 'Period')) %>%
+  filter(Status == "ACTIVE") %>%
+  filter(is.na(minutes) == F) %>%
+  mutate(plus_minus = as.numeric(plus_minus),
+         PM = plus_minus,
+         FGM2 = field_goals_made - three_point_field_goals_made,
+         FGA2 = field_goals_attempted - three_point_field_goals_attempted,
+         FGM3 = three_point_field_goals_made,
+         FGA3 = three_point_field_goals_attempted,
+         AST = assists,
+         BLK = blocks,
+         DREB = defensive_rebounds,
+         FTA = free_throws_attempted,
+         FTM = free_throws_made,
+         MP = minutes,
+         OREB = offensive_rebounds,
+         PTS = points,
+         STL = steals,
+         TOV = turnovers,
+         `2P%` = FGM2/FGA2,
+         `3P%` = FGM3/FGA3,
+         `FT%` = FTM/FTA,
+         `TS%` = PTS/(2*(FGA2+FGA3+0.44*FTA)),
+         Location = ifelse(home_away == "away", "@", ""),
+         Result = ifelse(team_winner == T, "W, ", "L, "),
+         Result = paste0(Result, team_score, "-", opponent_team_score),
+         `2P` = paste0(FGM2,"/",FGA2),
+         `3P` = paste0(FGM3,"/",FGA3),
+         FT = paste0(FTM,"/",FTA),
+         PM = ifelse(PM >= 0, paste0("+",PM), PM)) %>%    
+  select(Team, athlete_display_name, game_date, team_abbreviation, Location, opponent_team_abbreviation, Result, MP, `TS%`, `2P`, `2P%`, `3P`, `3P%`, FT, `FT%`, PTS, OREB, DREB, AST, STL, BLK, TOV, PM)
+
+saveRDS(ActivePlayers, "activeplayers.rds")
+saveRDS(IllegalRosters, "illegalrosters.rds")
+saveRDS(Careers, "careers.rds")
+saveRDS(GameData, "gamedata.rds")
+saveRDS(Games, "games.rds")
+saveRDS(Players, "players.rds")
+saveRDS(PlayoffBracket, "playoffbracket.rds")
+saveRDS(PlayoffLines, "playofflines.rds")
+saveRDS(Rosters, "rosters.rds")
+saveRDS(Schedule, "schedule.rds")
+saveRDS(TeamInfo, "teaminfo.rds")
+saveRDS(TeamPeriodStats, "teamperiodstats.rds")
+saveRDS(Standings, "standings.rds")
+saveRDS(ISTStandings, "iststandings.rds")
+saveRDS(RecordMatrix, "recordmatrix.rds")
+saveRDS(RecordMatrix, "recordmatrix.rds")
+saveRDS(TeamTotalStats, "teamtotalstats.rds")
+saveRDS(TeamHistoryNotes, "teamhistorynotes.rds")
+saveRDS(PlayerNotes, "playernotes.rds")
+
+
+
+```
+
+

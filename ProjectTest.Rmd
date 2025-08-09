@@ -1,0 +1,248 @@
+---
+title: "ProjectA"
+author: "McCade Pearson"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@300;400;600;700&display=swap');
+
+body {
+  background-color: #0D1117;
+  color: #F0F3F5;
+  font-family: 'Barlow Semi Condensed', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+}
+
+/* TOC Styling - Outside main container */
+#TOC {
+  background-color: #1C1F26 !important;
+  border: 2px solid #3E92CC !important;
+  border-radius: 8px !important;
+  padding: 20px !important;
+  margin-bottom: 20px !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+#TOC ul {
+  list-style-type: none !important;
+  padding-left: 0 !important;
+}
+
+#TOC li {
+  margin: 8px 0 !important;
+}
+
+#TOC a {
+  color: #6FB1FC !important;
+  text-decoration: none !important;
+  font-weight: 400 !important;
+  display: block !important;
+  padding: 5px 10px !important;
+  border-radius: 4px !important;
+  transition: all 0.3s ease !important;
+}
+
+#TOC a:hover {
+  background-color: #3E92CC !important;
+  color: #F0F3F5 !important;
+}
+
+#TOC .tocify-header {
+  color: #C3DDFD !important;
+  font-weight: 600 !important;
+  font-size: 1.1em !important;
+  margin-bottom: 10px !important;
+}
+
+/* Floating TOC specific styles */
+.tocify {
+  background-color: #1C1F26 !important;
+  border: 2px solid #3E92CC !important;
+  border-radius: 8px !important;
+}
+
+.tocify-header {
+  color: #C3DDFD !important;
+}
+
+.tocify-subheader {
+  background-color: transparent !important;
+}
+
+.tocify-item {
+  background-color: transparent !important;
+}
+
+.main-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: #1C1F26;
+  padding: 40px;
+  border: 2px solid #3E92CC;
+  border-radius: 8px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #C3DDFD;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+h1 {
+  font-size: 2.2em;
+  text-align: center;
+  border-bottom: 3px solid #3E92CC;
+  padding-bottom: 10px;
+}
+
+h2 {
+  font-size: 1.8em;
+  color: #6FB1FC;
+}
+
+h3 {
+  font-size: 1.4em;
+  color: #326DA8;
+}
+
+/* Fixed code block styling */
+pre {
+  background-color: #0D1117 !important;
+  border: 1px solid #3E92CC !important;
+  border-radius: 5px !important;
+  padding: 15px !important;
+  overflow-x: auto !important;
+  color: #F0F3F5 !important;
+}
+
+code {
+  background-color: #1C1F26 !important;
+  color: #C3DDFD !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  color: #F0F3F5 !important;
+}
+
+/* Python syntax highlighting */
+.sourceCode {
+  background-color: #0D1117 !important;
+  color: #F0F3F5 !important;
+}
+
+.sourceCode .kw { color: #ff7b72; } /* keywords */
+.sourceCode .dt { color: #79c0ff; } /* data types */
+.sourceCode .dv { color: #a5d6ff; } /* decimal values */
+.sourceCode .bn { color: #a5d6ff; } /* base n */
+.sourceCode .fl { color: #a5d6ff; } /* floats */
+.sourceCode .ch { color: #a5d6ff; } /* chars */
+.sourceCode .st { color: #a5d6ff; } /* strings */
+.sourceCode .co { color: #8b949e; } /* comments */
+.sourceCode .ot { color: #d2a8ff; } /* other */
+.sourceCode .al { color: #f85149; } /* alerts */
+.sourceCode .fu { color: #d2a8ff; } /* functions */
+.sourceCode .er { color: #f85149; } /* errors */
+
+a {
+  color: #6FB1FC;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #C3DDFD;
+  text-decoration: underline;
+}
+
+blockquote {
+  border-left: 4px solid #3E92CC;
+  margin: 20px 0;
+  padding-left: 20px;
+  color: #C3DDFD;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+
+th, td {
+  border: 1px solid #3E92CC;
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #326DA8;
+  color: #F0F3F5;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background-color: #1C1F26;
+}
+
+.author, .date {
+  text-align: center;
+  color: #6FB1FC;
+  font-size: 1.1em;
+}
+
+.insight-box {
+  background-color: #1D3557;
+  border-left: 4px solid #6FB1FC;
+  padding: 15px;
+  margin: 20px 0;
+  border-radius: 5px;
+}
+</style>
+
+# Set Up
+
+```{python setup}
+print("A")
+```
+
+# Part 1
+
+```{python Part1}
+print("A")
+```
+
+# Part 2
+
+```{python Part2}
+print("A")
+```
+
+# Part 3
+
+```{python Part3}
+print("A")
+```
+
+# Part 4
+
+```{python Part4}
+print("A")
+```
+
+# Part 5
+
+```{python Part5}
+print("A")
+```
