@@ -18,7 +18,7 @@ Games2 <- Games %>%
   pull()
 
 for(i in 1:length(Games2)) {
-  sys.sleep(1)
+  Sys.sleep(1)
 POST(url = discord_webhook, body = list(content = paste("Posted at", Sys.time(), Games2[i])))}
 
      
