@@ -1,6 +1,18 @@
 library(httr)
 library(jsonlite)
 library(googlesheets4)
+library(tidyverse)
+
+
+league_id <- "u9f8f7o9mavp4dt1"
+url <- paste0("https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=", league_id)
+response <- GET(url, add_headers(Cookie = paste0("JSESSIONID=")))
+league_info <- content(response, as = "text", encoding = "UTF-8")
+league_data <- fromJSON(league_info, flatten = TRUE)
+matchups_nested <- league_data$matchups
+matchups_expanded1 <- matchups_nested %>%
+  unnest(matchupList) %>%
+  mutate(Year = 2026)
 
 league_id <- "ka3frpayly11teos"
 url <- paste0("https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=", league_id)

@@ -1,0 +1,307 @@
+---
+title: "NCFL Rosters"
+author: "McCade Pearson"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@300;400;600;700&display=swap');
+
+body {
+  background-color: #0D1117;
+  color: #F0F3F5;
+  font-family: 'Barlow Semi Condensed', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+}
+
+.main-container {
+  width: 100%;
+  max-width: none;   /* removes the 1000px cap */
+  margin: 0;         /* removes centering margin */
+  background-color: #1C1F26;
+  padding: 40px;
+  border: 2px solid #3E92CC;
+  border-radius: 8px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #C3DDFD;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+h1 {
+  font-size: 2.2em;
+  text-align: center;
+  border-bottom: 3px solid #3E92CC;
+  padding-bottom: 10px;
+}
+
+h2 {
+  font-size: 1.8em;
+  color: #6FB1FC;
+}
+
+h3 {
+  font-size: 1.4em;
+  color: #326DA8;
+}
+
+pre {
+  background-color: #0D1117;
+  border: 1px solid #3E92CC;
+  border-radius: 5px;
+  padding: 15px;
+  overflow-x: auto;
+}
+
+code {
+  background-color: #1C1F26;
+  color: #C3DDFD;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+a {
+  color: #6FB1FC;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #C3DDFD;
+  text-decoration: underline;
+}
+
+blockquote {
+  border-left: 4px solid #3E92CC;
+  margin: 20px 0;
+  padding-left: 20px;
+  color: #C3DDFD;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+
+th, td {
+  border: 1px solid #3E92CC;
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background-color: #326DA8;
+  color: #F0F3F5;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background-color: #1C1F26;
+}
+
+.author, .date {
+  text-align: center;
+  color: #6FB1FC;
+  font-size: 1.1em;
+}
+</style>
+
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(httr)
+library(jsonlite)
+library(googlesheets4)
+library(nflreadr)
+library(gt)
+library(htmltools)
+library(gtExtras)
+
+GetPlayers <- function() {
+  # Bring in the player information
+  player_response <- httr::GET("https://api.sleeper.app/v1/players/nfl",
+                               config(ssl_verifypeer = 0))
+  
+  if (httr::status_code(player_response) == 200) {
+    message("Player API call success")
+    player_content <- httr::content(player_response, "text")
+    player_parsed <- jsonlite::fromJSON(player_content)
+    
+    # Initialize an empty dataframe with specified columns
+    player_ids <- names(player_parsed)
+    player_df <- tibble::tibble(
+      player_id = NA_character_,
+      player_name = NA_character_,
+      player_position = NA_character_,
+      injury_status = NA_character_
+    ) %>% tidyr::drop_na()
+    
+    # Loop through player IDs and extract relevant data
+    for (i in seq_along(player_ids)) {
+      player_of_interest <- player_ids[i]
+      specific_player_data <- player_parsed[[player_of_interest]]
+      
+      new_row <- tibble::tibble(
+        player_id = player_of_interest,
+        player_name = specific_player_data[['full_name']],
+        player_position = specific_player_data[['position']],
+        injury_status = specific_player_data[['injury_status']]
+      )
+      
+      player_df <- dplyr::bind_rows(player_df, new_row)
+    }
+    
+    return(player_df)
+  } else {
+    stop(paste0("API call failed with status code ", httr::status_code(player_response)))
+  }
+}
+sheet_key <- "1dE2dwV8DEtmg22YHic_V_7hndXLy_faL0MKB7FOaJzA"
+Designations <- range_read(sheet_key, sheet = "Player_List")
+2
+SnapCounts <- nflreadr::load_snap_counts() %>%
+  filter(offense_snaps >= 1) %>%
+  filter(week <= 14) %>%
+  group_by(player, pfr_player_id) %>%
+  summarize(GP = n()) %>%
+  select(-pfr_player_id)
+
+Players <- GetPlayers()
+Rosters <- GET("https://api.sleeper.app/v1/league/1266532194239664128/rosters", config(ssl_verifypeer = 0))
+Rosters <- content(Rosters, "text")
+Rosters <- fromJSON(Rosters)
+FinalRosters <- Rosters %>%
+  unnest(players) %>%
+  left_join(Players, c('players' = 'player_id')) %>%
+  filter(player_position %in% c('QB','RB','WR','TE')) %>%
+  select(roster_id, player_name, player_position) %>%
+  left_join(Designations, by = c('player_name' = 'Player')) %>%
+  left_join(SnapCounts, by = c('player_name' = 'player')) %>%
+  mutate(
+    GP = ifelse(is.na(GP), 0, GP),
+    player_position = factor(player_position, levels = c("QB", "RB", "WR", "TE")),
+    Classification = factor(Classification, levels = c("Senior", "Junior", "Sophomore", "Freshman")),
+    Redshirted = ifelse(Redshirted == "Yes", "shirt", "far fa-square"),
+    GP = if_else(GP <= 4 & Redshirted == "far fa-square", "kit-medical", "far fa-square"),
+    Taxi = if_else(Classification == "Freshman" & Redshirted == "far fa-square", 'taxi', "far fa-square"),
+    roster_id = case_when(
+      roster_id == 1 ~ "tksimpson14",
+      roster_id == 2 ~ "Sweezzy",
+      roster_id == 3 ~ "sterlingcole",
+      roster_id == 4 ~ "perc3val",
+      roster_id == 5 ~ "ThongBonestorm",
+      roster_id == 6 ~ "McCadeP8",
+      roster_id == 7 ~ "TobesEA",
+      roster_id == 8 ~ "DickLongshaft",
+      TRUE ~ NA_character_
+    ))
+
+GetRosterGT <- function(Team) {
+
+FinalRosters %>%
+  filter(roster_id == Team) %>%
+  select(player_position, player_name, Classification, Redshirted, Taxi, GP) %>%
+  arrange(Classification, player_position, desc(Redshirted)) %>%
+  group_by(Classification) %>%
+  gt() %>%
+  cols_align(columns = everything(), align = 'center') %>%
+  cols_align(columns = player_name, align = 'left') %>%
+  cols_label(player_position = "POS",
+             player_name = "Player",
+             Redshirted = "RS") %>%
+  gt_theme_538() %>%
+  fmt_icon(Redshirted) %>%
+  fmt_icon(GP) %>%
+  fmt_icon(Taxi) %>%
+  tab_header(title = md(Team)) %>%
+  tab_style(style = cell_fill(color = "#c05e85"), locations = cells_body(rows = player_position == "QB")) %>%
+  tab_style(style = cell_fill(color = "#46a2ca"), locations = cells_body(rows = player_position == "WR")) %>%
+  tab_style(style = cell_fill(color = "#73c3a6"), locations = cells_body(rows = player_position == "TE")) %>%
+  tab_style(style = cell_fill(color = "#cc8c4a"), locations = cells_body(rows = player_position == "RB"))}
+GetRosterPosition <- function(Team) {
+  
+  FinalRosters %>%
+    filter(player_position == Team) %>%
+    mutate(roster_id = substr(roster_id,1,3)) %>%
+    select(player_position,roster_id, player_name, Classification, Redshirted, Taxi, GP) %>%
+    arrange(Classification, roster_id, desc(Redshirted)) %>%
+    group_by(Classification) %>%
+    gt() %>%
+    cols_align(columns = everything(), align = 'center') %>%
+    cols_align(columns = player_name, align = 'left') %>%
+    cols_label(roster_id = "Team",
+               player_name = "Player",
+               Redshirted = "RS") %>%
+    gt_theme_538() %>%
+    fmt_icon(Redshirted) %>%
+    fmt_icon(GP) %>%
+    fmt_icon(Taxi) %>%
+    cols_hide(player_position) %>%
+    tab_header(title = md(Team)) %>%
+    tab_style(style = cell_fill(color = "#c05e85"), locations = cells_body(rows = player_position == "QB")) %>%
+    tab_style(style = cell_fill(color = "#46a2ca"), locations = cells_body(rows = player_position == "WR")) %>%
+    tab_style(style = cell_fill(color = "#73c3a6"), locations = cells_body(rows = player_position == "TE")) %>%
+    tab_style(style = cell_fill(color = "#cc8c4a"), locations = cells_body(rows = player_position == "RB"))}
+```
+
+
+```{r cars, echo=FALSE}
+div(
+  style = "display: flex; gap: 7px;",
+  div(GetRosterGT("McCadeP8")),
+  div(GetRosterGT("tksimpson14")),
+  div(GetRosterGT("Sweezzy")),
+  div(GetRosterGT("sterlingcole"))
+)
+div(
+  style = "display: flex; gap: 7px;",
+  div(GetRosterGT("perc3val")),
+  div(GetRosterGT("ThongBonestorm")),
+  div(GetRosterGT("TobesEA")),
+  div(GetRosterGT("DickLongshaft"))
+)
+```
+
+```{r, echo=FALSE}
+div(
+  style = "display: flex; gap: 7px;",
+  div(GetRosterPosition("QB")),
+  div(GetRosterPosition("RB")),
+  div(GetRosterPosition("WR")),
+  div(GetRosterPosition("TE"))
+)
+```
+
+```{r}
+Designations %>%
+  left_join(SnapCounts, by = c('Player' = 'player')) %>%
+  filter(Redshirted == "No") %>%
+  mutate(GP = ifelse(is.na(GP) == T, 0, GP),
+         Classification = factor(Classification, levels = c("Senior", "Junior", "Sophomore", "Freshman"))) %>%
+  filter(GP == 4) %>%
+  select(-Redshirted, -GP) %>%
+  arrange(Classification, Player) %>%
+gt() %>%
+    cols_align(columns = everything(), align = 'center') %>%
+    cols_align(columns = Player, align = 'left') %>%
+    gt_theme_538() %>%
+    tab_header(title = md("Players with Four Games Played heading into Week 5"))
+```
+
