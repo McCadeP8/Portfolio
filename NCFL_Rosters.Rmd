@@ -289,7 +289,7 @@ div(
 )
 ```
 
-```{r}
+```{r, echo=FALSE}
 Designations %>%
   left_join(SnapCounts, by = c('Player' = 'player')) %>%
   filter(Redshirted == "No") %>%
@@ -299,9 +299,9 @@ Designations %>%
   select(-Redshirted, -GP) %>%
   arrange(Classification, Player) %>%
 gt() %>%
+    gt_theme_espn() %>%
     cols_align(columns = everything(), align = 'center') %>%
     cols_align(columns = Player, align = 'left') %>%
-    gt_theme_538() %>%
     tab_header(title = md("Players with Four Games Played heading into Week 5"))
 ```
 
