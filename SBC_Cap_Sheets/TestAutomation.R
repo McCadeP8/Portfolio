@@ -1,14 +1,31 @@
-print(getwd())
-print(list.files("SBC_Cap_Sheets/SBC_Bref"))
-
 library(httr)
 library(tidyverse)
 
 Games <- readRDS("SBC_Cap_Sheets/SBC_Bref/games.rds")
+Schedule <- readRDS("SBC_Cap_Sheets/SBC_Bref/schedule.rds")
+
+Schedule2 <- Schedule %>%
+  filter(Year == 2025) %>%
+  group_by(Period) %>%
+  mutate(MaxDay = max(Day)) %>%
+  filter(Day == MaxDay) %>%
+  ungroup() %>%
+  select(Date) %>%
+  mutate(Date = Date+1) %>%
+  pull()
+
 
 discord_webhook <- "https://discord.com/api/webhooks/1396720354034057326/IBOVLxOQ4xKmk2VEAX6fBgWRrsc6SZJSlMlcQVF0LovCM9wpqeivQqBMdTf4kNZHYmyv"
 
-PeriodA <- as.integer(Sys.Date() - as.Date("2025-08-07"))
+Today <- Sys.Date()-336
+
+if (Today %in% Schedule2) {
+  
+PeriodA <- Schedule %>%
+  filter(Year == 2025) %>%
+  filter(Date == Today) %>%
+  select(Period) %>%
+  pull()
 
 Games2 <- Games %>%
   filter(Year == 2025) %>%
@@ -18,7 +35,27 @@ Games2 <- Games %>%
   pull()
 
 for(i in 1:length(Games2)) {
-  Sys.sleep(30)
-POST(url = discord_webhook, body = list(content = paste(i, " Posted at", Sys.time(), Games2[i])))}
+POST(url = discord_webhook, body = list(content = paste(i, " Posted at", Sys.time(), Games2[i])))
+  Sys.sleep(30)}
+
+} else {
+  
+Schedule3 <- Schedule %>%
+  filter(Year == 2025) %>%
+  filter(Date == Today) %>%
+  select(Period) %>%
+  pull()
+
+Schedule4 <- Schedule %>%
+  filter(Year == 2025) %>%
+  filter(Period == Schedule3) %>%
+  arrange(desc(Date)) %>%
+  select(Date) %>%
+  head(1) %>%
+  pull()
+  
+POST(url = discord_webhook, body = list(content = paste0("The Matchups from Period ",Schedule3, " are still going and will end on ", Schedule4)))
+
+}
 
      
