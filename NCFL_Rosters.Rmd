@@ -187,6 +187,14 @@ Players <- GetPlayers()
 Rosters <- GET("https://api.sleeper.app/v1/league/1266532194239664128/rosters", config(ssl_verifypeer = 0))
 Rosters <- content(Rosters, "text")
 Rosters <- fromJSON(Rosters)
+
+TaxiRosters <- Rosters %>%
+  unnest(taxi) %>%
+  left_join(Players, c('taxi' = 'player_id')) %>%
+  select(player_name) %>%
+  pull()
+
+
 FinalRosters <- Rosters %>%
   unnest(players) %>%
   left_join(Players, c('players' = 'player_id')) %>%
@@ -200,7 +208,7 @@ FinalRosters <- Rosters %>%
     Classification = factor(Classification, levels = c("Senior", "Junior", "Sophomore", "Freshman")),
     Redshirted = ifelse(Redshirted == "Yes", "shirt", "far fa-square"),
     GP = if_else(GP <= 4 & Redshirted == "far fa-square", "kit-medical", "far fa-square"),
-    Taxi = if_else(Classification == "Freshman" & Redshirted == "far fa-square", 'taxi', "far fa-square"),
+    Taxi = if_else(player_name %in% TaxiRosters, 'taxi', "far fa-square"),
     roster_id = case_when(
       roster_id == 1 ~ "tksimpson14",
       roster_id == 2 ~ "Sweezzy",
@@ -295,13 +303,13 @@ Designations %>%
   filter(Redshirted == "No") %>%
   mutate(GP = ifelse(is.na(GP) == T, 0, GP),
          Classification = factor(Classification, levels = c("Senior", "Junior", "Sophomore", "Freshman"))) %>%
-  filter(GP == 4) %>%
+  filter(GP > 4) %>%
   select(-Redshirted, -GP) %>%
   arrange(Classification, Player) %>%
 gt() %>%
     gt_theme_espn() %>%
     cols_align(columns = everything(), align = 'center') %>%
     cols_align(columns = Player, align = 'left') %>%
-    tab_header(title = md("Players with Four Games Played heading into Week 5"))
+    tab_header(title = md("Players with Four Games Played heading into Week 6"))
 ```
 

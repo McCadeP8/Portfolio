@@ -15,7 +15,6 @@ Schedule2 <- Schedule %>%
   pull()
 
 
-discord_webhook <- "https://discord.com/api/webhooks/1396720354034057326/IBOVLxOQ4xKmk2VEAX6fBgWRrsc6SZJSlMlcQVF0LovCM9wpqeivQqBMdTf4kNZHYmyv"
 
 Today <- Sys.Date()-336
 
