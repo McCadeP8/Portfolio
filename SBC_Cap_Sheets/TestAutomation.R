@@ -16,7 +16,7 @@ Schedule2 <- Schedule %>%
 
 discord_webhook <- "https://discord.com/api/webhooks/1396720354034057326/IBOVLxOQ4xKmk2VEAX6fBgWRrsc6SZJSlMlcQVF0LovCM9wpqeivQqBMdTf4kNZHYmyv"
 
-Today <- Sys.Date()-336
+Today <- Sys.Date()-335
 
 if (Today %in% Schedule2) {
   
