@@ -303,14 +303,18 @@ Designations %>%
   filter(Redshirted == "No") %>%
   mutate(GP = ifelse(is.na(GP) == T, 0, GP),
          Classification = factor(Classification, levels = c("Senior", "Junior", "Sophomore", "Freshman"))) %>%
-  filter(GP == 4) %>%
+  filter(GP <= 4) %>%
   arrange(-GP) %>%
-  select(-Redshirted, -GP) %>%
-  arrange(Classification, Player) %>%
+  select(-Redshirted) %>%
+  arrange(-GP, Classification, Player) %>%
+  filter(Player != "Kenneth Walker") %>%
+  filter(Player != "Tyrone Tracy") %>%
+  filter(Player != "Oronde Gadsden") %>%
+  filter(Player != "Tre' Harris") %>%
 gt() %>%
     gt_theme_espn() %>%
     cols_align(columns = everything(), align = 'center') %>%
     cols_align(columns = Player, align = 'left') %>%
-    tab_header(title = md("Players with Four Games Played heading into Week 7"))
+    tab_header(title = md("Redshirts"))
 ```
 
