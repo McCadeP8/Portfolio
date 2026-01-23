@@ -54,4 +54,4 @@ if selected_hobies:
 else:
     df = df.copy()  # or leave df unchanged
 
-st.dataframe(styled, use_container_width=True)
+st.dataframe(df, use_container_width=True)
