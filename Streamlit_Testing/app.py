@@ -41,7 +41,7 @@ if subscribe:
     st.write("Thank you for subscribing!")
  # hifhd
 
-@st.cache_data
+@st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
     df = pd.read_csv(csv_url)
