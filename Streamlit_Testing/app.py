@@ -54,10 +54,4 @@ if selected_hobies:
 else:
     df = df.copy()  # or leave df unchanged
 
-styled = (
-    df.style
-      .format({"Y2026": "${:,.0f}"})
-      .background_gradient(subset=["Y2026"], cmap="Greens")
-)
-
 st.dataframe(styled, use_container_width=True)
