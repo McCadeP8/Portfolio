@@ -28,7 +28,7 @@ with st.sidebar:
         text_color = "#FFFFFF"
     else:
         bg_color = "#35654D"  # gold example
-        text_color = "#000000"  # navy
+        text_color = "#FFFFFF"  # navy
 
     st.markdown(
         f"""
