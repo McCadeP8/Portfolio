@@ -113,6 +113,7 @@ with col2:
     inactive_df = (df[df["Type"] == "Non-Active Players"].drop(columns=["Type"]))
     st.subheader("Active Players")
     st.dataframe(active_df, use_container_width=True)
-    st.subheader("Non-Active Players")
-    st.dataframe(inactive_df, use_container_width=True)
+    if not inactive_df.empty:
+        st.subheader("Non-Active Players")
+        st.dataframe(inactive_df, use_container_width=True)
 
