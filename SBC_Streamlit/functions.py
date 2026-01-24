@@ -1,6 +1,5 @@
 import pandas as pd
 import streamlit as st
-import re
 from data import type_colors
 
 @st.cache_data(ttl=120)
@@ -16,14 +15,14 @@ def get_pictures() -> pd.DataFrame:
     df = df.drop(columns=["Picture"])
     return df
 
-def style_salaries(row):
+def style_salaries(row, type_colors):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
-        if col.isdigit():
+        if col in ['2026','2027','2028','2029','2030','2031','2032']:
             type_col = f"Type{col}"
             if type_col in row.index:
                 contract_type = row[type_col]
-                color = type_colors.get(contract_type, None)
+                color = type_colors.get(contract_type)
                 if color:
                     styles[i] = f"background-color: {color}; color: black;"
     return styles
