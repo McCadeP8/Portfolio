@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import re
 
 @st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
