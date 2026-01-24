@@ -19,10 +19,8 @@ def get_pictures() -> pd.DataFrame:
 def style_salaries(row):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
-        match = re.match(r"\d{4}", col)
-        if match:
-            year = match.group(1)
-            type_col = f"Type{year}"
+        if col.isdigit():
+            type_col = f"Type{col}"
             if type_col in row.index:
                 contract_type = row[type_col]
                 color = type_colors.get(contract_type, None)
@@ -30,7 +28,6 @@ def style_salaries(row):
                     styles[i] = f"background-color: {color}; color: black;"
     return styles
 
-# comment
 def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
