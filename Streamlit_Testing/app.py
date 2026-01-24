@@ -8,8 +8,16 @@ st.set_page_config(
 
 st.title("CSV Data Viewer")
 
-col1, col2 = st.columns([3, 2])
+col1, col2 = st.columns([4, 1])
 with col1:
+    st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+    <style>
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Audiowide', cursive;
+        }
+    </style>
+""", unsafe_allow_html=True)
     st.header("Vegas Blackjack")
     st.header(":bar_chart: Data from Google Sheets CSV Export")
     st.caption("Author: @McCadeP8")
