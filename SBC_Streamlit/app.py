@@ -1,5 +1,5 @@
 import streamlit as st
-from functions import get_data, get_pictures, style_salaries
+from functions import get_data, get_pictures
 from data import team_info, active_players
 
 df = get_data()
