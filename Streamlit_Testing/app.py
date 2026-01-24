@@ -16,6 +16,7 @@ with st.sidebar:
 bg_color = team_info[SelectedTeam]["bg"]
 text_color = team_info[SelectedTeam]["text"]
 team_logo = team_info[SelectedTeam]["logo"]
+nickname = team_info[SelectedTeam]["nickname"]
 
 st.markdown(
     f"""
@@ -39,7 +40,7 @@ with col1:
     st.title("CSV Data Viewer")
     st.header(":bar_chart: Data from Google Sheets CSV Export")
     st.caption("Author: @McCadeP8")
-    st.header("Vegas Blackjack")
+    st.header(SelectedTeam, nickname)
 with col2:
     st.image(team_logo, width=250)
 
