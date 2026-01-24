@@ -132,46 +132,46 @@ with col1:
     st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "Currently Owed and Paid", border = True, format = "dollar")
 
 with col2:
-active_df = (
-    df[df["Type"] == "Active Players"]
-    .drop(columns=["Type", "Team", "Y2023", "Y2024", "Y2025",
-                   "Type2023", "Type2024", "Type2025"])
-)
+    active_df = (
+        df[df["Type"] == "Active Players"]
+        .drop(columns=["Type", "Team", "Y2023", "Y2024", "Y2025",
+                    "Type2023", "Type2024", "Type2025"])
+    )
 
-inactive_df = (
-    df[df["Type"] == "Non-Active Players"]
-    .drop(columns=["Type", "Team", "Y2023", "Y2024", "Y2025",
-                   "Type2023", "Type2024", "Type2025"])
-)
+    inactive_df = (
+        df[df["Type"] == "Non-Active Players"]
+        .drop(columns=["Type", "Team", "Y2023", "Y2024", "Y2025",
+                    "Type2023", "Type2024", "Type2025"])
+    )
 
-# ---- Active Players ----
-st.subheader("🟢 Active Players")
+    # ---- Active Players ----
+    st.subheader("🟢 Active Players")
 
-styled_active = (
-    active_df.style
-    .apply(style_salaries, axis=1)
-    .format({c: "${:,.0f}" for c in active_df.columns if c.startswith("Y")})
-)
-
-st.dataframe(
-    styled_active,
-    use_container_width=True,
-    hide_index=True
-)
-
-# ---- Non-Active Players ----
-if not inactive_df.empty:
-    st.subheader("⚪ Non-Active Players")
-
-    styled_inactive = (
-        inactive_df.style
+    styled_active = (
+        active_df.style
         .apply(style_salaries, axis=1)
-        .format({c: "${:,.0f}" for c in inactive_df.columns if c.startswith("Y")})
+        .format({c: "${:,.0f}" for c in active_df.columns if c.startswith("Y")})
     )
 
     st.dataframe(
-        styled_inactive,
+        styled_active,
         use_container_width=True,
         hide_index=True
     )
+
+    # ---- Non-Active Players ----
+    if not inactive_df.empty:
+        st.subheader("⚪ Non-Active Players")
+
+        styled_inactive = (
+            inactive_df.style
+            .apply(style_salaries, axis=1)
+            .format({c: "${:,.0f}" for c in inactive_df.columns if c.startswith("Y")})
+        )
+
+        st.dataframe(
+            styled_inactive,
+            use_container_width=True,
+            hide_index=True
+        )
 
