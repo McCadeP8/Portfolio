@@ -83,7 +83,7 @@ with tab1:
         active_player_df = (active_player_df.style
             .apply(style_salaries, axis=1, type_colors=type_colors)
             .format({c: "${:,.0f}" for c in active_player_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(active_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=("", "Player", "2026", "2027", "2028", "2029", "2030","2031", "2032"), column_config={"": st.column_config.ImageColumn("")})
+        st.dataframe(active_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026", "2027", "2028", "2029", "2030","2031", "2032"), column_config={" ": st.column_config.ImageColumn(" ")})
 
 with tab2:
     st.markdown("This section is under construction.2")

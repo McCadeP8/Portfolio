@@ -35,7 +35,7 @@ def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> p
     type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
-    df = df.rename(columns={'Picture_Online': ''})
+    df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})    
     return df
 
