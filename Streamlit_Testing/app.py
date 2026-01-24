@@ -12,33 +12,12 @@ st.header(":bar_chart: Data from Google Sheets CSV Export")
 st.caption("Author: @McCadeP8")
 
 with st.sidebar:
-    st.header("Parameters")
+    st.header("Filters")
     st.divider()
-    st.markdown("""
-    TEST
-    """)
-    
-    name = st.text_input("Enter your name:", "Guest")
-    st.write(f"Hello, {name}")
 
-    age = st.number_input("Enter your age:", min_value=0, max_value=120, value=25)
-    st.write(f"You are {age} year(s) old")
-
-    height = st.slider("Select your height (in cm):", min_value=50, max_value=250, value=170)
-    st.write(f"Your height is {height} cm")
-
-    options = ["Red", "Green", "Blue", "Yellow"]
-    favorite_color = st.selectbox("Select your favorite color:", options)
-    st.write(f"Your favorite color is {favorite_color}")
-
-    hobbies = ["Boise", "Vegas"]
-    selected_hobies = st.multiselect("Select your hobbies:", hobbies)
-    st.write(f"Your hobbies are: {', '.join(selected_hobies)}")
-
-    subscribe = st.checkbox("Subscribe to newsletter")
-    if subscribe:
-        st.write("Thank you for subscribing!")
-
+    Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
+    SelectedTeams = st.multiselect("Select your hobbies:", Teams)
+    st.write(f"Your hobbies are: {', '.join(SelectedTeams)}")
 
 @st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
@@ -48,9 +27,14 @@ def get_data() -> pd.DataFrame:
 
 df = get_data()
 
-if selected_hobies:
-    df = df[df["Team"].isin(selected_hobies)]
-else:
-    df = df.copy()  # or leave df unchanged
+col1, col2 = st.columns(2)
+with col1:
+    st.text("Full DataFrame: 35,256")
 
-st.dataframe(df, use_container_width=True)
+with col2:
+    if SelectedTeams:
+        df = df[df["Team"].isin(SelectedTeams)]
+    else:
+        df = df.copy()  # or leave df unchanged
+
+    st.dataframe(df, use_container_width=True)
