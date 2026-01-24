@@ -151,5 +151,5 @@ with col2:
                           .apply(style_salaries, axis=1)
                           .format({c: "${:,.0f}" for c in inactive_df.columns if c.startswith("Y")})
                           .hide(columns=type_cols2))
-    st.dataframe(styled_inactive, use_container_width=True, hide_index=True)
+        st.dataframe(styled_inactive, use_container_width=True, hide_index=True)
 
