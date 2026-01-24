@@ -32,7 +32,7 @@ with col1:
     st.text("Full DataFrame: 35,256")
 
 with col2:
-    st.header({SelectedTeam})
+    st.header(f"{SelectedTeam} Cap Sheet for 2025-26 Season")
     if SelectedTeams:
         df = df[df["Team"].isin(SelectedTeams)]
     else:
