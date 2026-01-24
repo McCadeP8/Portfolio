@@ -1,45 +1,9 @@
-import pandas as pd
 import streamlit as st
-import re
-
-@st.cache_data(ttl=120)
-def get_data() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
-    df = pd.read_csv(csv_url)
-    return df
-
-@st.cache_data(ttl=120)
-def get_pictures() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1180190150"
-    df = pd.read_csv(csv_url)
-    df = df.drop(columns=["Picture"])
-    return df
+from functions import get_data, get_pictures, style_salaries
+from data import team_colors
 
 df = get_data()
 pics = get_pictures()
-
-type_colors = {
-    "Guaranteed": "#FCE5CD",   
-    "Non-Guaranteed": "#F4CCCC",
-    "Team": "#CFE2F3",         
-    "Dead": "#D9D9D9",         
-    "Unrestricted": "#D9D2E9", 
-    "Restricted": "#CFFFFF", 
-}
-
-def style_salaries(row):
-    styles = [""] * len(row)
-    for i, col in enumerate(row.index):
-        match = re.match(r"Y(\d{4})", col)
-        if match:
-            year = match.group(1)
-            type_col = f"Type{year}"
-            if type_col in row.index:
-                contract_type = row[type_col]
-                color = type_colors.get(contract_type, None)
-                if color:
-                    styles[i] = f"background-color: {color}; color: black;"
-    return styles
 
 with st.sidebar:
     st.header("Filters")
@@ -48,38 +12,6 @@ with st.sidebar:
     Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
 
-team_colors = {
-    "Albuquerque": {"bg": "#D72C2C", "text": "white"},
-    "Anaheim": {"bg": "#DA0F10", "text": "white"},
-    "Anchorage": {"bg": "#454B55", "text": "white"},
-    "Austin": {"bg": "#040404", "text": "white"},
-    "Baltimore": {"bg": "#00CED1", "text": "black"},
-    "Birmingham": {"bg": "#853500", "text": "white"},
-    "Boise": {"bg": "#744529", "text": "white"},
-    "Buffalo": {"bg": "#152238", "text": "white"},
-    "Cincinnati": {"bg": "#FFEA61", "text": "black"},
-    "Columbus": {"bg": "#CD7F32", "text": "white"},
-    "Des Moines": {"bg": "#1B1E23", "text": "white"},
-    "El Paso": {"bg": "#F8EFAE", "text": "black"},
-    "Honolulu": {"bg": "#CDC0C0", "text": "black"},
-    "Jacksonville": {"bg": "#36454F", "text": "white"},
-    "Kentucky": {"bg": "#663399", "text": "white"},
-    "Lansing": {"bg": "#B9EFE1", "text": "black"},
-    "Lincoln": {"bg": "#FC6A03", "text": "black"},
-    "Little Rock": {"bg": "#710193", "text": "white"},
-    "Manchester": {"bg": "#D7F2FA", "text": "black"},
-    "Nashville": {"bg": "#450012", "text": "white"},
-    "Pittsburgh": {"bg": "#F1F137", "text": "black"},
-    "Providence": {"bg": "#BF0A30", "text": "white"},
-    "San Diego": {"bg": "#31439B", "text": "white"},
-    "San Jose": {"bg": "#97EBF4", "text": "black"},
-    "Seattle": {"bg": "#006241", "text": "white"},
-    "St. Louis": {"bg": "#B7B1AE", "text": "black"},
-    "Tampa Bay": {"bg": "#FC8EAC", "text": "black"},
-    "Tulsa": {"bg": "#333333", "text": "white"},
-    "Vancouver": {"bg": "#17780D", "text": "black"},
-    "Vegas": {"bg": "#35654D", "text": "white"},
-}
 
 bg_color = team_colors[SelectedTeam]["bg"]
 text_color = team_colors[SelectedTeam]["text"]
@@ -99,7 +31,6 @@ st.set_page_config(
     page_title = "Data View",
     page_icon = ":bar_chart",
     layout = "wide")
-
 
 
 col1, col2 = st.columns([4, 1])
@@ -132,6 +63,7 @@ else:
     df = df.copy()
 
 col1, col2 = st.columns([1, 4])
+
 with col1:
     st.metric(label = "Players", value = 17, delta = 10, delta_color = "off", help = "Number of Players on Active and Inactive Roster", border = True, format = "plain", delta_arrow = "off")
     st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "Salary Cap Hit and Cap Space", border = True, format = "dollar")
