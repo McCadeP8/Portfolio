@@ -33,9 +33,12 @@ team_info = {
     "San Diego": {"bg": "#31439B", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam0INacAIC29O?format=png&name=small"},
     "San Jose": {"bg": "#97EBF4", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam0EvaIAAcI_3?format=png&name=4096x4096"},
     "Seattle": {"bg": "#006241", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam1s5aAAIanao?format=png&name=4096x4096"},
-    "St. Louis": {"bg": "#B7B1AE", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam1ugaEAUkbUi?format=large"},
+    "St. Louis": {"bg": "#B7B1AE", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam1ugaEAUkbUi?format=png&name=large"},
     "Tampa Bay": {"bg": "#FC8EAC", "text": "black", "logo": "https://pbs.twimg.com/media/F-yCFNbbkAAgIEt?format=jpg&name=4096x4096"},
     "Tulsa": {"bg": "#333333", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam1s7aQAAiSsW?format=png&name=small"},
     "Vancouver": {"bg": "#17780D", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam4eaaMAAW6Pz?format=png&name=small"},
     "Vegas": {"bg": "#35654D", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096"},
 }
+
+
+
