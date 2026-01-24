@@ -60,13 +60,13 @@ st.set_page_config(
     page_icon = ":bar_chart",
     layout = "wide")
 
-st.title("CSV Data Viewer")
-st.header(":bar_chart: Data from Google Sheets CSV Export")
-st.caption("Author: @McCadeP8")
 
 
 col1, col2 = st.columns([4, 1])
 with col1:
+    st.title("CSV Data Viewer")
+    st.header(":bar_chart: Data from Google Sheets CSV Export")
+    st.caption("Author: @McCadeP8")
     st.header("Vegas Blackjack")
 with col2:
     st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=250)
