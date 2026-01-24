@@ -17,7 +17,6 @@ with st.sidebar:
 
     Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
-    st.write(f"Your hobbies are: {', '.join(SelectedTeams)}")
 
 @st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
