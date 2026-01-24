@@ -46,13 +46,13 @@ st.divider()
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric(label = "Salary Cap", value = 154647000, delta = "10.0%", delta_color = "normal", help = "Salary Cap for the 2025-26 Season", border = True, format = "dollar")
+    st.metric(label = "Salary Cap", value = 154647000, delta = "10.0%", delta_color = "normal", help = "Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border = True, format = "dollar")
 with col2:
-    st.metric(label = "Luxury Tax", value = 187895000, delta = "10.0%", delta_color = "normal", help = "Luxury Tax for the 2025-26 Season", border = True, format = "dollar")
+    st.metric(label = "Luxury Tax", value = 187895000, delta = "10.0%", delta_color = "normal", help = "Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border = True, format = "dollar")
 with col3:
-    st.metric(label = "Apron #1", value = 195945000, delta = "10.0%", delta_color = "normal", help = "First Apron for the 2025-26 Season", border = True, format = "dollar")
+    st.metric(label = "Apron #1", value = 195945000, delta = "10.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
 with col4:
-    st.metric(label = "Apron #2", value = 207824000, delta = "10.0%", delta_color = "normal", help = "Second Apron for the 2025-26 Season", border = True, format = "dollar")
+    st.metric(label = "Apron #2", value = 207824000, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
 
 st.divider()
 
@@ -65,12 +65,12 @@ else:
 col1, col2 = st.columns([1, 4])
 
 with col1:
-    st.metric(label = "Players", value = 17, delta = 10, delta_color = "off", help = "Number of Players on Active and Inactive Roster", border = True, format = "plain", delta_arrow = "off")
-    st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "Salary Cap Hit and Cap Space", border = True, format = "dollar")
-    st.metric(label = "Tax Total", value = 210917997, delta = -23022997, delta_color = "normal", help = "Tax Hit and Space", border = True, format = "dollar")
-    st.metric(label = "Apron Space", value = None, help = "Tax Hit and Space", border = True, format = "dollar")
-    st.metric(label = "Entry Fee", value = 73.31, delta = 20.39, delta_color = "inverse", help = "Entry Fee for Roster and Tax Fee", border = True, format = "dollar")
-    st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "Currently Owed and Paid", border = True, format = "dollar")
+    st.metric(label = "Players", value = 17, delta = 10, delta_color = "off", help = "The first number shows active roster players (up to 14, plus up to 3 inactive/IR). Teams must carry at least 12 active players, or face penalties after 14 days. The second number represents non-active players, including overseas players, draft rights, retired, and waived players and there is no limit. To qualify as overseas, a drafted player must have spent their entire SBC career abroad, with status locking on opening night.", border = True, format = "plain", delta_arrow = "off")
+    st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap.", border = True, format = "dollar")
+    st.metric(label = "Tax Total", value = 210917997, delta = -23022997, delta_color = "normal", help = "The first number shows total team salary against the luxury tax, including all active and inactive player salaries and incomplete roster charges. Unlike the real NBA, rookie and second-year undrafted fees are not included. The second number shows remaining space relative to the Luxury Tax.", border = True, format = "dollar")
+    st.metric(label = "Apron Space", value = None, delta = None, help = "The first value shows how far the team is from the applicable cap, while the second indicates whether the team is uncapped, capped at the first apron, or capped at the second apron.", border = True, format = "dollar")
+    st.metric(label = "Entry Fee", value = 73.31, delta = 20.39, delta_color = "inverse", help = "The league uses a 3,000,000‑1 scale. The first number is the base entry fee, calculated from the Tax Total plus a $3.00 In-Season Tournament fee. The second number shows the Luxury Tax penalty for the season, scaled as a payable fee.", border = True, format = "dollar")
+    st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border = True, format = "dollar")
 
 with col2:
     df = df.merge(pics, on="Player", how="left")
