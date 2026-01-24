@@ -40,8 +40,5 @@ def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> p
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ''})
     df = df.rename(columns={col: col[1:] for col in year_cols})    
-    df = (df.style
-        .apply(style_salaries, axis=1, type_colors=type_colors)
-        .format({c: "${:,.0f}" for c in df.columns if re.match(r"\d{4}", c)}))
     return df
 
