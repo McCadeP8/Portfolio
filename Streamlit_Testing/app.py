@@ -57,24 +57,14 @@ text_color = team_colors[SelectedTeam]["text"]
 st.markdown(
     f"""
     <style>
-    /* Metric label */
-    div[data-testid="metric-container"] div:first-child {{
-        color: {text_color} !important;
-    }}
-
-    /* Metric value */
-    div[data-testid="metric-container"] div:nth-child(2) {{
-        color: {text_color} !important;
-    }}
-
-    /* Metric delta */
-    div[data-testid="metric-container"] div:nth-child(3) {{
-        color: {text_color} !important;
+    .stApp {{
+        background-color: {bg_color};
+        color: {text_color};
     }}
     </style>
     """,
-    unsafe_allow_html=True
-)
+    unsafe_allow_html=True)
+
 
 @st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
@@ -90,21 +80,17 @@ col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.metric(label = "Salary Cap", value = 154647000, delta = "10.0%", delta_color = "normal", help = "Salary Cap for the 2025-26 Season", border = True, format = "dollar")
 with col2:
-    st.header(":heavy_dollar_sign: Luxury Tax")
-    st.text("$187,895,000")
+    st.metric(label = "Luxury Tax", value = 187895000, delta = "10.0%", delta_color = "normal", help = "Luxury Tax for the 2025-26 Season", border = True, format = "dollar")
 with col3:
-    st.header(":heavy_dollar_sign: Apron #1")
-    st.text("$195,945,000")
+    st.metric(label = "Apron #1", value = 195945000, delta = "10.0%", delta_color = "normal", help = "First Apron for the 2025-26 Season", border = True, format = "dollar")
 with col4:
-    st.header(":heavy_dollar_sign: Apron #2")
-    st.text("$207,824,000")
+    st.metric(label = "Apron #2", value = 207824000, delta = "10.0%", delta_color = "normal", help = "Second Apron for the 2025-26 Season", border = True, format = "dollar")
 
 st.divider()
 
 col1, col2 = st.columns([1, 4])
 with col1:
-    st.header(":heavy_dollar_sign: Cap Space")
-    st.text("-$89,842,135")
+    st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "Salary Cap Hit and Cap Space", border = True, format = "dollar")
     st.divider()
     st.header(":heavy_dollar_sign: Tax Space")
     st.text("-$23,022,997")
