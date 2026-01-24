@@ -142,7 +142,7 @@ with col2:
     styled_active = (active_df.style
                     .apply(style_salaries, axis=1)
                     .format({c: "${:,.0f}" for c in active_df.columns if c.startswith("Y")})
-                    .hide(columns=type_cols, axis="columns"))  
+                    .drop(columns=type_cols))
     st.dataframe(styled_active, use_container_width=True, hide_index=True)
     if not inactive_df.empty:
         type_cols2 = [c for c in inactive_df.columns if c.startswith("Type")]
@@ -150,6 +150,6 @@ with col2:
         styled_inactive = (inactive_df.style
                           .apply(style_salaries, axis=1)
                           .format({c: "${:,.0f}" for c in inactive_df.columns if c.startswith("Y")})
-                    .hide(columns=type_cols2, axis="columns"))  
+                          .drop(columns=type_cols2))  
         st.dataframe(styled_inactive, use_container_width=True, hide_index=True)
 
