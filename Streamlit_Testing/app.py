@@ -99,11 +99,9 @@ st.divider()
 
 col1, col2 = st.columns([1, 4])
 with col1:
-    st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "Salary Cap Hit and Cap Space", border = True, format = "$%d")
-    st.divider()
-    st.metric(label = "Tax Total", value = 210917997, delta = -23022997, delta_color = "normal", help = "Tax Hit and Space", border = True, format = "$%d")
-    st.divider()
-    st.metric(label = "Apron Space", value = None, help = "Tax Hit and Space", border = True, format = "$%d")
+    st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "Salary Cap Hit and Cap Space", border = True, format = "$%,d")
+    st.metric(label = "Tax Total", value = 210917997, delta = -23022997, delta_color = "normal", help = "Tax Hit and Space", border = True, format = "$%,d")
+    st.metric(label = "Apron Space", value = None, help = "Tax Hit and Space", border = True, format = "$%,d")
 
 
 
