@@ -19,7 +19,7 @@ def get_pictures() -> pd.DataFrame:
 def style_salaries(row):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
-        match = re.match(r"Y(\d{4})", col)
+        match = re.match(r"\d{4}", col)
         if match:
             year = match.group(1)
             type_col = f"Type{year}"
@@ -29,3 +29,19 @@ def style_salaries(row):
                 if color:
                     styles[i] = f"background-color: {color}; color: black;"
     return styles
+
+def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Team'] == SelectedTeam]
+    df = df[df['Type'] == 'Active Players']
+    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
+    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    cols_to_keep = ['Picture_Online'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ''})
+    df = df.rename(columns={col: col[1:] for col in year_cols})    
+    df = (df.style
+        .apply(style_salaries, axis=1, type_colors=type_colors)
+        .format({c: "${:,.0f}" for c in df.columns if re.match(r"\d{4}", c)}))
+    return df
+
