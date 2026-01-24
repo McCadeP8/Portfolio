@@ -10,7 +10,7 @@ st.title("CSV Data Viewer")
 
 col1, col2 = st.columns([4, 1])
 with col1:
-    st.header("Vegas Blackjack"")
+    st.header("Vegas Blackjack")
 with col2:
     st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=500)
 
