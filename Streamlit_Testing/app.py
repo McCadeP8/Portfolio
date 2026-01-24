@@ -16,7 +16,7 @@ with st.sidebar:
     st.divider()
 
     Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
-    SelectedTeams = st.multiselect("Select your hobbies:", Teams)
+    SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
     st.write(f"Your hobbies are: {', '.join(SelectedTeams)}")
 
 @st.cache_data(ttl=120)
@@ -32,9 +32,10 @@ with col1:
     st.text("Full DataFrame: 35,256")
 
 with col2:
+    st.header({SelectedTeam})
     if SelectedTeams:
         df = df[df["Team"].isin(SelectedTeams)]
     else:
-        df = df.copy()  # or leave df unchanged
+        df = df.copy()
 
     st.dataframe(df, use_container_width=True)
