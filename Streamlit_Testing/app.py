@@ -30,14 +30,14 @@ st.markdown(
     unsafe_allow_html=True)
 
 st.set_page_config(
-    page_title = "Data View",
-    page_icon = ":bar_chart",
+    page_title = "SBC Cap Sheets",
+    page_icon = ":basketball:",
     layout = "wide")
 
 
 col1, col2 = st.columns([4, 1])
 with col1:
-    st.title(":basketball::trophy: SBC Fantasy Basketball League :trophy::basketball:")
+    st.title(":basketball::trophy:SBC Fantasy Basketball League:trophy::basketball:")
     st.header(f"{SelectedTeam} {nickname}")
 with col2:
     st.image(team_logo, width=250)
