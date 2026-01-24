@@ -1,6 +1,12 @@
 import pandas as pd
 import streamlit as st
 
+@st.cache_data(ttl=120)
+def get_data() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
+    df = pd.read_csv(csv_url)
+    return df
+
 with st.sidebar:
     st.header("Filters")
     st.divider()
@@ -71,18 +77,6 @@ with col1:
 with col2:
     st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=250)
 
-
-
-
-
-@st.cache_data(ttl=120)
-def get_data() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
-    df = pd.read_csv(csv_url)
-    return df
-
-df = get_data()
-
 st.divider()
 
 col1, col2, col3, col4 = st.columns(4)
@@ -112,7 +106,12 @@ with col1:
     st.metric(label = "Entry Fee", value = 73.31, delta = 20.39, delta_color = "inverse", help = "Entry Fee for Roster and Tax Fee", border = True, format = "dollar")
     st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "Currently Owed and Paid", border = True, format = "dollar")
 
-
-
 with col2:
-    st.dataframe(df, width = "content", height = "content", hide_index = True, placeholder = "—")
+    df = get_data()
+    active_df = (df[df["Type"] == "Active Players"].drop(columns=["Type"]))
+    inactive_df = (df[df["Type"] == "Non-Active Players"].drop(columns=["Type"]))
+    st.subheader("Active Players")
+    st.dataframe(active_df, use_container_width=True)
+    st.subheader("Non-Active Players")
+    st.dataframe(inactive_df, use_container_width=True)
+
