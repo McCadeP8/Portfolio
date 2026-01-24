@@ -14,7 +14,7 @@ with col1:
     st.header(":bar_chart: Data from Google Sheets CSV Export")
     st.caption("Author: @McCadeP8")
 with col2:
-    st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=500)
+    st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=200)
 
 
 
