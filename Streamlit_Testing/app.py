@@ -97,6 +97,12 @@ with col4:
 
 st.divider()
 
+st.header(f"{SelectedTeam} Cap Sheet for 2025-26 Season")
+if SelectedTeam:
+    df = df[df["Team"] == SelectedTeam]
+else:
+    df = df.copy()
+
 col1, col2 = st.columns([1, 4])
 with col1:
     st.metric(label = "Players", value = 17, delta = 10, delta_color = "off", help = "Number of Players on Active and Inactive Roster", border = True, format = "dollar")
@@ -104,15 +110,9 @@ with col1:
     st.metric(label = "Tax Total", value = 210917997, delta = -23022997, delta_color = "normal", help = "Tax Hit and Space", border = True, format = "dollar")
     st.metric(label = "Apron Space", value = None, help = "Tax Hit and Space", border = True, format = "dollar")
     st.metric(label = "Entry Fee", value = 73.31, delta = 20.39, delta_color = "inverse", help = "Entry Fee for Roster and Tax Fee", border = True, format = "dollar")
-    st.metric(label = "Net Fee", value = 93.31, delta = 93.31, delta_color = "normal", help = "Currently Owed and Paid", border = True, format = "dollar")
+    st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "Currently Owed and Paid", border = True, format = "dollar")
 
 
 
 with col2:
-    st.header(f"{SelectedTeam} Cap Sheet for 2025-26 Season")
-    if SelectedTeam:
-        df = df[df["Team"] == SelectedTeam]
-    else:
-        df = df.copy()
-
     st.dataframe(df, width = "content", height = "content", hide_index = True, placeholder = "—")
