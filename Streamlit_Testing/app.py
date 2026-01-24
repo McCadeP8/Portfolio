@@ -141,11 +141,11 @@ with col2:
     styled_active = (active_df.style
                     .apply(style_salaries, axis=1)
                     .format({c: "${:,.0f}" for c in active_df.columns if c.startswith("Y")}))
-    st.dataframe(styled_active, use_container_width=True, hide_index=True)
+    st.dataframe(styled_active, width = "content", height = "content", hide_index=True, placeholder="—", column_order=("Player", "Y2026", "Y2027", "Y2028", "Y2029", "Y2030"))
     if not inactive_df.empty:
         st.subheader("Non-Active Players")
         styled_inactive = (inactive_df.style
                           .apply(style_salaries, axis=1)
                           .format({c: "${:,.0f}" for c in inactive_df.columns if c.startswith("Y")}))
-        st.dataframe(styled_inactive, use_container_width=True, hide_index=True)
+        st.dataframe(styled_inactive, width = "content", height = "content", hide_index=True, placeholder="—", column_order=("Player", "Y2026", "Y2027", "Y2028", "Y2029", "Y2030"))
 
