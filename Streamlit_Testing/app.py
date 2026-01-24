@@ -26,6 +26,20 @@ def get_data() -> pd.DataFrame:
 
 df = get_data()
 
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.header(":heavy_dollar_sign: Salary Cap")
+    st.text("$154,647,000")
+with col2:
+    st.header(":heavy_dollar_sign: Luxury Tax")
+    st.text("$187,895,000")
+with col3:
+    st.header(":heavy_dollar_sign: Apron #1")
+    st.text("$195,945,000")
+with col4:
+    st.header(":heavy_dollar_sign: Apron #2")
+    st.text("$207,824,000")
+
 col1, col2 = st.columns([1, 4])
 with col1:
     st.header(":heavy_dollar_sign: Salary Cap")
