@@ -44,7 +44,7 @@ with col2:
 
 st.divider()
 
-tab1, tab2 = st.tabs([f"{SelectedTeam} Cap Sheet"], "League Overview")
+tab1, tab2 = st.tabs([f"{SelectedTeam} Cap Sheet", "League Overview"])
 
 with tab1:
 
