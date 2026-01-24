@@ -16,30 +16,29 @@ with st.sidebar:
     st.divider()
     st.markdown("""
     TEST
-    """
-    )
+    """)
+    
+    name = st.text_input("Enter your name:", "Guest")
+    st.write(f"Hello, {name}")
 
-name = st.text_input("Enter your name:", "Guest")
-st.write(f"Hello, {name}")
+    age = st.number_input("Enter your age:", min_value=0, max_value=120, value=25)
+    st.write(f"You are {age} year(s) old")
 
-age = st.number_input("Enter your age:", min_value=0, max_value=120, value=25)
-st.write(f"You are {age} year(s) old")
+    height = st.slider("Select your height (in cm):", min_value=50, max_value=250, value=170)
+    st.write(f"Your height is {height} cm")
 
-height = st.slider("Select your height (in cm):", min_value=50, max_value=250, value=170)
-st.write(f"Your height is {height} cm")
+    options = ["Red", "Green", "Blue", "Yellow"]
+    favorite_color = st.selectbox("Select your favorite color:", options)
+    st.write(f"Your favorite color is {favorite_color}")
 
-options = ["Red", "Green", "Blue", "Yellow"]
-favorite_color = st.selectbox("Select your favorite color:", options)
-st.write(f"Your favorite color is {favorite_color}")
+    hobbies = ["Boise", "Vegas"]
+    selected_hobies = st.multiselect("Select your hobbies:", hobbies)
+    st.write(f"Your hobbies are: {', '.join(selected_hobies)}")
 
-hobbies = ["Boise", "Vegas"]
-selected_hobies = st.multiselect("Select your hobbies:", hobbies)
-st.write(f"Your hobbies are: {', '.join(selected_hobies)}")
+    subscribe = st.checkbox("Subscribe to newsletter")
+    if subscribe:
+        st.write("Thank you for subscribing!")
 
-subscribe = st.checkbox("Subscribe to newsletter")
-if subscribe:
-    st.write("Thank you for subscribing!")
- # hifhd
 
 @st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
