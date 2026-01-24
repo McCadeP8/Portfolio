@@ -99,12 +99,9 @@ st.divider()
 
 col1, col2 = st.columns([1, 4])
 with col1:
-    st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "Salary Cap Hit and Cap Space", border = True, format = "$%,d")
-    st.metric(label = "Tax Total", value = 210917997, delta = -23022997, delta_color = "normal", help = "Tax Hit and Space", border = True, format = "$%,d")
-    st.metric(label = "Apron Space", value = None, help = "Tax Hit and Space", border = True, format = "$%,d")
-
-
-
+    st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "Salary Cap Hit and Cap Space", border = True, format = "dollar")
+    st.metric(label = "Tax Total", value = 210917997, delta = -23022997, delta_color = "normal", help = "Tax Hit and Space", border = True, format = "dollar")
+    st.metric(label = "Apron Space", value = None, help = "Tax Hit and Space", border = True, format = "dollar")
 
 with col2:
     st.header(f"{SelectedTeam} Cap Sheet for 2025-26 Season")
@@ -113,4 +110,4 @@ with col2:
     else:
         df = df.copy()
 
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width = "content", height = "content", hide_index = True, placeholder = "—")
