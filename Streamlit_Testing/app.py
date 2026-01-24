@@ -8,15 +8,15 @@ st.set_page_config(
 
 st.title("CSV Data Viewer")
 
-col1, col2 = st.columns([4, 1])
+col1, col2 = st.columns([3, 2])
 with col1:
     st.header("Vegas Blackjack")
+    st.header(":bar_chart: Data from Google Sheets CSV Export")
+    st.caption("Author: @McCadeP8")
 with col2:
     st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=500)
 
 
-st.header(":bar_chart: Data from Google Sheets CSV Export")
-st.caption("Author: @McCadeP8")
 
 with st.sidebar:
     st.header("Filters")
