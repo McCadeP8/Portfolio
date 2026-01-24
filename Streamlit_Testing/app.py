@@ -37,10 +37,8 @@ st.set_page_config(
 
 col1, col2 = st.columns([4, 1])
 with col1:
-    st.title("CSV Data Viewer")
-    st.header(":bar_chart: Data from Google Sheets CSV Export")
-    st.caption("Author: @McCadeP8")
-    st.header(SelectedTeam, nickname)
+    st.title(":basketball::trophy: SBC Fantasy Basketball League :trophy::basketball:")
+    st.header(f"{SelectedTeam} {nickname}")
 with col2:
     st.image(team_logo, width=250)
 
