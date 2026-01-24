@@ -51,22 +51,30 @@ team_colors = {
     "Vegas": {"bg": "#35654D", "text": "white"},
 }
 
-# Apply selected team's color
 bg_color = team_colors[SelectedTeam]["bg"]
 text_color = team_colors[SelectedTeam]["text"]
 
-# Inject CSS for background and text
 st.markdown(
     f"""
     <style>
-    .stApp {{
-        background-color: {bg_color};
-        color: {text_color};
+    /* Metric label */
+    div[data-testid="metric-container"] div:first-child {{
+        color: {text_color} !important;
+    }}
+
+    /* Metric value */
+    div[data-testid="metric-container"] div:nth-child(2) {{
+        color: {text_color} !important;
+    }}
+
+    /* Metric delta */
+    div[data-testid="metric-container"] div:nth-child(3) {{
+        color: {text_color} !important;
     }}
     </style>
     """,
-    unsafe_allow_html=True)
-
+    unsafe_allow_html=True
+)
 
 @st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
