@@ -7,6 +7,8 @@ def get_data() -> pd.DataFrame:
     df = pd.read_csv(csv_url)
     return df
 
+df = get_data()
+
 with st.sidebar:
     st.header("Filters")
     st.divider()
@@ -107,7 +109,6 @@ with col1:
     st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "Currently Owed and Paid", border = True, format = "dollar")
 
 with col2:
-    df = get_data()
     active_df = (df[df["Type"] == "Active Players"].drop(columns=["Type"]))
     inactive_df = (df[df["Type"] == "Non-Active Players"].drop(columns=["Type"]))
     st.subheader("Active Players")
