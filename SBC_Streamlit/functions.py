@@ -30,6 +30,7 @@ def style_salaries(row):
                     styles[i] = f"background-color: {color}; color: black;"
     return styles
 
+# comment
 def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
