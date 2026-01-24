@@ -32,8 +32,8 @@ with col1:
 
 with col2:
     st.header(f"{SelectedTeam} Cap Sheet for 2025-26 Season")
-    if SelectedTeams:
-        df = df[df["Team"].isin(SelectedTeams)]
+    if SelectedTeam:
+        df = df[df["Team"].isin(SelectedTeam)]
     else:
         df = df.copy()
 
