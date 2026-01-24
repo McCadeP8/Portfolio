@@ -109,8 +109,8 @@ with col1:
     st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "Currently Owed and Paid", border = True, format = "dollar")
 
 with col2:
-    active_df = (df[df["Type"] == "Active Players"].drop(columns=["Type"]))
-    inactive_df = (df[df["Type"] == "Non-Active Players"].drop(columns=["Type"]))
+    active_df = (df[df["Type"] == "Active Players"].drop(columns=["Type","Team","Y2023", "Y2024", "Y2025"]))
+    inactive_df = (df[df["Type"] == "Non-Active Players"].drop(columns=["Type","Team", "Y2023", "Y2024", "Y2025"]))
     st.subheader("Active Players")
     st.dataframe(active_df, use_container_width=True)
     if not inactive_df.empty:
