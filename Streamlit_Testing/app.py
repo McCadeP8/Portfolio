@@ -18,6 +18,31 @@ with st.sidebar:
     Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
 
+    filter_value = st.selectbox("Choose theme", ["Light", "Dark", "Custom"])
+
+    if filter_value == "Light":
+        bg_color = "#FFFFFF"
+        text_color = "#000000"
+    elif filter_value == "Dark":
+        bg_color = "#1E1E1E"
+        text_color = "#FFFFFF"
+    else:
+        bg_color = "#35654D"  # gold example
+        text_color = "#000000"  # navy
+
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-color: {bg_color};
+            color: {text_color};
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+
 @st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
