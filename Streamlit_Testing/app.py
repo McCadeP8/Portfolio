@@ -1,6 +1,6 @@
 import streamlit as st
 from functions import get_data, get_pictures, style_salaries
-from data import team_colors
+from data import team_info
 
 df = get_data()
 pics = get_pictures()
@@ -13,8 +13,9 @@ with st.sidebar:
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
 
 
-bg_color = team_colors[SelectedTeam]["bg"]
-text_color = team_colors[SelectedTeam]["text"]
+bg_color = team_info[SelectedTeam]["bg"]
+text_color = team_info[SelectedTeam]["text"]
+team_logo = team_info[SelectedTeam]["logo"]
 
 st.markdown(
     f"""
@@ -40,7 +41,7 @@ with col1:
     st.caption("Author: @McCadeP8")
     st.header("Vegas Blackjack")
 with col2:
-    st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=250)
+    st.image(team_logo, width=250)
 
 st.divider()
 
