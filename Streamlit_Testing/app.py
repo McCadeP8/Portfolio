@@ -30,8 +30,7 @@ st.divider()
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.header(":heavy_dollar_sign: Salary Cap")
-    st.text("$154,647,000")
+    st.metric(label = "Salary Cap", value = 154647000, delta = "10.0%", delta_color = "normal", help = "Salary Cap for the 2025-26 Season", border = True, format = "dollar")
 with col2:
     st.header(":heavy_dollar_sign: Luxury Tax")
     st.text("$187,895,000")
