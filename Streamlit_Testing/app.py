@@ -137,20 +137,17 @@ with col2:
                 .drop(columns=["Type", "Team", "Y2023", "Y2024", "Y2025", "Type2023", "Type2024", "Type2025", "Trade.Restriction"]))
     inactive_df = (df[df["Type"] == "Non-Active Players"]
                   .drop(columns=["Type", "Team", "Y2023", "Y2024", "Y2025", "Type2023", "Type2024", "Type2025", "Trade.Restriction"]))
-    type_cols = [c for c in active_df.columns if c.startswith("Type")]
     st.subheader("Active Players")
     styled_active = (active_df.style
                     .apply(style_salaries, axis=1)
-                    .format({c: "${:,.0f}" for c in active_df.columns if c.startswith("Y")})
-                    .drop(columns=type_cols))
-    styled_active = styled_active.drop(columns=type_cols)
+                    .format({c: "${:,.0f}" for c in active_df.columns if c.startswith("Y")}))
+    styled_active = styled_active.drop(columns=startswith("Type"))
     st.dataframe(styled_active, use_container_width=True, hide_index=True)
     if not inactive_df.empty:
-        type_cols2 = [c for c in inactive_df.columns if c.startswith("Type")]
         st.subheader("Non-Active Players")
         styled_inactive = (inactive_df.style
                           .apply(style_salaries, axis=1)
                           .format({c: "${:,.0f}" for c in inactive_df.columns if c.startswith("Y")}))
-        styled_inactive = styled_inactive.drop(columns=type_cols2)
+        styled_inactive = styled_inactive.drop(columns=startswith("Type"))
         st.dataframe(styled_inactive, use_container_width=True, hide_index=True)
 
