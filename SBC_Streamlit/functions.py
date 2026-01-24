@@ -39,3 +39,48 @@ def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> p
     df = df.sort_values('2026', ascending=False)
     return df
 
+def overseas_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Team'] == SelectedTeam]
+    df = df[df['Type'] == 'Non-Active Players']
+    df = df[df['Type2026'].isin(['Guaranteed', 'Unguaranteed'])]
+    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
+    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values('2026', ascending=False)
+    return df
+
+def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Team'] == SelectedTeam]
+    df = df[df['Type'] == 'Non-Active Players']
+    df = df[df['Type2026'] == "Dead"]
+    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
+    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values('2026', ascending=False)
+    return df
+
+
+def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Team'] == SelectedTeam]
+    df = df[df['Type2026'].isin(['Unrestricted', 'Restricted'])]
+    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
+    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values('2026', ascending=False)
+    return df
+
+
+
+

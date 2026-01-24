@@ -1,6 +1,6 @@
 import streamlit as st
 import re as re
-from functions import get_data, get_pictures, active_players, style_salaries
+from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players
 from data import team_info, type_colors
 
 df = get_data()
@@ -82,10 +82,40 @@ with tab1:
         active_player_df = active_players(df, pics, SelectedTeam)
         active_player_df = (active_player_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-            .format({c: "${:,.0f}" for c in active_player_df.columns if re.match(r"\d{4}", c)})
-            .set_properties(subset=[' ', '2026', '2027', '2028', '2029', '2030', '2031', '2032'], **{'text-align': 'center'})
-            .set_properties(subset=['Player'], **{'text-align': 'right'}))
+            .format({c: "${:,.0f}" for c in active_player_df.columns if re.match(r"\d{4}", c)}))
         st.dataframe(active_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026", "2027", "2028", "2029", "2030","2031", "2032"), column_config={" ": st.column_config.ImageColumn(" ")})
+        st.subheader("Overseas Players")
+        overseas_player_df = overseas_players(df, pics, SelectedTeam)
+        overseas_player_df = (overseas_player_df.style
+            .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+            .format({c: "${:,.0f}" for c in overseas_player_df.columns if re.match(r"\d{4}", c)}))
+        st.dataframe(overseas_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026", "2027", "2028", "2029", "2030","2031", "2032"), column_config={" ": st.column_config.ImageColumn(" ")})
+        st.subheader("Dead Players")
+        dead_player_df = dead_players(df, pics, SelectedTeam)
+        dead_player_df = (dead_player_df.style
+            .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+            .format({c: "${:,.0f}" for c in dead_player_df.columns if re.match(r"\d{4}", c)}))
+        st.dataframe(dead_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026", "2027", "2028", "2029", "2030","2031", "2032"), column_config={" ": st.column_config.ImageColumn(" ")})
+
+        col1, col2, col3 = st.columns([1, 1, 1])
+
+        with col1:
+            st.subheader("Free Agents")
+            free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
+            free_agent_player_df = (free_agent_player_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026"), column_config={" ": st.column_config.ImageColumn(" ")})
+
+        with col2:
+            st.subheader("Draft Rights & Retired")
+
+        with col3:
+            st.subheader("Exceptions")
+
+
+
+
 
 with tab2:
     st.markdown("This section is under construction.2")
