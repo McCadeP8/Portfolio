@@ -82,7 +82,9 @@ with tab1:
         active_player_df = active_players(df, pics, SelectedTeam)
         active_player_df = (active_player_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-            .format({c: "${:,.0f}" for c in active_player_df.columns if re.match(r"\d{4}", c)}))
+            .format({c: "${:,.0f}" for c in active_player_df.columns if re.match(r"\d{4}", c)})
+            .set_properties(subset=[' ', '2026', '2027', '2028', '2029', '2030', '2031', '2032'], **{'text-align': 'center'})
+            .set_properties(subset=['Player'], **{'text-align': 'right'}))
         st.dataframe(active_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026", "2027", "2028", "2029", "2030","2031", "2032"), column_config={" ": st.column_config.ImageColumn(" ")})
 
 with tab2:
