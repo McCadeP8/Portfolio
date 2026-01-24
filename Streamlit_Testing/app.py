@@ -7,22 +7,15 @@ st.set_page_config(
     layout = "wide")
 
 st.title("CSV Data Viewer")
+st.header(":bar_chart: Data from Google Sheets CSV Export")
+st.caption("Author: @McCadeP8")
+
 
 col1, col2 = st.columns([4, 1])
 with col1:
-    st.markdown("""
-    <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
-    <style>
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Audiowide', cursive;
-        }
-    </style>
-""", unsafe_allow_html=True)
     st.header("Vegas Blackjack")
-    st.header(":bar_chart: Data from Google Sheets CSV Export")
-    st.caption("Author: @McCadeP8")
 with col2:
-    st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=200)
+    st.image("https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", width=250)
 
 
 
