@@ -18,29 +18,54 @@ with st.sidebar:
     Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
 
-    filter_value = st.selectbox("Choose theme", ["Light", "Dark", "Custom"])
+team_colors = {
+    "Albuquerque": {"bg": "#D72C2C", "text": "white"},
+    "Anaheim": {"bg": "#DA0F10", "text": "white"},
+    "Anchorage": {"bg": "#454B55", "text": "white"},
+    "Austin": {"bg": "#040404", "text": "white"},
+    "Baltimore": {"bg": "#00CED1", "text": "black"},
+    "Birmingham": {"bg": "#853500", "text": "white"},
+    "Boise": {"bg": "#744529", "text": "white"},
+    "Buffalo": {"bg": "#152238", "text": "white"},
+    "Cincinnati": {"bg": "#FFEA61", "text": "black"},
+    "Columbus": {"bg": "#CD7F32", "text": "white"},
+    "Des Moines": {"bg": "#1B1E23", "text": "white"},
+    "El Paso": {"bg": "#F8EFAE", "text": "black"},
+    "Honolulu": {"bg": "#CDC0C0", "text": "black"},
+    "Jacksonville": {"bg": "#36454F", "text": "white"},
+    "Kentucky": {"bg": "#663399", "text": "white"},
+    "Lansing": {"bg": "#B9EFE1", "text": "black"},
+    "Lincoln": {"bg": "#FC6A03", "text": "black"},
+    "Little Rock": {"bg": "#710193", "text": "white"},
+    "Manchester": {"bg": "#D7F2FA", "text": "black"},
+    "Nashville": {"bg": "#450012", "text": "white"},
+    "Pittsburgh": {"bg": "#F1F137", "text": "black"},
+    "Providence": {"bg": "#BF0A30", "text": "white"},
+    "San Diego": {"bg": "#31439B", "text": "white"},
+    "San Jose": {"bg": "#97EBF4", "text": "black"},
+    "Seattle": {"bg": "#006241", "text": "white"},
+    "St. Louis": {"bg": "#B7B1AE", "text": "black"},
+    "Tampa Bay": {"bg": "#FC8EAC", "text": "black"},
+    "Tulsa": {"bg": "#333333", "text": "white"},
+    "Vancouver": {"bg": "#17780D", "text": "black"},
+    "Vegas": {"bg": "#35654D", "text": "white"},
+}
 
-    if filter_value == "Light":
-        bg_color = "#FFFFFF"
-        text_color = "#000000"
-    elif filter_value == "Dark":
-        bg_color = "#1E1E1E"
-        text_color = "#FFFFFF"
-    else:
-        bg_color = "#35654D"  # gold example
-        text_color = "#FFFFFF"  # navy
+# Apply selected team's color
+bg_color = team_colors[SelectedTeam]["bg"]
+text_color = team_colors[SelectedTeam]["text"]
 
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-color: {bg_color};
-            color: {text_color};
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+# Inject CSS for background and text
+st.markdown(
+    f"""
+    <style>
+    .stApp {{
+        background-color: {bg_color};
+        color: {text_color};
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True)
 
 
 @st.cache_data(ttl=120)
