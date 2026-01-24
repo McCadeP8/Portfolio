@@ -1,6 +1,6 @@
 import streamlit as st
-from functions import get_data, get_pictures
-from data import team_info, active_players
+from functions import get_data, get_pictures, active_players
+from data import team_info
 
 df = get_data()
 pics = get_pictures()
