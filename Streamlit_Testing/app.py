@@ -8,7 +8,15 @@ def get_data() -> pd.DataFrame:
     df = pd.read_csv(csv_url)
     return df
 
+@st.cache_data(ttl=120)
+def get_pictures() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1180190150"
+    df = pd.read_csv(csv_url)
+    df = df.drop(columns=["Picture"])
+    return df
+
 df = get_data()
+pics = get_pictures()
 
 type_colors = {
     "Guaranteed": "#FCE5CD",   
@@ -133,6 +141,7 @@ with col1:
     st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "Currently Owed and Paid", border = True, format = "dollar")
 
 with col2:
+    df = df.merge(pics, on="Player", how="left")
     active_df = (df[df["Type"] == "Active Players"]
                 .drop(columns=["Type", "Team", "Y2023", "Y2024", "Y2025", "Type2023", "Type2024", "Type2025", "Trade.Restriction"])
                 .sort_values(by="Y2026", ascending=False))
@@ -143,11 +152,13 @@ with col2:
     styled_active = (active_df.style
                     .apply(style_salaries, axis=1)
                     .format({c: "${:,.0f}" for c in active_df.columns if c.startswith("Y")}))
-    st.dataframe(styled_active, width = "content", height = "content", hide_index=True, placeholder="—", column_order=("Player", "Y2026", "Y2027", "Y2028", "Y2029", "Y2030","Y2031", "Y2032"))
+    st.dataframe(styled_active, width = "stretch", height = "content", hide_index=True, placeholder="—", column_order=("Picture_Online", "Player", "Y2026", "Y2027", "Y2028", "Y2029", "Y2030","Y2031", "Y2032"), column_config={"Picture_Online": st.column_config.ImageColumn("Picture_Online", width="small")}
+)
+
     if not inactive_df.empty:
         st.subheader("Non-Active Players")
         styled_inactive = (inactive_df.style
                           .apply(style_salaries, axis=1)
                           .format({c: "${:,.0f}" for c in inactive_df.columns if c.startswith("Y")}))
-        st.dataframe(styled_inactive, width = "content", height = "content", hide_index=True, placeholder="—", column_order=("Player", "Y2026", "Y2027", "Y2028", "Y2029", "Y2030", "Y2031", "Y2032"))
+        st.dataframe(styled_inactive, width = "stretch", height = "content", hide_index=True, placeholder="—", column_order=("Picture_Online", "Player", "Y2026", "Y2027", "Y2028", "Y2029", "Y2030", "Y2031", "Y2032"))
 
