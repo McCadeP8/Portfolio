@@ -26,6 +26,8 @@ def get_data() -> pd.DataFrame:
 
 df = get_data()
 
+st.divider()
+
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.header(":heavy_dollar_sign: Salary Cap")
@@ -40,20 +42,19 @@ with col4:
     st.header(":heavy_dollar_sign: Apron #2")
     st.text("$207,824,000")
 
+st.divider()
+
 col1, col2 = st.columns([1, 4])
 with col1:
-    st.header(":heavy_dollar_sign: Salary Cap")
-    st.text("$154,647,000")
+    st.header(":heavy_dollar_sign: Cap Space")
+    st.text("-$89,842,135")
     st.divider()
-    st.header(":heavy_dollar_sign: Luxury Tax")
-    st.text("$187,895,000")
+    st.header(":heavy_dollar_sign: Tax Space")
+    st.text("-$23,022,997")
     st.divider()
-    st.header(":heavy_dollar_sign: Apron #1")
-    st.text("$195,945,000")
-    st.divider()
-    st.header(":heavy_dollar_sign: Apron #2")
-    st.text("$207,824,000")
-    st.divider()
+
+
+
 
 with col2:
     st.header(f"{SelectedTeam} Cap Sheet for 2025-26 Season")
