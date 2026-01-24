@@ -15,14 +15,14 @@ def get_pictures() -> pd.DataFrame:
     df = df.drop(columns=["Picture"])
     return df
 
-def style_salaries(row, type_colors):
+def style_salaries(row):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
-        if col in ['2026','2027','2028','2029','2030','2031','2032']:
+        if col.isdigit():
             type_col = f"Type{col}"
             if type_col in row.index:
                 contract_type = row[type_col]
-                color = type_colors.get(contract_type)
+                color = type_colors.get(contract_type, None)
                 if color:
                     styles[i] = f"background-color: {color}; color: black;"
     return styles
@@ -33,7 +33,7 @@ def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> p
     df = df[df['Type'] == 'Active Players']
     year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
     type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
-    cols_to_keep = ['Picture_Online'] + year_cols + type_cols_keep
+    cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ''})
     df = df.rename(columns={col: col[1:] for col in year_cols})    
