@@ -81,7 +81,7 @@ with tab1:
         st.dataframe(active_players(df, pics, SelectedTeam), width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=("Picture_Online", "Player", "Y2026", "Y2027", "Y2028", "Y2029", "Y2030","Y2031", "Y2032"), column_config={"Picture_Online": st.column_config.ImageColumn("Picture_Online")})
 
 with tab2:
-    st.markdown("This section is under construction.")
+    st.markdown("This section is under construction.2")
 
 with tab3:
     st.markdown("This section is under construction.")
