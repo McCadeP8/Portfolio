@@ -15,7 +15,7 @@ def get_pictures() -> pd.DataFrame:
     df = df.drop(columns=["Picture"])
     return df
 
-def style_salaries(row):
+def style_salaries(row, type_colors):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
         if col.isdigit():
