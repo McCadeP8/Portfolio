@@ -117,8 +117,7 @@ with tab1:
             st.subheader("Exceptions")
             exception_df = exception_table(exceptions, SelectedTeam)
             exception_df = (exception_df.style
-              .format({"Amount": "${:,.0f}"})
-              .format({"Expiration Day": "{:%b %d}"}))
+              .format({"Amount": "${:,.0f}"}))
             st.dataframe(exception_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
 
         with col2:
