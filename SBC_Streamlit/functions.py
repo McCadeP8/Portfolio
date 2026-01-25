@@ -110,7 +110,6 @@ def exception_table(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.rename(columns={'Player': 'Exception'})
     df = df.rename(columns={'Y2026': 'Amount'})
     df = df.rename(columns={'BirdRights': 'Expiration Day'})
-    df["Expiration Day"] = pd.to_datetime(df["Expiration Day"], errors="coerce")
     df = df.sort_values('Amount', ascending=False)
     return df
 
