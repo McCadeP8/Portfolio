@@ -135,11 +135,11 @@ with tab1:
         with col2:
             free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
             if free_agent_player_df.shape[0] > 0:
-                st.subheader("Free Agents")
+                st.subheader("Upcoming Free Agents")
                 free_agent_player_df = (free_agent_player_df.style
                     .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2027"), column_config={" ": st.column_config.ImageColumn(" ")})
+                    .format({"Cap Hold": "${:,.0f}"}))
+                st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "Cap Hold"), column_config={" ": st.column_config.ImageColumn(" ")})
 
         with col3:
             draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
