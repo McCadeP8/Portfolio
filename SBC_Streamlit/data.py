@@ -35,7 +35,7 @@ team_info = {
     "San Jose": {"bg": "#97EBF4", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam0EvaIAAcI_3?format=png&name=4096x4096", "nickname": "Seagulls"},
     "Seattle": {"bg": "#006241", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam1s5aAAIanao?format=png&name=4096x4096", "nickname": "Brew"},
     "St. Louis": {"bg": "#B7B1AE", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam1ugaEAUkbUi?format=png&name=large", "nickname": "66ers"},
-    "Tampa Bay": {"bg": "#FC8EAC", "text": "black", "logo": "https://pbs.twimg.com/media/F-yCFNbbkAAgIEt?format=jpg&name=4096x4096", "nickname": "Flamingos"},
+    "Tampa Bay": {"bg": "#FC8EAC", "text": "black", "logo": "https://pbs.twimg.com/media/G_eTIH7WwAAd7eQ?format=png&name=900x900", "nickname": "Flamingos"},
     "Tulsa": {"bg": "#333333", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam1s7aQAAiSsW?format=png&name=small", "nickname": "Tornado"},
     "Vancouver": {"bg": "#17780D", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam4eaaMAAW6Pz?format=png&name=small", "nickname": "Forest"},
     "Vegas": {"bg": "#35654D", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", "nickname": "Blackjack"},
