@@ -31,7 +31,7 @@ nickname = team_info[SelectedTeam]["nickname"]
 #    unsafe_allow_html=True)
 
 st.markdown(
-    f"""
+    """
     <style>
     .stApp {{
         background-color: black;
@@ -117,7 +117,7 @@ with tab1:
             st.subheader("Exceptions")
             exception_df = exception_table(exceptions, SelectedTeam)
             exception_df = (exception_df.style
-              .format({c: "${:,.0f}" for c in Amount})
+              .format({"Amount": "${:,.0f}"})
               .format({"Expiration Day": "{:%b %d}"}))
             st.dataframe(exception_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
 

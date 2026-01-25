@@ -14,6 +14,13 @@ def get_pictures() -> pd.DataFrame:
     df = df.drop(columns=["Picture"])
     return df
 
+@st.cache_data(ttl=120)
+def get_exceptions() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1620818587"
+    df = pd.read_csv(csv_url)
+    df = df.drop(columns=["Type", "Y2027", "Y2028", "Y2029", "Y2030", "Y2031", "Y2032","Trade.Restriction", "Type2026", "Type2027", "Type2028", "Type2029", "Type2030", "Type2031", "Type2032"])
+    return df
+
 def style_salaries(row, type_colors):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
@@ -84,7 +91,6 @@ def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     return df
 
 def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[(df['Type2026'] == 'Draft Rights') | (df['Trade.Restriction'] == 'Retired')]
@@ -95,6 +101,16 @@ def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: st
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
     df = df.sort_values('2026', ascending=False)
+    return df
+
+def exception_table(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['Team'] == SelectedTeam]
+    df = df[df['Y2026'] > 0]
+    df = df.drop(columns=["Team"])
+    df = df.rename(columns={'Player': 'Exception'})
+    df = df.rename(columns={'Y2026': 'Amount'})
+    df = df.rename(columns={'BirdRights': 'Expiration Day'})
+    df = df.sort_values('Amount', ascending=False)
     return df
 
 def active_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
