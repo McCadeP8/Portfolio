@@ -1,10 +1,11 @@
 import streamlit as st
 import re as re
-from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n
+from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table
 from data import team_info, type_colors
 
 df = get_data()
 pics = get_pictures()
+exceptions = get_exceptions()
 
 with st.sidebar:
     st.header("Filters")
@@ -114,6 +115,11 @@ with tab1:
 
         with col1:
             st.subheader("Exceptions")
+            exception_df = exception_table(exceptions, SelectedTeam)
+            exception_df = (exception_df.style
+              .format({c: "${:,.0f}" for c in Amount})
+              .format({"Expiration Day": "{:%b %d}"}))
+            st.dataframe(exception_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
 
         with col2:
             draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
