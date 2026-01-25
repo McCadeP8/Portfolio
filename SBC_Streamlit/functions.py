@@ -160,7 +160,7 @@ def team_hard_cap_n(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame)
     elif hard_cap_type == "Second Apron":
         return tax_number-207824000
 
-def base_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> str:
+def base_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> float:
     payment = get_tax_total(df, SelectedTeam)
     payment = 154647000 * 0.9 if payment < 154647000 * 0.9 else payment
     payment = payment/3000000
@@ -169,3 +169,14 @@ def base_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> str
     payment = payment*rate
     payment = payment+3
     return payment
+
+def amount_paid(df: pd.DataFrame, SelectedTeam: str) -> float:
+    df = df[df['Team'] == SelectedTeam]
+    df = df["MoneyPaid"].iloc[0]
+    return df
+
+def net_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> float:
+    fee = base_fee(df, SelectedTeam, base_cap)
+    paid = amount_paid(df, SelectedTeam)
+    net_fee = fee - paid
+    return net_fee
