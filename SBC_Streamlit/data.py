@@ -5,6 +5,7 @@ type_colors = {
     "Dead": "#D9D9D9",         
     "Unrestricted": "#D9D2E9", 
     "Restricted": "#CFFFFF", 
+    "Draft Rights": "#D9D9D9",
 }
 
 team_info = {
