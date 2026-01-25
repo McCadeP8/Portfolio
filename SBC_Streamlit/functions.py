@@ -58,7 +58,7 @@ def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
     df = df[df['Type2026'] == "Dead"]
-    df = df[df["Trade.Restrictoin"] != "Retired"]
+    df = df[df["Trade.Restriction"] != "Retired"]
     year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
     type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
