@@ -59,7 +59,6 @@ with tab1:
     with col4:
         st.metric(label = "Apron #2", value = 207824000, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
 
-    st.divider()
 
     st.header(f"{SelectedTeam} Cap Sheet for 2025-26 Season")
     if SelectedTeam:
@@ -101,7 +100,7 @@ with tab1:
                 .format({c: "${:,.0f}" for c in dead_player_df.columns if re.match(r"\d{4}", c)}))
             st.dataframe(dead_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026", "2027", "2028", "2029", "2030","2031", "2032"), column_config={" ": st.column_config.ImageColumn(" ")})
 
-        col1, col2, col3 = st.columns([1, 1, 2])
+        col1, col2, col3 = st.columns([3, 2, 2])
 
         with col1:
             st.subheader("Exceptions")
