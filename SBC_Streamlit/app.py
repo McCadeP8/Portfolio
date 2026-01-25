@@ -77,6 +77,17 @@ with tab1:
     col1, col2 = st.columns([1, 4])
 
     with col1:
+        st.markdown("""
+            **Contract Type Legend**
+            <span style="background-color:#FCE5CD;padding:5px 5px;border-radius:4px;">&nbsp;</span> Guaranteed  
+            <span style="background-color:#F4CCCC;padding:10px 10px;border-radius:4px;">&nbsp;</span> Non-Guaranteed  
+            <span style="background-color:#CFE2F3;padding:15px 15px;border-radius:4px;">&nbsp;</span> Team Option 
+            <span style="background-color:#D9D2E9;padding:20px 20px;border-radius:4px;">&nbsp;</span> Unrestricted  
+            <span style="background-color:#CFFFFF;padding:25px 25px;border-radius:4px;">&nbsp;</span> Restricted  
+            <span style="background-color:#D9D9D9;padding:30px 30px;border-radius:4px;">&nbsp;</span> Dead  
+            """, unsafe_allow_html=True)
+
+
         st.metric(label = "Players", value = active_player_n(df, SelectedTeam), delta = inactive_player_n(df, SelectedTeam), delta_color = "off", help = "The first number shows active roster players (up to 14, plus up to 3 IR). Teams must carry at least 12 active players, or face penalties after 14 days. The second number represents non-active players, including overseas players, draft rights, retired, and waived players and there is no limit. To qualify as overseas, a drafted player must have spent their entire SBC career abroad, with status locking on opening night.", border = True, format = "plain", delta_arrow = "off")
         st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap.", border = True, format = "dollar")
         st.metric(label = "Tax Total", value = 210917997, delta = -23022997, delta_color = "normal", help = "The first number shows total team salary against the luxury tax, including all active and inactive player salaries and incomplete roster charges. Unlike the real NBA, rookie and second-year undrafted fees are not included. The second number shows remaining space relative to the Luxury Tax.", border = True, format = "dollar")
@@ -85,14 +96,6 @@ with tab1:
         st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border = True, format = "dollar")
 
     with col2:
-
-        st.markdown("""
-**Contract Type Legend**
-
-<span style="background-color:#A8E6CF;padding:4px 8px;border-radius:4px;">&nbsp;</span> Rookie  
-<span style="background-color:#FFD3B6;padding:4px 8px;border-radius:4px;">&nbsp;</span> Extension  
-<span style="background-color:#FFAAA5;padding:4px 8px;border-radius:4px;">&nbsp;</span> Free Agent  
-""", unsafe_allow_html=True)
 
         st.subheader("Active Players")
         active_player_df = active_players(df, pics, SelectedTeam)
