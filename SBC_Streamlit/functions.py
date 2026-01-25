@@ -27,7 +27,6 @@ def get_base_cap() -> pd.DataFrame:
     df = pd.read_csv(csv_url)
     return df
 
-
 def style_salaries(row, type_colors):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
@@ -177,6 +176,6 @@ def amount_paid(df: pd.DataFrame, SelectedTeam: str) -> float:
 
 def net_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> float:
     fee = base_fee(df, SelectedTeam, base_cap)
-    paid = amount_paid(df, SelectedTeam)
+    paid = amount_paid(base_cap, SelectedTeam)
     net_fee = fee - paid
     return net_fee
