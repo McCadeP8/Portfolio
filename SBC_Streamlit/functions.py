@@ -162,8 +162,8 @@ def team_hard_cap_n(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame)
 
 def base_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> str:
     payment = get_tax_total(df, SelectedTeam)
-    payment = payment/3000000
     payment = 154647000 * 0.9 if payment < 154647000 * 0.9 else payment
+    payment = payment/3000000
     base_cap = base_cap[base_cap['Team'] == SelectedTeam]
     rate = base_cap["Rate"].iloc[0]
     payment = payment*rate
