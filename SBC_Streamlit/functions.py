@@ -87,7 +87,7 @@ def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('2026', ascending=False)
+    df = df.sort_values('2027', ascending=False)
     return df
 
 def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -109,7 +109,7 @@ def exception_table(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.drop(columns=["Team"])
     df = df.rename(columns={'Player': 'Exception'})
     df = df.rename(columns={'Y2026': 'Amount'})
-    df = df.rename(columns={'BirdRights': 'Expiration Day'})
+    df = df.rename(columns={'BirdRights': 'Expiration Date'})
     df = df.sort_values('Amount', ascending=False)
     return df
 

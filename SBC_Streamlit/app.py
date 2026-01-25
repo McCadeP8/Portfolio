@@ -79,14 +79,15 @@ with tab1:
     with col1:
         st.markdown("""
             **Cap Sheet Legend:** \n
-            <span style="background-color:#FCE5CD;padding:8px 20px;border-radius:5px;">&nbsp;</span> Guaranteed \n 
-            <span style="background-color:#F4CCCC;padding:8px 20px;border-radius:5px;">&nbsp;</span> Non-Guaranteed \n
-            <span style="background-color:#CFE2F3;padding:8px 20px;border-radius:5px;">&nbsp;</span> Team Option \n
-            <span style="background-color:#D9D2E9;padding:8px 20px;border-radius:5px;">&nbsp;</span> Unrestricted \n
-            <span style="background-color:#CFFFFF;padding:8px 20px;border-radius:5px;">&nbsp;</span> Restricted \n
-            <span style="background-color:#D9D9D9;padding:8px 20px;border-radius:5px;">&nbsp;</span> Dead \n
+            <span style="background-color:#FCE5CD;padding:6px 20px;border-radius:5px;">&nbsp;</span> Guaranteed \n 
+            <span style="background-color:#F4CCCC;padding:6px 20px;border-radius:5px;">&nbsp;</span> Non-Guaranteed \n
+            <span style="background-color:#CFE2F3;padding:6px 20px;border-radius:5px;">&nbsp;</span> Team Option \n
+            <span style="background-color:#D9D2E9;padding:6px 20px;border-radius:5px;">&nbsp;</span> Unrestricted \n
+            <span style="background-color:#CFFFFF;padding:6px 20px;border-radius:5px;">&nbsp;</span> Restricted \n
+            <span style="background-color:#D9D9D9;padding:6px 20px;border-radius:5px;">&nbsp;</span> Dead \n
             """, unsafe_allow_html=True)
 
+        st.divider()
 
         st.metric(label = "Players", value = active_player_n(df, SelectedTeam), delta = inactive_player_n(df, SelectedTeam), delta_color = "off", help = "The first number shows active roster players (up to 14, plus up to 3 IR). Teams must carry at least 12 active players, or face penalties after 14 days. The second number represents non-active players, including overseas players, draft rights, retired, and waived players and there is no limit. To qualify as overseas, a drafted player must have spent their entire SBC career abroad, with status locking on opening night.", border = True, format = "plain", delta_arrow = "off")
         st.metric(label = "Cap Total", value = 244489135, delta = -89842135, delta_color = "normal", help = "The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap.", border = True, format = "dollar")
@@ -145,7 +146,7 @@ with tab1:
                 free_agent_player_df = (free_agent_player_df.style
                     .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                     .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026"), column_config={" ": st.column_config.ImageColumn(" ")})
+                st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2027"), column_config={" ": st.column_config.ImageColumn(" ")})
 
 
 with tab2:
