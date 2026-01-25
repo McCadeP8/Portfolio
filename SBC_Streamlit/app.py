@@ -8,9 +8,6 @@ pics = get_pictures()
 exceptions = get_exceptions()
 
 with st.sidebar:
-    st.header("Filters")
-    st.divider()
-
     Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
 
@@ -88,6 +85,15 @@ with tab1:
         st.metric(label = "Net Fee", value = 0.00, delta = 93.31, delta_color = "normal", help = "The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border = True, format = "dollar")
 
     with col2:
+
+        st.markdown("""
+**Contract Type Legend**
+
+<span style="background-color:#A8E6CF;padding:4px 8px;border-radius:4px;">&nbsp;</span> Rookie  
+<span style="background-color:#FFD3B6;padding:4px 8px;border-radius:4px;">&nbsp;</span> Extension  
+<span style="background-color:#FFAAA5;padding:4px 8px;border-radius:4px;">&nbsp;</span> Free Agent  
+""", unsafe_allow_html=True)
+
         st.subheader("Active Players")
         active_player_df = active_players(df, pics, SelectedTeam)
         active_player_df = (active_player_df.style
