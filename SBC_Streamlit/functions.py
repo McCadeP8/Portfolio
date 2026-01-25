@@ -84,6 +84,7 @@ def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     return df
 
 def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[(df['Type2026'] == 'Draft Rights') | (df['Trade.Restriction'] == 'Retired')]
@@ -96,7 +97,13 @@ def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: st
     df = df.sort_values('2026', ascending=False)
     return df
 
+def active_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['Team'] == SelectedTeam]
+    df = df[df['Type'] == 'Active Players']
+    return df.shape[0]
 
-
-
-
+def inactive_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['Team'] == SelectedTeam]
+    df = df[df['Type'] == 'Non-Active Players']
+    df = df[df['Type2026'].isin(['Guaranteed', 'Unguaranteed'])]
+    return df.shape[0]
