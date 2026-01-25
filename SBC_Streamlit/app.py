@@ -79,12 +79,12 @@ with tab1:
     with col1:
         st.markdown("""
             **Cap Sheet Legend**
-            <span style="background-color:#FCE5CD;padding:5px 5px;border-radius:4px;">&nbsp;</span> Guaranteed  
-            <span style="background-color:#F4CCCC;padding:6px 6px;border-radius:4px;">&nbsp;</span> Non-Guaranteed  
-            <span style="background-color:#CFE2F3;padding:7px 7px;border-radius:4px;">&nbsp;</span> Team Option 
-            <span style="background-color:#D9D2E9;padding:8px 8px;border-radius:4px;">&nbsp;</span> Unrestricted  
-            <span style="background-color:#CFFFFF;padding:9px 9px;border-radius:4px;">&nbsp;</span> Restricted  
-            <span style="background-color:#D9D9D9;padding:10px 10px;border-radius:4px;">&nbsp;</span> Dead  
+            <span style="background-color:#FCE5CD;padding:5px 5px;border-radius:5px;">&nbsp;</span> Guaranteed  
+            <span style="background-color:#F4CCCC;padding:5px 5px;border-radius:8px;">&nbsp;</span> Non-Guaranteed  
+            <span style="background-color:#CFE2F3;padding:5px 5px;border-radius:11px;">&nbsp;</span> Team Option 
+            <span style="background-color:#D9D2E9;padding:5px 5px;border-radius:14px;">&nbsp;</span> Unrestricted  
+            <span style="background-color:#CFFFFF;padding:5px 5px;border-radius:17px;">&nbsp;</span> Restricted  
+            <span style="background-color:#D9D9D9;padding:5px 5px;border-radius:20px;">&nbsp;</span> Dead  
             """, unsafe_allow_html=True)
 
 
