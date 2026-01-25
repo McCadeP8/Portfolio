@@ -21,6 +21,13 @@ def get_exceptions() -> pd.DataFrame:
     df = df.drop(columns=["Type", "Y2027", "Y2028", "Y2029", "Y2030", "Y2031", "Y2032","Trade.Restriction", "Type2026", "Type2027", "Type2028", "Type2029", "Type2030", "Type2031", "Type2032"])
     return df
 
+@st.cache_data(ttl=120)
+def get_base_cap() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=760630769"
+    df = pd.read_csv(csv_url)
+    return df
+
+
 def style_salaries(row, type_colors):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
@@ -137,3 +144,18 @@ def get_tax_total(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
     player_total = df['Y2026'].sum()
     return player_total
+
+def team_hard_cap(df: pd.DataFrame, SelectedTeam: str) -> str:
+    df = df[df['Team'] == SelectedTeam]
+    hard_cap = df['HardCap'].values[0]
+    return hard_cap
+
+def team_hard_cap_n(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> str:
+    tax_number = get_tax_total(df, SelectedTeam)
+    hard_cap_type = team_hard_cap(base_cap, SelectedTeam)
+    if hard_cap_type == "None":
+        return "—"
+    elif hard_cap_type == "First Apron":
+        return 195945000-tax_number
+    elif hard_cap_type == "Second Apron":
+        return 207824000-tax_number
