@@ -12,7 +12,7 @@ team_info = {
     "Albuquerque": {"bg": "#D72C2C", "text": "white", "logo": "https://pbs.twimg.com/media/Fxamop_aMAIM8OV?format=png&name=small", "nickname": "Armadillos"},
     "Anaheim": {"bg": "#DA0F10", "text": "white", "logo": "https://pbs.twimg.com/media/FxamoqBaQAAQSwY?format=png&name=small", "nickname": "Mice"},
     "Anchorage": {"bg": "#454B55", "text": "white", "logo": "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small", "nickname": "Killer Whales"},
-    "Austin": {"bg": "#040404", "text": "white", "logo": "https://pbs.twimg.com/media/Fxamop_aAAUl3cU?format=jpg&name=4096x4096", "nickname": "Bats"},
+    "Austin": {"bg": "#040404", "text": "white", "logo": "https://pbs.twimg.com/media/FxvLuE8acAAUiBQ?format=png&name=4096x4096", "nickname": "Bats"},
     "Baltimore": {"bg": "#00CED1", "text": "black", "logo": "https://pbs.twimg.com/media/Fxamr7daQAAhwSx?format=png&name=4096x4096", "nickname": "Blue Crabs"},
     "Birmingham": {"bg": "#853500", "text": "white", "logo": "https://pbs.twimg.com/media/Fxamr8GaMAE5xbG?format=png&name=small", "nickname": "Bandits"},
     "Boise": {"bg": "#744529", "text": "white", "logo": "https://pbs.twimg.com/media/Fxamr80aEAAWgO1?format=png&name=small", "nickname": "Spuds"},
