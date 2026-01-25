@@ -123,3 +123,17 @@ def inactive_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[df['Type'] == 'Non-Active Players']
     df = df[df['Type2026'].isin(['Guaranteed', 'Unguaranteed'])]
     return df.shape[0]
+
+def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: str) -> float:
+    df = df[df['Team'] == SelectedTeam]
+    player_total = df['Y2026'].sum()
+    exceptions_df = exceptions_df[exceptions_df['Team'] == SelectedTeam]
+    exceptions_df = exceptions_df[exceptions_df['Player'] != 'Minimum']
+    exceptions_total = exceptions_df['Y2026'].sum()
+    total_cap = player_total + exceptions_total
+    return total_cap
+
+def get_tax_total(df: pd.DataFrame, SelectedTeam: str) -> float:
+    df = df[df['Team'] == SelectedTeam]
+    player_total = df['Y2026'].sum()
+    return player_total
