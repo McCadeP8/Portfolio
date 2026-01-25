@@ -86,8 +86,8 @@ def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
-    df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('2027', ascending=False)
+    df = df.rename(columns={'Y2027': 'Cap Hold'})
+    df = df.sort_values('Cap Hold', ascending=False)
     return df
 
 def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
