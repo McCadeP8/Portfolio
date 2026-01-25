@@ -7,6 +7,13 @@ df = get_data()
 pics = get_pictures()
 exceptions = get_exceptions()
 
+with st.sidebar:
+    st.header("Filters")
+    st.divider()
+
+    Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
+    SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
+
 bg_color = team_info[SelectedTeam]["bg"]
 text_color = team_info[SelectedTeam]["text"]
 team_logo = team_info[SelectedTeam]["logo"]
@@ -45,9 +52,6 @@ col1, col2 = st.columns([4, 1])
 with col1:
     st.title(":basketball::trophy: SBC Fantasy Basketball League:trophy::basketball:")
     st.header(f"{SelectedTeam} {nickname}")
-    Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
-    SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
-
 with col2:
     st.image(team_logo, width=250)
 
