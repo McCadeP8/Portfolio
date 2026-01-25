@@ -57,7 +57,7 @@ with col2:
 
 st.divider()
 
-tab1 = st.tabs([f"{SelectedTeam} Cap Sheet"])
+tab1, tab2 = st.tabs([f"{SelectedTeam} Cap Sheet", "League Overview"])
 
 with tab1:
 
@@ -137,3 +137,7 @@ with tab1:
                     .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                     .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
                 st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026"), column_config={" ": st.column_config.ImageColumn(" ")})
+
+
+with tab2:
+    st.markdown("This section is under construction.2")
