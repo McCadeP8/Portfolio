@@ -35,6 +35,7 @@ def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> p
     cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={'BirdRights': 'Bird Rights'})
     df = df.rename(columns={col: col[1:] for col in year_cols})
     df = df.sort_values('2026', ascending=False)
     return df
@@ -65,7 +66,6 @@ def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
-    df = df.rename(columns={'BirdRights': 'Bird Rights'})
     df = df.rename(columns={col: col[1:] for col in year_cols})
     df = df.sort_values('2026', ascending=False)
     return df
