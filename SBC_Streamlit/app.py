@@ -13,22 +13,33 @@ with st.sidebar:
     Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
 
-
 bg_color = team_info[SelectedTeam]["bg"]
 text_color = team_info[SelectedTeam]["text"]
 team_logo = team_info[SelectedTeam]["logo"]
 nickname = team_info[SelectedTeam]["nickname"]
 
+#st.markdown(
+#    f"""
+#    <style>
+#    .stApp {{
+#        background-color: {bg_color};
+#        color: {text_color};
+#    }}
+#    </style>
+#    """,
+#    unsafe_allow_html=True)
+
 st.markdown(
     f"""
     <style>
     .stApp {{
-        background-color: {bg_color};
-        color: {text_color};
+        background-color: black;
+        color: white;
     }}
     </style>
     """,
     unsafe_allow_html=True)
+
 
 st.set_page_config(
     page_title = "SBC Cap Sheets",
