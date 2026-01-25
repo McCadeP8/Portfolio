@@ -156,6 +156,6 @@ def team_hard_cap_n(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame)
     if hard_cap_type == "None":
         return "—"
     elif hard_cap_type == "First Apron":
-        return 195945000-tax_number
+        return tax_number-195945000
     elif hard_cap_type == "Second Apron":
-        return 207824000-tax_number
+        return tax_number-207824000
