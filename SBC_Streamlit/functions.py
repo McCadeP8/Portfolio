@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 import math as math
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio
 
 
 
@@ -166,7 +166,7 @@ def team_hard_cap_n(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame)
 def base_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> float:
     payment = get_tax_total(df, SelectedTeam)
     payment = current_salary_cap * 0.9 if payment < current_salary_cap * 0.9 else payment
-    payment = payment/tax_bracket_increment
+    payment = payment/league_ratio
     base_cap = base_cap[base_cap['Team'] == SelectedTeam]
     rate = base_cap["Rate"].iloc[0]
     payment = payment*rate
@@ -180,7 +180,7 @@ def luxury_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> f
     repeater_penalty = base_cap["Tax2022"].iloc[0] + base_cap["Tax2023"].iloc[0] + base_cap["Tax2024"].iloc[0] + base_cap["Tax2025"].iloc[0]
     repeater_penalty = True if repeater_penalty >= 3 else False
     tax_amount = tax_amount_calc(tax_number, repeater_penalty)
-    tax_amount = tax_amount/tax_bracket_increment
+    tax_amount = tax_amount/league_ratio
     base_cap = base_cap[base_cap['Team'] == SelectedTeam]
     rate = base_cap["Rate"].iloc[0]
     tax_amount = tax_amount*rate
