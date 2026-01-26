@@ -9,7 +9,7 @@ exceptions = get_exceptions()
 base_cap = get_base_cap()
 
 with st.sidebar:
-    Teams = ['Albuquerque', 'Anaheim', 'Anchorage', 'Austin', 'Baltimore', 'Birmingham', 'Boise', 'Buffalo', 'Cincinnati', 'Columbus', 'Des Moines', 'El Paso', 'Honolulu', 'Jacksonville', 'Kentucky', 'Lansing', 'Lincoln', 'Little Rock', 'Manchester', 'Nashville', 'Pittsburgh', 'Providence', 'San Diego', 'San Jose', 'Seattle', 'St. Louis', 'Tampa Bay', 'Tulsa', 'Vancouver', 'Vegas']
+    Teams = sorted(team_info.keys())
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
 
 bg_color = team_info[SelectedTeam]["bg"]
