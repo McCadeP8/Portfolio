@@ -169,6 +169,63 @@ def base_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> flo
     payment = payment+3
     return payment
 
+def luxury_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> float:
+    df = df[df['Team'] == SelectedTeam]
+    tax_number = get_tax_total(df, SelectedTeam)
+    tax_number = tax_number-187895000
+    repeater_penalty = base_cap["Tax2022"].iloc[0] + base_cap["Tax2023"].iloc[0] + base_cap["Tax2024"].iloc[0] + base_cap["Tax2025"].iloc[0]
+    repeater_penalty = True if repeater_penalty >= 3 else False
+    tax_amount = tax_amount_calc(tax_number, repeater_penalty)
+    tax_amount = tax_amount/3000000
+    base_cap = base_cap[base_cap['Team'] == SelectedTeam]
+    rate = base_cap["Rate"].iloc[0]
+    tax_amount = tax_amount*rate
+    return tax_amount
+
+def tax_amount_calc(fee: float, repeater: bool) -> float:
+    penalty_false = [1.0, 0.25, 2.25, 1.25]
+    penalty_true = [3.0, 0.25, 2.25, 1.25]
+    if fee <= 0:
+        return 0
+    elif repeater:
+        tax = fee * penalty_true[0]
+        fee = fee - 5685000
+        if fee <= 0:
+            return tax
+        tax = tax + (fee * penalty_true[1])
+        fee = fee - 5685000
+        if fee <= 0:
+            return tax
+        tax = tax + (fee * penalty_true[2])
+        fee = fee - 5685000
+        if fee <= 0:
+            return tax
+        tax = tax + (fee * penalty_true[3])
+        fee = fee - 5685000
+        while fee > 0:
+            tax = tax + (fee * 0.5)
+            fee = fee - 5685000
+        return tax
+    elif not repeater:
+        tax = fee * penalty_false[0]
+        fee = fee - 5685000
+        if fee <= 0:
+            return tax
+        tax = tax + (fee * penalty_false[1])
+        fee = fee - 5685000
+        if fee <= 0:
+            return tax
+        tax = tax + (fee * penalty_false[2])
+        fee = fee - 5685000
+        if fee <= 0:
+            return tax
+        tax = tax + (fee * penalty_false[3])
+        fee = fee - 5685000
+        while fee > 0:
+            tax = tax + (fee * 0.5)
+            fee = fee - 5685000
+        return tax
+
 def amount_paid(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
     df = df["MoneyPaid"].iloc[0]
@@ -176,6 +233,7 @@ def amount_paid(df: pd.DataFrame, SelectedTeam: str) -> float:
 
 def net_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> float:
     fee = base_fee(df, SelectedTeam, base_cap)
+    tax = luxury_fee(df, SelectedTeam, base_cap)
     paid = amount_paid(base_cap, SelectedTeam)
-    net_fee = fee - paid
+    net_fee = tax + fee - paid
     return net_fee
