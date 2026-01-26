@@ -2,6 +2,8 @@ current_salary_cap = 154647000
 current_luxury_tax = 187895000
 current_apron_1 = 195945000
 current_apron_2 = 207824000
+tax_bracket_increment = 5685000
+league_ratio = 3000000
 
 type_colors = {
     "Guaranteed": "#FCE5CD",   

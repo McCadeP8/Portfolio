@@ -1,29 +1,31 @@
 import pandas as pd
 import streamlit as st
 import math as math
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2
 
 
-@st.cache_data(ttl=120)
+
+@st.cache_data(ttl=21600)
 def get_data() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
     df = pd.read_csv(csv_url)
     return df
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=21600)
 def get_pictures() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1180190150"
     df = pd.read_csv(csv_url)
     df = df.drop(columns=["Picture"])
     return df
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=21600)
 def get_exceptions() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1620818587"
     df = pd.read_csv(csv_url)
     df = df.drop(columns=["Type", "Y2027", "Y2028", "Y2029", "Y2030", "Y2031", "Y2032","Trade.Restriction", "Type2026", "Type2027", "Type2028", "Type2029", "Type2030", "Type2031", "Type2032"])
     return df
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=21600)
 def get_base_cap() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=760630769"
     df = pd.read_csv(csv_url)
@@ -157,14 +159,14 @@ def team_hard_cap_n(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame)
     if hard_cap_type == "None":
         return "—"
     elif hard_cap_type == "First Apron":
-        return tax_number-195945000
+        return tax_number-current_apron_1
     elif hard_cap_type == "Second Apron":
-        return tax_number-207824000
+        return tax_number-current_apron_2
 
 def base_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> float:
     payment = get_tax_total(df, SelectedTeam)
-    payment = 154647000 * 0.9 if payment < 154647000 * 0.9 else payment
-    payment = payment/3000000
+    payment = current_salary_cap * 0.9 if payment < current_salary_cap * 0.9 else payment
+    payment = payment/tax_bracket_increment
     base_cap = base_cap[base_cap['Team'] == SelectedTeam]
     rate = base_cap["Rate"].iloc[0]
     payment = payment*rate
@@ -174,11 +176,11 @@ def base_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> flo
 def luxury_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> float:
     df = df[df['Team'] == SelectedTeam]
     tax_number = get_tax_total(df, SelectedTeam)
-    tax_number = tax_number-187895000
+    tax_number = tax_number-current_luxury_tax
     repeater_penalty = base_cap["Tax2022"].iloc[0] + base_cap["Tax2023"].iloc[0] + base_cap["Tax2024"].iloc[0] + base_cap["Tax2025"].iloc[0]
     repeater_penalty = True if repeater_penalty >= 3 else False
     tax_amount = tax_amount_calc(tax_number, repeater_penalty)
-    tax_amount = tax_amount/3000000
+    tax_amount = tax_amount/tax_bracket_increment
     base_cap = base_cap[base_cap['Team'] == SelectedTeam]
     rate = base_cap["Rate"].iloc[0]
     tax_amount = tax_amount*rate
@@ -191,41 +193,41 @@ def tax_amount_calc(fee: float, repeater: bool) -> float:
         return 0
     elif repeater:
         tax = fee * penalty_true[0]
-        fee = fee - 5685000
+        fee = fee - tax_bracket_increment
         if fee <= 0:
             return tax
         tax = tax + (fee * penalty_true[1])
-        fee = fee - 5685000
+        fee = fee - tax_bracket_increment
         if fee <= 0:
             return tax
         tax = tax + (fee * penalty_true[2])
-        fee = fee - 5685000
+        fee = fee - tax_bracket_increment
         if fee <= 0:
             return tax
         tax = tax + (fee * penalty_true[3])
-        fee = fee - 5685000
+        fee = fee - tax_bracket_increment
         while fee > 0:
             tax = tax + (fee * 0.5)
-            fee = fee - 5685000
+            fee = fee - tax_bracket_increment
         return tax
     elif not repeater:
         tax = fee * penalty_false[0]
-        fee = fee - 5685000
+        fee = fee - tax_bracket_increment
         if fee <= 0:
             return tax
         tax = tax + (fee * penalty_false[1])
-        fee = fee - 5685000
+        fee = fee - tax_bracket_increment
         if fee <= 0:
             return tax
         tax = tax + (fee * penalty_false[2])
-        fee = fee - 5685000
+        fee = fee - tax_bracket_increment
         if fee <= 0:
             return tax
         tax = tax + (fee * penalty_false[3])
-        fee = fee - 5685000
+        fee = fee - tax_bracket_increment
         while fee > 0:
             tax = tax + (fee * 0.5)
-            fee = fee - 5685000
+            fee = fee - tax_bracket_increment
         return tax
 
 def amount_paid(df: pd.DataFrame, SelectedTeam: str) -> float:
