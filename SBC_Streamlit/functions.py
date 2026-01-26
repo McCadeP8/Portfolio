@@ -1,5 +1,7 @@
 import pandas as pd
 import streamlit as st
+import math as math
+
 
 @st.cache_data(ttl=120)
 def get_data() -> pd.DataFrame:
@@ -236,4 +238,4 @@ def net_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> floa
     tax = luxury_fee(df, SelectedTeam, base_cap)
     paid = amount_paid(base_cap, SelectedTeam)
     net_fee = tax + fee - paid
-    return net_fee
+    return math.ceil(net_fee * 100) / 100
