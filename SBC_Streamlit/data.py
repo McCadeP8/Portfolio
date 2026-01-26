@@ -1,3 +1,8 @@
+current_salary_cap = 154647000
+current_luxury_tax = 187895000
+current_apron_1 = 195945000
+current_apron_2 = 207824000
+
 type_colors = {
     "Guaranteed": "#FCE5CD",   
     "Non-Guaranteed": "#F4CCCC",
@@ -40,8 +45,3 @@ team_info = {
     "Vancouver": {"bg": "#17780D", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam4eaaMAAW6Pz?format=png&name=small", "nickname": "Forest"},
     "Vegas": {"bg": "#35654D", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096", "nickname": "Blackjack"},
 }
-
-current_salary_cap = 154647000
-current_luxury_tax = 187895000
-current_apron_1 = 195945000
-current_apron_2 = 207824000
