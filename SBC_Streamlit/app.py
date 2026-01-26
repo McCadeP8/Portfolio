@@ -55,7 +55,7 @@ with col2:
 
 st.divider()
 
-tab1, tab2 = st.tabs([f"{SelectedTeam} Cap Sheet", "League Overview"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Cap Sheet", "All Players", "All Draft Picks" "League Overview"])
 
 with tab1:
 
@@ -153,7 +153,14 @@ with tab1:
                     .format({c: "${:,.0f}" for c in draft_retired_player_df.columns if re.match(r"\d{4}", c)}))
                 st.dataframe(draft_retired_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player"), column_config={" ": st.column_config.ImageColumn(" ")})
 
-
-
 with tab2:
+    st.markdown("This section is under construction.")
+
+with tab3:
+    st.markdown("This section is under construction.")
+
+with tab4:
+    st.markdown("This section is under construction.")
+
+with tab5:
     st.markdown("This section is under construction.")
