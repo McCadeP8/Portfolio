@@ -1,3 +1,5 @@
+#ABC
+
 import pandas as pd
 import streamlit as st
 import math as math
@@ -133,8 +135,6 @@ def inactive_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[df['Type'] == 'Non-Active Players']
     df = df[df["Type" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
     return df.shape[0]
-
-#ABC
 
 def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
