@@ -1,8 +1,7 @@
 import pandas as pd
 import streamlit as st
 import math as math
-from datetime import date
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, today
 
 
 
@@ -91,7 +90,7 @@ def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.
 def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
-    if date.today().month in [7, 8, 9]:
+    if today.month in [7, 8, 9]:
         year_offset = 0
     else:
         year_offset = 1
