@@ -95,7 +95,7 @@ def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values(str(current_year), ascending=False)
+    df = df.sort_values(str(current_year + year_offset), ascending=False)
     return df
 
 def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -330,5 +330,5 @@ def all_free_agents(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values(str(current_year), ascending=False)
+    df = df.sort_values(str(current_year + year_offset), ascending=False)
     return df
