@@ -332,3 +332,12 @@ def all_free_agents(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.rename(columns={col: col[1:] for col in year_cols})
     df = df.sort_values(str(current_year + year_offset), ascending=False)
     return df
+
+def trade_restrictions_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Trade.Restriction'].notna()]
+    df = df[['Picture_Online','Player','Trade.Restriction']]
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={'Trade.Restriction': 'Trade Restriction'})
+    df = df.sort_values('Player', ascending=True)
+    return df
