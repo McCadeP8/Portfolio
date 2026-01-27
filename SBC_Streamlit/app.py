@@ -50,6 +50,7 @@ col1, col2 = st.columns([4, 1])
 with col1:
     st.title(":basketball::trophy: SBC Fantasy Basketball League:trophy::basketball:")
     st.header(f"{SelectedTeam} {nickname}")
+    st.image("https://pbs.twimg.com/media/G_spqw_bEAAu1r2?format=jpg&name=medium", width=700)
 with col2:
     st.image(team_logo, width=250)
 
