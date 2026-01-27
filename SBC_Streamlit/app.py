@@ -197,7 +197,7 @@ with tab3:
                 .format({c: "${:,.0f}" for c in dead_players_df.columns if re.match(r"\d{4}", c)}))
             st.dataframe(dead_players_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
-    col1, col2, col3, col4 = st.columns([3,2,2,2])
+    col1, col2, col3, col4 = st.columns([3,2,2,3])
 
     with col1:
         all_free_agents_df = all_free_agents(df, pics)
@@ -233,7 +233,7 @@ with tab3:
             trade_restrictins_all_df = (trade_restrictins_all_df.style
                 .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                 .format({c: "${:,.0f}" for c in trade_restrictins_all_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(trade_restrictins_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+            st.dataframe(trade_restrictins_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player", "Trade Restriction"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
 with tab4:
     st.markdown("This section is under construction.")

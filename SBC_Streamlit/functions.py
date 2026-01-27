@@ -336,7 +336,8 @@ def all_free_agents(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
 def trade_restrictions_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Trade.Restriction'].notna()]
-    df = df[['Picture_Online','Player','Trade.Restriction']]
+    df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    df = df[['Team_logo', 'Picture_Online','Player','Trade.Restriction']]
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={'Trade.Restriction': 'Trade Restriction'})
     df = df.sort_values('Player', ascending=True)
