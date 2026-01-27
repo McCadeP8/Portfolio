@@ -124,39 +124,38 @@ with tab1:
                 .format({c: "${:,.0f}" for c in dead_player_df.columns if re.match(r"\d{4}", c)}))
             st.dataframe(dead_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(" ")})
 
-        col1, col2, col3 = st.columns([3, 2, 2])
+    col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
 
-        with col1:
-            st.subheader("Exceptions")
-            exception_df = exception_table(exceptions, SelectedTeam)
-            exception_df = (exception_df.style
-              .format({"Amount": "${:,.0f}"}))
-            st.dataframe(exception_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
+    with col1:
+        st.subheader("Exceptions")
+        exception_df = exception_table(exceptions, SelectedTeam)
+        exception_df = (exception_df.style
+            .format({"Amount": "${:,.0f}"}))
+        st.dataframe(exception_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
 
-        with col2:
-            free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
-            if free_agent_player_df.shape[0] > 0:
-                st.subheader("Upcoming Free Agents")
-                free_agent_player_df = (free_agent_player_df.style
-                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + [str(current_year+ year_offset)], column_config={" ": st.column_config.ImageColumn(" ")})
+    with col2:
+        free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
+        if free_agent_player_df.shape[0] > 0:
+            st.subheader("Upcoming Free Agents")
+            free_agent_player_df = (free_agent_player_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + [str(current_year+ year_offset)], column_config={" ": st.column_config.ImageColumn(" ")})
 
-        with col3:
-            draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
-            if draft_retired_player_df.shape[0] > 0:
-                st.subheader("Draft Rights & Retired")
-                draft_retired_player_df = (draft_retired_player_df.style
-                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in draft_retired_player_df.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(draft_retired_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player"), column_config={" ": st.column_config.ImageColumn(" ")})
-
-        col1, col2, col3 = st.columns([3, 2, 2])
-
-        with col1:
-            restricted_df = trade_restrictions(df, pics, SelectedTeam)
+    with col3:
+        restricted_df = trade_restrictions(df, pics, SelectedTeam)
+        if restricted_df.shape[0] > 0:
+            st.subheader("Trade Restrictions")
             st.dataframe(restricted_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={" ": st.column_config.ImageColumn(" ")})
 
+    with col4:
+        draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
+        if draft_retired_player_df.shape[0] > 0:
+            st.subheader("Draft Rights & Retired")
+            draft_retired_player_df = (draft_retired_player_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                .format({c: "${:,.0f}" for c in draft_retired_player_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(draft_retired_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player"), column_config={" ": st.column_config.ImageColumn(" ")})
 
 with tab2:
     st.markdown("This section is under construction.")
