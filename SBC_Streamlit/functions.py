@@ -241,3 +241,12 @@ def net_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> floa
     paid = amount_paid(base_cap, SelectedTeam)
     net_fee = tax + fee - paid
     return math.ceil(net_fee * 100) / 100
+
+def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Team'] == SelectedTeam]
+    df = df[df['Trade.Restriction'].notna()]
+    df = df[['Picture_Online','Player','Trade.Restriction']]
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.sort_values('Player', ascending=True)
+    return df
