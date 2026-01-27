@@ -83,7 +83,7 @@ with tab1:
             <span style="background-color:#CFE2F3;padding:6px 20px;border-radius:5px;">&nbsp;</span> Team Option \n
             <span style="background-color:#D9D2E9;padding:6px 20px;border-radius:5px;">&nbsp;</span> Unrestricted \n
             <span style="background-color:#CFFFFF;padding:6px 20px;border-radius:5px;">&nbsp;</span> Restricted \n
-            <span style="background-color:#D9D9D9;padding:6px 20px;border-radius:5px;">&nbsp;</span> Dead \n
+            <span style="background-color:#D9D9D9;padding:6px 20px;border-radius:5px;">&nbsp;</span> Dead
             """, unsafe_allow_html=True)
 
         st.divider()
@@ -181,6 +181,31 @@ with tab3:
             .format({c: "${:,.0f}" for c in dead_players_df.columns if re.match(r"\d{4}", c)}))
         st.dataframe(dead_players_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
+    col1, col2, col3, col4 = st.columns([2,2,2,2])
+
+    with col1:
+        draft_all_df = draft_rights_all(df, pics)
+        if draft_all_df.shape[0] > 0:
+            st.subheader("Draft Rights")
+            draft_all_df = (draft_all_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                .format({c: "${:,.0f}" for c in draft_all_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(draft_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—",  column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+    with col2:
+        retired_all_df = retired_all(df, pics)
+        if retired_all_df.shape[0] > 0:
+            st.subheader("Draft Rights")
+            retired_all_df = (retired_all_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                .format({c: "${:,.0f}" for c in retired_all_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(retired_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—",  column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+    with col3:
+        st.subheader("Draft Rights")
+
+    with col4:
+        st.subheader("Draft Rights")
 
 
 with tab4:
