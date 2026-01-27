@@ -70,10 +70,6 @@ with tab1:
         st.metric(label = "Apron #2", value = current_apron_2, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
 
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
-    if SelectedTeam:
-        df = df[df["Team"] == SelectedTeam]
-    else:
-        df = df.copy()
 
     col1, col2 = st.columns([1, 4])
 
