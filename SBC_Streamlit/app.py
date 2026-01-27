@@ -58,6 +58,7 @@ st.divider()
 tab1, tab2, tab3, tab4, tab5 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "League Overview"])
 
 with tab1:
+    st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -68,8 +69,6 @@ with tab1:
         st.metric(label = "Apron #1", value = current_apron_1, delta = "10.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
     with col4:
         st.metric(label = "Apron #2", value = current_apron_2, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
-
-    st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
 
     col1, col2 = st.columns([1, 4])
 
