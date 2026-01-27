@@ -1,6 +1,6 @@
 import streamlit as st
 import re as re
-from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, tax_amount_calc, trade_restrictions, active_players_all
+from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, tax_amount_calc, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset
 
 df = get_data()
@@ -162,9 +162,25 @@ with tab3:
         st.subheader("All Active Players")
         active_all_df = (active_all_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-            .format({c: "${:,.0f}" for c in overseas_player_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(active_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), 
-                                                                    "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+            .format({c: "${:,.0f}" for c in active_all_df.columns if re.match(r"\d{4}", c)}))
+        st.dataframe(active_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="Team", width="small")})
+
+    inactive_all_df = inactive_players_all(df, pics)
+    if inactive_all_df.shape[0] > 0:
+        st.subheader("All Overseas Players")
+        inactive_all_df = (inactive_all_df.style
+            .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+            .format({c: "${:,.0f}" for c in inactive_all_df.columns if re.match(r"\d{4}", c)}))
+        st.dataframe(inactive_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="Team", width="small")})
+
+    dead_players_df = dead_players_all(df, pics)
+    if inactive_all_df.shape[0] > 0:
+        st.subheader("All Dead Players")
+        inactive_all_df = (dead_players_df.style
+            .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+            .format({c: "${:,.0f}" for c in dead_players_df.columns if re.match(r"\d{4}", c)}))
+        st.dataframe(dead_players_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="Team", width="small")})
+
 
 
 with tab4:

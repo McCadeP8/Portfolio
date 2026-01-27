@@ -264,14 +264,60 @@ def active_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.rename(columns={'BirdRights': 'Bird Rights'})
     df = df.rename(columns={col: col[1:] for col in year_cols})
     df = df.sort_values(str(current_year), ascending=False)
-    print(df.shape[0])
     return df
 
+def inactive_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Type'] == 'Non-Active Players']
+    df = df[df["Type" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
+    df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
+    cols_to_keep = ['Team_logo', 'Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={'BirdRights': 'Bird Rights'})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values(str(current_year), ascending=False)
+    return df
 
-#def inactive_players_all(df: pd.DataFrame) -> pd.DataFrame:
+def dead_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Type'] == 'Non-Active Players']
+    df = df[df["Type" + str(current_year)] == "Dead"]
+    df = df[df["Trade.Restriction"] != "Retired"]
+    df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
+    cols_to_keep = ['Team_logo', 'Picture_Online','Player'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values(str(current_year), ascending=False)
+    return df
 
-#def dead_players_all(df: pd.DataFrame) -> pd.DataFrame:
+def draft_rights_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[(df["Type" + str(current_year)] == 'Draft Rights')]
+    df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
+    cols_to_keep = ['Team_logo', 'Picture_Online','Player'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values('Player', ascending=False)
+    return df
 
-#def draft_rights_all(df: pd.DataFrame) -> pd.DataFrame:
-
-#def retired_all(df: pd.DataFrame) -> pd.DataFrame:
+def retired_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[(df['Trade.Restriction'] == 'Retired')]
+    df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
+    cols_to_keep = ['Team_logo', 'Picture_Online','Player'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values('Player', ascending=False)
+    return df
