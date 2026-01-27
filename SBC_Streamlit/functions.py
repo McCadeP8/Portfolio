@@ -264,6 +264,7 @@ def active_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.rename(columns={'BirdRights': 'Bird Rights'})
     df = df.rename(columns={col: col[1:] for col in year_cols})
     df = df.sort_values(str(current_year), ascending=False)
+    print(df.shape[0])
     return df
 
 
