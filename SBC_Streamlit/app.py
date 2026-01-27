@@ -106,7 +106,7 @@ with tab1:
         active_player_df = (active_player_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
             .format({c: "${:,.0f}" for c in active_player_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(active_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
+        st.dataframe(active_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
 
         overseas_player_df = overseas_players(df, pics, SelectedTeam)
         if overseas_player_df.shape[0] > 0:
@@ -114,7 +114,7 @@ with tab1:
             overseas_player_df = (overseas_player_df.style
                 .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                 .format({c: "${:,.0f}" for c in overseas_player_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(overseas_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=([" ", "Player"], columns_order, "Bird Rights"), column_config={" ": st.column_config.ImageColumn(" ")})
+            st.dataframe(overseas_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
         
         dead_player_df = dead_players(df, pics, SelectedTeam)
         if dead_player_df.shape[0] > 0:
@@ -122,7 +122,7 @@ with tab1:
             dead_player_df = (dead_player_df.style
                 .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                 .format({c: "${:,.0f}" for c in dead_player_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(dead_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2026", "2027", "2028", "2029", "2030","2031", "2032"), column_config={" ": st.column_config.ImageColumn(" ")})
+            st.dataframe(dead_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(" ")})
 
         col1, col2, col3 = st.columns([3, 2, 2])
 
@@ -140,7 +140,7 @@ with tab1:
                 free_agent_player_df = (free_agent_player_df.style
                     .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                     .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player", "2027"), column_config={" ": st.column_config.ImageColumn(" ")})
+                st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + [str(current_year+1)], column_config={" ": st.column_config.ImageColumn(" ")})
 
         with col3:
             draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
