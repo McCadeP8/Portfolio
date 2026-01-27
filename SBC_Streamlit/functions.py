@@ -255,7 +255,7 @@ def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
 def active_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Type'] == 'Active Players']
-    df["Team"] = df["Team"].map({team: info["logo"] for team, info in team_info.items()})
+    df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", t))
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Team', 'Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
