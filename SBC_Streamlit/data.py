@@ -5,9 +5,9 @@ today = date.today()
 if today.month > 7 or (today.month == 7 and today.day >= 2):
     current_year = today.year + 1
 else:
-    current_year = today.year + 3
+    current_year = today.year
 
-columns_order = [str(current_year + i) for i in range(2)]
+columns_order = [str(current_year + i) for i in range(7)]
 
 
 current_salary_cap = 154647000
