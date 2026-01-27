@@ -22,7 +22,7 @@ def get_pictures() -> pd.DataFrame:
 def get_exceptions() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1620818587"
     df = pd.read_csv(csv_url)
-    df = df.drop(columns=["Type", "Y2027", "Y2028", "Y2029", "Y2030", "Y2031", "Y2032","Trade.Restriction", "Type2026", "Type2027", "Type2028", "Type2029", "Type2030", "Type2031", "Type2032"])
+    df = df[["Team", "Player", "Y" + str(current_year), "BirdRights"]]
     return df
 
 @st.cache_data(ttl=21600)
