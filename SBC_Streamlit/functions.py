@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 import math as math
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year
 
 
 
@@ -47,14 +47,14 @@ def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> p
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Active Players']
-    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
-    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={'BirdRights': 'Bird Rights'})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('2026', ascending=False)
+    df = df.sort_values(str(current_year), ascending=False)
     return df
 
 def overseas_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -62,14 +62,14 @@ def overseas_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) ->
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
     df = df[df['Type2026'].isin(['Guaranteed', 'Unguaranteed'])]
-    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
-    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={'BirdRights': 'Bird Rights'})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('2026', ascending=False)
+    df = df.sort_values(str(current_year), ascending=False)
     return df
 
 def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -78,39 +78,39 @@ def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.
     df = df[df['Type'] == 'Non-Active Players']
     df = df[df['Type2026'] == "Dead"]
     df = df[df["Trade.Restriction"] != "Retired"]
-    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
-    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('2026', ascending=False)
+    df = df.sort_values(str(current_year), ascending=False)
     return df
 
 def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type2027'].isin(['Unrestricted', 'Restricted'])]
-    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
-    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('2027', ascending=False)
+    df = df.sort_values(str(current_year), ascending=False)
     return df
 
 def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[(df['Type2026'] == 'Draft Rights') | (df['Trade.Restriction'] == 'Retired')]
-    year_cols = ['Y2026','Y2027','Y2028','Y2029','Y2030','Y2031','Y2032']
-    type_cols_keep = ['Type2026','Type2027','Type2028','Type2029','Type2030','Type2031','Type2032']
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('2026', ascending=False)
+    df = df.sort_values(str(current_year), ascending=False)
     return df
 
 def exception_table(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
