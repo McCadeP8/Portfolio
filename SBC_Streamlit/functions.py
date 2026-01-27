@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 import math as math
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info
 
 
 
@@ -251,3 +251,26 @@ def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     df = df.rename(columns={'Trade.Restriction': 'Trade Restriction'})
     df = df.sort_values('Player', ascending=True)
     return df
+
+def active_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Type'] == 'Active Players']
+    df["Team"] = df["Team"].map({team: info["logo"] for team, info in team_info.items()})
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
+    cols_to_keep = ['Team', 'Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={'BirdRights': 'Bird Rights'})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values(str(current_year), ascending=False)
+    return df
+
+
+#def inactive_players_all(df: pd.DataFrame) -> pd.DataFrame:
+
+#def dead_players_all(df: pd.DataFrame) -> pd.DataFrame:
+
+#def draft_rights_all(df: pd.DataFrame) -> pd.DataFrame:
+
+#def retired_all(df: pd.DataFrame) -> pd.DataFrame:
