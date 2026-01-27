@@ -17,8 +17,6 @@ text_color = team_info[SelectedTeam]["text"]
 team_logo = team_info[SelectedTeam]["logo"]
 nickname = team_info[SelectedTeam]["nickname"]
 
-#ABC 
-
 #st.markdown(
 #    f"""
 #    <style>
