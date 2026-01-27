@@ -61,7 +61,7 @@ def overseas_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) ->
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
-    df = df[df["Y" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
+    df = df[df["Type" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
@@ -90,7 +90,7 @@ def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.
 def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
-    df = df[df["Y" + str(current_year + 1)].isin(['Unrestricted', 'Restricted'])]
+    df = df[df["Type" + str(current_year + 1)].isin(['Unrestricted', 'Restricted'])]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
