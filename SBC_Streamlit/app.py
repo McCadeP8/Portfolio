@@ -167,7 +167,7 @@ with tab3:
         active_all_df = (active_all_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
             .format({c: "${:,.0f}" for c in overseas_player_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(active_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Team", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn("Team", " ")})
+        st.dataframe(active_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Team", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_img": st.column_config.ImageColumn(label="Team", width="small")})
 
 
 with tab4:
