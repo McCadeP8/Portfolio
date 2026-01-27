@@ -2,6 +2,11 @@ from datetime import date, timedelta
 
 today = date.today() + timedelta(days=180)
 
+if today.month in [7, 8, 9]:
+    year_offset = 0
+else:
+    year_offset = 1
+
 if today.month > 7 or (today.month == 7 and today.day >= 2):
     current_year = today.year + 1
 else:
