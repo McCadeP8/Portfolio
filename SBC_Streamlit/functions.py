@@ -1,8 +1,7 @@
-#ABC
-
 import pandas as pd
 import streamlit as st
 import math as math
+from datetime import date
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year
 
 
@@ -92,7 +91,11 @@ def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.
 def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
-    df = df[df["Type" + str(current_year + 1)].isin(['Unrestricted', 'Restricted'])]
+    if date.today().month in [7, 8, 9]:
+        year_offset = 0
+    else:
+        year_offset = 1
+    df = df[df["Type" + str(current_year + year_offset)].isin(['Unrestricted', 'Restricted'])]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep

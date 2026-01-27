@@ -1,5 +1,3 @@
-#ABC
-
 import streamlit as st
 import re as re
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, tax_amount_calc
@@ -57,7 +55,7 @@ with col2:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Cap Sheet", "All Players", "All Draft Picks", "League Overview"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "League Overview"])
 
 with tab1:
 

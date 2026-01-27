@@ -1,5 +1,3 @@
-#ABC
-
 from datetime import date, timedelta
 
 today = date.today() + timedelta(days=180)
