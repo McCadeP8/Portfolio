@@ -61,7 +61,7 @@ def overseas_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) ->
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
-    df = df[df['Type2026'].isin(['Guaranteed', 'Unguaranteed'])]
+    df = df[df["Y" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
@@ -76,7 +76,7 @@ def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
-    df = df[df['Type2026'] == "Dead"]
+    df = df[df["Type" + str(current_year)] == "Dead"]
     df = df[df["Trade.Restriction"] != "Retired"]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
@@ -90,7 +90,7 @@ def dead_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.
 def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
-    df = df[df['Type2027'].isin(['Unrestricted', 'Restricted'])]
+    df = df[df["Y" + str(current_year + 1)].isin(['Unrestricted', 'Restricted'])]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
@@ -103,7 +103,7 @@ def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
 def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
-    df = df[(df['Type2026'] == 'Draft Rights') | (df['Trade.Restriction'] == 'Retired')]
+    df = df[(df["Type" + str(current_year)] == 'Draft Rights') | (df['Trade.Restriction'] == 'Retired')]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
@@ -115,10 +115,10 @@ def draft_retired_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: st
 
 def exception_table(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[df['Team'] == SelectedTeam]
-    df = df[df['Y2026'] > 0]
+    df = df[df["Y" + str(current_year)] > 0]
     df = df.drop(columns=["Team"])
     df = df.rename(columns={'Player': 'Exception'})
-    df = df.rename(columns={'Y2026': 'Amount'})
+    df = df.rename(columns={"Y" + str(current_year): 'Amount'})
     df = df.rename(columns={'BirdRights': 'Expiration Date'})
     df = df.sort_values('Amount', ascending=False)
     return df
@@ -131,21 +131,21 @@ def active_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
 def inactive_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
-    df = df[df['Type2026'].isin(['Guaranteed', 'Unguaranteed'])]
+    df = df[df["Type" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
     return df.shape[0]
 
 def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
-    player_total = df['Y2026'].sum()
+    player_total = df["Y" + str(current_year)].sum()
     exceptions_df = exceptions_df[exceptions_df['Team'] == SelectedTeam]
     exceptions_df = exceptions_df[exceptions_df['Player'] != 'Minimum']
-    exceptions_total = exceptions_df['Y2026'].sum()
+    exceptions_total = exceptions_df["Y" + str(current_year)].sum()
     total_cap = player_total + exceptions_total
     return total_cap
 
 def get_tax_total(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
-    player_total = df['Y2026'].sum()
+    player_total = df["Y" + str(current_year)].sum()
     return player_total
 
 def team_hard_cap(df: pd.DataFrame, SelectedTeam: str) -> str:
