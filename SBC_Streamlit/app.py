@@ -176,10 +176,10 @@ with tab3:
     dead_players_df = dead_players_all(df, pics)
     if dead_players_df.shape[0] > 0:
         st.subheader("Dead Players")
-        inactive_all_df = (dead_players_df.style
+        dead_players_df = (dead_players_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
             .format({c: "${:,.0f}" for c in dead_players_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(dead_players_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+        st.dataframe(dead_players_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
 
 
