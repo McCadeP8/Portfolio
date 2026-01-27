@@ -163,7 +163,7 @@ with tab3:
         active_all_df = (active_all_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
             .format({c: "${:,.0f}" for c in active_all_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(active_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="Team", width="small")})
+        st.dataframe(active_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
     inactive_all_df = inactive_players_all(df, pics)
     if inactive_all_df.shape[0] > 0:
@@ -171,7 +171,7 @@ with tab3:
         inactive_all_df = (inactive_all_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
             .format({c: "${:,.0f}" for c in inactive_all_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(inactive_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="Team", width="small")})
+        st.dataframe(inactive_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
     dead_players_df = dead_players_all(df, pics)
     if dead_players_df.shape[0] > 0:
@@ -179,7 +179,7 @@ with tab3:
         inactive_all_df = (dead_players_df.style
             .apply(lambda row: style_salaries(row, type_colors), axis=1)  
             .format({c: "${:,.0f}" for c in dead_players_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(dead_players_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="Team", width="small")})
+        st.dataframe(dead_players_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
 
 
