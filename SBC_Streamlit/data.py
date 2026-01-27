@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-today = date.today() + timedelta(days=180)
+today = date.today() + timedelta(days=0)
 
 if today.month in [7, 8, 9]:
     year_offset = 0
