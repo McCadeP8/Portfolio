@@ -141,6 +141,7 @@ def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: s
     player_total = df["Y" + str(current_year)].sum()
     exceptions_df = exceptions_df[exceptions_df['Team'] == SelectedTeam]
     exceptions_df = exceptions_df[exceptions_df['Player'] != 'Minimum']
+    exceptions_df = exceptions_df[exceptions_df["Y" + str(current_year)] > 0]
     exceptions_total = exceptions_df["Y" + str(current_year)].sum()
     total_cap = player_total + exceptions_total
     return total_cap
