@@ -157,62 +157,78 @@ with tab2:
     st.markdown("This section is under construction.")
 
 with tab3:
-    active_all_df = active_players_all(df, pics)
-    if active_all_df.shape[0] > 0:
-        st.subheader("Active Players")
-        active_all_df = (active_all_df.style
-            .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-            .format({c: "${:,.0f}" for c in active_all_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(active_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
-    inactive_all_df = inactive_players_all(df, pics)
-    if inactive_all_df.shape[0] > 0:
-        st.subheader("Overseas Players")
-        inactive_all_df = (inactive_all_df.style
-            .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-            .format({c: "${:,.0f}" for c in inactive_all_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(inactive_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
-
-    dead_players_df = dead_players_all(df, pics)
-    if dead_players_df.shape[0] > 0:
-        st.subheader("Dead Players")
-        dead_players_df = (dead_players_df.style
-            .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-            .format({c: "${:,.0f}" for c in dead_players_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(dead_players_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
-
-    col1, col2, col3, col4 = st.columns([3,2,2,2])
+    col1, col2 = st.columns([1,7])
 
     with col1:
-        all_free_agents_df = all_free_agents(df, pics)
-        if all_free_agents_df.shape[0] > 0:
-            st.subheader("Retired Rights")
-            all_free_agents_df = (all_free_agents_df.style
-                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                .format({c: "${:,.0f}" for c in all_free_agents_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(all_free_agents_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + [str(current_year+ year_offset)], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+        st.markdown("""
+            **Cap Sheet Legend:** \n
+            <span style="background-color:#FCE5CD;padding:6px 20px;border-radius:5px;">&nbsp;</span> Guaranteed \n 
+            <span style="background-color:#F4CCCC;padding:6px 20px;border-radius:5px;">&nbsp;</span> Non-Guaranteed \n
+            <span style="background-color:#CFE2F3;padding:6px 20px;border-radius:5px;">&nbsp;</span> Team Option \n
+            <span style="background-color:#D9D2E9;padding:6px 20px;border-radius:5px;">&nbsp;</span> Unrestricted \n
+            <span style="background-color:#CFFFFF;padding:6px 20px;border-radius:5px;">&nbsp;</span> Restricted \n
+            <span style="background-color:#D9D9D9;padding:6px 20px;border-radius:5px;">&nbsp;</span> Dead
+            """, unsafe_allow_html=True)
+
 
     with col2:
-        draft_all_df = draft_rights_all(df, pics)
-        if draft_all_df.shape[0] > 0:
+        active_all_df = active_players_all(df, pics)
+        if active_all_df.shape[0] > 0:
+            st.subheader("Active Players")
+            active_all_df = (active_all_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                .format({c: "${:,.0f}" for c in active_all_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(active_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+        inactive_all_df = inactive_players_all(df, pics)
+        if inactive_all_df.shape[0] > 0:
+            st.subheader("Overseas Players")
+            inactive_all_df = (inactive_all_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                .format({c: "${:,.0f}" for c in inactive_all_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(inactive_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+        dead_players_df = dead_players_all(df, pics)
+        if dead_players_df.shape[0] > 0:
+            st.subheader("Dead Players")
+            dead_players_df = (dead_players_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                .format({c: "${:,.0f}" for c in dead_players_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(dead_players_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+        col1, col2, col3, col4 = st.columns([3,2,2,2])
+
+        with col1:
+            all_free_agents_df = all_free_agents(df, pics)
+            if all_free_agents_df.shape[0] > 0:
+                st.subheader("Retired Rights")
+                all_free_agents_df = (all_free_agents_df.style
+                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                    .format({c: "${:,.0f}" for c in all_free_agents_df.columns if re.match(r"\d{4}", c)}))
+                st.dataframe(all_free_agents_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + [str(current_year+ year_offset)], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+        with col2:
+            draft_all_df = draft_rights_all(df, pics)
+            if draft_all_df.shape[0] > 0:
+                st.subheader("Draft Rights")
+                draft_all_df = (draft_all_df.style
+                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                    .format({c: "${:,.0f}" for c in draft_all_df.columns if re.match(r"\d{4}", c)}))
+                st.dataframe(draft_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+        with col3:
+            retired_all_df = retired_all(df, pics)
+            if retired_all_df.shape[0] > 0:
+                st.subheader("Retired Rights")
+                retired_all_df = (retired_all_df.style
+                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                    .format({c: "${:,.0f}" for c in retired_all_df.columns if re.match(r"\d{4}", c)}))
+                st.dataframe(retired_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+        with col4:
             st.subheader("Draft Rights")
-            draft_all_df = (draft_all_df.style
-                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                .format({c: "${:,.0f}" for c in draft_all_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(draft_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
-
-    with col3:
-        retired_all_df = retired_all(df, pics)
-        if retired_all_df.shape[0] > 0:
-            st.subheader("Retired Rights")
-            retired_all_df = (retired_all_df.style
-                .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                .format({c: "${:,.0f}" for c in retired_all_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(retired_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
-
-
-    with col4:
-        st.subheader("Draft Rights")
 
 
 with tab4:
