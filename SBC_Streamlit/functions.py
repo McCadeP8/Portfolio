@@ -248,5 +248,6 @@ def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     df = df[df['Trade.Restriction'].notna()]
     df = df[['Picture_Online','Player','Trade.Restriction']]
     df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={'Trade.Restriction': 'Trade Restriction'})
     df = df.sort_values('Player', ascending=True)
     return df
