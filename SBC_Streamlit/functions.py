@@ -3,8 +3,6 @@ import streamlit as st
 import math as math
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info
 
-
-
 @st.cache_data(ttl=21600)
 def get_data() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
@@ -306,7 +304,7 @@ def draft_rights_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('Player', ascending=False)
+    df = df.sort_values('Player', ascending=True)
     return df
 
 def retired_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
@@ -319,5 +317,5 @@ def retired_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
-    df = df.sort_values('Player', ascending=False)
+    df = df.sort_values('Player', ascending=True)
     return df
