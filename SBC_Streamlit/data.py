@@ -7,7 +7,7 @@ if today.month > 7 or (today.month == 7 and today.day >= 2):
 else:
     current_year = today.year + 3
 
-columns_order = [str(current_year + i) for i in range(7)]
+columns_order = [str(current_year + i) for i in range(2)]
 
 
 current_salary_cap = 154647000
