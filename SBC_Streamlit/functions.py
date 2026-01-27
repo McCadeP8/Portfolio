@@ -252,6 +252,8 @@ def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     df = df.sort_values('Player', ascending=True)
     return df
 
+# fdsaf
+
 def active_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Type'] == 'Active Players']
