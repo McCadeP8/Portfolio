@@ -190,16 +190,16 @@ with tab3:
             draft_all_df = (draft_all_df.style
                 .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                 .format({c: "${:,.0f}" for c in draft_all_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(draft_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—",  column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+            st.dataframe(draft_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
     with col2:
         retired_all_df = retired_all(df, pics)
         if retired_all_df.shape[0] > 0:
-            st.subheader("Draft Rights")
+            st.subheader("Retired Rights")
             retired_all_df = (retired_all_df.style
                 .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                 .format({c: "${:,.0f}" for c in retired_all_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(retired_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—",  column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+            st.dataframe(retired_all_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
     with col3:
         st.subheader("Draft Rights")
