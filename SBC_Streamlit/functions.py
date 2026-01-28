@@ -381,3 +381,5 @@ def tax_payout_split(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd
     total_fee = total_fee/2
     total_fee = total_fee / (df["Luxury Fee"] == 0).sum()
     return total_fee
+
+    # njk
