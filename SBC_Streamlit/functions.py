@@ -355,7 +355,7 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
         "Apron 2 Space": [current_apron_2-get_tax_total(df, team) for team in team_info.keys()],
         "Base Fee": [base_fee(df, team, base_cap) for team in team_info.keys()],
         "Luxury Fee": [luxury_fee(df, team, base_cap) for team in team_info.keys()],
-        "Net Fee": [net_fee(df, team, base_cap) for team in team_info.keys()],
+        "Balance": [net_fee(df, team, base_cap) for team in team_info.keys()],
         "Amount Paid": [amount_paid(base_cap, team) for team in team_info.keys()],
     })
     return df
@@ -381,3 +381,40 @@ def tax_payout_split(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd
     total_fee = total_fee/2
     total_fee = total_fee / (df["Luxury Fee"] == 0).sum()
     return total_fee
+
+def style_overall_cap(row):
+    styles = [""] * len(row)
+    for i, col in enumerate(row.index):
+        value = row[col]
+        if col == "Active Players":
+            if 15 <= value <= 17:
+                styles[i] = "background-color: yellow;"
+            elif value <= 11 or value >= 18 or value == 0:
+                styles[i] = "background-color: red;"
+            elif 12 <= value <= 14:
+                styles[i] = "background-color: green;"
+        elif col in ["Cap Space", "Tax Space"]:
+            color = "green" if value > 0 else "red"
+            styles[i] = f"color: {color};"
+            styles[i] += "text-align: right;"
+        elif col == "Hard Cap":
+            if value in ["Second Apron", "First Apron"]:
+                styles[i] = "background-color: yellow;"
+        elif col == "Apron 1 Space":
+            if value < 0:
+                styles[i] = "background-color: red;"
+            elif row.get("Hard Cap") == "First Apron":
+                styles[i] = "background-color: yellow;"
+            styles[i] += "text-align: right;"
+        elif col == "Apron 2 Space":
+            if value < 0:
+                styles[i] = "background-color: red;"
+            elif row.get("Hard Cap") == "Second Apron":
+                styles[i] = "background-color: yellow;"
+            styles[i] += "text-align: right;"
+        elif col in ["Base Fee", "Luxury Fee", "Amount Paid"]:
+            styles[i] = "text-align: right;"
+        elif col == "Net Fee":
+            color = "red" if value > 0 else "green"
+            styles[i] = f"color: {color}; text-align: right;"
+        return styles
