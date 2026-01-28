@@ -388,28 +388,28 @@ def style_overall_cap(row):
         value = row[col]
         if col == "Active Players":
             if 15 <= value <= 17:
-                styles[i] = "background-color: yellow;"
+                styles[i] = "color: yellow;"
             elif value <= 11 or value >= 18 or value == 0:
-                styles[i] = "background-color: red;"
+                styles[i] = "color: red;"
             elif 12 <= value <= 14:
-                styles[i] = "background-color: green;"
+                styles[i] = "color: green;"
         elif col in ["Cap Space", "Tax Space"]:
             color = "green" if value > 0 else "red"
-            styles[i] = f"background-color: {color};"
+            styles[i] = f"color: {color};"
         elif col == "Hard Cap":
             if value in ["Second Apron", "First Apron"]:
-                styles[i] = "background-color: yellow;"
+                styles[i] = "color: yellow;"
         elif col == "Apron 1 Space":
             if value < 0:
-                styles[i] = "background-color: red;"
+                styles[i] = "color: red;"
             elif row.get("Hard Cap") == "First Apron":
-                styles[i] = "background-color: yellow;"
+                styles[i] = "color: yellow;"
         elif col == "Apron 2 Space":
             if value < 0:
-                styles[i] = "background-color: red;"
+                styles[i] = "color: red;"
             elif row.get("Hard Cap") == "Second Apron":
-                styles[i] = "background-color: yellow;"
+                styles[i] = "color: yellow;"
         elif col == "Balance":
             color = "red" if value > 0 else "green"
-            styles[i] = f"background-color: {color};"
+            styles[i] = f"color: {color};"
     return styles
