@@ -417,4 +417,4 @@ def style_overall_cap(row):
         elif col == "Net Fee":
             color = "red" if value > 0 else "green"
             styles[i] = f"color: {color}; text-align: right;"
-        return styles
+    return styles
