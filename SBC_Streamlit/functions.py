@@ -353,7 +353,7 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
         "Apron 1 Space": [current_apron_1-get_tax_total(df, team) for team in team_info.keys()],
         "Apron 2 Space": [current_apron_2-get_tax_total(df, team) for team in team_info.keys()],
         "Hard Cap": [team_hard_cap(base_cap, team) for team in team_info.keys()],
-        "Hard Cap Space": [-team_hard_cap_n(df, team, base_cap) for team in team_info.keys()],
+        "Hard Cap Space": [team_hard_cap_n(df, team, base_cap) for team in team_info.keys()],
         "Base Fee": [base_fee(df, team, base_cap) for team in team_info.keys()],
         "Luxury Fee": [luxury_fee(df, team, base_cap) for team in team_info.keys()],
         "Net Fee": [net_fee(df, team, base_cap) for team in team_info.keys()],
