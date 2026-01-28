@@ -155,7 +155,7 @@ def team_hard_cap_n(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame)
     tax_number = get_tax_total(df, SelectedTeam)
     hard_cap_type = team_hard_cap(base_cap, SelectedTeam)
     if hard_cap_type == "None":
-        return "—"
+        return None
     elif hard_cap_type == "First Apron":
         return tax_number-current_apron_1
     elif hard_cap_type == "Second Apron":
