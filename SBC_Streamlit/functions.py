@@ -414,7 +414,7 @@ def style_overall_cap(row):
             styles[i] += "text-align: right;"
         elif col in ["Base Fee", "Luxury Fee", "Amount Paid"]:
             styles[i] = "text-align: right;"
-        elif col == "Net Fee":
+        elif col == "Balance":
             color = "red" if value > 0 else "green"
             styles[i] = f"color: {color}; text-align: right;"
     return styles
