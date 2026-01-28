@@ -264,7 +264,7 @@ with tab5:
     with col4:
         st.metric(label = "Conference Semifinalists", value = 4.16, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
 
-    col1, col2, col3, col4 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric(label = "Charity Champion", value = 50, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
 
