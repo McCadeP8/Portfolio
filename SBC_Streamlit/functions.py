@@ -343,7 +343,7 @@ def trade_restrictions_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame
     df = df.sort_values('Player', ascending=True)
     return df
 
-def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame) -> pd.DataFrame:
+def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
     df = pd.DataFrame({
         "Logo": [info["logo"] for info in team_info.values()],
         "Team": list(team_info.keys()),
@@ -353,10 +353,10 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame) -> pd.DataF
         "Apron 1 Space": [get_tax_total(df, team)-current_apron_1 for team in team_info.keys()],
         "Apron 2 Space": [get_tax_total(df, team)-current_apron_2 for team in team_info.keys()],
         "Hard Cap": [team_hard_cap(df, team) for team in team_info.keys()],
-        "Hard Cap Space": [team_hard_cap_n(df, team, exceptions_df) for team in team_info.keys()],
-        "Base Fee": [base_fee(df, team, exceptions_df) for team in team_info.keys()],
-        "Luxury Fee": [luxury_fee(df, team, exceptions_df) for team in team_info.keys()],
-        "Net Fee": [net_fee(df, team, exceptions_df) for team in team_info.keys()],
+        "Hard Cap Space": [team_hard_cap_n(df, team, base_cap) for team in team_info.keys()],
+        "Base Fee": [base_fee(df, team, base_cap) for team in team_info.keys()],
+        "Luxury Fee": [luxury_fee(df, team, base_cap) for team in team_info.keys()],
+        "Net Fee": [net_fee(df, team, base_cap) for team in team_info.keys()],
         "Amount Paid": [amount_paid(exceptions_df, team) for team in team_info.keys()],
     })
     return df
