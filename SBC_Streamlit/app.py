@@ -236,12 +236,6 @@ with tab3:
 
 with tab4:
     st.markdown("This section is under construction.")
-    datetime.now()
-    now = datetime.now()
-    target = datetime(2026, 1, 28, 20, 5)  # 8:05 PM
-    delta = target - now
-    st.write(f"Time until next update: {delta}")
-
 
 with tab5:
     overall_cap_df = overall_cap_table(df, exceptions, base_cap)
