@@ -237,5 +237,5 @@ with tab4:
     st.markdown("This section is under construction.")
 
 with tab5:
-    overall_cap_df = overall_cap_table()
+    overall_cap_df = overall_cap_table(df, exceptions)
     st.dataframe(overall_cap_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
