@@ -396,7 +396,6 @@ def style_overall_cap(row):
         elif col in ["Cap Space", "Tax Space"]:
             color = "green" if value > 0 else "red"
             styles[i] = f"color: {color};"
-            styles[i] += "text-align: right;"
         elif col == "Hard Cap":
             if value in ["Second Apron", "First Apron"]:
                 styles[i] = "background-color: yellow;"
@@ -405,16 +404,12 @@ def style_overall_cap(row):
                 styles[i] = "background-color: red;"
             elif row.get("Hard Cap") == "First Apron":
                 styles[i] = "background-color: yellow;"
-            styles[i] += "text-align: right;"
         elif col == "Apron 2 Space":
             if value < 0:
                 styles[i] = "background-color: red;"
             elif row.get("Hard Cap") == "Second Apron":
                 styles[i] = "background-color: yellow;"
-            styles[i] += "text-align: right;"
-        elif col in ["Base Fee", "Luxury Fee", "Amount Paid"]:
-            styles[i] = "text-align: right;"
         elif col == "Balance":
             color = "red" if value > 0 else "green"
-            styles[i] = f"color: {color}; text-align: right;"
+            styles[i] = f"color: {color};"
     return styles
