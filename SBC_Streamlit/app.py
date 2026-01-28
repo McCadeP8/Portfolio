@@ -1,7 +1,6 @@
 import streamlit as st
 import re as re
-from datetime import datetime
-from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table
+from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset
 
 df = get_data()
@@ -253,23 +252,23 @@ with tab5:
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label = "Champion Payout", value = 50, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Champion Payout", value = unit_payout(df, exceptions, base_cap)*12, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
 
     with col2:
-        st.metric(label = "Runner-Up Payout", value = 16.67, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Runner-Up Payout", value = unit_payout(df, exceptions, base_cap)*4, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
 
     with col3:
-        st.metric(label = "Conference Finalists", value = 8.33, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Conference Finalists", value = unit_payout(df, exceptions, base_cap)*2, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
 
     with col4:
-        st.metric(label = "Conference Semifinalists", value = 4.16, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Conference Semifinalists", value = unit_payout(df, exceptions, base_cap)*1, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label = "Charity Champion", value = 50, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Charity Champion", value = tax_payout_champ(df, exceptions, base_cap), help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
 
     with col2:
-        st.metric(label = "Charity Payback", value = 3.12, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Charity Payback", value = tax_payout_split(df, exceptions, base_cap), help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
 
     with col3:
         st.metric(label = "IST Champion", value = 75, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")

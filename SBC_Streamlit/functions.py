@@ -360,4 +360,24 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
     })
     return df
 
+def unit_payout(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
+    df = overall_cap_table(df, exceptions_df, base_cap)
+    total_fee = df["Base Fee"].sum()
+    total_fee = total_fee-130-100
+    total_fee = total_fee/24
+    return total_fee
 
+    tax_payout_champ
+
+def tax_payout_champ(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
+    df = overall_cap_table(df, exceptions_df, base_cap)
+    total_fee = df["Base Fee"].sum()
+    total_fee = total_fee/2
+    return total_fee
+
+def tax_payout_split(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
+    df = overall_cap_table(df, exceptions_df, base_cap)
+    total_fee = df["Base Fee"].sum()
+    total_fee = total_fee/2
+    total_fee = total_fee / (df["Luxury Fee"] == 0).sum()
+    return total_fee
