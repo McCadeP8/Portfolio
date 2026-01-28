@@ -56,7 +56,7 @@ with col2:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "League Overview"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "League Overview", "About SBCFBL", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
@@ -279,3 +279,8 @@ with tab5:
     with col4:
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
+with tab6:
+    st.markdown("This section is under construction.")
+
+with tab7:
+    st.markdown("This section is under construction.")
