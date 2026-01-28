@@ -357,7 +357,7 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
         "Base Fee": [base_fee(df, team, base_cap) for team in team_info.keys()],
         "Luxury Fee": [luxury_fee(df, team, base_cap) for team in team_info.keys()],
         "Net Fee": [net_fee(df, team, base_cap) for team in team_info.keys()],
-        "Amount Paid": [amount_paid(exceptions_df, team) for team in team_info.keys()],
+        "Amount Paid": [amount_paid(base_cap, team) for team in team_info.keys()],
     })
     return df
 
