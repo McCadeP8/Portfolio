@@ -238,5 +238,43 @@ with tab4:
     st.markdown("This section is under construction.")
 
 with tab5:
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric(label = "Salary Cap", value = current_salary_cap, delta = "10.0%", delta_color = "normal", help = "Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border = True, format = "dollar")
+    with col2:
+        st.metric(label = "Luxury Tax", value = current_luxury_tax, delta = "10.0%", delta_color = "normal", help = "Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border = True, format = "dollar")
+    with col3:
+        st.metric(label = "Apron #1", value = current_apron_1, delta = "10.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
+    with col4:
+        st.metric(label = "Apron #2", value = current_apron_2, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
+
     overall_cap_df = overall_cap_table(df, exceptions, base_cap)
     st.dataframe(overall_cap_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.metric(label = "Champion Payout", value = 50, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+
+    with col2:
+        st.metric(label = "Runner-Up Payout", value = 16.67, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+
+    with col3:
+        st.metric(label = "Conference Finalists", value = 8.33, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+
+    with col4:
+        st.metric(label = "Conference Semifinalists", value = 4.16, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(label = "Charity Champion", value = 50, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+
+    with col2:
+        st.metric(label = "Charity Payback", value = 3.12, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(label = "IST Champion", value = 75, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+
+    with col2:
+        st.metric(label = "IST Runner Up", value = 15, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+
