@@ -409,6 +409,6 @@ def style_overall_cap(row):
             elif row.get("Hard Cap") == "Second Apron":
                 styles[i] = "color: yellow;"
         elif col == "Balance":
-            color = "green" if value > 0 else "red"
+            color = "green" if value > -0.005 else "red"
             styles[i] = f"color: {color};"
     return styles
