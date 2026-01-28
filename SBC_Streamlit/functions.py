@@ -349,9 +349,9 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame) -> pd.DataF
         "Team": list(team_info.keys()),
         "Active Players": [active_player_n(df, team) for team in team_info.keys()],
         "Cap Space": [get_cap_total(df, exceptions_df, team)-current_salary_cap for team in team_info.keys()],
-        "Tax Space": [get_tax_total(df, exceptions_df, team)-current_luxury_tax for team in team_info.keys()],
-        "Apron 1 Space": [get_tax_total(df, exceptions_df, team)-current_apron_1 for team in team_info.keys()],
-        "Apron 2 Space": [get_tax_total(df, exceptions_df, team)-current_apron_2 for team in team_info.keys()],
+        "Tax Space": [get_tax_total(df, team)-current_luxury_tax for team in team_info.keys()],
+        "Apron 1 Space": [get_tax_total(df, team)-current_apron_1 for team in team_info.keys()],
+        "Apron 2 Space": [get_tax_total(df, team)-current_apron_2 for team in team_info.keys()],
         "Hard Cap": [team_hard_cap(df, team) for team in team_info.keys()],
         "Hard Cap Space": [team_hard_cap_n(df, team, exceptions_df) for team in team_info.keys()],
         "Base Fee": [base_fee(df, team, exceptions_df) for team in team_info.keys()],
@@ -360,6 +360,5 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame) -> pd.DataF
         "Amount Paid": [amount_paid(exceptions_df, team) for team in team_info.keys()],
     })
     return df
-
 
 
