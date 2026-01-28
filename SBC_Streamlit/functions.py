@@ -238,6 +238,7 @@ def net_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> floa
     tax = luxury_fee(df, SelectedTeam, base_cap)
     paid = amount_paid(base_cap, SelectedTeam)
     net_fee = tax + fee - paid
+    net_fee = -net_fee
     return math.ceil(net_fee * 100) / 100
 
 def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -408,6 +409,6 @@ def style_overall_cap(row):
             elif row.get("Hard Cap") == "Second Apron":
                 styles[i] = "color: yellow;"
         elif col == "Balance":
-            color = "red" if value > 0 else "green"
+            color = "green" if value > 0 else "red"
             styles[i] = f"color: {color};"
     return styles
