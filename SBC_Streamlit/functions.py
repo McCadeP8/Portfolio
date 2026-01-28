@@ -348,11 +348,11 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
         "Logo": [info["logo"] for info in team_info.values()],
         "Team": list(team_info.keys()),
         "Active Players": [active_player_n(df, team) for team in team_info.keys()],
-        "Cap Space": [current_salary_cap-get_cap_total(df, exceptions_df, team) for team in team_info.keys()],
-        "Tax Space": [current_luxury_tax-get_tax_total(df, team) for team in team_info.keys()],
+        "Cap Space": [round(current_salary_cap - get_cap_total(df, exceptions_df, team), 0) for team in team_info.keys()],
+        "Tax Space": [round(current_luxury_tax - get_tax_total(df, team), 0) for team in team_info.keys()],
         "Hard Cap": [team_hard_cap(base_cap, team) for team in team_info.keys()],
-        "Apron 1 Space": [current_apron_1-get_tax_total(df, team) for team in team_info.keys()],
-        "Apron 2 Space": [current_apron_2-get_tax_total(df, team) for team in team_info.keys()],
+        "Apron 1 Space": [round(current_apron_1 - get_tax_total(df, team), 0) for team in team_info.keys()],
+        "Apron 2 Space": [round(current_apron_2 - get_tax_total(df, team), 0) for team in team_info.keys()],
         "Base Fee": [base_fee(df, team, base_cap) for team in team_info.keys()],
         "Luxury Fee": [luxury_fee(df, team, base_cap) for team in team_info.keys()],
         "Balance": [net_fee(df, team, base_cap) for team in team_info.keys()],
@@ -391,8 +391,6 @@ def style_overall_cap(row):
                 styles[i] = "color: yellow;"
             elif value <= 11 or value >= 18 or value == 0:
                 styles[i] = "color: red;"
-            elif 12 <= value <= 14:
-                styles[i] = "color: green;"
         elif col in ["Cap Space", "Tax Space"]:
             color = "green" if value > 0 else "red"
             styles[i] = f"color: {color};"
