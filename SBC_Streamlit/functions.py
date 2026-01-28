@@ -395,7 +395,7 @@ def style_overall_cap(row):
                 styles[i] = "background-color: green;"
         elif col in ["Cap Space", "Tax Space"]:
             color = "green" if value > 0 else "red"
-            styles[i] = f"color: {color};"
+            styles[i] = f"background-color: {color};"
         elif col == "Hard Cap":
             if value in ["Second Apron", "First Apron"]:
                 styles[i] = "background-color: yellow;"
@@ -411,5 +411,5 @@ def style_overall_cap(row):
                 styles[i] = "background-color: yellow;"
         elif col == "Balance":
             color = "red" if value > 0 else "green"
-            styles[i] = f"color: {color};"
+            styles[i] = f"background-color: {color};"
     return styles
