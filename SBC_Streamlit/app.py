@@ -252,27 +252,27 @@ with tab5:
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label = "Champion Payout", value = unit_payout(df, exceptions, base_cap)*12, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Champion Payout", value = unit_payout(df, exceptions, base_cap)*12, help = "Awarded to the SBCFBL Champion. Prize equals ½ of the base fee pool after Fantrax, League Trophy, and IST fees.", border = True, format = "dollar")
 
     with col2:
-        st.metric(label = "Runner-Up Payout", value = unit_payout(df, exceptions, base_cap)*4, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Runner-Up Payout", value = unit_payout(df, exceptions, base_cap)*4, help = "Awarded to the SBCFBL Runner-up. Prize equals 1⁄6 of the base fee pool after Fantrax, League Trophy, and IST fees.", border = True, format = "dollar")
 
     with col3:
-        st.metric(label = "Conference Finalists", value = unit_payout(df, exceptions, base_cap)*2, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Conference Finalists", value = unit_payout(df, exceptions, base_cap)*2, help = "Awarded to each Conference Runner-up (2 total). Prize equals 1⁄12 of the base fee pool after Fantrax, League Trophy, and IST fees.", border = True, format = "dollar")
 
     with col4:
-        st.metric(label = "Conference Semifinalists", value = unit_payout(df, exceptions, base_cap)*1, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Conference Semifinalists", value = unit_payout(df, exceptions, base_cap)*1, help = "Awarded to each Conference Semifinal loser (4 total). Prize equals 1⁄24 of the base fee pool after Fantrax, League Trophy, and IST fees.", border = True, format = "dollar")
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label = "Charity Champion", value = tax_payout_champ(df, exceptions, base_cap), help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Charity Champion", value = tax_payout_champ(df, exceptions, base_cap), help = "Awarded to the League Champion to donate to a charity of their choice. Amount equals ½ of the luxury fee pool after all league expenses.", border = True, format = "dollar")
 
     with col2:
-        st.metric(label = "Charity Payback", value = tax_payout_split(df, exceptions, base_cap), help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "Tax Payback", value = tax_payout_split(df, exceptions, base_cap), help = "Awarded to non-tax teams for finishing outside the tax. Amount equals ½ of the luxury fee pool after all league expenses, split evenly among non-tax teams.", border = True, format = "dollar")
 
     with col3:
-        st.metric(label = "IST Champion", value = 75, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "IST Champion", value = 75, help = "Awarded to the SBCFBL Cup Champion. Prize is a flat $75.", border = True, format = "dollar")
 
     with col4:
-        st.metric(label = "IST Runner Up", value = 15, help = "The League Champion receives 50% of the Base Fees after the reduction of $100 for the league trophy and $130 for fantrax.", border = True, format = "dollar")
+        st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
