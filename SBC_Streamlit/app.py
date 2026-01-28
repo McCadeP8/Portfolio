@@ -250,7 +250,8 @@ with tab5:
     overall_cap_df = overall_cap_table(df, exceptions, base_cap)
     styled_overall_cap_df = (overall_cap_df.style
         .apply(lambda row: style_overall_cap(row), axis=1)
-        .format({c: "${:,.0f}" for c in overall_cap_df.columns if c in ["Cap Space", "Tax Space", "Apron 1 Space", "Apron 2 Space", "Base Fee", "Luxury Fee", "Balance", "Amount Paid"]}))
+        .format({c: "${:,.0f}" for c in overall_cap_df.columns if c in ["Cap Space", "Tax Space", "Apron 1 Space", "Apron 2 Space"]})
+        .format({c: "${:,.2f}" for c in overall_cap_df.columns if c in ["Base Fee", "Luxury Fee", "Balance", "Amount Paid"]}))
     st.dataframe(styled_overall_cap_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
 
     col1, col2, col3, col4 = st.columns(4)
