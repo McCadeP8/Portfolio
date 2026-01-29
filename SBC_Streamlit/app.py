@@ -282,10 +282,12 @@ with tab5:
 with tab6:
     st.subheader("League Introduction")
     st.markdown("""
-    The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The league was inspired by guidance from [Seth Partnow](https://www.linkedin.com/in/seth-partnow-929906b/), who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
+The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The league was inspired by guidance from [Seth Partnow](https://www.linkedin.com/in/seth-partnow-929906b/), who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
 
-    The league was created and developed from the ground up by [McCade Pearson](https://x.com/McCadeP8). Over the past six years, SBCFBL has been intentionally designed to closely mirror the structure, rules, and financial mechanics outlined in the NBA’s official [Collective Bargaining Agreement (CBA)](https://imgix.cosmicjs.com/25da5eb0-15eb-11ee-b5b3-fbd321202bdf-Final-2023-NBA-Collective-Bargaining-Agreement-6-28-23.pdf).
-    """)
+The league was created and developed from the ground up by [McCade Pearson](https://x.com/McCadeP8). Over the past six years, SBCFBL has been intentionally designed to closely mirror the structure, rules, and financial mechanics outlined in the NBA’s official [Collective Bargaining Agreement (CBA)](https://imgix.cosmicjs.com/25da5eb0-15eb-11ee-b5b3-fbd321202bdf-Final-2023-NBA-Collective-Bargaining-Agreement-6-28-23.pdf).
+
+Since its launch, SBCFBL has helped more than half a dozen participants secure roles with NBA teams and has raised over $10,000 for charitable causes, serving as both a professional development platform and a vehicle for positive community impact.
+""")
 
 
 with tab7:
