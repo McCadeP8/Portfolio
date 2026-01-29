@@ -453,11 +453,11 @@ with tab8:
 df = pd.DataFrame([{
     "Year": 2026,
     "Round": "Round 1",
-    "Team Name": "Vegas",
+    "Team Name": "V",
     "Team": "https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=small",
     "Description": "Hi",
-    **{i: "Vegas" for i in range(1, 18)},
-    **{i: "Manchester" for i in range(18, 31)},
+    **{i: "V" for i in range(1, 18)},
+    **{i: "M" for i in range(18, 31)},
     "Team2": "https://pbs.twimg.com/media/Fxamx3nagAAZXCI?format=png&name=small"
 }])
 
@@ -470,9 +470,9 @@ def style_overall_cap2(row):
     for i, col in enumerate(row.index):
         if isinstance(col, int) and 1 <= col <= 30:
             if row[col] == team_name:
-                styles[i] = "color: pink;"
+                styles[i] = "color: pink; background-color: pink;"
             else:
-                styles[i] = "color: blue;"
+                styles[i] = "color: blue; background-color: blue"
 
     return styles
 
