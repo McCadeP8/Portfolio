@@ -282,12 +282,55 @@ with tab5:
 with tab6:
     st.subheader("League Introduction")
     st.markdown("""
-The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The league was inspired by guidance from [Seth Partnow](https://www.linkedin.com/in/seth-partnow-929906b/), who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
+    The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The league was inspired by guidance from [Seth Partnow](https://www.linkedin.com/in/seth-partnow-929906b/), who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
 
-The league was created and developed from the ground up by [McCade Pearson](https://x.com/McCadeP8). Over the past six years, SBCFBL has been intentionally designed to closely mirror the structure, rules, and financial mechanics outlined in the NBA’s official [Collective Bargaining Agreement (CBA)](https://imgix.cosmicjs.com/25da5eb0-15eb-11ee-b5b3-fbd321202bdf-Final-2023-NBA-Collective-Bargaining-Agreement-6-28-23.pdf).
+    The league was created and developed from the ground up by [McCade Pearson](https://x.com/McCadeP8). Over the past six years, SBCFBL has been intentionally designed to closely mirror the structure, rules, and financial mechanics outlined in the NBA’s official [Collective Bargaining Agreement (CBA)](https://imgix.cosmicjs.com/25da5eb0-15eb-11ee-b5b3-fbd321202bdf-Final-2023-NBA-Collective-Bargaining-Agreement-6-28-23.pdf).
 
-Since its launch, SBCFBL has helped more than half a dozen participants secure roles with NBA teams and has raised over $10,000 for charitable causes, serving as both a professional development platform and a vehicle for positive community impact.
-""")
+    Since its launch, SBCFBL has helped more than half a dozen participants secure roles with NBA teams and has raised over $10,000 for charitable causes, serving as both a professional development platform and a vehicle for positive community impact.
+    """)
+
+    st.subheader("Pre-Launch")
+    st.markdown("""
+    During the league’s formation, McCade Pearson led the development of all franchise identities. This process included the creation of 30 distinct and original brands, each with a unique location, era-appropriate team name, and customized color scheme. In 2022, this branding effort was further expanded to include original team logos for every franchise.
+
+    All 30 teams are based in the United States or Vancouver. To date, the only franchise to undergo rebranding is the San Diego Wave, following the introduction of an NWSL expansion team with the same name.
+    """)
+
+    st.subheader("Initial Roster Construction")
+    st.markdown("""
+    To initialize league rosters, SBCFBL conducted a 30-team slow blind auction over the course of multiple days. Each team began with a clean salary cap sheet, along with access to the full Mid-Level Exception (MLE) and Bi-Annual Exception (BAE) in Year 1 to facilitate roster construction and competitive balance.
+
+    To ensure a realistic distribution of contract lengths across the league, contract values were permitted to differ from real-world figures, while contract durations were aligned with each player’s actual NBA contract length at the time. Following a series of randomized draws and strategic bidding rounds, all 30 team rosters were completed and the league officially launched.
+    """)
+
+    st.subheader("Scoring System")
+    st.markdown("""
+    The SBCFBL scoring system is modeled after the structure of the United States Electoral College. Rather than states, the league allocates weighted values to traditional basketball performance categories that most strongly correlate with winning NBA games—beyond points alone.
+
+    Each category contributes a fixed number of “votes,” with higher-impact metrics carrying greater weight.
+    - **Points**: 61  
+    - **Assists**: 41  
+    - **True Shooting Percentage**: 41  
+    - **Blocks**: 31  
+    - **Defensive Rebounds**: 31  
+    - **Offensive Rebounds**: 31  
+    - **Plus-Minus**: 31  
+    - **Steals**: 31  
+    - **Three-Point Percentage**: 31  
+    - **Two-Point Percentage**: 31  
+    - **Free Throw Percentage***: 21  
+    - **Turnovers***: 11
+    - **Minutes Played**: 11  
+
+    In total, **411 points** are available in each matchup, with **206 points required to win**. The inclusion of an additional point in each category allows a 205.5–205.5 tie to be resolved by awarding the win to the team that captures the most individual categories. In the rare event of a 206.5–206.5 tie, the win is awarded to the home team.
+
+    To be eligible to win the four efficiency categories, teams must meet the following minimum thresholds: **10 field goal attempts (FGA)**, **10 three-point attempts (3PA)**, and **5 free throw attempts (FTA)**.
+
+    This nontraditional scoring system expands strategic flexibility and encourages sophisticated analytical decision-making, creating a more dynamic and engaging competitive environment than standard fantasy formats.
+
+    \* *For Turnovers, the team with the lower total is awarded the category.*
+    """)
+
 
 
 with tab7:
