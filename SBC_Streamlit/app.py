@@ -453,11 +453,11 @@ with tab8:
 df = pd.DataFrame([{
     "Year": 2026,
     "Round": "Round 1",
-    "Team Name": "V",
+    "Team Name": "",
     "Team": "https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=small",
     "Description": "Hi",
-    **{i: "V" for i in range(1, 18)},
-    **{i: "M" for i in range(18, 31)},
+    **{i: "" for i in range(1, 18)},
+    **{i: "" for i in range(18, 31)},
     "Team2": "https://pbs.twimg.com/media/Fxamx3nagAAZXCI?format=png&name=small"
 }])
 
