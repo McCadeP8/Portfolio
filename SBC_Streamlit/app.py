@@ -28,6 +28,23 @@ nickname = team_info[SelectedTeam]["nickname"]
 #    """,
 #    unsafe_allow_html=True)
 
+
+st.markdown(
+    f"""
+    <style>
+    section[data-testid="stSidebar"] {{
+        background-color: {bg_color};
+    }}
+
+    section[data-testid="stSidebar"] * {{
+        color: {text_color} !important;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
 st.markdown(
     """
     <style>
