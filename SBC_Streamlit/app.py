@@ -280,7 +280,78 @@ with tab5:
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
 with tab6:
-    st.markdown("This section is under construction.")
+
+    st.subheader("League Overview")
+    st.markdown("""
+    This league was created to provide a competitive, immersive fantasy experience that rewards strategy,
+    long-term planning, and active management. Unlike standard fantasy leagues, this league emphasizes
+    economic realism, parity mechanisms, and league-wide engagement throughout the season.
+    """)
+
+    st.subheader("Origins & Founding Story")
+    st.markdown("""
+    The league was founded by a core group of managers looking for something deeper than traditional fantasy formats.
+    What began as a casual idea quickly evolved into a fully structured league with custom rules, financial systems,
+    and long-term vision. Early seasons were defined by experimentation, rule refinement, and learning what truly
+    created competitive balance.
+    """)
+
+    st.subheader("League Structure & Format")
+    st.markdown("""
+    The league consists of a fixed number of teams competing over a regular season followed by a playoff format.
+    Rosters, scoring, and scheduling are designed to balance skill and randomness while rewarding informed decision-making.
+    The format has evolved over time to better reflect competitive integrity and strategic depth.
+    """)
+
+    st.subheader("Financial System & Economics")
+    st.markdown("""
+    A central feature of the league is its financial system. Entry fees, payouts, and penalties are structured
+    to encourage smart roster construction and discourage reckless decision-making. Mechanisms such as luxury taxes
+    and redistribution help maintain parity while still rewarding elite performance.
+    """)
+
+    st.subheader("Governance & Rule Evolution")
+    st.markdown("""
+    The league is governed by a commissioner group responsible for enforcing rules and maintaining league health.
+    Rule changes are proposed, discussed, and voted on by managers. Many current rules exist as the result of past
+    edge cases, loopholes, or unintended consequences discovered in earlier seasons.
+    """)
+
+    st.subheader("Championships & Competitive History")
+    st.markdown("""
+    Each season concludes with a playoff tournament that determines the league champion. Over time, certain teams
+    have established dominant runs, while others have experienced near-misses or dramatic playoff collapses.
+    Championship history serves as the primary benchmark for long-term success.
+    """)
+
+    st.subheader("Team Histories & Identities")
+    st.markdown("""
+    Every team in the league has developed a distinct identity shaped by ownership style, draft philosophy,
+    and roster management tendencies. Team names, branding, and historical performance contribute to a league
+    environment where each franchise feels unique.
+    """)
+
+    st.subheader("Rivalries & Storylines")
+    st.markdown("""
+    Rivalries have naturally emerged through repeated matchups, playoff battles, and controversial trades.
+    Some teams consistently derail each other’s seasons, while others are locked in long-running competitive
+    duels that define eras of the league.
+    """)
+
+    st.subheader("Legendary Moments")
+    st.markdown("""
+    The league’s history includes unforgettable moments: blockbuster trades, draft-day steals, catastrophic
+    miscalculations, and single-week performances that still get referenced seasons later. These moments form
+    the shared mythology that gives the league its personality.
+    """)
+
+    st.subheader("Records & Statistical Leaders")
+    st.markdown("""
+    League records track both excellence and infamy. From highest-scoring weeks to longest losing streaks,
+    these statistics provide context for greatness and serve as historical markers for how the league has evolved
+    over time.
+    """)
+
 
 with tab7:
     st.markdown("This section is under construction.")

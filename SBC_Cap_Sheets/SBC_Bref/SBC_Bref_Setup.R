@@ -70,7 +70,7 @@ AllMatchups <- rbind(matchups_expanded1, matchups_expanded2, matchups_expanded3,
 sheet_write(data = player_df, ss = sheet_id, sheet = "All-Time Games")
 
 
-rlibrary(httr)
+library(httr)
 library(jsonlite)
 library(dplyr)
 library(purrr)
