@@ -282,6 +282,7 @@ with tab5:
 with tab6:
 
     st.subheader("League Overview")
+    print("This league was created to provide a competitive, immersive fantasy experience that rewards strategy, long-term planning, and active management. Unlike standard fantasy leagues, this league emphasizes economic realism, parity mechanisms, and league-wide engagement throughout the season.")
     st.markdown("""
     This league was created to provide a competitive, immersive fantasy experience that rewards strategy,
     long-term planning, and active management. Unlike standard fantasy leagues, this league emphasizes
