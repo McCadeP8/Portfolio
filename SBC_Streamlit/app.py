@@ -281,12 +281,23 @@ with tab5:
 
 with tab6:
     col1, col2 = st.columns(2)
-    with col1:
-        SelectedTeam1 = st.multiselect("Select your Players:", Teams, default=["Vegas"])
-        SelectedTeam2 = st.multiselect("Select your Picks:", Teams, default=["Vegas"])
-    with col2:
-        SelectedTeam3 = st.multiselect("Select your Players2:", Teams, default=["Vegas"])
-        SelectedTeam4 = st.multiselect("Select your Picks2:", Teams, default=["Vegas"])
+
+    with st.form("team_selection_form"):
+        with col1:
+            SelectedTeam1 = st.multiselect("Select your Players:", Teams, default=["Vegas"])
+            SelectedTeam2 = st.multiselect("Select your Picks:", Teams, default=["Vegas"])
+        with col2:
+            SelectedTeam3 = st.multiselect("Select your Players2:", Teams, default=["Vegas"])
+            SelectedTeam4 = st.multiselect("Select your Picks2:", Teams, default=["Vegas"])
+        
+        submitted = st.form_submit_button("Submit")
+    
+    if submitted:
+        st.write("Selections submitted:")
+        st.write("SelectedTeam1:", SelectedTeam1)
+        st.write("SelectedTeam2:", SelectedTeam2)
+        st.write("SelectedTeam3:", SelectedTeam3)
+        st.write("SelectedTeam4:", SelectedTeam4)
 
 with tab7:
     st.subheader("SBCFBL Introduction")
