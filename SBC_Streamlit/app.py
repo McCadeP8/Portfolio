@@ -280,7 +280,7 @@ with tab5:
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
 with tab6:
-    col1, col2 = st.columns(4)
+    col1, col2 = st.columns(2)
     with col1:
         SelectedTeam1 = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
         SelectedTeam2 = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
