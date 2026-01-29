@@ -56,7 +56,7 @@ with col2:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "League Overview", "About SBCFBL", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "About SBCFBL", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
@@ -90,7 +90,7 @@ with tab1:
         st.metric(label = "Cap Total", value = get_cap_total(df, exceptions, SelectedTeam), delta = get_cap_total(df, exceptions, SelectedTeam)-current_salary_cap, delta_color = "inverse", help = "The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap.", border = True, format = "dollar")
         st.metric(label = "Tax Total", value = get_tax_total(df, SelectedTeam), delta = get_tax_total(df, SelectedTeam)-current_luxury_tax, delta_color = "inverse", help = "The first number shows total team salary against the luxury tax, including all active and inactive player salaries and incomplete roster charges. Unlike the real NBA, rookie and second-year undrafted fees are not included. The second number shows remaining space relative to the Luxury Tax.", border = True, format = "dollar")
         st.metric(label = "Apron Space", value = team_hard_cap(base_cap, SelectedTeam), delta = team_hard_cap_n(df, SelectedTeam, base_cap), help = "The first value indicates whether the team is uncapped, capped at the first apron, or capped at the second apron while the second value shows how far the team is from the applicable cap ", border = True, format = "dollar")
-        st.metric(label = "Entry Fee", value = base_fee(df, SelectedTeam, base_cap), delta = luxury_fee(df, SelectedTeam, base_cap), delta_color = "inverse", help = "The league uses a 3,000,000‑1 scale. The first number is the base entry fee, calculated from the Tax Total plus a $3.00 In-Season Tournament fee. The second number shows the Luxury Tax penalty for the season, scaled as a payable fee.", border = True, format = "dollar")
+        st.metric(label = "Entry Fee", value = base_fee(df, SelectedTeam, base_cap), delta = luxury_fee(df, SelectedTeam, base_cap), delta_color = "inverse", help = "The SBCFBL uses a 3,000,000‑1 scale. The first number is the base entry fee, calculated from the Tax Total plus a $3.00 In-Season Tournament fee. The second number shows the Luxury Tax penalty for the season, scaled as a payable fee.", border = True, format = "dollar")
         st.metric(label = "Balance", value = net_fee(df, SelectedTeam, base_cap), delta = amount_paid(base_cap, SelectedTeam), delta_color = "normal", help = "The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border = True, format = "dollar")
 
     with col2:
@@ -255,23 +255,23 @@ with tab5:
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label = "Champion Payout", value = unit_payout(df, exceptions, base_cap)*12, help = "Awarded to the SBCFBL Champion. Prize equals ½ of the base fee pool after Fantrax, League Trophy, and IST fees.", border = True, format = "dollar")
+        st.metric(label = "Champion Payout", value = unit_payout(df, exceptions, base_cap)*12, help = "Awarded to the SBCFBL Champion. Prize equals ½ of the base fee pool after Fantrax, Larry Coon Trophy, and IST fees.", border = True, format = "dollar")
 
     with col2:
-        st.metric(label = "Runner-Up Payout", value = unit_payout(df, exceptions, base_cap)*4, help = "Awarded to the SBCFBL Runner-up. Prize equals 1⁄6 of the base fee pool after Fantrax, League Trophy, and IST fees.", border = True, format = "dollar")
+        st.metric(label = "Runner-Up Payout", value = unit_payout(df, exceptions, base_cap)*4, help = "Awarded to the SBCFBL Runner-up. Prize equals 1⁄6 of the base fee pool after Fantrax, Larry Coon Trophy, and IST fees.", border = True, format = "dollar")
 
     with col3:
-        st.metric(label = "Conference Finalists", value = unit_payout(df, exceptions, base_cap)*2, help = "Awarded to each Conference Runner-up (2 total). Prize equals 1⁄12 of the base fee pool after Fantrax, League Trophy, and IST fees.", border = True, format = "dollar")
+        st.metric(label = "Conference Finalists", value = unit_payout(df, exceptions, base_cap)*2, help = "Awarded to each Conference Runner-up (2 total). Prize equals 1⁄12 of the base fee pool after Fantrax, Larry Coon Trophy, and IST fees.", border = True, format = "dollar")
 
     with col4:
-        st.metric(label = "Conference Semifinalists", value = unit_payout(df, exceptions, base_cap)*1, help = "Awarded to each Conference Semifinal loser (4 total). Prize equals 1⁄24 of the base fee pool after Fantrax, League Trophy, and IST fees.", border = True, format = "dollar")
+        st.metric(label = "Conference Semifinalists", value = unit_payout(df, exceptions, base_cap)*1, help = "Awarded to each Conference Semifinal loser (4 total). Prize equals 1⁄24 of the base fee pool after Fantrax, Larry Coon Trophy, and IST fees.", border = True, format = "dollar")
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label = "Charity Champion", value = tax_payout_champ(df, exceptions, base_cap), help = "Awarded to the League Champion to donate to a charity of their choice. Amount equals ½ of the luxury fee pool after all league expenses.", border = True, format = "dollar")
+        st.metric(label = "Charity Champion", value = tax_payout_champ(df, exceptions, base_cap), help = "Awarded to the SBCFBL Champion to donate to a charity of their choice. Amount equals ½ of the luxury fee pool after all SBCFBL expenses.", border = True, format = "dollar")
 
     with col2:
-        st.metric(label = "Tax Payback", value = tax_payout_split(df, exceptions, base_cap), help = "Awarded to non-tax teams for finishing outside the tax. Amount equals ½ of the luxury fee pool after all league expenses, split evenly among non-tax teams.", border = True, format = "dollar")
+        st.metric(label = "Tax Payback", value = tax_payout_split(df, exceptions, base_cap), help = "Awarded to non-tax teams for finishing outside the tax. Amount equals ½ of the luxury fee pool after all SBCFBL expenses, split evenly among non-tax teams.", border = True, format = "dollar")
 
     with col3:
         st.metric(label = "IST Champion", value = 75, help = "Awarded to the SBCFBL Cup Champion. Prize is a flat $75.", border = True, format = "dollar")
@@ -280,32 +280,32 @@ with tab5:
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
 with tab6:
-    st.subheader("League Introduction")
+    st.subheader("SBCFBL Introduction")
     st.markdown("""
-    The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The league was inspired by guidance from [Seth Partnow](https://www.linkedin.com/in/seth-partnow-929906b/), who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
+    The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from [Seth Partnow](https://www.linkedin.com/in/seth-partnow-929906b/), who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
 
-    The league was created and developed from the ground up by [McCade Pearson](https://x.com/McCadeP8). Over the past six years, SBCFBL has been intentionally designed to closely mirror the structure, rules, and financial mechanics outlined in the NBA’s official [Collective Bargaining Agreement (CBA)](https://imgix.cosmicjs.com/25da5eb0-15eb-11ee-b5b3-fbd321202bdf-Final-2023-NBA-Collective-Bargaining-Agreement-6-28-23.pdf).
+    The SBCFBL was created and developed from the ground up by [McCade Pearson](https://x.com/McCadeP8). Over the past six years, SBCFBL has been intentionally designed to closely mirror the structure, rules, and financial mechanics outlined in the NBA’s official [Collective Bargaining Agreement (CBA)](https://imgix.cosmicjs.com/25da5eb0-15eb-11ee-b5b3-fbd321202bdf-Final-2023-NBA-Collective-Bargaining-Agreement-6-28-23.pdf).
 
     Since its launch, SBCFBL has helped more than half a dozen participants secure roles with NBA teams and has raised over $10,000 for charitable causes, serving as both a professional development platform and a vehicle for positive community impact.
     """)
 
-    st.subheader("Pre-Launch")
+    st.subheader("SBCFBL Pre-Launch")
     st.markdown("""
-    During the league’s formation, McCade Pearson led the development of all franchise identities. This process included the creation of 30 distinct and original brands, each with a unique location, era-appropriate team name, and customized color scheme. In 2022, this branding effort was further expanded to include original team logos for every franchise.
+    During the SBCFBL's formation, McCade Pearson led the development of all franchise identities. This process included the creation of 30 distinct and original brands, each with a unique location, era-appropriate team name, and customized color scheme. In 2022, this branding effort was further expanded to include original team logos for every franchise.
 
     All 30 teams are based in the United States or Vancouver. To date, the only franchise to undergo rebranding is the San Diego Wave, following the introduction of an NWSL expansion team with the same name.
     """)
 
-    st.subheader("Initial Roster Construction")
+    st.subheader("SBCFBL Initial Roster Construction")
     st.markdown("""
-    To initialize league rosters, SBCFBL conducted a 30-team slow blind auction over the course of multiple days. Each team began with a clean salary cap sheet, along with access to the full Mid-Level Exception (MLE) and Bi-Annual Exception (BAE) in Year 1 to facilitate roster construction and competitive balance.
+    To initialize rosters, SBCFBL conducted a 30-team slow blind auction over the course of multiple days. Each team began with a clean salary cap sheet, along with access to the full Mid-Level Exception (MLE) and Bi-Annual Exception (BAE) in Year 1 to facilitate roster construction and competitive balance.
 
-    To ensure a realistic distribution of contract lengths across the league, contract values were permitted to differ from real-world figures, while contract durations were aligned with each player’s actual NBA contract length at the time. Following a series of randomized draws and strategic bidding rounds, all 30 team rosters were completed and the league officially launched.
+    To ensure a realistic distribution of contract lengths across the SBCFBL, contract values were permitted to differ from real-world figures, while contract durations were aligned with each player’s actual NBA contract length at the time. Following a series of randomized draws and strategic bidding rounds, all 30 team rosters were completed and the SBCFBL officially launched.
     """)
 
-    st.subheader("Scoring System")
+    st.subheader("SBCFBL Scoring System")
     st.markdown("""
-    The SBCFBL scoring system is modeled after the structure of the United States Electoral College. Rather than states, the league allocates weighted values to traditional basketball performance categories that most strongly correlate with winning NBA games—beyond points alone.
+    The SBCFBL scoring system is modeled after the structure of the United States Electoral College. Rather than states, the SBCFBL allocates weighted values to traditional basketball performance categories that most strongly correlate with winning NBA games—beyond points alone.
 
     Each category contributes a fixed number of “votes,” with higher-impact metrics carrying greater weight.
     - **Points**: 61  
@@ -319,7 +319,7 @@ with tab6:
     - **Three-Point Percentage**: 31  
     - **Two-Point Percentage**: 31  
     - **Free Throw Percentage***: 21  
-    - **Turnovers***: 11
+    - **Turnovers***: 21
     - **Minutes Played**: 11  
 
     In total, **411 points** are available in each matchup, with **206 points required to win**. The inclusion of an additional point in each category allows a 205.5–205.5 tie to be resolved by awarding the win to the team that captures the most individual categories. In the rare event of a 206.5–206.5 tie, the win is awarded to the home team.
@@ -328,10 +328,38 @@ with tab6:
 
     This nontraditional scoring system expands strategic flexibility and encourages sophisticated analytical decision-making, creating a more dynamic and engaging competitive environment than standard fantasy formats.
 
-    \* *For Turnovers, the team with the lower total is awarded the category.*
+    \**For Turnovers, the team with the lower total is awarded the category.*
     """)
 
+    st.subheader("SBCFBL Roster Construction")
 
+
+    st.subheader("SBCFBL Season Structure")
+    st.markdown("""
+    The SBCFBL consists of 30 teams organized into six divisions across two conferences. The regular season schedule is designed to emulate the length and intensity of the NBA. Following minor adjustments due to COVID-shortened seasons, the SBCFBL now plays a **72-game schedule**, consisting of **14 interconference games** and **15 intraconference games** per team, spread over **36 periods**. Each period features two games per team played over a 3–4 day stretch.
+
+    The playoffs closely mirror the NBA’s format, beginning with **two rounds of three-day play-in games**, followed by **four rounds of seven-day playoff series**, ultimately producing a single, undisputed SBCFBL champion who hoists the Larry Coon Trophy.
+
+    With the addition of the NBA Cup in 2023, the SBCFBL added a cup as well. Teams play four games in the five periods leading up to a quarterfinal, semfinal, and championship matchup that takes place over the NBA Cup Final. While NBA Cup Final games obviously don't count, they do in only our SBCFBL Cup Championship for entertainment purposes. None of the SBCFBL Cup games count towards our regular season standings due to the complexity of folding them into the regular season schedule. 
+    """)
+
+    st.subheader("SBCFBL Finances")
+    st.markdown("""
+    The SBCFBL initially launched using a **2,000,000:1 scale** relative to the NBA, meaning a player with a $10,000,000 salary would cost an owner $5 in the league. As the NBA salary cap increased, the league adjusted to a **3,000,000:1 scale** for the 2025–26 season to keep entry fees accessible while maintaining realistic roster management. The league also enforces a **luxury tax** consistent with the NBA’s structure.
+
+    Entry fees collected for each team’s base roster are pooled into a league fund. These funds are first allocated to cover operational expenses, including **Fantrax fees** and the purchase of the **Larry Coon Trophy**. After these costs, remaining funds are distributed to successful teams as follows:
+
+    - **Champion**: ½ of the remaining pool  
+    - **Runner-up**: 1/6 of the remaining pool  
+    - **Conference Finalists (2 teams)**: 1/12 each  
+    - **Conference Semifinalists (4 teams)**: 1/24 each
+
+    In addition to entry fees, the SBCFBL collects **luxury tax payments**. During the league’s first five years, the full luxury tax pool was awarded to the league champion to donate to a charity of their choice. This approach both supported charitable causes and limited teams’ ability to recoup luxury tax payments to fund additional championships.  
+
+    As of the 2025–26 season, **50% of the luxury tax pool continues to be allocated to charitable causes**, while the remaining 50% is redistributed evenly among teams that did not exceed the luxury tax threshold.
+
+     **SBCFBL Cup** carries an entry fee of **$3** per team. The winner of the Cup receives **$75**, while the runner-up is awarded **$15**.
+    """)
 
 with tab7:
     st.markdown("This section is under construction.")
