@@ -389,7 +389,7 @@ def style_overall_cap(row):
         value = row[col]
         if col == "Active Players":
             if 15 <= value <= 17:
-                styles[i] = "color: yellow;"
+                styles[i] = "color: #F9A01B;"
             elif value <= 11 or value >= 18 or value == 0:
                 styles[i] = "color: red;"
         elif col in ["Cap Space", "Tax Space"]:
@@ -397,18 +397,19 @@ def style_overall_cap(row):
             styles[i] = f"color: {color};"
         elif col == "Hard Cap":
             if value in ["Second Apron", "First Apron"]:
-                styles[i] = "color: yellow;"
+                styles[i] = "color: #F9A01B;"
         elif col == "Apron 1 Space":
             if value < 0:
                 styles[i] = "color: red;"
             elif row.get("Hard Cap") == "First Apron":
-                styles[i] = "color: yellow;"
+                styles[i] = "color: #F9A01B;"
         elif col == "Apron 2 Space":
             if value < 0:
                 styles[i] = "color: red;"
             elif row.get("Hard Cap") == "Second Apron":
-                styles[i] = "color: yellow;"
+                styles[i] = "color: #F9A01B;"
         elif col == "Balance":
             color = "green" if value > -0.005 else "red"
             styles[i] = f"color: {color};"
     return styles
+
