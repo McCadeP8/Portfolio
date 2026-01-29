@@ -33,13 +33,13 @@ st.markdown(
 
     /* Selectbox container */
     section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
-        background-color: {bg_color} !important;
+        background-color: {text_color2} !important;
         border: 1px solid "{bg_color}" !important;
     }}
 
     /* Selected value text */
     section[data-testid="stSidebar"] span {{
-        color: {bg_color} !important;
+        color: {text_color2} !important;
     }}
 
     /* Dropdown menu */
