@@ -21,12 +21,40 @@ with st.sidebar:
 st.markdown(
     f"""
     <style>
+    /* Sidebar background */
     section[data-testid="stSidebar"] {{
         background-color: {bg_color};
     }}
 
+    /* Sidebar text */
     section[data-testid="stSidebar"] * {{
         color: {text_color2} !important;
+    }}
+
+    /* Selectbox container */
+    section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
+        background-color: {bg_color} !important;
+        border: 1px solid {text_color2} !important;
+    }}
+
+    /* Selected value text */
+    section[data-testid="stSidebar"] span {{
+        color: {text_color2} !important;
+    }}
+
+    /* Dropdown menu */
+    div[data-baseweb="popover"] {{
+        background-color: {bg_color} !important;
+    }}
+
+    /* Dropdown options */
+    div[data-baseweb="menu"] {{
+        background-color: {bg_color} !important;
+    }}
+
+    /* Hovered option */
+    div[data-baseweb="option"]:hover {{
+        background-color: rgba(255,255,255,0.15) !important;
     }}
     </style>
     """,
