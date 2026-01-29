@@ -11,11 +11,13 @@ base_cap = get_base_cap()
 with st.sidebar:
     Teams = sorted(team_info.keys())
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
+    bg_color = team_info[SelectedTeam]["bg"]
+    text_color = team_info[SelectedTeam]["text"]
+    team_logo = team_info[SelectedTeam]["logo"]
+    nickname = team_info[SelectedTeam]["nickname"]
+    st.image(team_logo, width=250)
 
-bg_color = team_info[SelectedTeam]["bg"]
-text_color = team_info[SelectedTeam]["text"]
-team_logo = team_info[SelectedTeam]["logo"]
-nickname = team_info[SelectedTeam]["nickname"]
+
 
 #st.markdown(
 #    f"""
