@@ -289,6 +289,7 @@ with tab6:
     Since its launch, SBCFBL has helped more than half a dozen participants secure roles with NBA teams and has raised over $10,000 for charitable causes, serving as both a professional development platform and a vehicle for positive community impact.
     """)
 
+    st.divider()
     st.subheader("SBCFBL Pre-Launch")
     st.markdown("""
     During the SBCFBL's formation, McCade Pearson led the development of all franchise identities. This process included the creation of 30 distinct and original brands, each with a unique location, area-appropriate team name, and customized color scheme. In 2022, this branding effort was further expanded to include original team logos for every franchise.
@@ -296,6 +297,7 @@ with tab6:
     All 30 organizations are based in the United States or Vancouver. To date, the only franchise to undergo rebranding is the San Diego Wave, following the introduction of an NWSL expansion team with the same name.
     """)
 
+    st.divider()
     st.subheader("SBCFBL Initial Roster Construction")
     st.markdown("""
     To initialize rosters, SBCFBL conducted a 30-team slow blind auction over the course of multiple 'days'. Each organization began with a clean salary cap sheet, along with access to the full Mid-Level Exception (MLE) and Bi-Annual Exception (BAE) in Year 1 to facilitate roster construction and competitive balance.
@@ -303,6 +305,7 @@ with tab6:
     To ensure a realistic distribution of contract lengths across the SBCFBL, contract values were permitted to differ from real-world figures, while contract durations were aligned with each player’s actual NBA contract length at the time. Following a series of randomized draws and strategic bidding rounds, all 30 team rosters were completed and the SBCFBL officially launched.
     """)
 
+    st.divider()
     st.subheader("SBCFBL Scoring System")
     st.markdown("""
     The SBCFBL scoring system is modeled after the structure of the United States Electoral College. Rather than states, the SBCFBL allocates weighted values to traditional basketball performance categories that most strongly correlate with winning NBA games—beyond points alone.
@@ -331,6 +334,7 @@ with tab6:
     \**For Turnovers, the team with the lower total is awarded the category.*
     """)
 
+    st.divider()
     st.subheader("SBCFBL Roster Construction")
     st.markdown("""
     To balance the need for a waiver wire, the SBCFBL employs unique roster rules. Each organization must maintain a **minimum of 12 players** and may carry **up to 14 players** during the season. Instead of two-way contracts, each organization has access to **three IR slots**. During the offseason, rosters may expand to a straight **17 players**.  
@@ -350,6 +354,7 @@ with tab6:
     Player position eligibility is determined by **Fantrax** each season. Organizations may request the addition of a new position for a player within **two weeks after the season begins**. The commissioner reviews these requests using independent sources and makes the final decision.
     """)
 
+    st.divider()
     st.subheader("SBCFBL Season Structure")
     st.markdown("""
     The SBCFBL consists of 30 organizations organized into six divisions across two conferences. The regular season schedule is designed to emulate the length and intensity of the NBA. Following minor adjustments due to COVID-shortened seasons, the SBCFBL now plays a **72-game schedule**, consisting of a ** triple round-robin for 42 intraconference games** and a **double round-robin 30 interconference games** per organization, spread over **36 periods**. Each period features two games per organization played over a 3–4 day stretch.
@@ -359,6 +364,7 @@ with tab6:
     With the addition of the NBA Cup in 2023, the SBCFBL added a cup as well. organizations play four games in the five periods leading up to a quarterfinal, semfinal, and championship matchup that takes place over the NBA Cup Final. While NBA Cup Final games obviously don't count, they do in only our SBCFBL Cup Championship for entertainment purposes. None of the SBCFBL Cup games count towards our regular season standings due to the complexity of folding them into the regular season schedule. 
     """)
 
+    st.divider()
     st.subheader("SBCFBL Finances")
     st.markdown("""
     The SBCFBL initially launched using a **2,000,000:1 scale** relative to the NBA, meaning a player with a \$10,000,000 salary would cost an owner $5 in the league. As the NBA salary cap increased, the league adjusted to a **3,000,000:1 scale** for the 2025–26 season to keep entry fees accessible while maintaining realistic roster management. The league also enforces a **luxury tax** consistent with the NBA’s structure.
@@ -377,6 +383,7 @@ with tab6:
      **SBCFBL Cup** carries an entry fee of **\$3** per organization. The winner of the Cup receives **\$75**, while the runner-up is awarded **\$15**.
     """)
 
+    st.divider()
     st.subheader("SBCFBL Free Agency")
     st.markdown("""
     The SBCFBL Free Agency moratorium spans **seven “days”**, each lasting 48 hours, concluding on **July 1, 3, 5, 7, 9, 11, and 13**. During this period, organizations place bids through a **Qualtrics survey**, with a maximum of **20 bids per organization per day**.
@@ -396,6 +403,7 @@ with tab6:
     This 48-hour bidding process continues throughout free agency, but activity generally slows significantly after the moratorium concludes. Once the SBCFBL season begins, **contracts become non-guaranteed**, and organizations may only execute signings on the **first day of a matchup**.
     """)
 
+    st.divider()
     st.subheader("SBCFBL Draft")
     st.markdown("""
     The SBCFBL Draft follows the same structure as the NBA Draft, including **lottery procedures and tiebreakers**. Rather than using a traditional countdown timer for each pick, the draft operates on **scheduled timeslots**. For example, the **first overall pick** always occurs between **10:00 a.m. and 10:30 a.m. EDT** on the Saturday following the NBA Draft, with the **second pick** due at **11:00 a.m. EDT**, and so on.
@@ -405,11 +413,13 @@ with tab6:
     The **second round** follows the same timeslot framework on **Sunday**, maintaining consistency and pace throughout the draft.
     """)
 
+    st.divider()
     st.subheader("SBCFBL Other Information")
     st.markdown("""
     All other SBCFBL operations adhere as closely as possible to the **NBA Collective Bargaining Agreement (CBA)**, including, but not limited to, **salary cap rules, trade regulations, exceptions, and deadlines**. Most SBCFBL deadlines are set on a **24-hour delay** relative to the NBA, including the **waive-and-stretch deadline, player guarantee date, offseason signing and trade restrictions,** and the **trade deadline**.
 
     This document is intended as a **quick-reference guide** and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered **the premier fantasy basketball experience**.
     """)
+    
 with tab7:
     st.markdown("This section is under construction.")
