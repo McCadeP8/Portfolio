@@ -13,6 +13,7 @@ with st.sidebar:
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
     bg_color = team_info[SelectedTeam]["bg"]
     text_color = team_info[SelectedTeam]["text"]
+    text_color2 = team_info[SelectedTeam]["bg2"]
     team_logo = team_info[SelectedTeam]["logo"]
     nickname = team_info[SelectedTeam]["nickname"]
     st.image(team_logo, width=250)
@@ -39,7 +40,7 @@ st.markdown(
     }}
 
     section[data-testid="stSidebar"] * {{
-        color: {text_color} !important;
+        color: {text_color2} !important;
     }}
     </style>
     """,
@@ -68,10 +69,6 @@ st.set_page_config(
 col1, col2 = st.columns([4, 1])
 with col1:
     st.title(":basketball::trophy: SBC Fantasy Basketball League:trophy::basketball:")
-    st.header(f"{SelectedTeam} {nickname}")
-    #st.image("https://pbs.twimg.com/media/G_spqw_bEAAu1r2?format=jpg&name=medium", width=1100)
-with col2:
-    st.image(team_logo, width=250)
 
 st.divider()
 
