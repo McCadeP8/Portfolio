@@ -353,7 +353,7 @@ with tab6:
 
     st.subheader("SBCFBL Season Structure")
     st.markdown("""
-    The SBCFBL consists of 30 organizations organized into six divisions across two conferences. The regular season schedule is designed to emulate the length and intensity of the NBA. Following minor adjustments due to COVID-shortened seasons, the SBCFBL now plays a **72-game schedule**, consisting of **42 interconference games** and **30 intraconference games** per organization, spread over **36 periods**. Each period features two games per organization played over a 3–4 day stretch.
+    The SBCFBL consists of 30 organizations organized into six divisions across two conferences. The regular season schedule is designed to emulate the length and intensity of the NBA. Following minor adjustments due to COVID-shortened seasons, the SBCFBL now plays a **72-game schedule**, consisting of a ** triple round-robin for 42 intraconference games** and a **double round-robin 30 interconference games** per organization, spread over **36 periods**. Each period features two games per organization played over a 3–4 day stretch.
 
     The playoffs closely mirror the NBA’s format, beginning with **two rounds of three-day play-in games**, followed by **four rounds of seven-day playoff series**, ultimately producing a single, undisputed SBCFBL champion who hoists the Larry Coon Trophy.
 
@@ -375,7 +375,7 @@ with tab6:
 
     As of the 2025–26 season, **50% of the luxury tax pool continues to be allocated to charitable causes**, while the remaining 50% is redistributed evenly among organizations that did not exceed the luxury tax threshold.
 
-     **SBCFBL Cup** carries an entry fee of **/$3** per organization. The winner of the Cup receives **$75**, while the runner-up is awarded **$15**.
+     **SBCFBL Cup** carries an entry fee of **\$3** per organization. The winner of the Cup receives **\$75**, while the runner-up is awarded **\$15**.
     """)
 
 with tab7:
