@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 today = date.today() + timedelta(days=0)
 
-if today.month in [7, 8, 9]:
+if today.month in [8, 9] or (today.month == 7 and today.day >= 2):
     year_offset = 0
 else:
     year_offset = 1
@@ -14,15 +14,12 @@ else:
 
 columns_order = [str(current_year + i) for i in range(7)]
 
-
 current_salary_cap = 154647000
 current_luxury_tax = 187895000
 current_apron_1 = 195945000
 current_apron_2 = 207824000
 tax_bracket_increment = 5685000
 league_ratio = 3000000
-
-
 
 type_colors = {
     "Guaranteed": "#FCE5CD",   
