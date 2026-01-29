@@ -291,14 +291,14 @@ with tab6:
 
     st.subheader("SBCFBL Pre-Launch")
     st.markdown("""
-    During the SBCFBL's formation, McCade Pearson led the development of all franchise identities. This process included the creation of 30 distinct and original brands, each with a unique location, era-appropriate team name, and customized color scheme. In 2022, this branding effort was further expanded to include original team logos for every franchise.
+    During the SBCFBL's formation, McCade Pearson led the development of all franchise identities. This process included the creation of 30 distinct and original brands, each with a unique location, area-appropriate team name, and customized color scheme. In 2022, this branding effort was further expanded to include original team logos for every franchise.
 
-    All 30 teams are based in the United States or Vancouver. To date, the only franchise to undergo rebranding is the San Diego Wave, following the introduction of an NWSL expansion team with the same name.
+    All 30 organizations are based in the United States or Vancouver. To date, the only franchise to undergo rebranding is the San Diego Wave, following the introduction of an NWSL expansion team with the same name.
     """)
 
     st.subheader("SBCFBL Initial Roster Construction")
     st.markdown("""
-    To initialize rosters, SBCFBL conducted a 30-team slow blind auction over the course of multiple days. Each team began with a clean salary cap sheet, along with access to the full Mid-Level Exception (MLE) and Bi-Annual Exception (BAE) in Year 1 to facilitate roster construction and competitive balance.
+    To initialize rosters, SBCFBL conducted a 30-team slow blind auction over the course of multiple 'days'. Each organization began with a clean salary cap sheet, along with access to the full Mid-Level Exception (MLE) and Bi-Annual Exception (BAE) in Year 1 to facilitate roster construction and competitive balance.
 
     To ensure a realistic distribution of contract lengths across the SBCFBL, contract values were permitted to differ from real-world figures, while contract durations were aligned with each player’s actual NBA contract length at the time. Following a series of randomized draws and strategic bidding rounds, all 30 team rosters were completed and the SBCFBL officially launched.
     """)
@@ -318,11 +318,11 @@ with tab6:
     - **Steals**: 31  
     - **Three-Point Percentage**: 31  
     - **Two-Point Percentage**: 31  
-    - **Free Throw Percentage***: 21  
+    - **Free Throw Percentage**: -21  
     - **Turnovers***: 21
     - **Minutes Played**: 11  
 
-    In total, **411 points** are available in each matchup, with **206 points required to win**. The inclusion of an additional point in each category allows a 205.5–205.5 tie to be resolved by awarding the win to the team that captures the most individual categories. In the rare event of a 206.5–206.5 tie, the win is awarded to the home team.
+    In total, **413 points** are available in each matchup, with **207 points required to win**. The inclusion of an additional digit in each category allows a tie to be resolved by awarding the win to the team that captures the most individual categories. In the rare event of a 206.5–206.5 tie, the win is awarded to the home team.
 
     To be eligible to win the four efficiency categories, teams must meet the following minimum thresholds: **10 field goal attempts (FGA)**, **10 three-point attempts (3PA)**, and **5 free throw attempts (FTA)**.
 
@@ -332,33 +332,50 @@ with tab6:
     """)
 
     st.subheader("SBCFBL Roster Construction")
+    st.markdown("""
+    To balance the need for a waiver wire, the SBCFBL employs unique roster rules. Each organization must maintain a **minimum of 12 players** and may carry **up to 14 players** during the season. Instead of two-way contracts, each organization has access to **three IR slots**. During the offseason, rosters may expand to a straight **17 players**.  
+
+    The SBCFBL also accommodates **overseas players**. To qualify, a player must be drafted by the SBCFBL and assigned 'overseas' during the summer prior to the season, locking in their status on opening night. These players may remain overseas for the duration of their rookie contract. This system allows organizations to retain second-round draft picks in situations where a standard roster would not have space for them.
+
+    On a day-to-day basis, each SBCFBL organization maintains roster spots for the following positions:
+
+    - **Point Guard (PG)**  
+    - **Shooting Guard (SG)**  
+    - **Small Forward (SF)**  
+    - **Power Forward (PF)**  
+    - **Center (C)**  
+    - **Three Flex (FLX)** 
+    - **Six Bench**
+
+    Player position eligibility is determined by **Fantrax** each season. Organizations may request the addition of a new position for a player within **two weeks after the season begins**. The commissioner reviews these requests using independent sources and makes the final decision.
+    """)
 
 
     st.subheader("SBCFBL Season Structure")
     st.markdown("""
-    The SBCFBL consists of 30 teams organized into six divisions across two conferences. The regular season schedule is designed to emulate the length and intensity of the NBA. Following minor adjustments due to COVID-shortened seasons, the SBCFBL now plays a **72-game schedule**, consisting of **14 interconference games** and **15 intraconference games** per team, spread over **36 periods**. Each period features two games per team played over a 3–4 day stretch.
+    The SBCFBL consists of 30 organizations organized into six divisions across two conferences. The regular season schedule is designed to emulate the length and intensity of the NBA. Following minor adjustments due to COVID-shortened seasons, the SBCFBL now plays a **72-game schedule**, consisting of **42 interconference games** and **30 intraconference games** per organization, spread over **36 periods**. Each period features two games per organization played over a 3–4 day stretch.
 
     The playoffs closely mirror the NBA’s format, beginning with **two rounds of three-day play-in games**, followed by **four rounds of seven-day playoff series**, ultimately producing a single, undisputed SBCFBL champion who hoists the Larry Coon Trophy.
 
-    With the addition of the NBA Cup in 2023, the SBCFBL added a cup as well. Teams play four games in the five periods leading up to a quarterfinal, semfinal, and championship matchup that takes place over the NBA Cup Final. While NBA Cup Final games obviously don't count, they do in only our SBCFBL Cup Championship for entertainment purposes. None of the SBCFBL Cup games count towards our regular season standings due to the complexity of folding them into the regular season schedule. 
+    With the addition of the NBA Cup in 2023, the SBCFBL added a cup as well. organizations play four games in the five periods leading up to a quarterfinal, semfinal, and championship matchup that takes place over the NBA Cup Final. While NBA Cup Final games obviously don't count, they do in only our SBCFBL Cup Championship for entertainment purposes. None of the SBCFBL Cup games count towards our regular season standings due to the complexity of folding them into the regular season schedule. 
     """)
 
     st.subheader("SBCFBL Finances")
     st.markdown("""
-    The SBCFBL initially launched using a **2,000,000:1 scale** relative to the NBA, meaning a player with a $10,000,000 salary would cost an owner $5 in the league. As the NBA salary cap increased, the league adjusted to a **3,000,000:1 scale** for the 2025–26 season to keep entry fees accessible while maintaining realistic roster management. The league also enforces a **luxury tax** consistent with the NBA’s structure.
+    The SBCFBL initially launched using a **2,000,000:1 scale** relative to the NBA, meaning a player with a \$10,000,000 salary would cost an owner $5 in the league. As the NBA salary cap increased, the league adjusted to a **3,000,000:1 scale** for the 2025–26 season to keep entry fees accessible while maintaining realistic roster management. The league also enforces a **luxury tax** consistent with the NBA’s structure.
 
-    Entry fees collected for each team’s base roster are pooled into a league fund. These funds are first allocated to cover operational expenses, including **Fantrax fees** and the purchase of the **Larry Coon Trophy**. After these costs, remaining funds are distributed to successful teams as follows:
+    Entry fees collected for each organization’s base roster are pooled into a league fund. These funds are first allocated to cover operational expenses, including **Fantrax fees** and the purchase of the **Larry Coon Trophy**. After these costs, remaining funds are distributed to successful organizations as follows:
 
-    - **Champion**: ½ of the remaining pool  
+    - **Champion**: 1/2 of the remaining pool  
     - **Runner-up**: 1/6 of the remaining pool  
-    - **Conference Finalists (2 teams)**: 1/12 each  
-    - **Conference Semifinalists (4 teams)**: 1/24 each
+    - **Conference Finalists (2 organizations)**: 1/12 each of the remaining poool
+    - **Conference Semifinalists (4 organizations)**: 1/24 each each of the remaining pool
 
-    In addition to entry fees, the SBCFBL collects **luxury tax payments**. During the league’s first five years, the full luxury tax pool was awarded to the league champion to donate to a charity of their choice. This approach both supported charitable causes and limited teams’ ability to recoup luxury tax payments to fund additional championships.  
+    In addition to entry fees, the SBCFBL collects **luxury tax payments**. During the league’s first five years, the full luxury tax pool was awarded to the league champion to donate to a charity of their choice. This approach both supported charitable causes and limited organizations’ ability to recoup luxury tax payments to fund additional championships.  
 
-    As of the 2025–26 season, **50% of the luxury tax pool continues to be allocated to charitable causes**, while the remaining 50% is redistributed evenly among teams that did not exceed the luxury tax threshold.
+    As of the 2025–26 season, **50% of the luxury tax pool continues to be allocated to charitable causes**, while the remaining 50% is redistributed evenly among organizations that did not exceed the luxury tax threshold.
 
-     **SBCFBL Cup** carries an entry fee of **$3** per team. The winner of the Cup receives **$75**, while the runner-up is awarded **$15**.
+     **SBCFBL Cup** carries an entry fee of **/$3** per organization. The winner of the Cup receives **$75**, while the runner-up is awarded **$15**.
     """)
 
 with tab7:
