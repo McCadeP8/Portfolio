@@ -34,7 +34,7 @@ st.markdown(
     /* Selectbox container */
     section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
         background-color: {text_color2} !important;
-        border: 1px solid "{text_color}" !important;
+        border: 1px solid "{bg_color}" !important;
     }}
 
     /* Selected value text */
