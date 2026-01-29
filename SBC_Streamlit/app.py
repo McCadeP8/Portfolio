@@ -44,12 +44,12 @@ st.markdown(
 
     /* Dropdown menu */
     div[data-baseweb="popover"] {{
-        background-color: {bg_color} !important;
+        background-color: {text_color2} !important;
     }}
 
     /* Dropdown options */
     div[data-baseweb="menu"] {{
-        background-color: {bg_color} !important;
+        background-color: {text_color2} !important;
     }}
 
     /* Hovered option */
