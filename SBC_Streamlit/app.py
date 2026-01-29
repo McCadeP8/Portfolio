@@ -18,20 +18,6 @@ with st.sidebar:
     nickname = team_info[SelectedTeam]["nickname"]
     st.image(team_logo, width=250)
 
-
-
-#st.markdown(
-#    f"""
-#    <style>
-#    .stApp {{
-#        background-color: {bg_color};
-#        color: {text_color};
-#    }}
-#    </style>
-#    """,
-#    unsafe_allow_html=True)
-
-
 st.markdown(
     f"""
     <style>
@@ -46,19 +32,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-
-st.markdown(
-    """
-    <style>
-    .stApp {{
-        background-color: black;
-        color: white;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True)
-
 
 st.set_page_config(
     page_title = "SBC Cap Sheets",
