@@ -280,7 +280,13 @@ with tab5:
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
 with tab6:
-    st.markdown("This section is under construction.")
+    col1, col2 = st.columns(4)
+    with col1:
+        SelectedTeam1 = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
+        SelectedTeam2 = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
+    with col2:
+        SelectedTeam3 = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
+        SelectedTeam4 = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
 
 with tab7:
     st.subheader("SBCFBL Introduction")
