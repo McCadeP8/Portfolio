@@ -32,3 +32,6 @@ def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df.sort_values('Pick', ascending=True)
     df_list = df['Pick'].tolist()
     return df_list
+
+
+    #ABC
