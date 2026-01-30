@@ -423,8 +423,8 @@ def style_overall_cap(row):
 def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned']]
-    df = df[~df['Locked']]
-    df = df[~df['PickSwap']]
+    df = df[df['Locked'] == False]  # noqa: E712
+    df = df[df['PickSwap'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -436,7 +436,7 @@ def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
 def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['PickSwap']]
-    df = df[~df['Locked']]
+    df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -447,8 +447,8 @@ def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
 
 def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
-    df = df[~df['FullyOwned']]
-    df = df[~df['Locked']]
+    df = df[df['FullyOwned'] == False]  # noqa: E712
+    df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'CurrentTeam': 'Owner'})
