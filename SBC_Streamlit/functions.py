@@ -419,3 +419,11 @@ def style_overall_cap(row):
             styles[i] = f"color: {color};"
     return styles
 
+def draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[(df['OGTeam'] == SelectedTeam) | (df['CurrentTeam'] == SelectedTeam) | (df['TeamTouched'].str.contains(SelectedTeam, na=False))]
+    df = df[df['Year'].between(current_year, current_year + 6)]
+    df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    df = df.sort_values('Round', ascending=True)
+    df = df.sort_values('Year', ascending=True)
+    return df
