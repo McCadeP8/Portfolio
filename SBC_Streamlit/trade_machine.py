@@ -36,18 +36,28 @@ def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     return df_list
 
 def players_out_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
-    df = df[df['Player'].isin(selected_players)]
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
-    df = df.rename(columns={f"Y{current_year}": f"{current_year}"})
+    df = df[df['Team'].isin(selected_players)]
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
+    cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
-    df = df[[' ', 'Player', f"{current_year}"]]
+    df = df.rename(columns={'BirdRights': 'Bird Rights'})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values(str(current_year), ascending=False)
     return df
 
 def players_in_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
-    df = df[df['Player'].isin(selected_players)]
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Team'].isin(selected_players)]
     df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
-    df = df.rename(columns={f"Y{current_year}": f"{current_year}"})
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
+    cols_to_keep = ['Team_logo', 'Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
-    df = df[['Team_logo', ' ', 'Player', f"{current_year}"]]
+    df = df.rename(columns={'BirdRights': 'Bird Rights'})
+    df = df.rename(columns={col: col[1:] for col in year_cols})
+    df = df.sort_values(str(current_year), ascending=False)
     return df

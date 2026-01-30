@@ -316,20 +316,23 @@ with tab6:
         col1, col2 = st.columns(2)
 
         with col1:
-            if len(SelectedPlayersOut) > 0:
-                players_out_df = players_out_table(df, pics, SelectedPlayersOut)
-                players_out_df = (players_out_df.style
+            players_trade_out = players_out_table(df, pics, SelectedPlayersOut)
+            if players_trade_out.shape[0] > 0:
+                st.subheader("Players Going Out")
+                players_trade_out = (players_trade_out.style
                     .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in players_out_df.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(players_out_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+                    .format({c: "${:,.0f}" for c in players_trade_out.columns if re.match(r"\d{4}", c)}))
+                st.dataframe(players_trade_out, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
+
 
         with col2:
-            if len(SelectedPlayersIn) > 0:
-                players_in_df = players_in_table(df, pics, SelectedPlayersIn)
-                players_in_df = (players_in_df.style
+            players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
+            if players_traded_in.shape[0] > 0:
+                st.subheader("Players Coming In")
+                players_traded_in = (players_traded_in.style
                     .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in players_in_df.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(players_in_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+                    .format({c: "${:,.0f}" for c in players_traded_in.columns if re.match(r"\d{4}", c)}))
+                st.dataframe(players_traded_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
     
 
