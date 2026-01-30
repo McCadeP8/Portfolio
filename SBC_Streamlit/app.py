@@ -179,7 +179,7 @@ with tab2:
     st.dataframe(swap_draft_picks(dp, SelectedTeam), width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
 
-
+#ABC
     
 
 
