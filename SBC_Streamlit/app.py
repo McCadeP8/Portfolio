@@ -2,7 +2,7 @@ import streamlit as st
 import re as re
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset
-from trade_machine import tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out
+from trade_machine import tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table
 
 df = get_data()
 pics = get_pictures()
@@ -303,23 +303,35 @@ with tab6:
 
     with st.form("team_selection_form"):
         with col1:
-            SelectedTeam1 = st.multiselect("Outgoing Players:", tradeable_players_out(df, SelectedTeam))
-            SelectedTeam2 = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, SelectedTeam))
+            SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, SelectedTeam))
+            SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, SelectedTeam))
         with col2:
-            SelectedTeam3 = st.multiselect("Incoming Players:", tradeable_players_in(df, SelectedTeam))
-            SelectedTeam4 = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, SelectedTeam))
+            SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, SelectedTeam))
+            SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, SelectedTeam))
         
         submitted = st.form_submit_button("Submit")
-    
+
     if submitted:
-        st.write("Selections submitted:")
-        st.write("SelectedTeam1:", SelectedTeam1)
-        st.write("SelectedTeam2:", SelectedTeam2)
-        st.write("SelectedTeam3:", SelectedTeam3)
-        st.write("SelectedTeam4:", SelectedTeam4)
 
+        col1, col2 = st.columns(2)
 
+        with col1:
+            if len(SelectedPlayersOut) > 0:
+                players_out_df = players_out_table(df, pics, SelectedPlayersOut)
+                players_out_df = (players_out_df.style
+                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                    .format({c: "${:,.0f}" for c in players_out_df.columns if re.match(r"\d{4}", c)}))
+                st.dataframe(players_out_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
+        with col2:
+            if len(SelectedPlayersIn) > 0:
+                players_in_df = players_in_table(df, pics, SelectedPlayersIn)
+                players_in_df = (players_in_df.style
+                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                    .format({c: "${:,.0f}" for c in players_in_df.columns if re.match(r"\d{4}", c)}))
+                st.dataframe(players_in_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+
+    
 
 
 
