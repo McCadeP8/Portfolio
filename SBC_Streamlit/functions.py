@@ -431,6 +431,8 @@ def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.sort_values('Year', ascending=True)
     return df
 
+#ABC 
+
 def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     #df = df[(df['OGTeam'] == SelectedTeam) | (df['CurrentTeam'].str.contains(SelectedTeam, na=False)) | (df['TeamTouched'].str.contains(SelectedTeam, na=False))]
     df = df[df['PickSwap'] == True]
