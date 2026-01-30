@@ -4,6 +4,8 @@ from functions import get_data, get_pictures, active_players, style_salaries, ov
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset
 from trade_machine import tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table
 
+#SBC 
+
 df = get_data()
 pics = get_pictures()
 exceptions = get_exceptions()
