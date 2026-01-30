@@ -172,18 +172,35 @@ with tab1:
 
 with tab2:
     st.header(f"{SelectedTeam} Future Draft Picks")
-    st.header("Fully Owned Picks")
-    st.dataframe(full_draft_picks(dp, SelectedTeam), width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
-    st.header("Swaped Draft Picks")
-    st.dataframe(swap_draft_picks(dp, SelectedTeam), width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
-    st.header("Split Draft Picks")
-    st.dataframe(split_draft_picks(dp, SelectedTeam), width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small")})
-    st.header("Locked Draft Picks")
-    st.dataframe(locked_draft_picks(dp, SelectedTeam), width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
-    st.header("Traded Away Draft Picks")
-    st.dataframe(original_draft_picks(dp, SelectedTeam), width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
-    st.header("Touched Draft Picks")
-    st.dataframe(touched_draft_picks(dp, SelectedTeam), width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
+    
+    full_team_picks = full_draft_picks(dp, SelectedTeam)
+    if full_team_picks.shape[0] > 0:
+        st.header("Fully Owned Picks")
+        st.dataframe(full_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
+    
+    if swap_team_picks.shape[0] > 0:
+        st.header("Swapped Draft Picks")
+        st.dataframe(swap_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
+
+    split_team_picks = split_draft_picks(dp, SelectedTeam)
+    if split_team_picks.shape[0] > 0:
+        st.header("Split Draft Picks")
+        st.dataframe(split_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small")})
+
+    locked_team_picks = locked_draft_picks(dp, SelectedTeam)
+    if locked_team_picks.shape[0] > 0:
+        st.header("Locked Draft Picks")
+        st.dataframe(locked_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
+
+    original_team_picks = original_draft_picks(dp, SelectedTeam)
+    if original_team_picks.shape[0] > 0:
+        st.header("Traded Away Draft Picks")
+        st.dataframe(original_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
+
+    touched_team_picks = touched_draft_picks(dp, SelectedTeam)
+    if touched_team_picks.shape[0] > 0:
+        st.header("Touched Draft Picks")
+        st.dataframe(touched_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
 
 

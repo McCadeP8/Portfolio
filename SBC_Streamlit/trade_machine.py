@@ -1,7 +1,6 @@
 import pandas as pd
-import streamlit as st
 import math as math
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info
+from data import columns_order, current_year, team_info
 
 def tradeable_players_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['Team'] == SelectedTeam]

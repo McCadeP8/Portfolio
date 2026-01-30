@@ -422,9 +422,9 @@ def style_overall_cap(row):
 
 def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
-    df = df[df['FullyOwned'] == True]
-    df = df[df['Locked'] == False]
-    df = df[df['PickSwap'] == False]
+    df = df[df['FullyOwned']]
+    df = df[not df['Locked']]
+    df = df[not df['PickSwap']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -435,8 +435,8 @@ def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
 
 def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
-    df = df[df['PickSwap'] == True]
-    df = df[df['Locked'] == False]
+    df = df[df['PickSwap']]
+    df = df[not df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -447,8 +447,8 @@ def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
 
 def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
-    df = df[df['FullyOwned'] == False]
-    df = df[df['Locked'] == False]
+    df = df[not df['FullyOwned']]
+    df = df[not df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'CurrentTeam': 'Owner'})
@@ -459,7 +459,7 @@ def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
 
 def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
-    df = df[df['Locked'] == True]
+    df = df[df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
