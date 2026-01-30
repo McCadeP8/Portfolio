@@ -33,7 +33,7 @@ def get_base_cap() -> pd.DataFrame:
 def get_draft_picks() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1612129799"
     df = pd.read_csv(csv_url)
-    df = df[df['Year'].between(current_year, current_year + 0)]
+    df = df[df['Year'].between(current_year, current_year + 6)]
     return df
 
 def style_salaries(row, type_colors):
@@ -423,6 +423,7 @@ def style_overall_cap(row):
 def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned'] == True]
+    df = df[df['Locked'] == False]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -431,11 +432,10 @@ def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.sort_values('Year', ascending=True)
     return df
 
-#ABC 
-
 def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    #df = df[(df['OGTeam'] == SelectedTeam) | (df['CurrentTeam'].str.contains(SelectedTeam, na=False)) | (df['TeamTouched'].str.contains(SelectedTeam, na=False))]
+    df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['PickSwap'] == True]
+    df = df[df['Locked'] == False]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -445,8 +445,9 @@ def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    #df = df[(df['OGTeam'] == SelectedTeam) | (df['CurrentTeam'].str.contains(SelectedTeam, na=False)) | (df['TeamTouched'].str.contains(SelectedTeam, na=False))]
+    df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned'] == False]
+    df = df[df['Locked'] == False]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'CurrentTeam': 'Owner'})
@@ -456,7 +457,7 @@ def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    #df = df[(df['OGTeam'] == SelectedTeam) | (df['CurrentTeam'].str.contains(SelectedTeam, na=False)) | (df['TeamTouched'].str.contains(SelectedTeam, na=False))]
+    df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['Locked'] == True]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
