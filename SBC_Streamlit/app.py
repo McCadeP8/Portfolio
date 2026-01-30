@@ -283,19 +283,19 @@ with tab3:
             st.dataframe(trade_restrictins_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player", "Trade Restriction"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
 with tab4:
-    all_full_team_picks = all_full_draft_picks(dp, SelectedTeam)
+    all_full_team_picks = all_full_draft_picks(dp)
     st.header("Fully Owned Picks")
     st.dataframe(all_full_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
     
-    all_swap_team_picks = all_swap_draft_picks(dp, SelectedTeam)
+    all_swap_team_picks = all_swap_draft_picks(dp)
     st.header("Swapped Draft Picks")
     st.dataframe(all_swap_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
-    all_split_team_picks = all_split_draft_picks(dp, SelectedTeam)
+    all_split_team_picks = all_split_draft_picks(dp)
     st.header("Split Draft Picks")
     st.dataframe(all_split_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small")})
 
-    all_locked_team_picks = all_locked_draft_picks(dp, SelectedTeam)
+    all_locked_team_picks = all_locked_draft_picks(dp)
     st.header("Locked Draft Picks")
     st.dataframe(all_locked_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
