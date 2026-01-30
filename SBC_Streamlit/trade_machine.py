@@ -39,7 +39,8 @@ def players_out_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: li
     df = df[df['Player'].isin(selected_players)]
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df.rename(columns={f"Y{current_year}": f"{current_year}"})
-    df = df[['Picture_Online', 'Player', f"{current_year}"]]
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df[[' ', 'Player', f"{current_year}"]]
     return df
 
 def players_in_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
@@ -47,5 +48,6 @@ def players_in_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: lis
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={f"Y{current_year}": f"{current_year}"})
-    df = df[['Team_logo', 'Picture_Online', 'Player', f"{current_year}"]]
+    df = df.rename(columns={'Picture_Online': ' '})
+    df = df[['Team_logo', ' ', 'Player', f"{current_year}"]]
     return df
