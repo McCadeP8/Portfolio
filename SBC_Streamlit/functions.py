@@ -429,8 +429,8 @@ def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'TeamTouched': 'Contacted'})
-    df = df.sort_values('Round', ascending=True)
     df = df.sort_values('Year', ascending=True)
+    df = df.sort_values('Round', ascending=True)
     return df
 
 def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -441,8 +441,8 @@ def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'TeamTouched': 'Contacted'})
-    df = df.sort_values('Round', ascending=True)
     df = df.sort_values('Year', ascending=True)
+    df = df.sort_values('Round', ascending=True)
     return df
 
 def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -453,8 +453,8 @@ def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'CurrentTeam': 'Owner'})
     df = df.rename(columns={'TeamTouched': 'Contacted'})
-    df = df.sort_values('Round', ascending=True)
     df = df.sort_values('Year', ascending=True)
+    df = df.sort_values('Round', ascending=True)
     return df
 
 def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -464,8 +464,8 @@ def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'TeamTouched': 'Contacted'})
-    df = df.sort_values('Round', ascending=True)
     df = df.sort_values('Year', ascending=True)
+    df = df.sort_values('Round', ascending=True)
     return df
 
 def original_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -474,8 +474,8 @@ def original_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'TeamTouched': 'Contacted'})
-    df = df.sort_values('Round', ascending=True)
     df = df.sort_values('Year', ascending=True)
+    df = df.sort_values('Round', ascending=True)
     return df
 
 def touched_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
@@ -484,8 +484,8 @@ def touched_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'TeamTouched': 'Contacted'})
-    df = df.sort_values('Round', ascending=True)
     df = df.sort_values('Year', ascending=True)
+    df = df.sort_values('Round', ascending=True)
     return df
 
 
