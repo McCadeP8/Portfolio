@@ -421,7 +421,7 @@ def style_overall_cap(row):
     return styles
 
 def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    #df = df[(df['OGTeam'] == SelectedTeam) | (df['CurrentTeam'].str.contains(SelectedTeam, na=False)) | (df['TeamTouched'].str.contains(SelectedTeam, na=False))]
+    df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned'] == True]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
