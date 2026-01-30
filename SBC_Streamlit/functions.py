@@ -451,7 +451,6 @@ def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
-    df = df.rename(columns={'CurrentTeam': 'Owner'})
     df = df.rename(columns={'TeamTouched': 'Contacted'})
     df = df.sort_values('Year', ascending=True)
     df = df.sort_values('Round', ascending=True)
@@ -488,7 +487,7 @@ def touched_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.sort_values('Round', ascending=True)
     return df
 
-def all_full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+def all_full_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df[df['FullyOwned']]
     df = df[df['Locked'] == False]  # noqa: E712
     df = df[df['PickSwap'] == False]  # noqa: E712
@@ -500,8 +499,9 @@ def all_full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.sort_values('Round', ascending=True)
     return df
 
-def all_swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+def all_swap_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df[df['PickSwap']]
+    df = df[df['FullyOwned']]
     df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -511,18 +511,17 @@ def all_swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.sort_values('Round', ascending=True)
     return df
 
-def all_split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df[df['FullyOwned'] == False]  # noqa: E712
     df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
-    df = df.rename(columns={'CurrentTeam': 'Owner'})
     df = df.rename(columns={'TeamTouched': 'Contacted'})
     df = df.sort_values('Year', ascending=True)
     df = df.sort_values('Round', ascending=True)
     return df
 
-def all_locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df[df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -533,4 +532,10 @@ def all_locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 
-
+dp = get_draft_picks()
+AA = all_full_draft_picks(dp)
+AB = all_swap_draft_picks(dp)
+AC = all_split_draft_picks(dp)
+AD = all_locked_draft_picks(dp)
+AE = pd.concat([AA, AB, AC, AD], ignore_index=True)
+dupes = AE[AE.duplicated()]
