@@ -37,7 +37,7 @@ def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
 
 def players_out_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
-    df = df[df['Team'].isin(selected_players)]
+    df = df[df['Player'].isin(selected_players)]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
@@ -50,7 +50,7 @@ def players_out_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: li
 
 def players_in_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
-    df = df[df['Team'].isin(selected_players)]
+    df = df[df['Player'].isin(selected_players)]
     df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
