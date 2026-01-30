@@ -319,9 +319,9 @@ with tab6:
             players_trade_out = players_out_table(df, pics, SelectedPlayersOut)
             if players_trade_out.shape[0] > 0:
                 st.subheader("Players Going Out")
-                players_trade_out = (players_trade_out.style
-                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in players_trade_out.columns if re.match(r"\d{4}", c)}))
+                #players_trade_out = (players_trade_out.style
+                #    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                #    .format({c: "${:,.0f}" for c in players_trade_out.columns if re.match(r"\d{4}", c)}))
                 st.dataframe(players_trade_out, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
 
 
@@ -329,9 +329,9 @@ with tab6:
             players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
             if players_traded_in.shape[0] > 0:
                 st.subheader("Players Coming In")
-                players_traded_in = (players_traded_in.style
-                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in players_traded_in.columns if re.match(r"\d{4}", c)}))
+                #players_traded_in = (players_traded_in.style
+                #    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
+                #    .format({c: "${:,.0f}" for c in players_traded_in.columns if re.match(r"\d{4}", c)}))
                 st.dataframe(players_traded_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
     
