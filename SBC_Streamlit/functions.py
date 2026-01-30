@@ -440,3 +440,13 @@ def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.sort_values('Year', ascending=True)
     return df
 
+def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    #df = df[(df['OGTeam'] == SelectedTeam) | (df['CurrentTeam'].str.contains(SelectedTeam, na=False)) | (df['TeamTouched'].str.contains(SelectedTeam, na=False))]
+    df = df[df['FullyOwned'] == False]
+    df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
+    df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    df = df.sort_values('Round', ascending=True)
+    df = df.sort_values('Year', ascending=True)
+    return df
+
+
