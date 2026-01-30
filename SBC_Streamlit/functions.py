@@ -531,11 +531,10 @@ def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values('Round', ascending=True)
     return df
 
+def data_check_pictures(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
+    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    df = df[df['Picture_Online'].isna()]
+    df = df[['Player', 'Picture_Online']]
+    return df
 
-dp = get_draft_picks()
-AA = all_full_draft_picks(dp)
-AB = all_swap_draft_picks(dp)
-AC = all_split_draft_picks(dp)
-AD = all_locked_draft_picks(dp)
-AE = pd.concat([AA, AB, AC, AD], ignore_index=True)
-dupes = AE[AE.duplicated()]
+
