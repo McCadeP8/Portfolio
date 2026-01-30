@@ -512,7 +512,6 @@ def all_swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def all_split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned'] == False]  # noqa: E712
     df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
@@ -524,7 +523,6 @@ def all_split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def all_locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
