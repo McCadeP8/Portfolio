@@ -31,7 +31,7 @@ def get_base_cap() -> pd.DataFrame:
 
 @st.cache_data(ttl=21600)
 def get_draft_picks() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1704660744"
+    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1612129799"
     df = pd.read_csv(csv_url)
     return df
 
