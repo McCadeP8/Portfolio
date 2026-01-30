@@ -178,6 +178,7 @@ with tab2:
         st.header("Fully Owned Picks")
         st.dataframe(full_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
     
+    swap_team_picks = swap_draft_picks(dp, SelectedTeam)
     if swap_team_picks.shape[0] > 0:
         st.header("Swapped Draft Picks")
         st.dataframe(swap_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
