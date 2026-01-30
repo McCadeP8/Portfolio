@@ -537,4 +537,10 @@ def data_check_pictures(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df[['Player', 'Picture_Online']]
     return df
 
-
+def data_roster_check(df: pd.DataFrame) -> pd.DataFrame:
+    df = pd.DataFrame({
+        "Team": list(team_info.keys()),
+        "Active Players": [active_player_n(df, team) for team in team_info.keys()]
+    })
+    df = df[(df['Active Players'] > 17) | (df['Active Players'] < 12)]
+    return df
