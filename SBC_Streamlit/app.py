@@ -573,11 +573,10 @@ with tab8:
         st.dataframe(picture_check)
 
     roster_n_check = data_roster_check(df)
-    if picture_check.shape[0] > 0:
+    if roster_n_check.shape[0] > 0:
         st.header("Roster Count")
         st.dataframe(roster_n_check)
 
     st.header("Missing Salary Info")
     st.header("Stepien Rule Broken")
     st.header("Hard Cap Broken")
-    st.header("Fantrax vs. Cap Sheets Rosters")
