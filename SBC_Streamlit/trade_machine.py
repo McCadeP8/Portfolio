@@ -19,14 +19,15 @@ def tradeable_players_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     return df_list
 
 def tradeable_picks_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
-    df = df[df['CurrentTeam'].str.contains(SelectedTeam)]  # noqa: E712
+    df = df[df['CurrentTeam'].str.contains(SelectedTeam)]
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
     df = df.sort_values('Pick', ascending=True)
     df_list = df['Pick'].tolist()
     return df_list
 
 def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
-    df = df[(df['CurrentTeam'].str.contains(SelectedTeam)) == False]
+    df = df[(df['CurrentTeam'].str.contains(SelectedTeam)) == False]  # noqa: E712
+    df = df[df['Locked'] == False]
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
     df = df.sort_values('Pick', ascending=True)
     df_list = df['Pick'].tolist()
@@ -59,8 +60,8 @@ def players_in_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: lis
     df = df.sort_values(str(current_year), ascending=False)
     return df
 
-def picks_out_table(df: pd.DataFrame, SelectedPicksOut: list[str]) -> pd.DataFrame:
-    df = df[df['CurrentTeam'].str.contains(SelectedPicksOut)]
+def picks_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
+    df = df[df['CurrentTeam'].str.contains(selected_players)]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes', 'TeamTouched'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -68,8 +69,8 @@ def picks_out_table(df: pd.DataFrame, SelectedPicksOut: list[str]) -> pd.DataFra
     df = df.sort_values('Round', ascending=True)
     return df
 
-def picks_in_table(df: pd.DataFrame, SelectedPicksOut: list[str]) -> pd.DataFrame:
-    df = df[df['CurrentTeam'].str.contains(SelectedPicksOut) == False]  # noqa: E712
+def picks_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
+    df = df[df['CurrentTeam'].str.contains(selected_players) == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes', 'TeamTouched'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
