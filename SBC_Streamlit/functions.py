@@ -546,6 +546,22 @@ def data_roster_check(df: pd.DataFrame) -> pd.DataFrame:
     df = df[(df['Active Players'] > 17) | (df['Active Players'] < 12)]
     return df
 
+def data_missing_salary_check(df: pd.DataFrame) -> pd.DataFrame:
+    year_cols = ["Y" + year for year in columns_order]
+    type_cols_keep = ["Type" + year for year in columns_order]
+    cols_to_keep = ['Player'] + year_cols + type_cols_keep
+    df = df[cols_to_keep].copy()
+    year_cols = [f"Y{year}" for year in columns_order]
+    type_cols = [f"Type{year}" for year in columns_order]
+    salary_long = df.melt(id_vars = "Player", value_vars = year_cols, var_name = "Year", value_name = "Salary")
+    salary_long["Year"] = salary_long["Year"].str.replace("Y", "", regex=False)
+    type_long = df.melt(id_vars = "Player", value_vars = type_cols, var_name = "Year",  value_name = "Type")
+    type_long["Year"] = type_long["Year"].str.replace("Type", "", regex=False)
+    long_df = salary_long.merge(type_long,on=["Player", "Year"], how="left")
+    df = long_df[long_df["Type"].notna() & long_df["Salary"].isna()]
+    return df
+
+
 def tradeable_players_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Trade.Restriction'].isna()]
