@@ -80,3 +80,12 @@ def picks_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFram
     df = df.sort_values('Year', ascending=True)
     df = df.sort_values('Round', ascending=True)
     return df
+
+import random
+
+def check_random_number():
+    value = random.random()  # number between 0 and 1
+    if value > 0.5:
+        st.markdown("✅ **Passed:** This trade is complete from this direction, please send to McCade")
+    else:
+        st.markdown("❌ **Failed:** This trade failed, please try again")
