@@ -66,10 +66,7 @@ def picks_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFra
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
     df = df[df['Pick'].isin(selected_players)]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes', 'TeamTouched','Pick'])
-    df["OGTeam"] = df["OGTeam"].apply(lambda x: ", ".join(
-        team_info.get(t.strip(), {}).get("logo", "")
-        for t in x.split(",")
-        if t.strip() in team_info))
+    df["OGTeam"] = df["OGTeam"].apply(lambda x: team_info.get(x.split(",")[0].strip(), {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.sort_values('Year', ascending=True)
     df = df.sort_values('Round', ascending=True)
