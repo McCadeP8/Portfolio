@@ -25,6 +25,8 @@ def tradeable_picks_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df_list = df['Pick'].tolist()
     return df_list
 
+#ABC 
+
 def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
