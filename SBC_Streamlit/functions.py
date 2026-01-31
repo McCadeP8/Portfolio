@@ -645,6 +645,28 @@ def picks_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFram
     df = df.sort_values('Round', ascending=True)
     return df
 
+def exceptions_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
+    df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
+    df = df[df['Exception'].isin(selected_players)]
+    df = df.drop(columns=['Exception'])
+    df = df.rename(columns={'Player': 'Exception'})
+    df = df.rename(columns={'Y2026': '2026'})
+    df = df.rename(columns={'BirdRights': 'Expiration Date'})
+    df = df.sort_values('Exception', ascending=True)
+    return df
+
+def exceptions_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
+    df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
+    df = df[df['Exception'].isin(selected_players)]
+    df = df.drop(columns=['Exception'])
+    df["Team"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    df = df.rename(columns={'Player': 'Exception'})
+    df = df.rename(columns={'Y2026': '2026'})
+    df = df.rename(columns={'BirdRights': 'Expiration Date'})
+    df = df.sort_values('Team', ascending=True)
+    df = df.sort_values('Exception', ascending=True)
+    return df
+
 def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: list[str], selected_players_out: list[str]) -> float:
     n_in = df[df['Player'].isin(selected_players_in)]
     n_in = n_in[df['Type'] == "Active Players"]
