@@ -357,8 +357,7 @@ with tab6:
             SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, SelectedTeam))
             SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, SelectedTeam))
 
-        
-        submitted = st.form_submit_button("Submit")
+    submitted = st.form_submit_button("Submit")
 
     if submitted and (SelectedPicksIn or SelectedPicksOut or SelectedPlayersIn or SelectedPlayersOut):
 
