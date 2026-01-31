@@ -625,7 +625,7 @@ def picks_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFram
     df = df.sort_values('Round', ascending=True)
     return df
 
-def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: list[str], selected_players_out: list[str]) -> float
+def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: list[str], selected_players_out: list[str]) -> float:
     n_in = df[df['Player'].isin(selected_players_in)]
     n_in = n_in[df['Type'] == "Active Players"]
     n_in = len(n_in)
@@ -643,5 +643,3 @@ def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: 
     elif current_players < 12:
         st.warning("This would put you below 12 players and you need to sign someone soon")
     return current_players
-
-# ABC
