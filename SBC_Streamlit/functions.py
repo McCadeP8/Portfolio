@@ -582,7 +582,7 @@ def tradeable_exceptions_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['Y2026'] > 0]
     df = df[df["Player"] != "Minimum"]
     df = df[df["Team"] != SelectedTeam]
-    df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str) + " " + df["Round"].astype(str))
+    df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
     df = df.sort_values('Exception', ascending=True)
     df_list = df['Exception'].tolist()
     df_list.append("Minimum")
@@ -592,7 +592,7 @@ def tradeable_exceptions_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['Y2026'] > 0]
     df = df[df["Player"] != "Minimum"]
     df = df[df["Team"] == SelectedTeam]
-    df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str) + " " + df["Round"].astype(str))
+    df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
     df = df.sort_values('Exception', ascending=True)
     df_list = df['Exception'].tolist()
     df_list.append("Minimum")
