@@ -546,11 +546,6 @@ def data_roster_check(df: pd.DataFrame) -> pd.DataFrame:
     df = df[(df['Active Players'] > 17) | (df['Active Players'] < 12)]
     return df
 
-    import pandas as pd
-import math as math
-import streamlit as st
-from data import columns_order, current_year, team_info
-
 def tradeable_players_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Trade.Restriction'].isna()]
