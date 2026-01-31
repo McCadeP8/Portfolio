@@ -395,7 +395,7 @@ with tab6:
             picks_trade_in = picks_in_table(dp, SelectedPicksIn)
             if picks_trade_in.shape[0] > 0:
                 st.subheader("Picks Coming In")
-                st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
+                st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
             experiations_in = exceptions_in_table(exceptions, SelectedExceptionIn)
             if experiations_in.shape[0] > 0:
