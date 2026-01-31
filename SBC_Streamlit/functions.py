@@ -661,7 +661,7 @@ def exceptions_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.Da
     df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
     df = df[df['Exception'].isin(selected_players)]
     df = df.drop(columns=['Exception'])
-    df["Team"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'Player': 'Exception'})
     df = df.rename(columns={'Y2026': '2026'})
     df = df.rename(columns={'BirdRights': 'Expiration Date'})
