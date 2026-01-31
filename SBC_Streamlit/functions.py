@@ -635,11 +635,13 @@ def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: 
     current_players = active_player_n(df, SelectedTeam)
     current_players = current_players-n_out+n_in
     if current_players > 17:
-        st.error("This would put your roster over 17 players and you would have to cut someone")
+        excess_players = current_players - 17
+        st.error(f"Roster exceeds the maximum limit of 17 players. You would need to cut at least {excess_players} player(s) to comply with roster rules.")
     elif 15 <= current_players <= 17:
-        st.warning("This would put your roster at 15-17 players, so make sure you have enough IR eligible players")
+        st.warning(f"Roster is within 15-17 players. Ensure you have sufficient IR-eligible players to maintain compliance and flexibility.")
     elif 12 <= current_players <= 14:
-        st.success("Within roster limitations")
+        st.success(f"Roster size of {current_players} players is within the standard limits. No immediate action required.")
     elif current_players < 12:
-        st.warning("This would put you below 12 players and you need to sign someone soon")
+        players_needed = 12 - current_players
+        st.warning(f"Roster is below the minimum limit of 12 players. You need to sign at least {players_needed} player(s) to comply with roster requirements.")
     return current_players
