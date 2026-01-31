@@ -645,3 +645,47 @@ def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: 
         players_needed = 12 - current_players
         st.warning(f"Roster is below the minimum limit of 12 players. You need to sign at least {players_needed} player(s) to comply with roster requirements.", icon = "⚠️")
     return current_players
+
+def no_cash():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+def tpe_st_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+def no_aggregation_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+
+def under_100_percent_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+def no_bae_mle_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+
+def salary_trade_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+def tpe_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+def bae_mle_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+
+def player_agg_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+def create_tpe_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+def new_trade_rest_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+def old_team_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
+
+def stepien_check():
+    st.warning("Under Construction", icon = "⚠️")
+    return "A"
