@@ -655,6 +655,8 @@ def exceptions_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.Dat
     df = df.sort_values('Exception', ascending=True)
     return df
 
+    #AVC
+
 def exceptions_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
     df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
     df = df[df['Exception'].isin(selected_players)]
