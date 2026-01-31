@@ -128,12 +128,12 @@ def exception_table(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.sort_values('Amount', ascending=False)
     return df
 
-def active_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+def active_player_n(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Active Players']
     return df.shape[0]
 
-def inactive_player_n(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+def inactive_player_n(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
     df = df[df["Type" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
@@ -625,39 +625,21 @@ def picks_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFram
     df = df.sort_values('Round', ascending=True)
     return df
 
-class TeamTradeState:
-    def __init__(
-        self,
-        team: str,
-        incoming_players: list,
-        outgoing_players: list,
-        incoming_picks: list,
-        outgoing_picks: list,
-        df: pd.DataFrame,
-        exceptions: pd.DataFrame,
-        base_cap: pd.DataFrame,
-        dp: pd.DataFrame,
-        current_apron_1: float,
-        current_apron_2: float,
-        ):
-        
-        self.team = team
-        self.incoming_players = incoming_players
-        self.outgoing_players = outgoing_players
-        self.incoming_picks = incoming_picks
-        self.outgoing_picks = outgoing_picks
-
-        self.df = df
-        self.exceptions = exceptions
-        self.base_cap = base_cap
-        self.dp = dp
-
-        self.starting_team_salary = get_tax_total(df, team)
-        self.starting_team_players_n = active_player_n(df, team)
-
-        if self.starting_team_salary > current_apron_2:
-            self.starting_apron = "Second Apron"
-        elif self.starting_team_salary > current_apron_1:
-            self.starting_apron = "First Apron"
-        else:
-            self.starting_apron = "No Apron"
+def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: list[str], selected_players_out: list[str]) -> float
+    n_in = df[df['Player'].isin(selected_players_in)]
+    n_in = n_in[df['Type'] == "Active Players"]
+    n_in = len(n_in)
+    n_out = df[df['Player'].isin(selected_players_out)]
+    n_out = n_out[df['Type'] == "Active Players"]
+    n_out = len(n_out)
+    current_players = active_player_n(df, SelectedTeam)
+    current_players = current_players-n_out+n_in
+    if current_players > 17:
+        st.error("This would put your roster over 17 players and you would have to cut someone")
+    elif 15 <= current_players <= 17:
+        st.warning("This would put your roster at 15-17 players, so make sure you have enough IR eligible players")
+    elif 12 <= current_players <= 14:
+        st.success("Within roster limitations")
+    elif current_players < 12:
+        st.warning("This would put you below 12 players and you need to sign someone soon")
+    return current_players
