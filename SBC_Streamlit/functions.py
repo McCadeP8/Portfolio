@@ -578,6 +578,26 @@ def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df_list = df['Pick'].tolist()
     return df_list
 
+def tradeable_exceptions_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
+    df = df[df['Y2026'] > 0]
+    df = df[df["Player"] != "Minimum"]
+    df = df[df["Team"] != SelectedTeam]
+    df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str) + " " + df["Round"].astype(str))
+    df = df.sort_values('Exception', ascending=True)
+    df_list = df['Exception'].tolist()
+    df_list.append("Minimum")
+    return df_list
+
+def tradeable_exceptions_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
+    df = df[df['Y2026'] > 0]
+    df = df[df["Player"] != "Minimum"]
+    df = df[df["Team"] == SelectedTeam]
+    df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str) + " " + df["Round"].astype(str))
+    df = df.sort_values('Exception', ascending=True)
+    df_list = df['Exception'].tolist()
+    df_list.append("Minimum")
+    return df_list
+
 def players_out_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Player'].isin(selected_players)]
