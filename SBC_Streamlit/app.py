@@ -380,7 +380,7 @@ with tab6:
             experiations_out = exceptions_out_table(exceptions, SelectedExceptionOut)
             if experiations_out.shape[0] > 0:
                 st.subheader("Exceptions Being Used")
-                st.dataframe(experiations_out, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+                st.dataframe(experiations_out, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
 
         with col2:
@@ -395,12 +395,12 @@ with tab6:
             picks_trade_in = picks_in_table(dp, SelectedPicksIn)
             if picks_trade_in.shape[0] > 0:
                 st.subheader("Picks Coming In")
-                st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
+                st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
 
             experiations_in = exceptions_in_table(exceptions, SelectedExceptionOut)
             if experiations_in.shape[0] > 0:
                 st.subheader("Exceptions Being Used")
-                st.dataframe(experiations_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
+                st.dataframe(experiations_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
 
 
         st.subheader("Roster Limit")
