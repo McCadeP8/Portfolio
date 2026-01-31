@@ -61,7 +61,7 @@ def players_in_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: lis
     return df
 
 def picks_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
-    df = df[df['CurrentTeam'].str.contains(selected_players)]
+    df = df[df['CurrentTeam'].apply(lambda x: any(sp in x for sp in selected_players))]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes', 'TeamTouched'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -70,7 +70,7 @@ def picks_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFra
     return df
 
 def picks_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
-    df = df[df['CurrentTeam'].str.contains(selected_players) == False]  # noqa: E712
+    df = df[df['CurrentTeam'].apply(lambda x: all(sp not in x for sp in selected_players))]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes', 'TeamTouched'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
