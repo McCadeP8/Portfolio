@@ -19,16 +19,14 @@ def tradeable_players_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     return df_list
 
 def tradeable_picks_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
-    df = df[df['CurrentTeam'].str.contains(SelectedTeam, na=False) == False]  # noqa: E712
+    df = df[df['CurrentTeam'].str.contains(SelectedTeam)]  # noqa: E712
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
     df = df.sort_values('Pick', ascending=True)
     df_list = df['Pick'].tolist()
     return df_list
 
-#ABC 
-
 def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
-    df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
+    df = df[(df['CurrentTeam'].str.contains(SelectedTeam)) == False]
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
     df = df.sort_values('Pick', ascending=True)
     df_list = df['Pick'].tolist()
