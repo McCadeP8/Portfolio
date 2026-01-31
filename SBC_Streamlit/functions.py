@@ -517,6 +517,7 @@ def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'TeamTouched': 'Contacted'})
+    df = df.rename(columns={'CurrentTEam': 'Potential Owners'})
     df = df.sort_values('Year', ascending=True)
     df = df.sort_values('Round', ascending=True)
     return df
