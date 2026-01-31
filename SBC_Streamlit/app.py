@@ -372,7 +372,6 @@ with tab6:
                 st.subheader("Picks Going Out")
                 st.dataframe(picks_trade_out, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
-
         with col2:
             players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
             if players_traded_in.shape[0] > 0:
@@ -387,7 +386,7 @@ with tab6:
                 st.subheader("Picks Coming In")
                 st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
-        st.subheader("Test")
+        st.subheader("Roster Limit")
         net_players_check(df, SelectedTeam, SelectedPlayersIn, SelectedPlayersOut)
 
 with tab7:
