@@ -10,9 +10,6 @@ exceptions = get_exceptions()
 base_cap = get_base_cap()
 dp = get_draft_picks()
 
-
-#SBC 
-
 with st.sidebar:
     Teams = sorted(team_info.keys())
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
