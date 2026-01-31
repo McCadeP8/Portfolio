@@ -397,7 +397,7 @@ with tab6:
                 st.subheader("Picks Coming In")
                 st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
 
-            experiations_in = exceptions_in_table(exceptions, SelectedExceptionOut)
+            experiations_in = exceptions_in_table(exceptions, SelectedExceptionIn)
             if experiations_in.shape[0] > 0:
                 st.subheader("Exceptions Being Used")
                 st.dataframe(experiations_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
