@@ -387,13 +387,13 @@ with tab6:
                 st.subheader("Picks Coming In")
                 st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
-    st.subheader("Test")
-    team_state = TeamTradeState(team=SelectedTeam, incoming_players=SelectedPlayersIn, outgoing_players=SelectedPlayersOut, incoming_picks=SelectedPicksIn, outgoing_picks=SelectedPicksOut, df=df, exceptions=exceptions, base_cap=base_cap, dp=dp, current_apron_1=current_apron_1, current_apron_2=current_apron_2)
+        st.subheader("Test")
+        team_state = TeamTradeState(team=SelectedTeam, incoming_players=SelectedPlayersIn, outgoing_players=SelectedPlayersOut, incoming_picks=SelectedPicksIn, outgoing_picks=SelectedPicksOut, df=df, exceptions=exceptions, base_cap=base_cap, dp=dp, current_apron_1=current_apron_1, current_apron_2=current_apron_2)
 
-    st.write(f"Team: {team_state.team}")
-    st.write(f"Starting Salary: {team_state.starting_team_salary}")
-    st.write(f"Player Count: {team_state.starting_team_players_n}")
-    st.write(f"Apron Status: {team_state.starting_apron}")
+        st.write(f"Team: {team_state.team}")
+        st.write(f"Starting Salary: {team_state.starting_team_salary}")
+        st.write(f"Player Count: {team_state.starting_team_players_n}")
+        st.write(f"Apron Status: {team_state.starting_apron}")
 
 
 with tab7:
