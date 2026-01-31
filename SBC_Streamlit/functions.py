@@ -579,7 +579,7 @@ def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     return df_list
 
 def tradeable_exceptions_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
-    df = df[df['Y2026'] > 0]
+    df = df[df["Y" + str(current_year)] > 0]
     df = df[df["Player"] != "Minimum"]
     df = df[df["Team"] != SelectedTeam]
     df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
@@ -589,7 +589,7 @@ def tradeable_exceptions_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     return df_list
 
 def tradeable_exceptions_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
-    df = df[df['Y2026'] > 0]
+    df = df[df["Y" + str(current_year)] > 0]
     df = df[df["Player"] != "Minimum"]
     df = df[df["Team"] == SelectedTeam]
     df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
@@ -650,7 +650,8 @@ def exceptions_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.Dat
     df = df[df['Exception'].isin(selected_players)]
     df = df.drop(columns=['Exception'])
     df = df.rename(columns={'Player': 'Exception'})
-    df = df.rename(columns={'Y2026': '2026'})
+    df = df.rename(columns={"Y" + str(current_year): str(current_year)})
+    df[str(current_year)] = df[str(current_year)].apply(lambda x: f"${x:,.0f}")
     df = df.rename(columns={'BirdRights': 'Expiration Date'})
     df = df.sort_values('Exception', ascending=True)
     return df
@@ -663,7 +664,8 @@ def exceptions_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.Da
     df = df.drop(columns=['Exception'])
     df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'Player': 'Exception'})
-    df = df.rename(columns={'Y2026': '2026'})
+    df = df.rename(columns={"Y" + str(current_year): str(current_year)})
+    df[str(current_year)] = df[str(current_year)].apply(lambda x: f"${x:,.0f}")
     df = df.rename(columns={'BirdRights': 'Expiration Date'})
     df = df.sort_values('Team', ascending=True)
     df = df.sort_values('Exception', ascending=True)
