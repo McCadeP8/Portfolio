@@ -531,16 +531,16 @@ def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values('Round', ascending=True)
     return df
 
-def data_check_pictures(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
+def data_picture_check(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Picture_Online'].isna()]
     df = df[['Player', 'Picture_Online']]
+    df = df.rename(columns={'Picture_Online': 'Picture'})
     return df
 
 def data_roster_check(df: pd.DataFrame) -> pd.DataFrame:
     df = pd.DataFrame({
         "Team": list(team_info.keys()),
-        "Active Players": [active_player_n(df, team) for team in team_info.keys()]
-    })
+        "Active Players": [active_player_n(df, team) for team in team_info.keys()]})
     df = df[(df['Active Players'] > 17) | (df['Active Players'] < 12)]
     return df
