@@ -468,7 +468,7 @@ def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def original_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[(df['OGTeam'] == SelectedTeam) & (df['CurrentTeam'] != SelectedTeam)]
+    df = df[(df['OGTeam'] == SelectedTeam) & (df['CurrentTeam'].str.contains(SelectedTeam) == False)]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
