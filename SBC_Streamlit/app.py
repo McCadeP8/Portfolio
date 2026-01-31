@@ -354,7 +354,7 @@ with tab6:
         
         submitted = st.form_submit_button("Submit")
 
-    if submitted:
+    if submitted and (SelectedPicksIn or SelectedPicksOut or SelectedPlayersIn or SelectedPlayersOut):
 
         col1, col2 = st.columns(2)
 
