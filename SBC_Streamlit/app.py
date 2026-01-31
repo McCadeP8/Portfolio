@@ -386,7 +386,7 @@ with tab6:
                     .format({c: "${:,.0f}" for c in players_traded_in.columns if re.match(r"\d{4}", c)}))
                 st.dataframe(players_traded_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
-            picks_trade_in = picks_in_table(dp, SelectedPicksOut)
+            picks_trade_in = picks_in_table(dp, SelectedPicksIn)
             if picks_trade_in.shape[0] > 0:
                 st.subheader("Picks Coming In")
                 st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
