@@ -1,8 +1,7 @@
 import streamlit as st
 import re as re
-from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check
+from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, TeamTradeState
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset
-from trade_machine import tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, check_random_number
 
 df = get_data()
 pics = get_pictures()
@@ -388,8 +387,14 @@ with tab6:
                 st.subheader("Picks Coming In")
                 st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
-        st.subheader("Check Rules")
-        check_random_number()
+    st.subheader("Test")
+    TeamTradeState(team=SelectedTeam, incoming_players=SelectedPlayersIn, outgoing_players=SelectedPlayersOut, incoming_picks=SelectedPicksIn, outgoing_picks=SelectedPicksOut, df=df, exceptions=exceptions, base_cap=base_cap, dp=dp, current_apron_1=current_apron_1, current_apron_2=current_apron_2)
+
+    st.write(f"Team: {team_state.team}")
+    st.write(f"Starting Salary: {team_state.starting_team_salary}")
+    st.write(f"Player Count: {team_state.starting_team_players_n}")
+    st.write(f"Apron Status: {team_state.starting_apron}")
+
 
 with tab7:
     st.subheader("SBCFBL Introduction")
