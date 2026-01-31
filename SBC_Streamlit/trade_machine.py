@@ -20,6 +20,7 @@ def tradeable_players_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
 
 def tradeable_picks_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['CurrentTeam'].str.contains(SelectedTeam)]
+    df = df[df['Locked'] == False] #noqa: E712
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
     df = df.sort_values('Pick', ascending=True)
     df_list = df['Pick'].tolist()
