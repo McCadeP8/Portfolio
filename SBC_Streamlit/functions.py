@@ -648,11 +648,13 @@ def picks_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFram
 def exceptions_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
     df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
     df = df[df['Exception'].isin(selected_players)]
-    df = df.drop(columns=['Exception'])
+    df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df.rename(columns={'Player': 'Exception'})
     df = df.rename(columns={"Y" + str(current_year): str(current_year)})
     df[str(current_year)] = df[str(current_year)].apply(lambda x: f"${x:,.0f}")
+    df = df.drop(columns=['Exception'])
     df = df.rename(columns={'BirdRights': 'Expiration Date'})
+    df = df.sort_values('Team', ascending=True)
     df = df.sort_values('Exception', ascending=True)
     return df
 
@@ -660,14 +662,13 @@ def exceptions_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.Dat
 
 def exceptions_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
     df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
-    df = df[df['Exception'].isin(selected_players)]
     df = df.drop(columns=['Exception'])
-    df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    df = df[df['Exception'].isin(selected_players)]
     df = df.rename(columns={'Player': 'Exception'})
     df = df.rename(columns={"Y" + str(current_year): str(current_year)})
     df[str(current_year)] = df[str(current_year)].apply(lambda x: f"${x:,.0f}")
     df = df.rename(columns={'BirdRights': 'Expiration Date'})
-    df = df.sort_values('Team', ascending=True)
+    df = df.drop(columns=['Team'])
     df = df.sort_values('Exception', ascending=True)
     return df
 
