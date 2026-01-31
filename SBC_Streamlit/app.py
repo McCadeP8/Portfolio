@@ -355,7 +355,7 @@ with tab6:
         with col2:
             SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, SelectedTeam))
             SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, SelectedTeam))
-            SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, SelectedTeam))
+            SelectedExceptionIn = st.multiselect("Exceptions Used2:", tradeable_exceptions_in(exceptions, SelectedTeam))
 
  #       submitted = st.form_submit_button("Submit")
 
