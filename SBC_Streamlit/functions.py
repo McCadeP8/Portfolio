@@ -592,7 +592,11 @@ def hard_cap_check(df: pd.DataFrame, base_cap: pd.DataFrame) -> str:
     return df
 
 def stepien_data_check(df: pd.DataFrame) -> pd.DataFrame:
-    df = get_draft_picks()
+    df2 = pd.DataFrame({
+        "Year": [2025] * 30,
+        "Round": ["1st Round"] * 30,
+        "CurrentTeam": list(team_info.keys())
+    })
     df = df[(df['FullyOwned']) | (df['Locked']) | (df['TwoYearLimit'])]
     df['Year'] = np.where(df['TwoYearLimit'], df['Year'] + 0.5, df['Year'])
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes','OGTeam','TeamTouched','Explanation', 'TwoYearLimit'])
@@ -600,11 +604,12 @@ def stepien_data_check(df: pd.DataFrame) -> pd.DataFrame:
     df = df.assign(CurrentTeam=df['CurrentTeam'].str.split(', ')) \
        .explode('CurrentTeam') \
        .reset_index(drop=True)
+    df = pd.concat([df2, df], ignore_index=True)
     df = df.sort_values(["CurrentTeam", "Year"])
     df["next_year"] = df.groupby("CurrentTeam")["Year"].shift(-1)
     df["next_year"] = df["next_year"].fillna(current_year + 7)
     df["gap"] = df["next_year"] - df["Year"]
-    df = df[df['gap'] > 2]
+    df = df[df['gap'] > 1]
     df = df[['CurrentTeam', 'Year','next_year']]
     df = df.rename(columns={'CurrentTeam': 'Team'})
     df = df.rename(columns={'year': 'Gap Open'})
