@@ -582,7 +582,7 @@ with tab8:
         st.header("Missing Salary Info")
         st.dataframe(missing_salary_check)
 
-    hard_cap_check_df = hard_cap_check(df)
+    hard_cap_check_df = hard_cap_check(df, base_cap)
     if hard_cap_check_df.shape[0] > 0:
         st.header("Hard Cap Broken")        
         st.dataframe(hard_cap_check_df)
