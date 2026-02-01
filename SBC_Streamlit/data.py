@@ -1,7 +1,9 @@
 from datetime import date, timedelta
 from math import ceil
 
+league_start_date = date(2025, 10, 21)
 today = date.today() + timedelta(days=0)
+period = max(1, min(163, (today - league_start_date).days + 1))
 
 if today.month in [8, 9] or (today.month == 7 and today.day >= 2):
     year_offset = 0
@@ -22,6 +24,7 @@ current_apron_2 = 207824000
 tax_bracket_increment = 5685000
 league_ratio = ceil(current_salary_cap/60000000)*1000000
 max_cash = 7964000
+league_id = "ka3frpayly11teos"
 
 type_colors = {
     "Guaranteed": "#FCE5CD",   
@@ -64,4 +67,69 @@ team_info = {
     "Tulsa": {"bg": "#333333", "bg2": "#656565", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam1s7aQAAiSsW?format=png&name=small", "nickname": "Tornado"},
     "Vancouver": {"bg": "#17780D", "bg2": "#CACE00", "text": "black", "logo": "https://pbs.twimg.com/media/Fxam4eaaMAAW6Pz?format=png&name=small", "nickname": "Forest"},
     "Vegas": {"bg": "#35654D", "bg2": "#B8000A", "text": "white", "logo": "https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=small", "nickname": "Blackjack"},
+}
+
+cap_sheets_to_fantrax_name_fix = {
+    "Eugeny Omoruyi": "Eugeny Omoruyi",
+    "Kenneth Lofton Jr.": "Kenneth Lofton Jr.",
+    "Lonnie Walker IV": "Lonnie Walker IV",
+    "N'Faly Dante": "N'Faly Dante",
+    "Vasilije Micić": "Vasilije Micić",
+    "Bogdan Bogdanović": "Bogdan Bogdanović",
+    "D'Angelo Russell": "D'Angelo Russell",
+    "Gary Trent Jr.": "Gary Trent Jr.",
+    "Jonas Valančiūnas": "Jonas Valančiūnas",
+    "Kevin Porter Jr.": "Kevin Porter Jr.",
+    "Larry Nance Jr.": "Larry Nance Jr.",
+    "Nae'Qwan Tomlin": "Nae'Qwan Tomlin",
+    "Tim Hardaway Jr.": "Tim Hardaway Jr.",
+    "Alperen Şengün": "Alperen Şengün",
+    "Cam Thomas": "Cam Thomas",
+    "Dennis Schröder": "Dennis Schröder",
+    "Trey Murphy III": "Trey Murphy III",
+    "Ron Harper Jr.": "Ron Harper Jr.",
+    "A.J. Green": "A.J. Green",
+    "Alexandre Sarr": "Alexandre Sarr",
+    "Bub Carrington": "Bub Carrington",
+    "Jae'Sean Tate": "Jae'Sean Tate",
+    "Dario Šarić": "Dario Šarić",
+    "Dariq Miller-Whitehead": "Dariq Miller-Whitehead",
+    "DaRon Holmes II": "DaRon Holmes II",
+    "Day'Ron Sharpe": "Day'Ron Sharpe",
+    "De'Aaron Fox": "De'Aaron Fox",
+    "De'Andre Hunter": "De'Andre Hunter",
+    "De'Anthony Melton": "De'Anthony Melton",
+    "Derrick Jones Jr.": "Derrick Jones Jr.",
+    "Ja'Kobe Walter": "Ja'Kobe Walter",
+    "Jabari Smith Jr.": "Jabari Smith Jr.",
+    "Jaren Jackson Jr.": "Jaren Jackson Jr.",
+    "Jusuf Nurkić": "Jusuf Nurkic",
+    "Kel El Ware": "Kel El Ware",
+    "Kenyon Martin Jr.": "Kenyon Martin Jr.",
+    "Kristaps Porziņģis": "Kristaps Porziņģis",
+    "Luka Dončić": "Luka Dončić",
+    "Marvin Bagley III": "Marvin Bagley III",
+    "Michael Porter Jr.": "Michael Porter Jr.",
+    "Nic Claxton": "Nic Claxton",
+    "Nikola Jokić": "Nikola Jokić",
+    "Nikola Jović": "Nikola Jović",
+    "Nikola Vučević": "Nikola Vučević",
+    "Patrick Baldwin Jr.": "Patrick Baldwin Jr.",
+    "Ricky Council IV": "Ricky Council IV",
+    "Rob Dillingham": "Rob Dillingham",
+    "Royce O'Neale": "Royce O'Neale",
+    "Scotty Pippen Jr.": "Scotty Pippen Jr.",
+    "Terrence Shannon Jr.": "Terrence Shannon Jr.",
+    "TyTy Washington Jr.": "TyTy Washington Jr.",
+    "Vince Williams Jr.": "Vince Williams Jr.",
+    "VJ Edgecomb": "VJ Edgecomb",
+    "Vlad Goldin": "Vlad Goldin",
+    "Vrenz Bjleijenbergh": "Vrenz Bjleijenbergh",
+    "Walter Clayton Jr.": "Walter Clayton Jr.",
+    "Wendell Carter Jr.": "Wendell Carter Jr.",
+    "Xavier Tillman Sr.": "Xavier Tillman Sr.",
+    "Zaccharie Risacher": "Zaccharie Risacher",
+    "Bojan Bogdanović": "Bojan Bogdanović",
+    "Dāvis Bertāns": "Dāvis Bertāns",
+    "Devonte' Graham": "Devonte' Graham",
 }

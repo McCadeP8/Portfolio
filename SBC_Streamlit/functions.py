@@ -2,7 +2,9 @@ import pandas as pd
 import streamlit as st
 import math as math
 import numpy as np
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info
+import requests
+import json
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix
 
 @st.cache_data(ttl=21600)
 def get_data() -> pd.DataFrame:
@@ -36,6 +38,49 @@ def get_draft_picks() -> pd.DataFrame:
     df = pd.read_csv(csv_url)
     df = df[df['Year'].between(current_year, current_year + 6)]
     return df
+
+@st.cache_data(ttl=21600)
+def get_fantrax_roster() -> pd.DataFrame:
+    all_rosters_list = []    
+    roster_url = f"https://www.fantrax.com/fxea/general/getTeamRosters?leagueId={league_id}&period={period}"
+    headers = {'Cookie': 'JSESSIONID='}
+    response = requests.get(roster_url, headers=headers)
+    if response.status_code == 200:
+        roster_json = response.text
+        roster_data = json.loads(roster_json)
+        rosters = roster_data.get('rosters', {})
+        for team_id, roster in rosters.items():
+            team_name = roster.get('teamName')
+            roster_items = roster.get('rosterItems')
+            if roster_items is not None and len(roster_items) > 0:
+                roster_df = pd.DataFrame(roster_items)
+                roster_df['team_name'] = team_name
+                roster_df['period'] = period
+                roster_df['team_id'] = team_id
+                all_rosters_list.append(roster_df)    
+    if all_rosters_list:
+        all_rosters_data = pd.concat(all_rosters_list, ignore_index=True)
+    else:
+        all_rosters_data = pd.DataFrame()
+    return all_rosters_data
+
+@st.cache_data(ttl=21600)
+def get_fantrax_players() -> pd.DataFrame:
+    roster_url = "https://www.fantrax.com/fxea/general/getPlayerIds?sport=NBA"
+    headers = {'Cookie': 'JSESSIONID='}
+    response = requests.get(roster_url, headers=headers)
+    if response.status_code == 200:
+        data = json.loads(response.text)
+        players_list = []
+        for player_id, player_info in data.items():
+            player_record = player_info.copy()
+            players_list.append(player_record)
+        players_df = pd.DataFrame(players_list)
+        players_df = players_df[['name', 'fantraxId']]
+        players_df['name'] = players_df['name'].str.split(', ').str[1] + ' ' + players_df['name'].str.split(', ').str[0]
+    else:
+        print(f"Failed to fetch data - Status code: {response.status_code}")
+    return players_df
 
 def style_salaries(row, type_colors):
     styles = [""] * len(row)
@@ -528,7 +573,6 @@ def all_swap_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[df['FullyOwned'] == False]  # noqa: E712
     df = df[df['Locked'] == False]  # noqa: E712
@@ -806,3 +850,14 @@ def old_team_check():
 def stepien_check():
     st.warning("Under Construction: stepien_check", icon = "⚠️")
     return "A"
+
+def fantrax_players_check(df, ft_players):
+    df = get_data()
+    df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
+    df = df[['Player']].copy()
+    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
+    df = df[df['fantraxId'].isna()]
+    df = df[df['Player'] != "Minimum Salary Penalty"]
+    df = df.rename(columns={'Player': 'Cap Sheets'})
+    df = df.drop(columns=["Picture", "Name"])
+    return df
