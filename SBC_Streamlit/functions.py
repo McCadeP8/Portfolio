@@ -451,7 +451,6 @@ def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned'] == False]  # noqa: E712
