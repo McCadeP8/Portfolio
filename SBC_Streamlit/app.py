@@ -12,8 +12,6 @@ base_cap = get_base_cap()
 dp = get_draft_picks()
 
 with st.sidebar:
-    st.logo("https://pbs.twimg.com/media/HACtVLTa0AAXe9o?format=jpg&name=medium")
-    st.image(team_logo, width=250)
     Teams = sorted(team_info.keys())
     SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
     bg_color = team_info[SelectedTeam]["bg"]
@@ -21,6 +19,9 @@ with st.sidebar:
     text_color2 = team_info[SelectedTeam]["bg2"]
     team_logo = team_info[SelectedTeam]["logo"]
     nickname = team_info[SelectedTeam]["nickname"]
+    st.image(team_logo, width=250)
+    st.logo("https://pbs.twimg.com/media/HACtVLTa0AAXe9o?format=jpg&name=medium")
+
 
 st.markdown(
     f"""
