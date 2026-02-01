@@ -416,8 +416,7 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
         "Base Fee": [base_fee(df, team, base_cap) for team in team_info.keys()],
         "Luxury Fee": [luxury_fee(df, team, base_cap) for team in team_info.keys()],
         "Balance": [net_fee(df, team, base_cap) for team in team_info.keys()],
-        "Amount Paid": [amount_paid(base_cap, team) for team in team_info.keys()],
-    })
+        "Amount Paid": [amount_paid(base_cap, team) for team in team_info.keys()]})
     return df
 
 def unit_payout(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
@@ -871,7 +870,6 @@ def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters
     return df
 
 def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
-    df = get_data()
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
@@ -883,4 +881,45 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters:
     df = df[['Player', 'Team', 'Type', 'status']]
     df = df.rename(columns={'Type': 'Cap Sheet Location'})
     df = df.rename(columns={'status': 'Fantrax Locatoin'})
+    return df
+
+def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
+    df = get_data()
+    df_players = pd.DataFrame({
+        "Team": list(team_info.keys()),
+        "Active Players": [active_player_n(df, team) for team in team_info.keys()],})
+    df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
+    df = df[df['Type'] == "Active Players"]
+    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
+    df = df.merge(ft_rosters, how='outer', left_on='fantraxId', right_on='id')
+
+    df_ir = df[df['status'] == "INJURED_RESERVE"]
+    df_ir = df_ir.groupby(['Team']).size().reset_index(name='Total')
+    df_ir = df_ir.merge(df_players, how='left', left_on='Team', right_on='Team')
+    df_ir['Count'] = df_ir['Active Players'] - df_ir['Total']
+    df_ir = df_ir[df_ir['Count'] > 13]
+    df_ir['Type'] = "IR"
+    df_ir = df_ir[['Team', 'Type']]
+
+    df_starters = df[df['status'] == "ACTIVE"]
+    df_starters = df_starters[df_starters['position'].isin(['PG', 'SG', 'SF', 'PF', 'C'])]
+    df_starters = df_starters.groupby(['Team','position']).size().reset_index(name='Total')
+    df_starters = df_starters[df_starters['Total'] > 1]
+    df_starters['Type'] = "Starters"
+    df_starters = df_starters[['Team', 'Type']]
+
+    df_flex = df[df['status'] == "ACTIVE"]
+    df_flex = df_flex[df_flex['position'] == "Flx"]
+    df_flex = df_flex.groupby(['Team']).size().reset_index(name='Total')
+    df_flex = df_flex[df_flex['Total'] > 3]
+    df_flex['Type'] = "Flex"
+    df_flex = df_flex[['Team', 'Type']]
+
+    df_reserve = df[df['status'] == "RESERVE"]
+    df_reserve = df_reserve.groupby(['Team']).size().reset_index(name='Total')
+    df_reserve = df_reserve[df_reserve['Total'] > 3]
+    df_reserve['Type'] = "Reserve"
+    df_reserve = df_reserve[['Team', 'Type']]
+
+    df = pd.concat([df_ir, df_starters, df_flex, df_reserve], ignore_index=True)
     return df
