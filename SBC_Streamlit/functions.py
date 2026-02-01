@@ -568,6 +568,8 @@ def hard_cap_check(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) 
     df["HardCapResult"] = df["HardCapResult"].apply(lambda x: f"${x:,.0f}")
     df = df[df['HardCapResult'] > 0]
 
+    #ABC
+
 def tradeable_players_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Trade.Restriction'].isna()]
