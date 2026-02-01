@@ -355,11 +355,14 @@ with tab6:
             SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, SelectedTeam))
             SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, SelectedTeam))
             SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, SelectedTeam))
+            CashOut = st.number_input(label="Cash Out", min_value=110000,max_value=7964000, format="$%d")
+
 
         with col2:
             SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, SelectedTeam))
             SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, SelectedTeam))
             SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, SelectedTeam))
+            CashIn = st.number_input(label="Cash In", min_value=0, max_value=7964000, format="$%d")
 
         submitted = st.form_submit_button("Submit")
 
@@ -385,7 +388,6 @@ with tab6:
             if experiations_out.shape[0] > 0:
                 st.subheader("Exceptions Being Used")
                 st.dataframe(experiations_out, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
-
 
         with col2:
             players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
