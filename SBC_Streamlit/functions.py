@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 import math as math
+import numpy as np
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info
 
 @st.cache_data(ttl=21600)
@@ -421,6 +422,8 @@ def style_overall_cap(row):
     return styles
 
 def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned']]
     df = df[df['Locked'] == False]  # noqa: E712
@@ -434,6 +437,8 @@ def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['PickSwap']]
     df = df[df['Locked'] == False]  # noqa: E712
@@ -446,6 +451,8 @@ def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned'] == False]  # noqa: E712
     df = df[df['Locked'] == False]  # noqa: E712
@@ -457,6 +464,8 @@ def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
@@ -468,6 +477,8 @@ def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def original_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['OGTeam'] == SelectedTeam) & (df['CurrentTeam'].str.contains(SelectedTeam) == False)]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -478,6 +489,8 @@ def original_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def touched_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['TeamTouched'].str.contains(SelectedTeam, na=False))]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -488,6 +501,8 @@ def touched_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def all_full_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[df['FullyOwned']]
     df = df[df['Locked'] == False]  # noqa: E712
     df = df[df['PickSwap'] == False]  # noqa: E712
@@ -500,6 +515,8 @@ def all_full_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def all_swap_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[df['PickSwap']]
     df = df[df['FullyOwned']]
     df = df[df['Locked'] == False]  # noqa: E712
@@ -512,6 +529,8 @@ def all_swap_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[df['FullyOwned'] == False]  # noqa: E712
     df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
@@ -523,6 +542,8 @@ def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["OGTeam"] = df["OGTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -568,6 +589,26 @@ def hard_cap_check(df: pd.DataFrame, base_cap: pd.DataFrame) -> str:
     df = df[df['HardCapResult'] > 0]
     df["HardCapResult"] = df["HardCapResult"].apply(lambda x: f"${x:,.0f}")
     df = df.rename(columns={'HardCapResult': 'Over Amount'})
+    return df
+
+def stepien_data_check(df: pd.DataFrame) -> pd.DataFrame:
+    df = get_draft_picks()
+    df = df[(df['FullyOwned']) | (df['Locked']) | (df['TwoYearLimit'])]
+    df['Year'] = np.where(df['TwoYearLimit'], df['Year'] + 0.5, df['Year'])
+    df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes','OGTeam','TeamTouched','Explanation', 'TwoYearLimit'])
+    df = df[df['Round'] == "1st Round"]
+    df = df.assign(CurrentTeam=df['CurrentTeam'].str.split(', ')) \
+       .explode('CurrentTeam') \
+       .reset_index(drop=True)
+    df = df.sort_values(["CurrentTeam", "Year"])
+    df["next_year"] = df.groupby("CurrentTeam")["Year"].shift(-1)
+    df["next_year"] = df["next_year"].fillna(current_year + 7)
+    df["gap"] = df["next_year"] - df["Year"]
+    df = df[df['gap'] > 1]
+    df = df[['CurrentTeam', 'Year','next_year']]
+    df = df.rename(columns={'CurrentTeam': 'Team'})
+    df = df.rename(columns={'year': 'Gap Open'})
+    df = df.rename(columns={'next_year': 'Gap Closed'})
     return df
 
 def tradeable_players_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
