@@ -21,6 +21,7 @@ current_apron_1 = 195945000
 current_apron_2 = 207824000
 tax_bracket_increment = 5685000
 league_ratio = ceil(current_salary_cap/60000000)*1000000
+max_cash = 7964000
 
 type_colors = {
     "Guaranteed": "#FCE5CD",   

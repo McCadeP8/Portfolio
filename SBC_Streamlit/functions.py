@@ -762,45 +762,45 @@ def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: 
     return current_players
 
 def no_cash():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: no_cash", icon = "⚠️")
     return "A"
 def tpe_st_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: tpe_st_check", icon = "⚠️")
     return "A"
 def no_aggregation_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: no_aggregation_check", icon = "⚠️")
     return "A"
 
 def under_100_percent_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: under_100_percent_check", icon = "⚠️")
     return "A"
 def no_bae_mle_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: no_bae_mle_check", icon = "⚠️")
     return "A"
 
 def salary_trade_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: salary_trade_check", icon = "⚠️")
     return "A"
 def tpe_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: tpe_check", icon = "⚠️")
     return "A"
 def bae_mle_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: bae_mle_check", icon = "⚠️")
     return "A"
 
 def player_agg_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: player_agg_check", icon = "⚠️")
     return "A"
 def create_tpe_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: create_tpe_check", icon = "⚠️")
     return "A"
 def new_trade_rest_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: new_trade_rest_check", icon = "⚠️")
     return "A"
 def old_team_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: old_team_check", icon = "⚠️")
     return "A"
 
 def stepien_check():
-    st.warning("Under Construction", icon = "⚠️")
+    st.warning("Under Construction: stepien_check", icon = "⚠️")
     return "A"
