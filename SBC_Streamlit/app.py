@@ -355,14 +355,14 @@ with tab6:
             SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, SelectedTeam))
             SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, SelectedTeam))
             SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, SelectedTeam))
-            CashOut = st.number_input(label="Cash Out", min_value = 0, max_value= 7964000, value = 0)
+            CashOut = st.number_input(label="Cash Out", min_value = 110000, max_value= 7964000, placeholder = "None")
 
 
         with col2:
             SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, SelectedTeam))
             SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, SelectedTeam))
             SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, SelectedTeam))
-            CashIn = st.number_input(label="Cash In", min_value=0, max_value=7964000, value = 0)
+            CashIn = st.number_input(label="Cash In", min_value=110000, max_value=7964000, placeholder = "None")
 
         submitted = st.form_submit_button("Submit")
 
