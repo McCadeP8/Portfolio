@@ -852,12 +852,11 @@ def stepien_check():
     return "A"
 
 def fantrax_players_check(df, ft_players):
-    df = get_data()
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[['Player']].copy()
     df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
     df = df[df['fantraxId'].isna()]
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df.rename(columns={'Player': 'Cap Sheets'})
-    df = df.drop(columns=["fantraxId", "Name"])
+    df = df.drop(columns=["fantraxId", "name"])
     return df
