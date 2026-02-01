@@ -24,7 +24,7 @@ current_apron_2 = 207824000
 tax_bracket_increment = 5685000
 league_ratio = ceil(current_salary_cap/60000000)*1000000
 max_cash = 7964000
-league_id = "ka3frpayly11teos"
+league_id = "u9f8f7o9mavp4dt1"
 
 type_colors = {
     "Guaranteed": "#FCE5CD",   
@@ -127,7 +127,6 @@ cap_sheets_to_fantrax_name_fix = {
     "Walter Clayton Jr.": "Walter Clayton",
     "Wendell Carter Jr.": "Wendell Carter",
     "Xavier Tillman Sr.": "Xavier Tillman",
-    "Zaccharie Risacher": "Zaccharie Risacher",
     "Bojan Bogdanović": "Bojan Bogdanovic",
     "Dāvis Bertāns": "Davis Bertans",
     "Devonte' Graham": "Devonte Graham",

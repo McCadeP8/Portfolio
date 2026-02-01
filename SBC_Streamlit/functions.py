@@ -77,7 +77,13 @@ def get_fantrax_players() -> pd.DataFrame:
             players_list.append(player_record)
         players_df = pd.DataFrame(players_list)
         players_df = players_df[['name', 'fantraxId']]
+        new_row = pd.DataFrame([{"name": "Bogdanovic, Bojan", "fantraxId": "027pg"}])
+        players_df = pd.concat([players_df, new_row], ignore_index=True)
         players_df['name'] = players_df['name'].str.split(', ').str[1] + ' ' + players_df['name'].str.split(', ').str[0]
+        players_df.loc[players_df['name'] == 'Amari Bailey', 'fantraxId'] = '06cbt'
+        players_df.loc[players_df['name'] == 'Tarik Biberovic', 'fantraxId'] = '06ccr'
+        #df = df[df['Type'] == 'Active Players']
+        #df = df[df['Type'] == 'Active Players']
     else:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return players_df
@@ -851,12 +857,29 @@ def stepien_check():
     st.warning("Under Construction: stepien_check", icon = "⚠️")
     return "A"
 
-def fantrax_players_check(df, ft_players):
+def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
-    df = df[['Player']].copy()
-    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
-    df = df[df['fantraxId'].isna()]
     df = df[df['Player'] != "Minimum Salary Penalty"]
-    df = df.rename(columns={'Player': 'Cap Sheets'})
-    df = df.drop(columns=["fantraxId", "name"])
+    df = df[df['Trade.Restriction'] != "Dead"]
+    df = df[df['Trade.Restriction'] != "Banned"]
+    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
+    df = df.merge(ft_rosters, how='outer', left_on='fantraxId', right_on='id')
+    df = df[df['Player'].isna() | df['team_name'].isna()]
+    df = df.rename(columns={'Player': 'Cap Sheet Name'})
+    df = df.rename(columns={'name': 'Fantrax Name'})
+    df = df[['Cap Sheet Name', 'Fantrax Name']]
     return df
+
+def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
+    df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
+    df = df[df['Player'] != "Minimum Salary Penalty"]
+    df = df[df['Trade.Restriction'] != "Dead"]
+    df = df[df['Trade.Restriction'] != "Banned"]
+    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
+    df = df.merge(ft_rosters, how='outer', left_on='fantraxId', right_on='id')
+    df = df[df['Player'].isna() | df['team_name'].isna()]
+    df = df.rename(columns={'Player': 'Cap Sheet Name'})
+    df = df.rename(columns={'name': 'Fantrax Name'})
+    df = df[['Cap Sheet Name', 'Fantrax Name']]
+    return df
+
