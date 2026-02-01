@@ -355,7 +355,7 @@ with tab6:
             SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, SelectedTeam))
             SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, SelectedTeam))
             SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, SelectedTeam))
-            CashOut = st.number_input(label="Cash Out", max_value= 7964000, format="$%d", value = 0)
+            CashOut = st.number_input(label="Cash Out", min_value = 0, max_value= 7964000, format="$%d", value = 0)
 
 
         with col2:
