@@ -880,5 +880,7 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters:
     df = df.merge(ft_rosters, how='outer', left_on='fantraxId', right_on='id')
     df['status2'] = df['status'].apply(lambda x: "Non-Active Players" if x == "MINORS" else "Active Players")
     df = df[df['Type'] != df["status2"]]
-    df = df[['Type', 'Player', 'Team', 'status']]
+    df = df[['Player', 'Team', 'Type', 'status']]
+    df = df.rename(columns={'Type': 'Cap Sheet Location'})
+    df = df.rename(columns={'status': 'Fantrax Locatoin'})
     return df
