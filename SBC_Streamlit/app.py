@@ -20,7 +20,7 @@ with st.sidebar:
     team_logo = team_info[SelectedTeam]["logo"]
     nickname = team_info[SelectedTeam]["nickname"]
     st.image(team_logo, width=250)
-    st.logo("https://pbs.twimg.com/media/HACtVLTa0AAXe9o?format=jpg&name=medium")
+    #st.logo("https://pbs.twimg.com/media/HACtVLTa0AAXe9o?format=jpg&name=medium")
 
 
 st.markdown(
