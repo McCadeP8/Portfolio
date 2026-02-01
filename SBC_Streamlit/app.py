@@ -80,7 +80,7 @@ with col1:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "About SBCFBL", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "Draft History", "Lottery Draw", "About SBCFBL", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
@@ -429,7 +429,13 @@ with tab6:
         st.subheader("Draft Pick Check")
         stepien_check()
 
-with tab7:
+with tab9:
+    st.subheader("Under Construction")
+
+with tab9:
+    st.subheader("Under Construction")
+
+with tab9:
     st.subheader("SBCFBL Introduction")
     st.markdown("""
     The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from Seth Partnow, who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
@@ -571,7 +577,7 @@ with tab7:
     This document is intended as a **quick-reference guide** and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered **the premier fantasy basketball experience**.
     """)
 
-with tab8:
+with tab10:
 
     picture_check = data_picture_check(df, pics)
     if picture_check.shape[0] > 0:
