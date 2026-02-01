@@ -869,18 +869,3 @@ def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters
     df = df.rename(columns={'name': 'Fantrax Name'})
     df = df[['Cap Sheet Name', 'Fantrax Name']]
     return df
-
-def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
-    df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
-    df = df[df['Player'] != "Minimum Salary Penalty"]
-    df = df[df['Trade.Restriction'] != "Dead"]
-    df = df[df['Trade.Restriction'] != "Banned"]
-    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
-    df = df.merge(ft_rosters, how='outer', left_on='fantraxId', right_on='id')
-    df = df[df['Player'].isna() | df['team_name'].isna()]
-    df = df.rename(columns={'Player': 'Cap Sheet Name'})
-    df = df.rename(columns={'name': 'Fantrax Name'})
-    df = df[['Cap Sheet Name', 'Fantrax Name']]
-    return df
-
-#ABC
