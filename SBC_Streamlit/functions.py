@@ -899,7 +899,7 @@ def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rost
     df_ir = df_ir.groupby(['Team']).size().reset_index(name='Total')
     df_ir = df_ir.merge(df_players, how='left', left_on='Team', right_on='Team')
     df_ir['Count'] = df_ir['Active Players'] - df_ir['Total']
-    df_ir = df_ir[df_ir['Count'] > 13]
+    df_ir = df_ir[df_ir['Count'] > 14]
     df_ir['Type'] = "IR"
     df_ir = df_ir[['Team', 'Type']]
 
@@ -919,7 +919,7 @@ def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rost
 
     df_reserve = df[df['status'] == "RESERVE"]
     df_reserve = df_reserve.groupby(['Team']).size().reset_index(name='Total')
-    df_reserve = df_reserve[df_reserve['Total'] > 3]
+    df_reserve = df_reserve[df_reserve['Total'] > 6]
     df_reserve['Type'] = "Reserve"
     df_reserve = df_reserve[['Team', 'Type']]
 
