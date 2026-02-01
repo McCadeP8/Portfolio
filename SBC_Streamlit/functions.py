@@ -859,5 +859,5 @@ def fantrax_players_check(df, ft_players):
     df = df[df['fantraxId'].isna()]
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df.rename(columns={'Player': 'Cap Sheets'})
-    df = df.drop(columns=["Picture", "Name"])
+    df = df.drop(columns=["fantraxId", "Name"])
     return df
