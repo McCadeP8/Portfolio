@@ -561,6 +561,13 @@ def data_missing_salary_check(df: pd.DataFrame) -> pd.DataFrame:
     df = long_df[long_df["Type"].notna() & long_df["Salary"].isna()]
     return df
 
+def hard_cap_check(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> str:
+    df = pd.DataFrame({
+        "Team": team_info.keys(),
+        "HardCapResult": [team_hard_cap_n(df, team, base_cap) for team in team_info.keys()]})
+    df["HardCapResult"] = df["HardCapResult"].apply(lambda x: f"${x:,.0f}")
+    df = df[df['HardCapResult'] > 0]
+
 def tradeable_players_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Trade.Restriction'].isna()]
@@ -672,8 +679,6 @@ def exceptions_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.Dat
     df = df.sort_values('Team', ascending=True)
     df = df.sort_values('Exception', ascending=True)
     return df
-
-    #AVC
 
 def exceptions_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
     df["Exception"] = (df["Team"].astype(str) + " " + df["Player"].astype(str))
