@@ -599,7 +599,7 @@ with tab8:
         st.dataframe(stepien_check)
 
     cap_sheet_to_fantrax_df = fantrax_players_check(df, ft_players)
-    if fantrax_players_check.shape[0] > 0:
+    if cap_sheet_to_fantrax_df.shape[0] > 0:
         st.header("Cap Sheet to Fantrax Translation")
         st.dataframe(fantrax_players_check)
 
