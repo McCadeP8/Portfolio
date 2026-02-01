@@ -19,7 +19,7 @@ with st.sidebar:
     text_color2 = team_info[SelectedTeam]["bg2"]
     team_logo = team_info[SelectedTeam]["logo"]
     nickname = team_info[SelectedTeam]["nickname"]
-    st.logo(team_logo, width=250)
+    st.logo(team_logo)
 
 st.markdown(
     f"""
