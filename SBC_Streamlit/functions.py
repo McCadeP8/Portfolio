@@ -82,8 +82,8 @@ def get_fantrax_players() -> pd.DataFrame:
         players_df['name'] = players_df['name'].str.split(', ').str[1] + ' ' + players_df['name'].str.split(', ').str[0]
         players_df.loc[players_df['name'] == 'Amari Bailey', 'fantraxId'] = '06cbt'
         players_df.loc[players_df['name'] == 'Tarik Biberovic', 'fantraxId'] = '06ccr'
-        #df = df[df['Type'] == 'Active Players']
-        #df = df[df['Type'] == 'Active Players']
+        players_df = players_df[players_df['fantraxId'] != "067x0"]
+        players_df = players_df[players_df['fantraxId'] != "06ps6"]
     else:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return players_df
