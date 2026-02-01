@@ -761,6 +761,9 @@ def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: 
         st.warning(f"Roster is below the minimum limit of 12 players. You need to sign at least {players_needed} player(s) to comply with roster requirements.", icon = "⚠️")
     return current_players
 
+
+#SB 
+
 def no_cash():
     st.warning("Under Construction: no_cash", icon = "⚠️")
     return "A"
