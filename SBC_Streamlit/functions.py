@@ -565,10 +565,8 @@ def hard_cap_check(df: pd.DataFrame, base_cap: pd.DataFrame) -> str:
     df = pd.DataFrame({
         "Team": team_info.keys(),
         "HardCapResult": [team_hard_cap_n(df, team, base_cap) for team in team_info.keys()]})
-    df["HardCapResult"] = df["HardCapResult"].apply(lambda x: f"${x:,.0f}")
     df = df[df['HardCapResult'] > 0]
-
-    #ABC
+    df["HardCapResult"] = df["HardCapResult"].apply(lambda x: f"${x:,.0f}")
 
 def tradeable_players_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     df = df[df['Team'] == SelectedTeam]
