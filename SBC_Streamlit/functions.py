@@ -561,7 +561,7 @@ def data_missing_salary_check(df: pd.DataFrame) -> pd.DataFrame:
     df = long_df[long_df["Type"].notna() & long_df["Salary"].isna()]
     return df
 
-def hard_cap_check(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> str:
+def hard_cap_check(df: pd.DataFrame, base_cap: pd.DataFrame) -> str:
     df = pd.DataFrame({
         "Team": team_info.keys(),
         "HardCapResult": [team_hard_cap_n(df, team, base_cap) for team in team_info.keys()]})
