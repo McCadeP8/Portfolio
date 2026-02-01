@@ -609,7 +609,7 @@ def stepien_data_check(df: pd.DataFrame) -> pd.DataFrame:
     df["next_year"] = df.groupby("CurrentTeam")["Year"].shift(-1)
     df["next_year"] = df["next_year"].fillna(current_year + 7)
     df["gap"] = df["next_year"] - df["Year"]
-    df = df[df['gap'] > 1]
+    df = df[df['gap'] > 2]
     df = df[['CurrentTeam', 'Year','next_year']]
     df = df.rename(columns={'CurrentTeam': 'Team'})
     df = df.rename(columns={'year': 'Gap Open'})
