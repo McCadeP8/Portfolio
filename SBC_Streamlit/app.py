@@ -601,7 +601,7 @@ with tab8:
     cap_sheet_to_fantrax_df = fantrax_players_check(df, ft_players)
     if cap_sheet_to_fantrax_df.shape[0] > 0:
         st.header("Cap Sheet to Fantrax Translation")
-        st.dataframe(fantrax_players_check)
+        st.dataframe(cap_sheet_to_fantrax_df)
 
 
 
