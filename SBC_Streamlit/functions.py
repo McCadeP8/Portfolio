@@ -883,6 +883,8 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters:
     df = df.rename(columns={'status': 'Fantrax Locatoin'})
     return df
 
+    #AABC
+
 def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
     df = get_data()
     df_players = pd.DataFrame({
