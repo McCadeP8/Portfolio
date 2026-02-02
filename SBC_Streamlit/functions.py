@@ -962,7 +962,7 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
 def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: float, round: float) -> pd.DataFrame:
     dh = dh[dh['Year'] == year]
     dh = dh[dh['Round'] == round]
-    df = df[df["Type" + str(current_year)] == "Dead"]
+    df = df[df["Type" + str(current_year)] != "Dead"]
     dh = dh.merge(df[['Player', 'Team']], on='Player', how='left')
     dh = dh.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     dh = dh.drop(columns=["Year",'Round'])
