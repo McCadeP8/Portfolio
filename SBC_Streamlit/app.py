@@ -456,13 +456,68 @@ with tab7:
         with col1:
             st.subheader("Round 1: Saturday, June 28th")
             draft_1R_2025 = past_draft(df, pics, dh, 2025, "1st Round")
-            st.dataframe(draft_1R_2025, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+            st.dataframe(draft_1R_2025, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
         with col2:
             st.subheader("Round 2: Sunday, June 29th")
             draft_2R_2025 = past_draft(df, pics, dh, 2025, "2nd Round")
-            st.dataframe(draft_1R_2025, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+            st.dataframe(draft_2R_2025, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
+    with tab2024:
+        st.title("2024 SBCFBL Draft")
+        col1, col2 = st.columns([1,1])
+
+        with col1:
+            st.subheader("Round 1: Saturday, June 29th")
+            draft_1R_2024 = past_draft(df, pics, dh, 2024, "1st Round")
+            st.dataframe(draft_1R_2024, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+        with col2:
+            st.subheader("Round 2: Sunday, June 30th")
+            draft_2R_2024 = past_draft(df, pics, dh, 2024, "2nd Round")
+            st.dataframe(draft_1R_2024, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+    with tab2023:
+        st.title("2023 SBCFBL Draft")
+        col1, col2 = st.columns([1,1])
+
+        with col1:
+            st.subheader("Round 1: Saturday, June 24th")
+            draft_1R_2023 = past_draft(df, pics, dh, 2023, "1st Round")
+            st.dataframe(draft_1R_2023, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+        with col2:
+            st.subheader("Round 2: Sunday, June 25th")
+            draft_2R_2023 = past_draft(df, pics, dh, 2023, "2nd Round")
+            st.dataframe(draft_1R_2023, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+    with tab2022:
+        st.title("2022 SBCFBL Draft")
+        col1, col2 = st.columns([1,1])
+
+        with col1:
+            st.subheader("Round 1: Saturday, June 25th")
+            draft_1R_2022 = past_draft(df, pics, dh, 2022, "1st Round")
+            st.dataframe(draft_1R_2022, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+        with col2:
+            st.subheader("Round 2: Sunday, June 25th")
+            draft_2R_2022 = past_draft(df, pics, dh, 2022, "2nd Round")
+            st.dataframe(draft_1R_2022, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+    with tab2023:
+        st.title("2021 SBCFBL Draft")
+        col1, col2 = st.columns([1,1])
+
+        with col1:
+            st.subheader("Round 1: Saturday, July 31st")
+            draft_1R_2021 = past_draft(df, pics, dh, 2021, "1st Round")
+            st.dataframe(draft_1R_2021, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+        with col2:
+            st.subheader("Round 2: Sunday, August 1st")
+            draft_2R_2021 = past_draft(df, pics, dh, 2021, "2nd Round")
+            st.dataframe(draft_1R_2021, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
     
 with tab8:
     import random
