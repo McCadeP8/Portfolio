@@ -88,6 +88,18 @@ def get_fantrax_players() -> pd.DataFrame:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return players_df
 
+@st.cache_data(ttl=21600)
+def get_fantrax_standings() -> pd.DataFrame:
+    roster_url = f"https://www.fantrax.com/fxea/general/getStandings?leagueId={league_id}"
+    headers = {'Cookie': 'JSESSIONID='}
+    response = requests.get(roster_url, headers=headers)
+    if response.status_code == 200:
+        standings = json.loads(response.text)
+        df = pd.DataFrame(standings)
+    else:
+        print(f"Failed to fetch data - Status code: {response.status_code}")
+    return df
+
 def style_salaries(row, type_colors):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
@@ -926,4 +938,19 @@ def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rost
     df = pd.concat([df_ir, df_starters, df_flex, df_reserve], ignore_index=True)
     return df
 
-    #SBC 
+def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFrame:
+    df = get_fantrax_standings()
+    df = df[['teamName', 'winPercentage']]
+    dp = get_draft_picks()
+    dp = dp[dp['Year'] == current_year]
+    dp["OGTeam"] = dp["OGTeam"].map(lambda t: f"{t} {team_info.get(t, {}).get('nickname', '')}".strip())
+    dp = dp.merge(df, how = 'left', left_on = 'OGTeam', right_on = 'teamName')
+    dp = dp[dp['Round'] == round]
+    dp = dp.sort_values('winPercentage', ascending=False)
+    dp = dp[['OGTeam', 'CurrentTeam', 'Explanation']]
+    dp["Pick"] = [None] * 30
+    dp["Time Due (ET)"] = ["10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM","1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM", "12:00 AM", "12:30 AM", "1:00 AM"]
+    dp = dp.rename(columns={'OGTeam': 'Slot'})
+    dp = dp.rename(columns={'CurrentTeam': 'Pick'})
+    return dp
+
