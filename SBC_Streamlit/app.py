@@ -441,12 +441,12 @@ with tab7:
         with col1:
             st.subheader("Round 1: Saturday, June 27th")
             draft_1R = current_draft(standings, dp, "1st Round")
-            st.dataframe(draft_1R)
+            st.dataframe(draft_1R, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
 
         with col2:
             st.subheader("Round 2: Sunday, June 28th")
             draft_2R = current_draft(standings, dp, "2nd Round")
-            st.dataframe(draft_2R)
+            st.dataframe(draft_2R, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
     
 with tab8:
     st.subheader("Under Construction")
