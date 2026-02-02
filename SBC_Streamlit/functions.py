@@ -660,7 +660,7 @@ def hard_cap_check(df: pd.DataFrame, base_cap: pd.DataFrame) -> str:
 
 def stepien_data_check(df: pd.DataFrame) -> pd.DataFrame:
     df2 = pd.DataFrame({
-        "Year": [2025] * 30,
+        "Year": [current_year-1] * 30,
         "Round": ["1st Round"] * 30,
         "CurrentTeam": list(team_info.keys())
     })
@@ -902,8 +902,6 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters:
     df = df.rename(columns={'status': 'Fantrax Locatoin'})
     return df
 
-    #AABC
-
 def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
     df = get_data()
     df_players = pd.DataFrame({
@@ -964,6 +962,7 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
 def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: float, round: float) -> pd.DataFrame:
     dh = dh[dh['Year'] == year]
     dh = dh[dh['Round'] == round]
+    df = df[df["Type" + str(current_year)] == "Dead"]
     dh = dh.merge(df[['Player', 'Team']], on='Player', how='left')
     dh = dh.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     dh = dh.drop(columns=["Year",'Round'])
@@ -971,7 +970,3 @@ def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: flo
     dh["Current Team"] = dh["Team_y"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     dh = dh[['Pick', 'Drafted Team', 'Player', 'Picture_Online', 'Current Team']]
     return dh
-
-
-
-#AB
