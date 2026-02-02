@@ -461,6 +461,7 @@ with tab8:
         st.toast(f"All drawn numbers in ascending order: {sorted_numbers}")
         time.sleep(3)
         st.toast("Vegas Blackjack have won the 2026 SBCFBL Lottery")
+        time.sleep(3)
         st.balloons()
 
 with tab9:
