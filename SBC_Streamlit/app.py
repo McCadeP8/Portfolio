@@ -82,7 +82,7 @@ with col1:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Draft", "Lottery Draw", "About SBCFBL", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "Lottery Draw", "About SBCFBL", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
