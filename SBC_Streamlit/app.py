@@ -506,8 +506,8 @@ with tab9:
     - **Steals**: 31  
     - **Three-Point Percentage**: 31  
     - **Two-Point Percentage**: 31  
-    - **Free Throw Percentage**: -21  
-    - **Turnovers***: 21
+    - **Free Throw Percentage**: 21  
+    - **Turnovers***: -21
     - **Minutes Played**: 11  
 
     In total, **413 points** are available in each matchup, with **207 points required to win**. The inclusion of an additional digit in each category allows a tie to be resolved by awarding the win to the team that captures the most individual categories. In the rare event of a 206.5–206.5 tie, the win is awarded to the home team.
