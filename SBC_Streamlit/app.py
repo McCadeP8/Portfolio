@@ -449,6 +449,7 @@ with tab7:
             st.dataframe(draft_2R, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
     
 with tab8:
+    import random
 
     if st.button("Run Lottery"):
         numbers = random.sample(range(1, 15), 4)
