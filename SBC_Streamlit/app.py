@@ -450,6 +450,7 @@ with tab7:
     
 with tab8:
     import random
+    import time
 
     if st.button("Run Lottery"):
         numbers = random.sample(range(1, 15), 4)
