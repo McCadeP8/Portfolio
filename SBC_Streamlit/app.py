@@ -449,7 +449,17 @@ with tab7:
             st.dataframe(draft_2R, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—")
     
 with tab8:
-    st.subheader("Under Construction")
+
+    if st.button("Run Lottery"):
+        numbers = random.sample(range(1, 15), 4)
+        for i, num in enumerate(numbers, 1):
+            st.toast(f"Draw {i}: {num}")
+            time.sleep(3)
+        sorted_numbers = sorted(numbers)
+        st.toast(f"All drawn numbers in ascending order: {sorted_numbers}")
+        time.sleep(3)
+        st.toast("Vegas Blackjack have won the 2026 SBCFBL Lottery")
+        st.balloons()
 
 with tab9:
     st.subheader("SBCFBL Introduction")
