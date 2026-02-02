@@ -505,7 +505,7 @@ with tab7:
             draft_2R_2022 = past_draft(df, pics, dh, 2022, "2nd Round")
             st.dataframe(draft_2R_2022, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
-    with tab2023:
+    with tab2021:
         st.title("2021 SBCFBL Draft")
         col1, col2 = st.columns([1,1])
 
