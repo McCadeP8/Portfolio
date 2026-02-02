@@ -455,12 +455,12 @@ with tab8:
     if st.button("Run Lottery"):
         numbers = random.sample(range(1, 15), 4)
         for i, num in enumerate(numbers, 1):
-            st.toast(f"Draw {i}: {num}")
-            time.sleep(3)
+            st.toast(f"Draw {i}: {num}", duration = 60)
+            time.sleep(15)
         sorted_numbers = sorted(numbers)
-        st.toast(f"All drawn numbers in ascending order: {sorted_numbers}")
+        st.toast(f"All drawn numbers in ascending order: {sorted_numbers}", duration = 15)
         time.sleep(3)
-        st.toast("Vegas Blackjack have won the 2026 SBCFBL Lottery")
+        st.toast("Vegas Blackjack have won the 2026 SBCFBL Lottery", duration = 15)
         time.sleep(3)
         st.balloons()
 
