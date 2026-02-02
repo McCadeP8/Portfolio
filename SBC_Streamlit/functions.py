@@ -954,3 +954,4 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
     dp = dp.rename(columns={'CurrentTeam': 'Pick'})
     return dp
 
+#BAB
