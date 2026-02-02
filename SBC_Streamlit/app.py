@@ -10,7 +10,7 @@ base_cap = get_base_cap()
 dp = get_draft_picks()
 ft_roster = get_fantrax_roster()
 ft_players = get_fantrax_players()
-standings = get_frantrax_standings()
+standings = get_fantrax_standings()
 
 with st.sidebar:
     Teams = sorted(team_info.keys())
@@ -431,16 +431,20 @@ with tab6:
         stepien_check()
 
 with tab7:
-    st.title("2026 SBCFBL Draft")
-    col1, col2 = st.columns([1,1])
 
-    with col1:
-        st.subheader("Round 1: Saturday, June 27th")
-        st.dataframe(current_draft(standings, dp, "1st Round"))
+    tab2026, tab2025, tab2024, tab2023, tab2022, tab2021 = st.tabs(["2026 Draft", "2025 Draft", "2024 Draft", "2023 Draft", "2022 Draft", "2021 Draft"])
 
-    with col2:
-        st.subheader("Round 2: Sunday, June 28th")
-        st.dataframe(current_draft(standings, dp, "2nd Round"))
+    with tab2026:
+        st.title("2026 SBCFBL Draft")
+        col1, col2 = st.columns([1,1])
+
+        with col1:
+            st.subheader("Round 1: Saturday, June 27th")
+            st.dataframe(current_draft(standings, dp, "1st Round"))
+
+        with col2:
+            st.subheader("Round 2: Sunday, June 28th")
+            st.dataframe(current_draft(standings, dp, "2nd Round"))
     
 with tab8:
     st.subheader("Under Construction")
