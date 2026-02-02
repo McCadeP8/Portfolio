@@ -456,7 +456,7 @@ with tab8:
         numbers = random.sample(range(1, 15), 4)
         for i, num in enumerate(numbers, 1):
             st.toast(f"Draw {i}: {num}", duration = 60)
-            time.sleep(15)
+            time.sleep(4)
         sorted_numbers = sorted(numbers)
         st.toast(f"All drawn numbers in ascending order: {sorted_numbers}", duration = 15)
         time.sleep(3)
