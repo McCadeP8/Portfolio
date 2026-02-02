@@ -100,6 +100,13 @@ def get_fantrax_standings() -> pd.DataFrame:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return df
 
+@st.cache_data(ttl=21600)
+def get_draft_history() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1546613902"
+    df = pd.read_csv(csv_url)
+    return df
+
+
 def style_salaries(row, type_colors):
     styles = [""] * len(row)
     for i, col in enumerate(row.index):
@@ -953,3 +960,17 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
     dp = dp.rename(columns={'OGTeam': 'Slot'})
     dp = dp.rename(columns={'CurrentTeam': 'Team'})
     return dp
+
+def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: float, round: float) -> pd.DataFrame:
+    dh = dh[dh['Year'] == year]
+    dh = dh[dh['Round'] == round]
+    dh = dh.merge(df[['Player', 'Team']], on='Player', how='left')
+    dh = dh.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
+    dh = dh.drop(columns=["Year",'Round'])
+    dh["Drafted Team"] = dh["Team_x"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    dh["Current Team"] = dh["Team_y"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    dh = dh[['Pick', 'Drafted Team', 'Player', 'Picture_Online', 'Current Team']]
+    return dh
+
+
+
