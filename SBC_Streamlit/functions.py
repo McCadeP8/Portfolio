@@ -948,7 +948,7 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
     dp = dp[dp['Round'] == round]
     dp = dp.sort_values('winPercentage', ascending=False)
     dp = dp[['OGTeam', 'CurrentTeam', 'Explanation']]
-    dp["Pick"] = [None] * 30
+    dp["Selected"] = [None] * 30
     dp["Time Due (ET)"] = ["10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM","1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM", "12:00 AM", "12:30 AM", "1:00 AM"]
     dp = dp.rename(columns={'OGTeam': 'Slot'})
     dp = dp.rename(columns={'CurrentTeam': 'Pick'})
