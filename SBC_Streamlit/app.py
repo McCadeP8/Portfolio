@@ -25,50 +25,39 @@ with st.sidebar:
     st.image(team_logo, width=250)
     st.logo(wordmark)
 
-#SBC
-
 st.markdown(
     f"""
     <style>
     /* Sidebar background */
     section[data-testid="stSidebar"] {{
-        background-color: {bg_color};
-    }}
+        background-color: {bg_color};}}
 
     /* Sidebar text */
     section[data-testid="stSidebar"] * {{
-        color: {text_color2} !important;
-    }}
+        color: {text_color2} !important;}}
 
     /* Selectbox container */
     section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
         background-color: {bg_color} !important;
-        border: 1px solid "{bg_color}" !important;
-    }}
+        border: 1px solid "{bg_color}" !important;}}
 
     /* Selected value text */
     section[data-testid="stSidebar"] span {{
-        color: {text_color2} !important;
-    }}
+        color: {text_color2} !important;}}
 
     /* Dropdown menu */
     div[data-baseweb="popover"] {{
-        background-color: {text_color2} !important;
-    }}
+        background-color: {text_color2} !important;}}
 
     /* Dropdown options */
     div[data-baseweb="menu"] {{
-        background-color: {text_color2} !important;
-    }}
+        background-color: {text_color2} !important;}}
 
     /* Hovered option */
     div[data-baseweb="option"]:hover {{
-        background-color: rgba(255,255,255,0.15) !important;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+        background-color: rgba(255,255,255,0.15) !important;}}
+    </style>""",
+    unsafe_allow_html=True)
 
 st.set_page_config(
     page_title = "SBC Cap Sheets",
@@ -84,18 +73,22 @@ with col1:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "About SBCFBL", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "About SBCFBL2", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
-
+    
     col1, col2, col3, col4 = st.columns(4)
+    
     with col1:
         st.metric(label = "Salary Cap", value = current_salary_cap, delta = "10.0%", delta_color = "normal", help = "Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border = True, format = "dollar")
+    
     with col2:
         st.metric(label = "Luxury Tax", value = current_luxury_tax, delta = "10.0%", delta_color = "normal", help = "Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border = True, format = "dollar")
+    
     with col3:
         st.metric(label = "Apron #1", value = current_apron_1, delta = "10.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
+    
     with col4:
         st.metric(label = "Apron #2", value = current_apron_2, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
 
@@ -115,10 +108,15 @@ with tab1:
             """, unsafe_allow_html=True)
 
         st.metric(label = "Players", value = active_player_n(df, SelectedTeam), delta = inactive_player_n(df, SelectedTeam), delta_color = "off", help = "The first number shows active roster players (up to 14, plus up to 3 IR). Teams must carry at least 12 active players, or face penalties after 14 days. The second number represents non-active players, including overseas players, draft rights, retired, and waived players and there is no limit. To qualify as overseas, a drafted player must have spent their entire SBC career abroad, with status locking on opening night.", border = True, format = "plain", delta_arrow = "off")
+    
         st.metric(label = "Cap Total", value = get_cap_total(df, exceptions, SelectedTeam), delta = get_cap_total(df, exceptions, SelectedTeam)-current_salary_cap, delta_color = "inverse", help = "The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap.", border = True, format = "dollar")
+    
         st.metric(label = "Tax Total", value = get_tax_total(df, SelectedTeam), delta = get_tax_total(df, SelectedTeam)-current_luxury_tax, delta_color = "inverse", help = "The first number shows total team salary against the luxury tax, including all active and inactive player salaries and incomplete roster charges. Unlike the real NBA, rookie and second-year undrafted fees are not included. The second number shows remaining space relative to the Luxury Tax.", border = True, format = "dollar")
+    
         st.metric(label = "Apron Space", value = team_hard_cap(base_cap, SelectedTeam), delta = team_hard_cap_n(df, SelectedTeam, base_cap), help = "The first value indicates whether the team is uncapped, capped at the first apron, or capped at the second apron while the second value shows how far the team is from the applicable cap ", border = True, format = "dollar")
+    
         st.metric(label = "Entry Fee", value = base_fee(df, SelectedTeam, base_cap), delta = luxury_fee(df, SelectedTeam, base_cap), delta_color = "inverse", help = "The SBCFBL uses a 3,000,000‑1 scale. The first number is the base entry fee, calculated from the Tax Total plus a $3.00 In-Season Tournament fee. The second number shows the Luxury Tax penalty for the season, scaled as a payable fee.", border = True, format = "dollar")
+    
         st.metric(label = "Balance", value = net_fee(df, SelectedTeam, base_cap), delta = amount_paid(base_cap, SelectedTeam), delta_color = "normal", help = "The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border = True, format = "dollar")
 
     with col2:
@@ -310,12 +308,16 @@ with tab4:
 
 with tab5:
     col1, col2, col3, col4 = st.columns(4)
+    
     with col1:
         st.metric(label = "Salary Cap", value = current_salary_cap, delta = "10.0%", delta_color = "normal", help = "Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border = True, format = "dollar")
+    
     with col2:
         st.metric(label = "Luxury Tax", value = current_luxury_tax, delta = "10.0%", delta_color = "normal", help = "Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border = True, format = "dollar")
+    
     with col3:
         st.metric(label = "Apron #1", value = current_apron_1, delta = "10.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
+    
     with col4:
         st.metric(label = "Apron #2", value = current_apron_2, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
 
@@ -326,6 +328,7 @@ with tab5:
     st.dataframe(styled_overall_cap_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
 
     col1, col2, col3, col4 = st.columns(4)
+    
     with col1:
         st.metric(label = "Champion Payout", value = unit_payout(df, exceptions, base_cap)*12, help = "Awarded to the SBCFBL Champion. Prize equals ½ of the base fee pool after Fantrax, Larry Coon Trophy, and IST fees.", border = True, format = "dollar")
 
@@ -339,6 +342,7 @@ with tab5:
         st.metric(label = "Conference Semifinalists", value = unit_payout(df, exceptions, base_cap)*1, help = "Awarded to each Conference Semifinal loser (4 total). Prize equals 1⁄24 of the base fee pool after Fantrax, Larry Coon Trophy, and IST fees.", border = True, format = "dollar")
 
     col1, col2, col3, col4 = st.columns(4)
+    
     with col1:
         st.metric(label = "Charity Champion", value = tax_payout_champ(df, exceptions, base_cap), help = "Awarded to the SBCFBL Champion to donate to a charity of their choice. Amount equals ½ of the luxury fee pool after all SBCFBL expenses.", border = True, format = "dollar")
 
@@ -354,13 +358,14 @@ with tab5:
 with tab6:
 
     with st.form("team_selection_form"):
+    
         col1, col2 = st.columns(2)
+    
         with col1:
             SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, SelectedTeam))
             SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, SelectedTeam))
             SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, SelectedTeam))
             CashOut = st.number_input(label="Cash Out:", min_value = 110000, max_value= max_cash, placeholder = "None", value = None)
-
 
         with col2:
             SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, SelectedTeam))
