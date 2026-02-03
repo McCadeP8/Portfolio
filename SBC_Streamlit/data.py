@@ -94,7 +94,7 @@ team_info = {
 
     "El Paso": {"conf": "West", "bg": "#F8EFAE", "bg2": "#2A623D", "text": "black",
         "logo": "https://pbs.twimg.com/media/FxamtxraQAANsYd?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANiSzUbYAAg1mZ?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANjbVMbwAA7DTW?format=png&name=medium",
         "nickname": "Vipers"},
 
     "Honolulu": {"conf": "West", "bg": "#CDC0C0", "bg2": "#FAFBF5", "text": "black",
