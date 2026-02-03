@@ -35,6 +35,7 @@ type_colors = {
     "Restricted": "#CFFFFF", 
     "Draft Rights": "#D9D9D9",
 }
+
 team_info = {
     "Albuquerque": {"conf": "West", "bg": "#D72C2C", "bg2": "#281B0D", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamop_aMAIM8OV?format=png&name=small",
@@ -48,7 +49,7 @@ team_info = {
 
     "Anchorage": {"conf": "West", "bg": "#454B55", "bg2": "#B8C4C4", "text": "white",
         "logo": "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMRu7bMAEH70o?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiSzSb0AAFwtG?format=jpg&name=medium",
         "nickname": "Killer Whales"},
 
     "Austin": {"conf": "West", "bg": "#040404", "bg2": "#BB8549", "text": "white",
@@ -58,7 +59,7 @@ team_info = {
 
     "Baltimore": {"conf": "East", "bg": "#00CED1", "bg2": "#FBF5E1", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxamr7daQAAhwSx?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMEUzaEAAalE0?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiSzTawAEYp_j?format=jpg&name=medium",
         "nickname": "Blue Crabs"},
 
     "Birmingham": {"conf": "East", "bg": "#853500", "bg2": "#EA2507", "text": "white",
@@ -68,7 +69,7 @@ team_info = {
 
     "Boise": {"conf": "West", "bg": "#744529", "bg2": "#EAD676", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamr80aEAAWgO1?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMOfXaEAAhm14?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiVTnasAAfKtH?format=jpg&name=medium",
         "nickname": "Spuds"},
 
     "Buffalo": {"conf": "East", "bg": "#152238", "bg2": "#FFDE3A", "text": "white",
@@ -93,12 +94,12 @@ team_info = {
 
     "El Paso": {"conf": "West", "bg": "#F8EFAE", "bg2": "#2A623D", "text": "black",
         "logo": "https://pbs.twimg.com/media/FxamtxraQAANsYd?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMKg_aoAA0_Ic?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiSzUbYAAg1mZ?format=jpg&name=medium",
         "nickname": "Vipers"},
 
     "Honolulu": {"conf": "West", "bg": "#CDC0C0", "bg2": "#FAFBF5", "text": "black",
         "logo": "https://pbs.twimg.com/media/FxamvzcaUAAnl_g?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMRu5acAADgxr?format=png&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiSzRbIAE7i0d?format=jpg&name=medium",
         "nickname": "Diamonds"},
 
     "Jacksonville": {"conf": "East", "bg": "#36454F", "bg2": "#B0E0E6", "text": "white",
@@ -128,7 +129,7 @@ team_info = {
 
     "Manchester": {"conf": "East", "bg": "#D7F2FA", "bg2": "#C20700", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxamx3nagAAZXCI?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMEUubUAEUYrt?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiQhVaUAEw78l?format=jpg&name=medium",
         "nickname": "Trout"},
 
     "Nashville": {"conf": "East", "bg": "#450012", "bg2": "#93A9AE", "text": "white",
@@ -148,12 +149,12 @@ team_info = {
 
     "San Diego": {"conf": "West", "bg": "#31439B", "bg2": "#0BB5FF", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxam0INacAIC29O?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMRu2bkAAQcT2?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiQgIawAAEZC9?format=jpg&name=medium",
         "nickname": "Seals"},
 
     "San Jose": {"conf": "West", "bg": "#97EBF4", "bg2": "#EDFF21", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxam0EvaIAAcI_3?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMVMObAAA5OSD?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiQhVbAAApSML?format=jpg&name=medium",
         "nickname": "Seagulls"},
 
     "Seattle": {"conf": "West", "bg": "#006241", "bg2": "#FFFFFF", "text": "white",
@@ -168,7 +169,7 @@ team_info = {
 
     "Tampa Bay": {"conf": "East", "bg": "#FC8EAC", "bg2": "#313639", "text": "black",
         "logo": "https://pbs.twimg.com/media/G_eTqPpacAIV82Y?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANL6y8a8AAWFbI?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HANiQhMboAAO1cd?format=jpg&name=medium",
         "nickname": "Flamingos"},
 
     "Tulsa": {"conf": "West", "bg": "#333333", "bg2": "#656565", "text": "white",
