@@ -25,6 +25,7 @@ with st.sidebar:
     st.image(team_logo, width=250)
     st.logo(wordmark)
 
+#SBC
 
 st.markdown(
     f"""
