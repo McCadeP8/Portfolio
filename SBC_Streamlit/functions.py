@@ -697,6 +697,7 @@ def tradeable_players_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     return df_list
 
 def tradeable_picks_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[df['CurrentTeam'].str.contains(SelectedTeam)]
     df = df[df['Locked'] == False] #noqa: E712
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
@@ -705,6 +706,7 @@ def tradeable_picks_out(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
     return df_list
 
 def tradeable_picks_in(df: pd.DataFrame, SelectedTeam: str) -> list[str]:
+    df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam)) == False]  # noqa: E712
     df = df[df['Locked'] == False]  # noqa: E712
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
@@ -849,11 +851,9 @@ def no_cash(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], Selec
     if CapType == "Second" and CashOut > 0:
         st.error("This transaction is not permitted. Teams above the Second Apron are prohibited from sending out cash in a trade.", icon="❌")
     elif HardCap in ["First Apron", "No Cap"] and CashOut > 0:
-        st.warning("Sending out cash in this trade will hard cap your team at the Second Apron for the remainder of the season. Please proceed with caution.", icon="⚠️")
+        st.warning("Sending out cash in this trade will hard cap your team at the Second Apron for the remainder of the season. Please proceed with caution.", icon="✅")
     else:
         st.success("There are no cap-related restrictions preventing you from sending out cash in this trade.",icon="✅")
-
-    st.warning("Under Construction: tpe_st_check", icon = "⚠️")
     return "A"
 
 def tpe_st_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
