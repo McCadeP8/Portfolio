@@ -846,9 +846,9 @@ def check_cash_after(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[st
 def no_cash(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, CashOut: float):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
     HardCap = team_hard_cap(base_cap, SelectedTeam)
-    if HardCap == "Second" and CashOut > 0:
+    if CapType == "Second" and CashOut > 0:
         st.error("This transaction is not permitted. Teams above the Second Apron are prohibited from sending out cash in a trade.", icon="❌")
-    elif CapType in ["First Apron", "No Cap"] and CashOut > 0:
+    elif HardCap in ["First Apron", "No Cap"] and CashOut > 0:
         st.warning("Sending out cash in this trade will hard cap your team at the Second Apron for the remainder of the season. Please proceed with caution.", icon="⚠️")
     else:
         st.success("There are no cap-related restrictions preventing you from sending out cash in this trade.",icon="✅")
