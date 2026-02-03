@@ -852,9 +852,10 @@ def no_cash(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], Selec
         st.error("This transaction is not permitted. Teams above the Second Apron are prohibited from sending out cash in a trade.", icon="❌")
     elif HardCap in ["First Apron", "No Cap"] and CashOut > 0:
         st.warning("Sending out cash in this trade will hard cap your team at the Second Apron for the remainder of the season. Please proceed with caution.", icon="✅")
-    else:
+    elif CashOut > 0:
         st.success("There are no cap-related restrictions preventing you from sending out cash in this trade.",icon="✅")
-    return "A"
+    else:
+        st.success("No outgoing cash was included in this transaction.",icon="✅")
 
 def tpe_st_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
@@ -874,11 +875,18 @@ def under_100_percent_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: 
     st.warning("Under Construction: under_100_percent_check", icon = "⚠️")
     return "A"
 
-def no_bae_mle_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+def no_bae_mle_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, SelectedExceptionOuts: list[str]):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
     HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: no_bae_mle_check", icon = "⚠️")
-    return "A"
+    flagged = any(exc in {"Bi-Annual", "Mid-Level"} for exc in SelectedExceptionOuts)
+    if CapType == "Second" and flagged == 1:
+        st.error("This transaction is not permitted. Teams operating above the Second Apron are prohibited from acquiring players via the Bi-Annual Exception (BAE) or Mid-Level Exception (MLE).", icon="❌")
+    elif HardCap in ["First Apron", "No Cap"] and flagged == 1:
+        st.warning("This transaction utilizes an outgoing Bi-Annual Exception (BAE) or Mid-Level Exception (MLE). As a result, your team will be hard-capped at the Second Apron for the remainder of the season.", icon="✅")
+    elif flagged == 1:
+        st.success("There are no cap-related restrictions preventing your team from using the Bi-Annual Exception (BAE) or Mid-Level Exception (MLE) to acquire a player.",icon="✅")
+    else: 
+        st.success("This transaction does not utilize the Bi-Annual Exception (BAE) or Mid-Level Exception (MLE) to acquire a player.",icon="✅")
 
 def salary_trade_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
