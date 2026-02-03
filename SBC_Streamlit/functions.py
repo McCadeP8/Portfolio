@@ -972,8 +972,6 @@ def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: flo
     dh = dh[['Pick', 'Drafted Team', 'Player', 'Picture_Online', 'Current Team']]
     return dh
 
-#ABC
-
 def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
     standings = get_fantrax_standings()
     for city, info in team_info.items():

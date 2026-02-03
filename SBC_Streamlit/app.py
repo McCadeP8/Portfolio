@@ -21,8 +21,9 @@ with st.sidebar:
     text_color2 = team_info[SelectedTeam]["bg2"]
     team_logo = team_info[SelectedTeam]["logo"]
     nickname = team_info[SelectedTeam]["nickname"]
+    wordmark = team_info[SelectedTeam]['wordmark']
     st.image(team_logo, width=250)
-    #st.logo("https://pbs.twimg.com/media/HACtVLTa0AAXe9o?format=jpg&name=medium")
+    st.logo(wordmark)
 
 
 st.markdown(
