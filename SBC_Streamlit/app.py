@@ -432,12 +432,12 @@ with tab6:
         no_cash(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, CashOut)
         #tpe_st_check()
         #no_aggregation_check()
+        no_bae_mle_check(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, SelectedExceptionOut)
         st.subheader("First Apron Checks")
         #under_100_percent_check()
-        #no_bae_mle_check()
         st.subheader("Draft Pick Check")
         #stepien_check()
-    #ABC    
+
 with tab7:
 
     tab2026, tab2025, tab2024, tab2023, tab2022, tab2021, tablottery = st.tabs(["2026 Draft", "2025 Draft", "2024 Draft", "2023 Draft", "2022 Draft", "2021 Draft", "Lottery"])
