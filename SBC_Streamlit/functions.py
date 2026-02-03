@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import math as math
 import numpy as np
+from itertools import combinations
 import requests
 import json
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix
@@ -970,3 +971,31 @@ def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: flo
     dh["Current Team"] = dh["Team_y"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     dh = dh[['Pick', 'Drafted Team', 'Player', 'Picture_Online', 'Current Team']]
     return dh
+
+def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
+    standings = get_fantrax_standings()
+    for city, info in team_info.items():
+        standings.loc[standings["teamName"].str.startswith(city), "conference"] = info["conf"]
+    standings["Conf_Rank"] = (standings.groupby("conference")["winPercentage"].rank(method="first", ascending=False).astype(int))
+    standings = standings[standings['Conf_Rank'] >= 9]
+    standings = standings.sort_values("winPercentage", ascending=True)
+    items = list(range(1, 15)) 
+    combos = list(combinations(items, 4))
+    df = pd.DataFrame(combos, columns=["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball"])
+    df["Ownership"] = np.concatenate([
+        np.repeat(standings["teamName"].iloc[0], 140),
+        np.repeat(standings["teamName"].iloc[1], 140),
+        np.repeat(standings["teamName"].iloc[2], 140),
+        np.repeat(standings["teamName"].iloc[3], 125),
+        np.repeat(standings["teamName"].iloc[4], 105),
+        np.repeat(standings["teamName"].iloc[5], 90),
+        np.repeat(standings["teamName"].iloc[6], 75),
+        np.repeat(standings["teamName"].iloc[7], 60),
+        np.repeat(standings["teamName"].iloc[8], 45),
+        np.repeat(standings["teamName"].iloc[9], 30),
+        np.repeat(standings["teamName"].iloc[10], 20),
+        np.repeat(standings["teamName"].iloc[11], 15),
+        np.repeat(standings["teamName"].iloc[12], 10),
+        np.repeat(standings["teamName"].iloc[13], 5),
+        np.repeat("Redraw", 1)])
+    return df
