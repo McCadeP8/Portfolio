@@ -601,7 +601,7 @@ def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[df['TwoYearLimit']]  # noqa: E712
+    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
