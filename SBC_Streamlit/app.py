@@ -437,7 +437,6 @@ with tab6:
         #no_bae_mle_check()
         st.subheader("Draft Pick Check")
         #stepien_check()
-    #ABC
     
 with tab7:
 
