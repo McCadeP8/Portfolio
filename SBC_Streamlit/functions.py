@@ -828,9 +828,9 @@ def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: 
 def check_cash_after(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str) -> str:
     team_total = get_tax_total(df, SelectedTeam)
     df1 = df[df['Player'].isin(PlayersIn)]
-    df1 = df1["Y" + current_year].sum()
+    df1 = df1["Y" + str(current_year)].sum()
     df2 = df[df['Player'].isin(PlayersOut)]
-    df2 = df2["Y" + current_year].sum()
+    df2 = df2["Y" + str(current_year)].sum()
     team_total = team_total - df2 + df1
     if team_total < current_salary_cap:
         return "Cap"
