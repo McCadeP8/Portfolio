@@ -670,7 +670,7 @@ with tab9:
     The trade market officially closes once McCade has updated all trades, which may occur within minutes or several hours.
     """)
 
-    st.divider()
+    st.divider() # ABC
     st.subheader("SBCFBL Other Information")
     st.markdown("""
     All other SBCFBL operations adhere as closely as possible to the **NBA Collective Bargaining Agreement (CBA)**, including, but not limited to, **salary cap rules, trade regulations, exceptions, and deadlines**. Most SBCFBL deadlines are set on a **24-hour delay** relative to the NBA, including the **waive-and-stretch deadline, player guarantee date, offseason signing and trade restrictions,** and the **trade deadline**.
