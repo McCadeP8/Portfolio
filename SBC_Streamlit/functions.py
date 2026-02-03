@@ -5,7 +5,7 @@ import numpy as np
 from itertools import combinations
 import requests
 import json
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal
 
 @st.cache_data(ttl=21600)
 def get_data() -> pd.DataFrame:
@@ -218,6 +218,10 @@ def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: s
     exceptions_df = exceptions_df[exceptions_df['Player'] != 'Minimum']
     exceptions_total = exceptions_df["Y" + str(current_year)].sum()
     total_cap = player_total + exceptions_total
+    ap = 12-active_player_n(df, SelectedTeam)
+    if ap > 0:
+        min_penalty = minimum_sal * ap
+        total_cap = min_penalty + total_cap
     return total_cap
 
 def get_tax_total(df: pd.DataFrame, SelectedTeam: str) -> float:
