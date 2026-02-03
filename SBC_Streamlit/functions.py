@@ -841,7 +841,7 @@ def check_cash_after(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[st
     elif current_apron_1 <= team_total < current_apron_2:
         return "First"
     else:
-        return "Second"
+        return "Second" #ABC
 
 def no_cash(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, CashOut: float):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
