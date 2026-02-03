@@ -328,6 +328,7 @@ def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Trade.Restriction'].notna()]
+    df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[['Picture_Online','Player','Trade.Restriction']]
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={'Trade.Restriction': 'Trade Restriction'})
@@ -420,6 +421,7 @@ def all_free_agents(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
 def trade_restrictions_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Trade.Restriction'].notna()]
+    df = df[df['Player'] != "Minimum Salary Penalty"]
     df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df[['Team_logo', 'Picture_Online','Player','Trade.Restriction']]
     df = df.rename(columns={'Picture_Online': ' '})
@@ -823,12 +825,32 @@ def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: 
         st.warning(f"Roster is below the minimum limit of 12 players. You need to sign at least {players_needed} player(s) to comply with roster requirements.", icon = "✅")
     return current_players
 
+def check_cash_after(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str) -> str:
+    team_total = get_tax_total(df, SelectedTeam)
+    df1 = df[df['Player'].isin(PlayersIn)]
+    df1 = df1["Y" + current_year].sum()
+    df2 = df[df['Player'].isin(PlayersOut)]
+    df2 = df2["Y" + current_year].sum()
+    team_total = team_total - df2 + df1
+    if team_total < current_salary_cap:
+        return "Cap"
+    elif current_salary_cap <= team_total < current_luxury_tax:
+        return "Standard"
+    elif current_luxury_tax <= team_total < current_apron_1:
+        return "Tax"
+    elif current_apron_1 <= team_total < current_apron_2:
+        return "First"
+    else:
+        return "Second"
+
 def no_cash():
-    st.warning("Under Construction: no_cash", icon = "⚠️")
+    st.warning("Under Construction: tpe_st_check", icon = "⚠️")
     return "A"
+
 def tpe_st_check():
     st.warning("Under Construction: tpe_st_check", icon = "⚠️")
     return "A"
+
 def no_aggregation_check():
     st.warning("Under Construction: no_aggregation_check", icon = "⚠️")
     return "A"
