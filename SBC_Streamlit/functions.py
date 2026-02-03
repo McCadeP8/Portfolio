@@ -846,6 +846,8 @@ def check_cash_after(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[st
         return "Second" #ABC
 
 def no_cash(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, CashOut: float):
+    if np.isnan(CashOut):
+        CashOut = 0.0
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
     HardCap = team_hard_cap(base_cap, SelectedTeam)
     if CapType == "Second" and CashOut > 0:
@@ -878,7 +880,7 @@ def under_100_percent_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: 
 def no_bae_mle_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, SelectedExceptionOuts: list[str]):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
     HardCap = team_hard_cap(base_cap, SelectedTeam)
-    flagged = any(exc in {"Bi-Annual", "Mid-Level"} for exc in SelectedExceptionOuts)
+    flagged = any("Bi-Annual" in exc or "Mid-Level" in exc for exc in SelectedExceptionOuts)
     if CapType == "Second" and flagged == 1:
         st.error("This transaction is not permitted. Teams operating above the Second Apron are prohibited from acquiring players via the Bi-Annual Exception (BAE) or Mid-Level Exception (MLE).", icon="❌")
     elif HardCap in ["First Apron", "No Cap"] and flagged == 1:
