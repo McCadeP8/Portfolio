@@ -73,7 +73,7 @@ with col1:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "About SBCFBL2", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "About SBCFBL", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
@@ -429,7 +429,7 @@ with tab6:
         new_trade_rest_check()
         old_team_check()
         st.subheader("Second Apron Checks")
-        no_cash()
+        no_cash(df, SelectedPlayersIn, SelectedPlayersOut, base_cap, CashOut)
         tpe_st_check()
         no_aggregation_check()
         st.subheader("First Apron Checks")
