@@ -600,7 +600,7 @@ def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values(['Round', 'Year'], ascending=[True, True])
     return df
 
-def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
+def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame: #ABC
     df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[df['Locked']]
