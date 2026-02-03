@@ -523,7 +523,7 @@ with tab7:
     
     with tablottery:
         base_table = lottery_table(standings)
-        st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
+        st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—") #ABC
 
 with tab8:
     st.subheader("SBCFBL Introduction")
