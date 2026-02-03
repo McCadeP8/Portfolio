@@ -886,8 +886,6 @@ def salary_trade_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[
     st.warning("Under Construction: salary_trade_check", icon = "⚠️")
     return "A"
 
-    #BAV
-
 def tpe_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
     HardCap = team_hard_cap(base_cap, SelectedTeam)

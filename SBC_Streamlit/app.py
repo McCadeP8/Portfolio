@@ -429,7 +429,7 @@ with tab6:
         #new_trade_rest_check()
         #old_team_check()
         st.subheader("Second Apron Checks")
-        no_cash(df, SelectedPlayersIn, SelectedPlayersOut, base_cap, CashOut)
+        no_cash(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, CashOut)
         #tpe_st_check()
         #no_aggregation_check()
         st.subheader("First Apron Checks")
