@@ -84,7 +84,7 @@ with col1:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "Lottery Draw", "About SBCFBL", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "About SBCFBL", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
@@ -435,7 +435,7 @@ with tab6:
 
 with tab7:
 
-    tab2026, tab2025, tab2024, tab2023, tab2022, tab2021 = st.tabs(["2026 Draft", "2025 Draft", "2024 Draft", "2023 Draft", "2022 Draft", "2021 Draft"])
+    tab2026, tab2025, tab2024, tab2023, tab2022, tab2021, tablottery = st.tabs(["2026 Draft", "2025 Draft", "2024 Draft", "2023 Draft", "2022 Draft", "2021 Draft", "Lottery"])
 
     with tab2026:
         st.title("2026 SBCFBL Draft")
@@ -521,12 +521,11 @@ with tab7:
             draft_2R_2021 = past_draft(df, pics, dh, 2021, "2nd Round")
             st.dataframe(draft_2R_2021, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
     
+    with tablottery:
+        base_table = lottery_table(standings)
+        st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
+
 with tab8:
-    base_table = lottery_table(standings)
-    st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
-
-
-with tab9:
     st.subheader("SBCFBL Introduction")
     st.markdown("""
     The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from Seth Partnow, who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
@@ -670,7 +669,7 @@ with tab9:
     The trade market officially closes once McCade has updated all trades, which may occur within minutes or several hours.
     """)
 
-    st.divider() # ABC
+    st.divider()
     st.subheader("SBCFBL Other Information")
     st.markdown("""
     All other SBCFBL operations adhere as closely as possible to the **NBA Collective Bargaining Agreement (CBA)**, including, but not limited to, **salary cap rules, trade regulations, exceptions, and deadlines**. Most SBCFBL deadlines are set on a **24-hour delay** relative to the NBA, including the **waive-and-stretch deadline, player guarantee date, offseason signing and trade restrictions,** and the **trade deadline**.
@@ -678,7 +677,7 @@ with tab9:
     This document is intended as a **quick-reference guide** and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered **the premier fantasy basketball experience**.
     """)
 
-with tab10:
+with tab9:
 
     picture_check = data_picture_check(df, pics)
     if picture_check.shape[0] > 0:
