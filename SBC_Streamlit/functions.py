@@ -601,7 +601,7 @@ def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] =ascending= False]  # noqa: E712
+    df = df[df['TwoYearLimit']]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
@@ -624,8 +624,6 @@ def data_roster_check(df: pd.DataFrame) -> pd.DataFrame:
         "Active Players": [active_player_n(df, team) for team in team_info.keys()]})
     df = df[(df['Active Players'] > 17) | (df['Active Players'] < 12)]
     return df
-
-    #ABC 
 
 def data_missing_salary_check(df: pd.DataFrame) -> pd.DataFrame:
     year_cols = ["Y" + year for year in columns_order]
