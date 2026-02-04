@@ -5,7 +5,7 @@ import numpy as np
 from itertools import combinations
 import requests
 import json
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum
 
 @st.cache_data(ttl=21600)
 def get_data() -> pd.DataFrame:
@@ -846,6 +846,10 @@ def check_cash_after(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[st
         return "Second" #ABC
 
 def no_cash(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, CashOut: float):
+    try:
+        CashOut = float(CashOut) 
+    except (TypeError, ValueError):
+        CashOut = 0.0
     if np.isnan(CashOut):
         CashOut = 0.0
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
@@ -859,11 +863,18 @@ def no_cash(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], Selec
     else:
         st.success("No outgoing cash was included in this transaction.",icon="✅")
 
-def tpe_st_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+def tpe_st_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, SelectedExceptionOut: list[str]):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
     HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: tpe_st_check", icon = "⚠️")
-    return "A"
+    flagged = any("S&T" in exc for exc in SelectedExceptionOut)
+    if CapType == "Second" and flagged == 1:
+        st.error("This transaction is not permitted. Teams operating above the Second Apron are prohibited from acquiring players via a Traded-Player Exception created from a Sign-And-Trade.", icon="❌")
+    elif HardCap in ["First Apron", "No Cap"] and flagged == 1:
+        st.warning("This transaction utilizes an outgoing Traded-Player Exception created via a Sign-And-Trade. As a result, your team will be hard-capped at the Second Apron for the remainder of the season.", icon="✅")
+    elif flagged == 1:
+        st.success("There are no cap-related restrictions preventing your team from using a Traded-Player Exception created from a Sign-And-Trade", icon="✅")
+    else: 
+        st.success("This transaction does not utilize a Traded-Player Exception created from a Sign-And-Trade to acquire a player.", icon="✅")
 
 def no_aggregation_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
@@ -871,20 +882,35 @@ def no_aggregation_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: lis
     st.warning("Under Construction: no_aggregation_check", icon = "⚠️")
     return "A"
 
-def under_100_percent_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+def under_100_percent_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, SelectedExceptionOut: list[str]):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
     HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: under_100_percent_check", icon = "⚠️")
-    return "A"
+    df1 = df[df['Player'].isin(PlayersIn)]
+    df1 = df1["Y" + str(current_year)].sum()
+    df2 = df[df['Player'].isin(PlayersOut)]
+    df2 = df2["Y" + str(current_year)].sum()
+    Diff = df1 / df2 if df2 != 0 else 1000
+    if len(PlayersIn) == 1 and len(PlayersOut) == 0 and len(SelectedExceptionOut) == 1:
+        if "Minimum" in SelectedExceptionOut[0]:
+            if df1 < max_minimum:
+                Diff = 1.0
+    if CapType in ["First", "Second"] and Diff > 1:
+        st.error("This transaction is not permitted. Teams above the First Apron are not allowed to take back more than 100% of outgoing salary, unless the incoming player is on a minimum contract.", icon="❌")
+    elif HardCap in ["No Cap"] and Diff > 1:
+        st.warning("This transaction is allowed, but taking back more than 100% of outgoing salary will hard-cap your team at the First Apron for the remainder of the season.", icon="✅")
+    elif Diff > 1:
+        st.success("There are no cap-related restrictions preventing your team from taking back more than 100% of outgoing salary.", icon="✅")
+    else: 
+        st.success("Your team is taking back less than or equal to 100% of outgoing salary. No further action is required.", icon="✅")
 
 def no_bae_mle_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, SelectedExceptionOuts: list[str]):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
     HardCap = team_hard_cap(base_cap, SelectedTeam)
     flagged = any("Bi-Annual" in exc or "Mid-Level" in exc for exc in SelectedExceptionOuts)
-    if CapType == "Second" and flagged == 1:
-        st.error("This transaction is not permitted. Teams operating above the Second Apron are prohibited from acquiring players via the Bi-Annual Exception (BAE) or Mid-Level Exception (MLE).", icon="❌")
-    elif HardCap in ["First Apron", "No Cap"] and flagged == 1:
-        st.warning("This transaction utilizes an outgoing Bi-Annual Exception (BAE) or Mid-Level Exception (MLE). As a result, your team will be hard-capped at the Second Apron for the remainder of the season.", icon="✅")
+    if CapType in ["First", "Second"] and flagged == 1:
+        st.error("This transaction is not permitted. Teams operating above the First Apron are prohibited from trading for players via the Bi-Annual Exception (BAE) or Mid-Level Exception (MLE).", icon="❌")
+    elif HardCap in ["No Cap"] and flagged == 1:
+        st.warning("This transaction utilizes an outgoing Bi-Annual Exception (BAE) or Mid-Level Exception (MLE). As a result, your team will be hard-capped at the First Apron for the remainder of the season.", icon="✅")
     elif flagged == 1:
         st.success("There are no cap-related restrictions preventing your team from using the Bi-Annual Exception (BAE) or Mid-Level Exception (MLE) to acquire a player.",icon="✅")
     else: 
