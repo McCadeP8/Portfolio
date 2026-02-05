@@ -5,7 +5,7 @@ import numpy as np
 from itertools import combinations
 import requests
 import json
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history
 
 @st.cache_data(ttl=21600)
 def get_data() -> pd.DataFrame:
@@ -107,6 +107,42 @@ def get_draft_history() -> pd.DataFrame:
     df = pd.read_csv(csv_url)
     return df
 
+def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
+    session = requests.Session()
+    session.headers.update({"Content-Type": "application/json", "Cookie": "JSESSIONID=YOUR_REAL_SESSION_ID"})
+    payload = {"msgs": [{"method": "getLiveScoringStats","data": {"sppId": "-1", "teamId": "ALL", "period": period, "date": "2026-01-30", "viewType": "2", "playerViewType": "1", "newView": False}}, {"method": "getScoresSummaryData", "data": {}}]}
+    response = session.post("https://www.fantrax.com/fxpa/req", params={"leagueId": league_ids.get(year)}, json=payload)
+    if response.status_code == 200:
+        data = response.json()
+        scoring_categories = ['Team', 'GP', 'MP', 'TS%', '2PTM', '2PTA', '2PT%', '3PTM', '3PTA', '3PT%', 'FTM', 'FTA', 'FT%', 'PTS', 'OREB', 'DREB', 'AST', 'ST', 'BLK', 'TO', '+/-']
+        year_key = f"{year}_id"
+        team_ids = []
+        for team_name, ids in team_id_history.items():
+            team_id = ids.get(year_key)
+            if team_id:
+                team_ids.append(team_id) 
+        rows = []
+        for team_id in team_ids:
+            row = {'Team': team_id} 
+            stats_list = (
+                data['responses'][0]["data"]
+                ['statsPerTeam']['allTeamsStats']
+                [team_id]['ACTIVE']['statsMap']['_3010']['object2']
+            )
+            if year <= 2025:
+                for stat_name, stat_dict in zip(scoring_categories[2:], stats_list):
+                    row[stat_name] = stat_dict.get('av')
+            else:
+                for stat_name, stat_dict in zip(scoring_categories[1:], stats_list):
+                    row[stat_name] = stat_dict.get('av')
+            
+            rows.append(row)
+        df = pd.DataFrame(rows, columns=scoring_categories)
+        df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+        return df
+    else:
+        print(f"Error: Request failed for URL with status code {response.status_code}")
+        return None
 
 def style_salaries(row, type_colors):
     styles = [""] * len(row)
@@ -656,6 +692,9 @@ def hard_cap_check(df: pd.DataFrame, base_cap: pd.DataFrame) -> str:
     return df
 
 def stepien_data_check(df: pd.DataFrame) -> pd.DataFrame:
+    df = get_draft_picks()
+
+
     df2 = pd.DataFrame({
         "Year": [current_year-1] * 30,
         "Round": ["1st Round"] * 30,
@@ -673,7 +712,9 @@ def stepien_data_check(df: pd.DataFrame) -> pd.DataFrame:
     df["next_year"] = df.groupby("CurrentTeam")["Year"].shift(-1)
     df["next_year"] = df["next_year"].fillna(current_year + 7)
     df["gap"] = df["next_year"] - df["Year"]
-    df = df[df['gap'] > 2]
+    mask = ((df["Year"] % 1 == 0.5) & (df["next_year"] % 1 == 0.5) & (df["gap"] == 2))
+    df.loc[mask, "gap"] = 3
+    df = df[df["gap"] > 2]
     df = df[['CurrentTeam', 'Year','next_year']]
     df = df.rename(columns={'CurrentTeam': 'Team'})
     df = df.rename(columns={'year': 'Gap Open'})
@@ -958,10 +999,7 @@ def old_team_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str]
     st.warning("Under Construction: old_team_check", icon = "⚠️")
     return "A"
 
-def stepien_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: stepien_check", icon = "⚠️")
+def stepien_check(dp: pd.DataFrame, DraftPicksIn: list[str], DraftPicksOut: list[str], SelectedTeam: str):
     return "A"
 
 def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
