@@ -89,6 +89,8 @@ def get_fantrax_players() -> pd.DataFrame:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return players_df
 
+    #ABC
+
 @st.cache_data(ttl=21600)
 def get_fantrax_standings() -> pd.DataFrame:
     roster_url = f"https://www.fantrax.com/fxea/general/getStandings?leagueId={league_id}"
