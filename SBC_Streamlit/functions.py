@@ -115,8 +115,12 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
     if response.status_code == 200:
         data = response.json()
         scoring_categories = ['Team', 'GP', 'MP', 'TS%', '2PTM', '2PTA', '2PT%', '3PTM', '3PTA', '3PT%', 'FTM', 'FTA', 'FT%', 'PTS', 'OREB', 'DREB', 'AST', 'ST', 'BLK', 'TO', '+/-']
+        team_id_to_name = {}
+        for team_name, years in team_id_history.items():
+            for _, team_id in years.items():
+                team_id_to_name[team_id] = team_name
         year_key = f"{year}_id"
-        team_ids = []
+        team_ids = [ids.get(year_key) for ids in team_id_history.values() if ids.get(year_key)]
         for team_name, ids in team_id_history.items():
             team_id = ids.get(year_key)
             if team_id:
@@ -138,6 +142,7 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
             
             rows.append(row)
         df = pd.DataFrame(rows, columns=scoring_categories)
+        df["Team"] = df["Team"].map(team_id_to_name)
         df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
         return df
     else:
