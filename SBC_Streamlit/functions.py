@@ -1125,3 +1125,5 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
         np.repeat(standings["teamName"].iloc[13], 5),
         np.repeat("Redraw", 1)])
     return df
+
+    #AB
