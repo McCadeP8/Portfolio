@@ -218,7 +218,7 @@ with tab3:
     if update:
         with st.spinner("Updating matchups..."):
             live_stats_df = get_matchup_stats(current_year, 32)
-        st.dataframe(live_stats_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Team_logo": st.column_config.ImageColumn(label="", width="small")})
+        st.dataframe(live_stats_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
 
 with tab4:
 
