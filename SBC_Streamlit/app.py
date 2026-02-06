@@ -212,11 +212,12 @@ with tab2:
 
 
 with tab3:
-    left, right = st.columns([8, 1])
+    left, right = st.columns([9, 1])
     with right:
         update = st.button("Update", key="update_matchups")
     if update:
-        live_stats_df = get_matchup_stats(current_year, 32)
+        with st.spinner("Updating matchups..."):
+            live_stats_df = get_matchup_stats(current_year, 32)
         st.dataframe(live_stats_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
 with tab4:
