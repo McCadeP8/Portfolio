@@ -26,6 +26,8 @@ league_ratio = ceil(current_salary_cap/60000000)*1000000
 max_cash = 7964000
 minimum_sal = 1272870
 max_minimum = 3634,53
+league_id = "u9f8f7o9mavp4dt1"
+
 
 league_ids = {
     2021: "gt9buxv4kg3a9bgq",
