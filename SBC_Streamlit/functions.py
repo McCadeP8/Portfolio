@@ -143,7 +143,7 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
             rows.append(row)
         df = pd.DataFrame(rows, columns=scoring_categories)
         df["Team"] = df["Team"].map(team_id_to_name)
-        df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+        df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
         return df
     else:
         print(f"Error: Request failed for URL with status code {response.status_code}")
