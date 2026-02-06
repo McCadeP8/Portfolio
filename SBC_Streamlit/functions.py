@@ -5,7 +5,7 @@ import numpy as np
 from itertools import combinations
 import requests
 import json
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId
 
 @st.cache_data(ttl=21600)
 def get_data() -> pd.DataFrame:
@@ -120,11 +120,7 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
             for _, team_id in years.items():
                 team_id_to_name[team_id] = team_name
         year_key = f"{year}_id"
-        team_ids = [ids.get(year_key) for ids in team_id_history.values() if ids.get(year_key)]
-        for team_name, ids in team_id_history.items():
-            team_id = ids.get(year_key)
-            if team_id:
-                team_ids.append(team_id) 
+        team_ids = [ids.get(year_key) for ids in team_id_history.values() if ids.get(year_key)]        
         rows = []
         for team_id in team_ids:
             row = {'Team': team_id} 
@@ -133,14 +129,18 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
                 ['statsPerTeam']['allTeamsStats']
                 [team_id]['ACTIVE']['statsMap']['_3010']['object2']
             )
+            stats_dict = {stat.get('scipId'): stat.get('av') for stat in stats_list}
             if year <= 2025:
-                for stat_name, stat_dict in zip(scoring_categories[2:], stats_list):
-                    row[stat_name] = stat_dict.get('av')
+                for stat_name in scoring_categories[2:]:
+                    scipId = stat_to_scipId.get(stat_name)
+                    row[stat_name] = stats_dict.get(scipId, 0)
             else:
-                for stat_name, stat_dict in zip(scoring_categories[1:], stats_list):
-                    row[stat_name] = stat_dict.get('av')
+                for stat_name in scoring_categories[1:]:
+                    scipId = stat_to_scipId.get(stat_name)
+                    row[stat_name] = stats_dict.get(scipId, 0)
             
             rows.append(row)
+        
         df = pd.DataFrame(rows, columns=scoring_categories)
         df["Team"] = df["Team"].map(team_id_to_name)
         df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
