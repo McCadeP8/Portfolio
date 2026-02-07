@@ -96,7 +96,7 @@ team_info = {
 
     "Columbus": {"conf": "East", "bg": "#CD7F32", "bg2": "#666666", "text": "white",
         "logo": "https://pbs.twimg.com/media/FxamtzbaUAEvyXi?format=png&name=small",
-        "wordmark": "https://pbs.twimg.com/media/HANMBfcbgAAJNoC?format=jpg&name=medium",
+        "wordmark": "https://pbs.twimg.com/media/HAkYZHSacAE1tpK?format=jpg&name=medium",
         "nickname": "Arches"},
 
     "Des Moines": {"conf": "East", "bg": "#1B1E23", "bg2": "#F7F7EE", "text": "white",
