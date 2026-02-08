@@ -1116,7 +1116,6 @@ def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: flo
     return dh
 
 def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
-    standings = get_fantrax_standings()
     for city, info in team_info.items():
         standings.loc[standings["teamName"].str.startswith(city), "conference"] = info["conf"]
     standings["Conf_Rank"] = (standings.groupby("conference")["winPercentage"].rank(method="first", ascending=False).astype(int))
