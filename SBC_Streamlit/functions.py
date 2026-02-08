@@ -1089,7 +1089,6 @@ def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rost
     return df
 
 def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFrame:
-    df = get_fantrax_standings()
     df = df[['teamName', 'winPercentage']]
     dp = get_draft_picks()
     dp = dp[dp['Year'] == current_year]
