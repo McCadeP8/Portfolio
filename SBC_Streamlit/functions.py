@@ -41,7 +41,7 @@ def get_draft_picks() -> pd.DataFrame:
     return df
 
 @st.cache_data(ttl=86400)
-def get_fantrax_roster(year) -> pd.DataFrame:
+def get_fantrax_roster(year, period) -> pd.DataFrame:
     all_rosters_list = []    
     roster_url = f"https://www.fantrax.com/fxea/general/getTeamRosters?leagueId={league_ids.get(year)}&period={period}"
     headers = {'Cookie': 'JSESSIONID='}
