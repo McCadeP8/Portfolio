@@ -41,7 +41,7 @@ def get_draft_picks() -> pd.DataFrame:
     return df
 
 @st.cache_data(ttl=86400)
-def get_fantrax_roster() -> pd.DataFrame:
+def get_fantrax_roster(year) -> pd.DataFrame:
     all_rosters_list = []    
     roster_url = f"https://www.fantrax.com/fxea/general/getTeamRosters?leagueId={league_ids.get(year)}&period={period}"
     headers = {'Cookie': 'JSESSIONID='}
@@ -90,7 +90,7 @@ def get_fantrax_players() -> pd.DataFrame:
     return players_df
 
 @st.cache_data(ttl=86400)
-def get_fantrax_standings() -> pd.DataFrame:
+def get_fantrax_standings(year) -> pd.DataFrame:
     roster_url = f"https://www.fantrax.com/fxea/general/getStandings?leagueId={league_ids.get(year)}"
     headers = {'Cookie': 'JSESSIONID='}
     response = requests.get(roster_url, headers=headers)
@@ -102,7 +102,7 @@ def get_fantrax_standings() -> pd.DataFrame:
     return df
 
 @st.cache_data()
-def get_fantrax_matchups() -> pd.DataFrame:
+def get_fantrax_matchups(year) -> pd.DataFrame:
     roster_url = f"https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId={league_ids.get(year)}"
     headers = {'Cookie': 'JSESSIONID='}
     response = requests.get(roster_url, headers=headers)
