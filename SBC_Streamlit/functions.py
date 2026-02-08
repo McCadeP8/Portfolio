@@ -7,43 +7,43 @@ import requests
 import json
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId
 
-@st.cache_data(ttl=21600)
+@st.cache_data(ttl=86400)
 def get_data() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
     df = pd.read_csv(csv_url)
     return df
 
-@st.cache_data(ttl=21600)
+@st.cache_data()
 def get_pictures() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1180190150"
     df = pd.read_csv(csv_url)
     df = df.drop(columns=["Picture"])
     return df
 
-@st.cache_data(ttl=21600)
-def get_exceptions() -> pd.DataFrame:
+@st.cache_data()
+def get_exceptions(ttl=86400) -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1620818587"
     df = pd.read_csv(csv_url)
     df = df[["Team", "Player", "Y" + str(current_year), "BirdRights"]]
     return df
 
-@st.cache_data(ttl=21600)
+@st.cache_data(ttl=86400)
 def get_base_cap() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=760630769"
     df = pd.read_csv(csv_url)
     return df
 
-@st.cache_data(ttl=21600)
+@st.cache_data(ttl=86400)
 def get_draft_picks() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1612129799"
     df = pd.read_csv(csv_url)
     df = df[df['Year'].between(current_year, current_year + 6)]
     return df
 
-@st.cache_data(ttl=21600)
+@st.cache_data(ttl=86400)
 def get_fantrax_roster() -> pd.DataFrame:
     all_rosters_list = []    
-    roster_url = f"https://www.fantrax.com/fxea/general/getTeamRosters?leagueId={league_id}&period={period}"
+    roster_url = f"https://www.fantrax.com/fxea/general/getTeamRosters?leagueId={league_ids.get(year)}&period={period}"
     headers = {'Cookie': 'JSESSIONID='}
     response = requests.get(roster_url, headers=headers)
     if response.status_code == 200:
@@ -65,7 +65,7 @@ def get_fantrax_roster() -> pd.DataFrame:
         all_rosters_data = pd.DataFrame()
     return all_rosters_data
 
-@st.cache_data(ttl=21600)
+@st.cache_data()
 def get_fantrax_players() -> pd.DataFrame:
     roster_url = "https://www.fantrax.com/fxea/general/getPlayerIds?sport=NBA"
     headers = {'Cookie': 'JSESSIONID='}
@@ -89,14 +89,26 @@ def get_fantrax_players() -> pd.DataFrame:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return players_df
 
-@st.cache_data(ttl=21600)
+@st.cache_data(ttl=86400)
 def get_fantrax_standings() -> pd.DataFrame:
-    roster_url = f"https://www.fantrax.com/fxea/general/getStandings?leagueId={league_id}"
+    roster_url = f"https://www.fantrax.com/fxea/general/getStandings?leagueId={league_ids.get(year)}"
     headers = {'Cookie': 'JSESSIONID='}
     response = requests.get(roster_url, headers=headers)
     if response.status_code == 200:
         standings = json.loads(response.text)
         df = pd.DataFrame(standings)
+    else:
+        print(f"Failed to fetch data - Status code: {response.status_code}")
+    return df
+
+@st.cache_data()
+def get_fantrax_matchups() -> pd.DataFrame:
+    roster_url = f"https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId={league_ids.get(year)}"
+    headers = {'Cookie': 'JSESSIONID='}
+    response = requests.get(roster_url, headers=headers)
+    if response.status_code == 200:
+        Matchups = json.loads(response.text)
+        df = pd.DataFrame(Matchups)
     else:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return df
@@ -1130,4 +1142,13 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
         np.repeat(standings["teamName"].iloc[12], 10),
         np.repeat(standings["teamName"].iloc[13], 5),
         np.repeat("Redraw", 1)])
+    return df
+
+def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
+    if "MP" in df.columns:
+        df["MP"] = ((df["MP"] * 60).round().astype("Int64").apply(lambda s: "—" if pd.isna(s) else f"{s // 60}:{s % 60:02d}"))
+    pct_cols = ["TS%", "2PT%", "3PT%", "FT%"]
+    for col in pct_cols:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: "—" if pd.isna(x) else f"{x:.2%}")
     return df
