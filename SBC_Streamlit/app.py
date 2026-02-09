@@ -218,6 +218,15 @@ with tab3:
     left, right = st.columns([9, 1])
     with right:
         update = st.button("Update", key="update_matchups")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        SelectedYear = st.selectbox("Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
+
+    with col2:
+        SelectedPeriod = st.selectbox("Period",  options=list(range(1, 39)), index=list(range(1, 39)).index(1))
+
     if update:
         with st.spinner("Updating matchups..."):
             live_stats_df = get_matchup_stats(current_year, 32)
