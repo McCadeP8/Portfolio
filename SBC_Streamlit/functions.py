@@ -1168,5 +1168,4 @@ def team_with_ranks(df: pd.DataFrame, team_value: str) -> pd.DataFrame:
     out.insert(0, "Team", [team_value, "League Rank"])
     return out
 
-def team_stats_line_chart(df: pd.DataFrame, Team: str, Category: str) -> plot
-    
+#def team_stats_line_chart(df: pd.DataFrame, Team: str, Category: str) -> plot
