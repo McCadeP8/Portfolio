@@ -155,7 +155,6 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
         
         df = pd.DataFrame(rows, columns=scoring_categories)
         df["Team"] = df["Team"].map(team_id_to_name)
-        df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
         df.loc[(df["2PTA"] < 10) | (df["3PTA"] < 10) | (df["FTA"] < 5), ['TS%', '2PT%', '3PT%', 'FT%']] = 0
         return df
     else:
@@ -1143,6 +1142,7 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
+    df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     if "MP" in df.columns:
         df["MP"] = ((df["MP"] * 60).round().astype("Int64").apply(lambda s: "—" if pd.isna(s) else f"{s // 60}:{s % 60:02d}"))
     pct_cols = ["TS%", "2PT%", "3PT%", "FT%"]
@@ -1150,3 +1150,23 @@ def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = df[col].apply(lambda x: "—" if pd.isna(x) else f"{x:.2%}")
     return df
+
+def ordinal(n: int) -> str:
+    if 11 <= n % 100 <= 13:
+        return f"{n}th"
+    return f"{n}{ {1:'st', 2:'nd', 3:'rd'}.get(n % 10, 'th') }"
+
+def team_with_ranks(df: pd.DataFrame, team_value: str) -> pd.DataFrame:
+    stat_cols = df.select_dtypes("number").columns.tolist()
+    team_row = df[df["Team"] == team_value]
+    if team_row.empty:
+        raise ValueError(f"Team '{team_value}' not found")
+    ranks = df[stat_cols].rank(ascending=False, method="min")
+    team_ranks = ranks.loc[team_row.index[0]]
+    team_ranks = team_ranks.apply(lambda x: ordinal(int(x)))
+    out = pd.concat([team_row[stat_cols], team_ranks.to_frame().T], ignore_index=True)
+    out.insert(0, "Team", [team_value, "League Rank"])
+    return out
+
+def team_stats_line_chart(df: pd.DataFrame, Team: str, Category: str) -> plot
+    
