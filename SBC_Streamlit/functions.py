@@ -1159,8 +1159,6 @@ def ordinal(n: int) -> str:
 def team_with_ranks(df: pd.DataFrame, team_value: str) -> pd.DataFrame:
     stat_cols = df.select_dtypes("number").columns.tolist()
     team_row = df[df["Team"] == team_value]
-    if team_row.empty:
-        raise ValueError(f"Team '{team_value}' not found")
     ranks = df[stat_cols].rank(ascending=False, method="min")
     team_ranks = ranks.loc[team_row.index[0]]
     team_ranks = team_ranks.apply(lambda x: ordinal(int(x)))
