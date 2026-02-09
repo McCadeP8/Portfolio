@@ -3,14 +3,7 @@ import streamlit as st
 import requests
 import json
 from data import current_year, league_ids
-from functions import get_matchup_stats
-
-
-@st.cache_data()
-def get_matchup_period_dates() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"
-    df = pd.read_csv(csv_url)
-    return df
+from functions import get_matchup_stats, get_matchup_period_dates
 
 def get_all_team_stats_history() -> pd.DataFrame:
     df_old = pd.read_parquet("./SBC_Streamlit/all_team_stats_history.parquet")

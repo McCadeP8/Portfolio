@@ -120,6 +120,12 @@ def get_draft_history() -> pd.DataFrame:
     df = pd.read_csv(csv_url)
     return df
 
+@st.cache_data()
+def get_matchup_period_dates() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"
+    df = pd.read_csv(csv_url)
+    return df
+
 def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
     session = requests.Session()
     session.headers.update({"Content-Type": "application/json", "Cookie": "JSESSIONID=YOUR_REAL_SESSION_ID"})
