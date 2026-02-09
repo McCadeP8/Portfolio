@@ -226,9 +226,9 @@ with tab3:
         team_week_stats = team_with_ranks(get_matchup_stats(current_year, 32), SelectedTeam)
         st.dataframe(team_week_stats)
 
-        CategorySelected = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
-        season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam)
-        st.altair_chart(season_line_chart_data, use_container_width=True)
+    CategorySelected = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
+    season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam)
+    st.altair_chart(season_line_chart_data, use_container_width=True)
 
 
 
