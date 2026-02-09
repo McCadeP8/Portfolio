@@ -5,6 +5,7 @@ import numpy as np
 from itertools import combinations
 import requests
 import json
+import altair as alt
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId
 
 @st.cache_data(ttl=86400)
@@ -1166,4 +1167,55 @@ def team_with_ranks(df: pd.DataFrame, team_value: str) -> pd.DataFrame:
     out.insert(0, "Team", [team_value, "League Rank"])
     return out
 
-#def team_stats_line_chart(df: pd.DataFrame, Team: str, Category: str) -> plot
+def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str) -> alt.Chart:
+    df_year = df[df["Year"] == current_year]
+    league_median = (df_year
+        .groupby("Period", as_index=False)["PTS"]
+        .median()
+        .assign(Series="League Median"))
+    team_series = (df_year[df_year["Team"] == SelectedTeam]
+        .loc[:, ["Period", "PTS"]]
+        .assign(Series=SelectedTeam))
+    plot_df = pd.concat([league_median, team_series], ignore_index=True)
+    chart = (
+    alt.Chart(plot_df)
+    .mark_line(strokeWidth=3)
+    .encode(
+        x=alt.X(
+            "Period:O",
+            title="Period",
+            axis=alt.Axis(labelAngle=0)
+        ),
+        y=alt.Y(
+            "PTS:Q",
+            title="Points",
+            scale=alt.Scale(zero=False)
+        ),
+        color=alt.Color(
+            "Series:N",
+            scale=alt.Scale(
+                domain=["League Median", SelectedTeam],
+                range=["#9aa0a6", "#1f77b4"]
+            ),
+            legend=alt.Legend(title="")
+        ),
+        tooltip=["Series", "Period", "PTS"]
+    )
+    .properties(
+        height=450
+    ))
+
+    team_points = (
+        alt.Chart(team_series)
+        .mark_circle(size=60)
+        .encode(
+            x="Period:O",
+            y="PTS:Q",
+            color=alt.value("#1f77b4"),
+            tooltip=["Period", "PTS"]
+        )
+    )
+
+    return chart + team_points
+
+
