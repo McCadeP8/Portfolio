@@ -228,9 +228,12 @@ with tab3:
             with st.spinner("Updating matchups..."):
                 live_stats_df = get_matchup_stats(current_year, 32)
                 live_stats_df_formatted = format_live_stats_df(live_stats_df)
-            st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+            #st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
             team_week_stats = team_with_ranks(get_matchup_stats(current_year, 32), SelectedTeam)
             st.dataframe(team_week_stats)
+            st.dataframe(team_week_stats)
+            st.dataframe(team_week_stats)
+
 
         CategorySelected = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
         season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam)
