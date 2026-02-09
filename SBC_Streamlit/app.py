@@ -231,6 +231,7 @@ with tab3:
             #st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
             team_week_stats = team_with_ranks(get_matchup_stats(current_year, 32), SelectedTeam)
             st.dataframe(team_week_stats)
+            st.subheader("Regular Season Matchups")
             st.dataframe(team_week_stats)
             st.dataframe(team_week_stats)
 
