@@ -215,29 +215,26 @@ with tab2:
 
 with tab3:
     st.write("Coming Soon")
-    left, right = st.columns([9, 1])
-    with right:
-        update = st.button("Update", key="update_matchups")
-
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1, 9])
 
     with col1:
         SelectedYear = st.selectbox("Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
+        SelectedPeriod = st.selectbox("Period",  options=list(range(1, 39)), index=list(range(1, 39)).index(1))
+        update = st.button("Update", key="update_matchups")
 
     with col2:
-        SelectedPeriod = st.selectbox("Period",  options=list(range(1, 39)), index=list(range(1, 39)).index(1))
 
-    if update:
-        with st.spinner("Updating matchups..."):
-            live_stats_df = get_matchup_stats(current_year, 32)
-            live_stats_df_formatted = format_live_stats_df(live_stats_df)
-        st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        team_week_stats = team_with_ranks(get_matchup_stats(current_year, 32), SelectedTeam)
-        st.dataframe(team_week_stats)
+        if update:
+            with st.spinner("Updating matchups..."):
+                live_stats_df = get_matchup_stats(current_year, 32)
+                live_stats_df_formatted = format_live_stats_df(live_stats_df)
+            st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+            team_week_stats = team_with_ranks(get_matchup_stats(current_year, 32), SelectedTeam)
+            st.dataframe(team_week_stats)
 
-    CategorySelected = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
-    season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam)
-    st.altair_chart(season_line_chart_data, use_container_width=True)
+        CategorySelected = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
+        season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam)
+        st.altair_chart(season_line_chart_data, use_container_width=True)
 
 
 
