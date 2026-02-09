@@ -13,7 +13,7 @@ ft_roster = get_fantrax_roster(current_year, period)
 ft_players = get_fantrax_players()
 standings = get_fantrax_standings(current_year)
 dh = get_draft_history()
-all_time_team_stats = pd.read_parquet("all_team_stats_history.parquet")
+all_time_team_stats = pd.read_parquet("SBC_Streamlit/all_team_stats_history.parquet")
 
 with st.sidebar:
     Teams = sorted(team_info.keys())
