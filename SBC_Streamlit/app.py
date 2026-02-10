@@ -218,8 +218,6 @@ with tab3:
     st.write("Coming Soon")
     col1, col2 = st.columns([1, 9])
 
-    #ABC
-
     with col1:
         SelectedYear = st.selectbox("Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
         SelectedPeriod = st.selectbox("Period",  options=list(range(1, 39)), index=list(range(1, 39)).index(current_matchup))
