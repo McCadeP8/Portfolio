@@ -1181,45 +1181,18 @@ def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str, SelectedCategory:
         .assign(Series="League Median"))
     team_series = (df_year[df_year["Team"] == SelectedTeam]
         .loc[:, ["Period", SelectedCategory]]
-        .assign(Series=SelectedTeam))
+        .assign(Series=SelectedTeam))    
     plot_df = pd.concat([league_median, team_series], ignore_index=True)
-    chart = (
-    alt.Chart(plot_df)
-    .mark_line(strokeWidth=3)
-    .encode(
-        x=alt.X(
-            "Period:O",
-            title="Period",
-            axis=alt.Axis(labelAngle=0)
-        ),
-        y=alt.Y(
-            "PTS:Q",
-            title=SelectedCategory,
-            scale=alt.Scale(zero=False)
-        ),
-        color=alt.Color(
-            "Series:N",
-            scale=alt.Scale(
-                domain=["League Median", SelectedTeam],
-                range=["#9aa0a6", "#1f77b4"]
-            ),
-            legend=alt.Legend(title="")
-        ),
-        tooltip=["Period", SelectedCategory]
-    )
-    .properties(
-        height=450
-    ))
-
-    team_points = (
-        alt.Chart(team_series)
-        .mark_circle(size=60)
-        .encode(
-            color=alt.value("#1f77b4"),
-            tooltip=["Period", SelectedCategory]
-        )
-    )
-
-    return chart + team_points
-
-
+    chart = (alt.Chart(plot_df)
+        .mark_line(strokeWidth=2.5, interpolate='monotone')
+        .encode(x=alt.X("Period:O", title="Period", axis=alt.Axis(labelAngle=0, labelFontSize=11, titleFontSize=12, titlePadding=10, grid=False)),
+                y=alt.Y(f"{SelectedCategory}:Q", title=SelectedCategory, scale=alt.Scale(zero=False),
+                axis=alt.Axis(labelFontSize=11, titleFontSize=12, titlePadding=10, gridOpacity=0.3)),
+                color=alt.Color("Series:N", scale=alt.Scale(domain=["League Median", SelectedTeam], range=["#8B8B8B", "#3B82F6"]),
+                legend=alt.Legend(title=None, orient="top", labelFontSize=11, symbolSize=100, symbolStrokeWidth=2.5)),
+                tooltip=[alt.Tooltip("Series:N", title=""), alt.Tooltip("Period:O", title="Period"), alt.Tooltip(f"{SelectedCategory}:Q", title=SelectedCategory, format=".1f")])
+        .properties(height=450))
+    team_points = (alt.Chart(team_series)
+        .mark_circle(size=80, opacity=1)
+        .encode(x="Period:O", y=f"{SelectedCategory}:Q", color=alt.value("#3B82F6"), tooltip=[alt.Tooltip("Period:O", title="Period"), alt.Tooltip(f"{SelectedCategory}:Q", title=SelectedCategory, format=".1f")]))
+    return (chart + team_points).configure_view(strokeWidth=0).configure_axis(domainColor="#E5E7EB", tickColor="#E5E7EB")
