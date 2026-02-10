@@ -6,7 +6,7 @@ from itertools import combinations
 import requests
 import json
 import altair as alt
-from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, league_id, period, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId
+from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
 
 @st.cache_data(ttl=86400)
 def get_data() -> pd.DataFrame:
@@ -125,6 +125,15 @@ def get_matchup_period_dates() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"
     df = pd.read_csv(csv_url)
     return df
+
+def current_matchup_period(df: pd.DataFrame) -> int:
+    df["Date"] = pd.to_datetime(df["Date"]).dt.date
+    df2 = df[(df["Date"] == today) & (df["Year"] == current_year)]
+    if len(df2) == 0:
+        return int(df["Period"].iloc[-1])
+    if len(df2) == 1:
+        return int(df2["Period"].iloc[0])
+    return int(df2["Period"].iloc[-1])
 
 def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
     session = requests.Session()
