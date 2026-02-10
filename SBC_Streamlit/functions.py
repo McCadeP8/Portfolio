@@ -120,13 +120,9 @@ def get_draft_history() -> pd.DataFrame:
     df = pd.read_csv(csv_url)
     return df
 
-@st.cache_data()
-def get_matchup_period_dates() -> pd.DataFrame:
+def current_matchup_period(df: pd.DataFrame) -> int:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"
     df = pd.read_csv(csv_url)
-    return df
-
-def current_matchup_period(df: pd.DataFrame) -> int:
     df["Date"] = pd.to_datetime(df["Date"]).dt.date
     df2 = df[(df["Date"] == today) & (df["Year"] == current_year)]
     if len(df2) == 0:
