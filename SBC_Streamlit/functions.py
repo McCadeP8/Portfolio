@@ -1173,14 +1173,14 @@ def team_with_ranks(df: pd.DataFrame, team_value: str) -> pd.DataFrame:
     out.insert(0, "Team", [team_value, "League Rank"])
     return out
 
-def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str) -> alt.Chart:
+def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str, SelectedCategory: str) -> alt.Chart:
     df_year = df[df["Year"] == current_year]
     league_median = (df_year
-        .groupby("Period", as_index=False)["PTS"]
+        .groupby("Period", as_index=False)[SelectedCategory]
         .median()
         .assign(Series="League Median"))
     team_series = (df_year[df_year["Team"] == SelectedTeam]
-        .loc[:, ["Period", "PTS"]]
+        .loc[:, ["Period", SelectedCategory]]
         .assign(Series=SelectedTeam))
     plot_df = pd.concat([league_median, team_series], ignore_index=True)
     chart = (
@@ -1194,7 +1194,7 @@ def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str) -> alt.Chart:
         ),
         y=alt.Y(
             "PTS:Q",
-            title="Points",
+            title=SelectedCategory,
             scale=alt.Scale(zero=False)
         ),
         color=alt.Color(
@@ -1205,7 +1205,7 @@ def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str) -> alt.Chart:
             ),
             legend=alt.Legend(title="")
         ),
-        tooltip=["Series", "Period", "PTS"]
+        tooltip=["Period", SelectedCategory]
     )
     .properties(
         height=450
@@ -1215,10 +1215,8 @@ def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str) -> alt.Chart:
         alt.Chart(team_series)
         .mark_circle(size=60)
         .encode(
-            x="Period:O",
-            y="PTS:Q",
             color=alt.value("#1f77b4"),
-            tooltip=["Period", "PTS"]
+            tooltip=["Period", SelectedCategory]
         )
     )
 
