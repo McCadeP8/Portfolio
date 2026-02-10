@@ -1180,7 +1180,7 @@ def team_with_ranks(df: pd.DataFrame, team_value: str) -> pd.DataFrame:
 
 current_matchup = current_matchup_period()
 def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str, SelectedCategory: str) -> alt.Chart:
-    df_year = df[df["Year"] == current_year]
+    df_year = df[df["Year"] == float(current_year)]
     df_year = df[df["Period"] <= current_matchup]
     league_median = (df_year
         .groupby("Period", as_index=False)[SelectedCategory]
