@@ -1031,29 +1031,29 @@ def old_team_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str]
 def stepien_check(dp: pd.DataFrame, DraftPicksIn: list[str], DraftPicksOut: list[str], SelectedTeam: str):
     return "A"
 
-def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
+def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
     df = df[df['Trade.Restriction'] != "Banned"]
     df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
-    df = df.merge(ft_rosters, how='outer', left_on='fantraxId', right_on='id')
+    df = df.merge(ft_roster, how='outer', left_on='fantraxId', right_on='id')
     df = df[df['Player'].isna() | df['team_name'].isna()]
     df = df.rename(columns={'Player': 'Cap Sheet Name'})
     df = df.rename(columns={'name': 'Fantrax Name'})
-    df = df[['Cap Sheet Name', 'Fantrax Name']]
+    df = df[['Cap Sheet Name', 'Fantrax Name', 'id', 'team_name']]
     return df
 
-def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
+def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
     df = df[df['Trade.Restriction'] != "Banned"]
     df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
-    df = df.merge(ft_rosters, how='outer', left_on='fantraxId', right_on='id')
+    df = df.merge(ft_roster, how='outer', left_on='fantraxId', right_on='id')
     df['status2'] = df['status'].apply(lambda x: "Non-Active Players" if x == "MINORS" else "Active Players")
     df = df[df['Type'] != df["status2"]]
-    df = df[['Player', 'Team', 'Type', 'status']]
+    df = df[['Player', 'team_name', 'Type', 'status']]
     df = df.rename(columns={'Type': 'Cap Sheet Location'})
     df = df.rename(columns={'status': 'Fantrax Locatoin'})
     return df
