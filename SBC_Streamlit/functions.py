@@ -147,13 +147,22 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
         team_ids = [ids.get(year_key) for ids in team_id_history.values() if ids.get(year_key)]        
         rows = []
         for team_id in team_ids:
-            row = {'Team': team_id} 
-            stats_list = (
+            row = {'Team': team_id}
+            team_stats = (
                 data['responses'][0]["data"]
-                ['statsPerTeam']['allTeamsStats']
-                [team_id]['ACTIVE']['statsMap']['_3010']['object2']
-            )
-            stats_dict = {stat.get('scipId'): stat.get('av') for stat in stats_list}
+                .get('statsPerTeam', {})
+                .get('allTeamsStats', {})
+                .get(team_id, {})
+                .get('ACTIVE', {})
+                .get('statsMap', {}))
+            stats_list = (
+                team_stats
+                .get('_3010', {})
+                .get('object2', []))
+            stats_dict = {
+                stat.get('scipId'): stat.get('av')
+                for stat in stats_list
+                if stat.get('scipId') is not None}
             if year <= 2025:
                 for stat_name in scoring_categories[2:]:
                     scipId = stat_to_scipId.get(stat_name)
@@ -162,9 +171,7 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
                 for stat_name in scoring_categories[1:]:
                     scipId = stat_to_scipId.get(stat_name)
                     row[stat_name] = stats_dict.get(scipId, 0)
-            
             rows.append(row)
-        
         df = pd.DataFrame(rows, columns=scoring_categories)
         df["Team"] = df["Team"].map(team_id_to_name)
         df.loc[(df["2PTA"] < 10) | (df["3PTA"] < 10) | (df["FTA"] < 5), ['TS%', '2PT%', '3PT%', 'FT%']] = 0
