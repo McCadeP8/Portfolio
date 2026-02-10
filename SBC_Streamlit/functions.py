@@ -953,11 +953,11 @@ def tpe_st_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], 
     else: 
         st.success("This transaction does not utilize a Traded-Player Exception created from a Sign-And-Trade to acquire a player.", icon="✅")
 
-def no_aggregation_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: no_aggregation_check", icon = "⚠️")
-    return "A"
+#def no_aggregation_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+#    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
+#    HardCap = team_hard_cap(base_cap, SelectedTeam)
+#    st.warning("Under Construction: no_aggregation_check", icon = "⚠️")
+#    return "A"
 
 def under_100_percent_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame, SelectedExceptionOut: list[str]):
     CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
@@ -993,47 +993,47 @@ def no_bae_mle_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[st
     else: 
         st.success("This transaction does not utilize the Bi-Annual Exception (BAE) or Mid-Level Exception (MLE) to acquire a player.",icon="✅")
 
-def salary_trade_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: salary_trade_check", icon = "⚠️")
-    return "A"
+#def salary_trade_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+#    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
+#    HardCap = team_hard_cap(base_cap, SelectedTeam)
+#    st.warning("Under Construction: salary_trade_check", icon = "⚠️")
+#    return "A"
 
-def tpe_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: tpe_check", icon = "⚠️")
-    return "A"
+#def tpe_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+#    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
+#    HardCap = team_hard_cap(base_cap, SelectedTeam)
+#    st.warning("Under Construction: tpe_check", icon = "⚠️")
+#    return "A"
 
-def bae_mle_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: bae_mle_check", icon = "⚠️")
-    return "A"
+#def bae_mle_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+#    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
+#    HardCap = team_hard_cap(base_cap, SelectedTeam)
+#    st.warning("Under Construction: bae_mle_check", icon = "⚠️")
+#    return "A"
 
-def player_agg_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: player_agg_check", icon = "⚠️")
-    return "A"
+#def player_agg_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+#    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
+#    HardCap = team_hard_cap(base_cap, SelectedTeam)
+#    st.warning("Under Construction: player_agg_check", icon = "⚠️")
+#    return "A"
 
-def create_tpe_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: create_tpe_check", icon = "⚠️")
-    return "A"
+#def create_tpe_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+#    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
+#    HardCap = team_hard_cap(base_cap, SelectedTeam)
+#    st.warning("Under Construction: create_tpe_check", icon = "⚠️")
+#    return "A"
 
-def new_trade_rest_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: new_trade_rest_check", icon = "⚠️")
-    return "A"
+#def new_trade_rest_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+#    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
+#    HardCap = team_hard_cap(base_cap, SelectedTeam)
+#    st.warning("Under Construction: new_trade_rest_check", icon = "⚠️")
+#    return "A"
 
-def old_team_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
-    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
-    HardCap = team_hard_cap(base_cap, SelectedTeam)
-    st.warning("Under Construction: old_team_check", icon = "⚠️")
-    return "A"
+#def old_team_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[str], SelectedTeam: str, base_cap: pd.DataFrame):
+#    CapType = check_cash_after(df, PlayersIn, PlayersOut, SelectedTeam)
+#    HardCap = team_hard_cap(base_cap, SelectedTeam)
+#    st.warning("Under Construction: old_team_check", icon = "⚠️")
+#    return "A"
 
 def stepien_check(dp: pd.DataFrame, DraftPicksIn: list[str], DraftPicksOut: list[str], SelectedTeam: str):
     return "A"
