@@ -1178,6 +1178,7 @@ def team_with_ranks(df: pd.DataFrame, team_value: str) -> pd.DataFrame:
     out.insert(0, "Team", [team_value, "League Rank"])
     return out
 
+current_matchup = current_matchup_period()
 def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str, SelectedCategory: str) -> alt.Chart:
     df_year = df[df["Year"] == current_year]
     df_year = df[df["Period"] <= current_matchup]
