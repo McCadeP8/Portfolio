@@ -232,7 +232,7 @@ with tab3:
                 live_stats_df = live_stats_df.drop(columns=['Year', 'Period'])
             #live_stats_df_formatted = format_live_stats_df(live_stats_df)
             live_stats_df = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
-        st.subheader("Stats for {SelectedTeam} in Matchup Period {SelectedPeriod} in {SelectedYear}")
+        st.subheader(f"Stats for {SelectedTeam} in Matchup Period {SelectedPeriod} in {SelectedYear}")
         st.dataframe(live_stats_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
         st.subheader("Regular Season Matchups")
         SelectedCategory = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
