@@ -1227,9 +1227,9 @@ def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, S
     team1_scores = team1.iloc[0]
     team2_scores = team2.iloc[0]
     scores = pd.concat([team1_scores, team2_scores], axis=1).T
-    green = '#A8E6A8'
-    yellow = '#FFE88C'
-    red = '#FFB3B3'
+    green = '#6B9B6B'
+    yellow = '#D4B963'
+    red = '#CC8888'
     def get_color(col, reverse=False):
         val1 = scores.iloc[0][col]
         val2 = scores.iloc[1][col]
