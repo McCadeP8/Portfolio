@@ -173,7 +173,7 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
                     row[stat_name] = stats_dict.get(scipId, 0)
             rows.append(row)
         df = pd.DataFrame(rows, columns=scoring_categories)
-        df["Team"] = df["Team"].map(team_id_to_name)
+        df["Team"] = df["TeFam"].map(team_id_to_name)
         df.loc[(df["2PTA"] < 10) | (df["3PTA"] < 10) | (df["FTA"] < 5), ['TS%', '2PT%', '3PT%', 'FT%']] = 0
         return df
     else:
@@ -1161,6 +1161,9 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
+
+
+
     df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     if "MP" in df.columns:
         df["MP"] = ((df["MP"] * 60).round().astype("Int64").apply(lambda s: "—" if pd.isna(s) else f"{s // 60}:{s % 60:02d}"))
@@ -1168,21 +1171,30 @@ def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
     for col in pct_cols:
         if col in df.columns:
             df[col] = df[col].apply(lambda x: "—" if pd.isna(x) else f"{x:.2%}")
+    
+    
+    
     return df
 
-def ordinal(n: int) -> str:
-    if 11 <= n % 100 <= 13:
-        return f"{n}th"
-    return f"{n}{ {1:'st', 2:'nd', 3:'rd'}.get(n % 10, 'th') }"
-
-def team_with_ranks(df: pd.DataFrame, team_value: str) -> pd.DataFrame:
+def team_with_ranks(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int) -> pd.DataFrame:
     stat_cols = df.select_dtypes("number").columns.tolist()
-    team_row = df[df["Team"] == team_value]
+    if SelectedYear <= 2025:
+        stat_cols.remove('GP')
+    team_row = df[df["Team"] == SelectedTeam]
     ranks = df[stat_cols].rank(ascending=False, method="min")
     team_ranks = ranks.loc[team_row.index[0]]
-    team_ranks = team_ranks.apply(lambda x: ordinal(int(x)))
+    for col in team_ranks.index:
+        rank_val = int(team_ranks[col])
+        is_tied = (ranks[col] == rank_val).sum() > 1
+        if 11 <= rank_val % 100 <= 13:
+            suffix = 'th'
+        else:
+            suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(rank_val % 10, 'th')
+        rank_str = f"{rank_val}{suffix}"
+        team_ranks[col] = f"T-{rank_str}" if is_tied else rank_str
     out = pd.concat([team_row[stat_cols], team_ranks.to_frame().T], ignore_index=True)
-    out.insert(0, "Team", [team_value, "League Rank"])
+    out.insert(0, "Team", [SelectedTeam, None])
+    out["Team"] = out["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     return out
 
 current_matchup = current_matchup_period()
