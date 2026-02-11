@@ -225,13 +225,9 @@ with tab3:
 
     with col2:
         with st.spinner("Updating matchups..."):
-            if SelectedYear == current_year and SelectedPeriod == current_matchup:
-                live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
-            else:
-                live_stats_df = all_time_team_stats[(all_time_team_stats["Year"] == SelectedYear) & (all_time_team_stats["Period"] == SelectedPeriod)]
-                live_stats_df = live_stats_df.drop(columns=['Year', 'Period'])
-            #live_stats_df_formatted = format_live_stats_df(live_stats_df)
-            live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
+            live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
+        #live_stats_df_formatted = format_live_stats_df(live_stats_df)
+        live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
         st.subheader(f"Stats for {SelectedTeam} in Matchup Period {SelectedPeriod} in {SelectedYear}")
         st.dataframe(live_stats_df_team, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
         st.subheader("Regular Season Matchups")
