@@ -225,7 +225,7 @@ with tab3:
 
     with col2:
         with st.spinner("Updating matchups..."):
-            if SelectedYear == current_year & SelectedPeriod == current_matchup:
+            if SelectedYear == current_year and SelectedPeriod == current_matchup:
                 live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
             else:
                 live_stats_df = all_time_team_stats[(all_time_team_stats["Year"] == SelectedYear) & (all_time_team_stats["Period"] == SelectedPeriod)]
