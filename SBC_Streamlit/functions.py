@@ -173,7 +173,7 @@ def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
                     row[stat_name] = stats_dict.get(scipId, 0)
             rows.append(row)
         df = pd.DataFrame(rows, columns=scoring_categories)
-        df["Team"] = df["TeFam"].map(team_id_to_name)
+        df["Team"] = df["Team"].map(team_id_to_name)
         df.loc[(df["2PTA"] < 10) | (df["3PTA"] < 10) | (df["FTA"] < 5), ['TS%', '2PT%', '3PT%', 'FT%']] = 0
         return df
     else:
