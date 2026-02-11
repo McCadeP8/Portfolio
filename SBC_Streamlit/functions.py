@@ -524,8 +524,6 @@ def unit_payout(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.Data
     total_fee = total_fee/24
     return total_fee
 
-    tax_payout_champ
-
 def tax_payout_champ(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
     df = overall_cap_table(df, exceptions_df, base_cap)
     total_fee = df["Base Fee"].sum()
@@ -1222,3 +1220,44 @@ def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str, SelectedCategory:
         .mark_circle(size=80, opacity=1)
         .encode(x="Period:O", y=f"{SelectedCategory}:Q", color=alt.value("#3B82F6"), tooltip=[alt.Tooltip("Period:O", title="Period"), alt.Tooltip(f"{SelectedCategory}:Q", title=SelectedCategory, format=".1f")]))
     return (chart + team_points).configure_view(strokeWidth=0).configure_axis(domainColor="#E5E7EB", tickColor="#E5E7EB")
+
+def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int, Opponent: str) -> pd.DataFrame:
+    team1 = team_with_ranks(df, SelectedTeam, SelectedYear, SelectedPeriod)
+    team2 = team_with_ranks(df, Opponent, SelectedYear, SelectedPeriod)
+    team1_scores = team1.iloc[0]
+    team2_scores = team2.iloc[0]
+    scores = pd.concat([team1_scores, team2_scores], axis=1).T
+    green = '#A8E6A8'
+    yellow = '#FFE88C'
+    red = '#FFB3B3'
+    def get_color(col, reverse=False):
+        val1 = scores.iloc[0][col]
+        val2 = scores.iloc[1][col]
+        if val1 > val2:
+            return green if not reverse else red
+        elif val1 == val2:
+            return yellow
+        else:
+            return red if not reverse else green
+    Color1 = get_color('MP')
+    Color2 = get_color('TS%')
+    Color3 = get_color('2PT%')
+    Color4 = get_color('3PT%')
+    Color5 = get_color('FT%')
+    Color6 = get_color('PTS')
+    Color7 = get_color('OREB')
+    Color8 = get_color('DREB')
+    Color9 = get_color('AST')
+    Color10 = get_color('ST')
+    Color11 = get_color('BLK')
+    Color12 = get_color('+/-')
+    Color13 = get_color('TO', reverse=True)
+    def style_matchup(row):
+        styles = [""] * len(row)
+        color_map = {'MP': Color1, 'TS%': Color2, '2PT%': Color3, '3PT%': Color4, 'FT%': Color5, 'PTS': Color6, 'OREB': Color7, 'DREB': Color8, 'AST': Color9, 'ST': Color10, 'BLK': Color11, '+/-': Color12, 'TO': Color13}
+        for i, col in enumerate(row.index):
+            if col in color_map:
+                styles[i] = f"background-color: {color_map[col]};"
+        return styles
+    styled_team2 = team2.style.apply(style_matchup, axis=1)
+    return styled_team2
