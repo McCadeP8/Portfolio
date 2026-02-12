@@ -837,6 +837,7 @@ def players_in_table(df: pd.DataFrame, pics: pd.DataFrame, selected_players: lis
     return df
 
 def picks_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
+    df = df.drop(columns=["TwoYearLimit"])
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
     df = df[df['Pick'].isin(selected_players)]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes', 'TeamTouched','Pick'])
@@ -847,6 +848,7 @@ def picks_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFra
     return df
 
 def picks_in_table(df: pd.DataFrame, selected_players: list[str]) -> pd.DataFrame:
+    df = df.drop(columns=["TwoYearLimit"])
     df["Pick"] = (df["OGTeam"].astype(str) + " " + df["Year"].astype(str) + " " + df["Round"].astype(str))
     df = df[df['Pick'].isin(selected_players)]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes', 'TeamTouched','Pick'])
