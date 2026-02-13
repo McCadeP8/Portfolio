@@ -1168,13 +1168,21 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
-    df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
-    if "MP" in df.columns:
-        df["MP"] = ((df["MP"] * 60).round().astype("Int64").apply(lambda s: "—" if pd.isna(s) else f"{s // 60}:{s % 60:02d}"))
-    pct_cols = ["TS%", "2PT%", "3PT%", "FT%"]
-    for col in pct_cols:
-        if col in df.columns:
-            df[col] = df[col].apply(lambda x: "—" if pd.isna(x) else f"{x:.2%}")
+    for col in df.columns:
+        if col == 'Team':
+            continue
+        if col in ['TS%', '2PT%', '3PT%', 'FT%']:
+            df.iloc[0, df.columns.get_loc(col)] = f"{float(df.iloc[0][col]) * 100:.1f}"
+        elif col == 'MP':
+            minutes = float(df.iloc[0][col])
+            mins = int(minutes)
+            secs = int((minutes - mins) * 60)
+            df.iloc[0, df.columns.get_loc(col)] = f"{mins}:{secs:02d}"
+        elif col == '+/-':
+            val = float(df.iloc[0][col])
+            df.iloc[0, df.columns.get_loc(col)] = f"{val:+.1f}"
+        else: 
+            df.iloc[0, df.columns.get_loc(col)] = f"{float(df.iloc[0][col]):.0f}"
     return df
 
 def team_with_ranks(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int) -> pd.DataFrame:
