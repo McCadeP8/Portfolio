@@ -239,18 +239,18 @@ with tab3:
             st.subheader("Regular Season Matchups")
             scoreboard1 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[0])
             st.dataframe(scoreboard1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(RegOpponents > 1):
+        if len(RegOpponents) > 1:
             scoreboard2 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[1])
             st.dataframe(scoreboard2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(PIOpponents > 0):
+        if len(PIOpponents) > 0:
             st.subheader("Play-In Matchups")
             scoreboard3 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PIOpponents[0])
             st.dataframe(scoreboard3, width ="stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(PlayOpponents > 0):
+        if len(PlayOpponents) > 0:
             st.subheader("Playoff Matchups")
             scoreboard4 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PlayOpponents[0])
             st.dataframe(scoreboard4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(ISTOpponents > 0):
+        if len(ISTOpponents) > 0:
             st.subheader("In-Season Tournament Matchups")
             scoreboard5 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, ISTOpponents[0])
             st.dataframe(scoreboard5, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
