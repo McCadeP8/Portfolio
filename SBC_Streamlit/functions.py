@@ -1284,3 +1284,5 @@ def get_opponents(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, Select
     opponents = ["San Diego Seals" if opponent == "San Diego Wave" else opponent for opponent in opponents]
     opponents = [full_team_to_location.get(opponent) for opponent in opponents]
     return opponents
+
+#ABC
