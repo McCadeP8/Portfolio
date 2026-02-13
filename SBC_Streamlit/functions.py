@@ -1168,9 +1168,6 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
-
-
- #ABC
     df["Team"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     if "MP" in df.columns:
         df["MP"] = ((df["MP"] * 60).round().astype("Int64").apply(lambda s: "—" if pd.isna(s) else f"{s // 60}:{s % 60:02d}"))
@@ -1178,9 +1175,6 @@ def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
     for col in pct_cols:
         if col in df.columns:
             df[col] = df[col].apply(lambda x: "—" if pd.isna(x) else f"{x:.2%}")
-    
-    
-    
     return df
 
 def team_with_ranks(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int) -> pd.DataFrame:
@@ -1233,6 +1227,18 @@ def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str, SelectedCategory:
 def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int, Opponent: str) -> pd.DataFrame:
     team1 = team_with_ranks(df, SelectedTeam, SelectedYear, SelectedPeriod)
     team2 = team_with_ranks(df, Opponent, SelectedYear, SelectedPeriod)
+    for col in team1.columns:
+        if col == 'Team':
+            continue
+        if col in ['TS%', '2PT%', '3PT%', 'FT%']:
+            team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]):.3f}"
+            team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]):.3f}"
+        elif col in ['MP', '+/-']:
+            team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]):.1f}"
+            team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]):.1f}"
+        else:
+            team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]):.0f}"
+            team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]):.0f}"
     team1_scores = team1.iloc[0]
     team2_scores = team2.iloc[0]
     scores = pd.concat([team1_scores, team2_scores], axis=1).T
@@ -1284,5 +1290,3 @@ def get_opponents(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, Select
     opponents = ["San Diego Seals" if opponent == "San Diego Wave" else opponent for opponent in opponents]
     opponents = [full_team_to_location.get(opponent) for opponent in opponents]
     return opponents
-
-#ABC
