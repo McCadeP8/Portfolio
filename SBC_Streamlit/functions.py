@@ -1172,7 +1172,7 @@ def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
         if col == 'Team':
             continue
         if col in ['TS%', '2PT%', '3PT%', 'FT%']:
-            df.iloc[0, df.columns.get_loc(col)] = f"{float(df.iloc[0][col]) * 100:.1f}"
+            df.iloc[0, df.columns.get_loc(col)] = f"{float(df.iloc[0][col]) * 100:.2f}"
         elif col == 'MP':
             minutes = float(df.iloc[0][col])
             mins = int(minutes)
@@ -1240,8 +1240,8 @@ def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, S
             continue
         if col in ['TS%', '2PT%', '3PT%', 'FT%']:
             # Multiply by 100 and format
-            team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]) * 100:.1f}"
-            team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]) * 100:.1f}"
+            team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]) * 100:.2f}"
+            team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]) * 100:.2f}"
         elif col == 'MP':
             minutes1 = float(team1.iloc[0][col])
             mins1 = int(minutes1)
