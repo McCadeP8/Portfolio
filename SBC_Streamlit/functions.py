@@ -114,10 +114,17 @@ def get_fantrax_matchups(year) -> pd.DataFrame:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return df
 
-@st.cache_data(ttl=21600)
+@st.cache_data()
 def get_draft_history() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1546613902"
     df = pd.read_csv(csv_url)
+    return df
+
+@st.cache_data()
+def get_all_time_schedule() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=998177566"
+    df = pd.read_csv(csv_url)
+    df = df[["Type", "Year", "Period", "TeamA", "TeamB"]]
     return df
 
 def current_matchup_period() -> float:
@@ -1263,3 +1270,17 @@ def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, S
         return styles
     styled_team2 = team2.style.apply(style_matchup, axis=1)
     return styled_team2
+
+def get_opponents(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int, Type: str) -> list:
+    filtered = df[(df["Type"] == Type) & (df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
+    filtered = filtered[(filtered["TeamA"].str.contains(SelectedTeam)) | (filtered["TeamB"].str.contains(SelectedTeam))]
+    full_team_to_location = {f"{loc} {info['nickname']}": loc for loc, info in team_info.items()}
+    opponents = []
+    for _, row in filtered.iterrows():
+        if SelectedTeam in row["TeamA"]:
+            opponents.append(row["TeamB"])
+        else:
+            opponents.append(row["TeamA"])
+    opponents = ["San Diego Seals" if opponent == "San Diego Wave" else opponent for opponent in opponents]
+    opponents = [full_team_to_location.get(opponent) for opponent in opponents]
+    return opponents
