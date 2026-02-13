@@ -1231,12 +1231,24 @@ def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, S
         if col == 'Team':
             continue
         if col in ['TS%', '2PT%', '3PT%', 'FT%']:
-            team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]):.3f}"
-            team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]):.3f}"
-        elif col in ['MP', '+/-']:
-            team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]):.1f}"
-            team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]):.1f}"
-        else:
+            # Multiply by 100 and format
+            team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]) * 100:.1f}"
+            team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]) * 100:.1f}"
+        elif col == 'MP':
+            minutes1 = float(team1.iloc[0][col])
+            mins1 = int(minutes1)
+            secs1 = int((minutes1 - mins1) * 60)
+            team1.iloc[0, team1.columns.get_loc(col)] = f"{mins1}:{secs1:02d}"
+            minutes2 = float(team2.iloc[0][col])
+            mins2 = int(minutes2)
+            secs2 = int((minutes2 - mins2) * 60)
+            team2.iloc[0, team2.columns.get_loc(col)] = f"{mins2}:{secs2:02d}"
+        elif col == '+/-':
+            val1 = float(team1.iloc[0][col])
+            val2 = float(team2.iloc[0][col])
+            team1.iloc[0, team1.columns.get_loc(col)] = f"{val1:+.1f}"
+            team2.iloc[0, team2.columns.get_loc(col)] = f"{val2:+.1f}"
+        else: 
             team1.iloc[0, team1.columns.get_loc(col)] = f"{float(team1.iloc[0][col]):.0f}"
             team2.iloc[0, team2.columns.get_loc(col)] = f"{float(team2.iloc[0][col]):.0f}"
     team1_scores = team1.iloc[0]
