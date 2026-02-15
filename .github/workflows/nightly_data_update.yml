@@ -21,7 +21,7 @@ jobs:
         
     - name: Install dependencies
       run: |
-        pip install pandas requests python-dateutil pyarrow
+        pip install pandas requests python-dateutil pyarrow streamlit typing_extensions packaging tornado
         
     - name: Run data update script
       env:
