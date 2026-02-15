@@ -21,6 +21,7 @@ def get_all_team_stats_history() -> pd.DataFrame:
         dfs.append(df)
     final_df = pd.concat(dfs, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
+    final_df["Created"] = pd.Timestamp.now()
     final_df.to_parquet("all_team_stats_history.parquet", index=False)
     send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_team_stats_history")
 
@@ -42,6 +43,7 @@ def get_all_time_rosters_history() -> pd.DataFrame:
         all_rosters.append(df2)
     final_df = pd.concat(all_rosters, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
+    final_df["Created"] = pd.Timestamp.now()
     final_df.to_parquet("all_time_rosters_history.parquet", index=False)
     send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_rosters_history")
 
