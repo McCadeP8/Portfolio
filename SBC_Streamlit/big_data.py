@@ -6,7 +6,7 @@ from functions import get_matchup_stats, get_all_time_schedule, get_fantrax_rost
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 def get_all_team_stats_history() -> pd.DataFrame:
-    df_old = pd.read_parquet("SBC_Streamlit/all_team_stats_history.parquet")
+    df_old = pd.read_parquet("all_team_stats_history.parquet")
     df_old = df_old[df_old["Year"] != current_year]
     all_dates = get_all_time_schedule()
     all_dates = all_dates[all_dates["Year"] == current_year]
@@ -21,11 +21,11 @@ def get_all_team_stats_history() -> pd.DataFrame:
         dfs.append(df)
     final_df = pd.concat(dfs, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
-    final_df.to_parquet("SBC_Streamlit/all_team_stats_history.parquet", index=False)
+    final_df.to_parquet("all_team_stats_history.parquet", index=False)
     send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_team_stats_history")
 
 def get_all_time_rosters_history() -> pd.DataFrame:
-    df_old = pd.read_parquet("SBC_Streamlit/all_time_rosters_history.parquet")
+    df_old = pd.read_parquet("all_time_rosters_history.parquet")
     df_old = df_old[df_old["Year"] != current_year]
     csv_url = ("https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429")
     df = pd.read_csv(csv_url)
@@ -42,7 +42,7 @@ def get_all_time_rosters_history() -> pd.DataFrame:
         all_rosters.append(df2)
     final_df = pd.concat(all_rosters, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
-    final_df.to_parquet("SBC_Streamlit/all_time_rosters_history.parquet", index=False)
+    final_df.to_parquet("all_time_rosters_history.parquet", index=False)
     send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_rosters_history")
 
 get_all_team_stats_history()
