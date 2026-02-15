@@ -1310,3 +1310,26 @@ def get_opponents(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, Select
     opponents = ["San Diego Seals" if opponent == "San Diego Wave" else opponent for opponent in opponents]
     opponents = [full_team_to_location.get(opponent) for opponent in opponents]
     return opponents
+
+def get_transactions(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
+    team_df = df[df["team_name"].str.startswith(SelectedTeam, na=False)].copy()
+    time_periods = df[['Year', 'period']].drop_duplicates().sort_values(['Year', 'period'])
+    time_periods['time_seq'] = range(len(time_periods))
+    team_df = team_df.merge(time_periods, on=['Year', 'period'], how='left')
+    team_df = team_df.sort_values(['id', 'time_seq'])
+    team_df['prev_time_seq'] = team_df.groupby('id')['time_seq'].shift(1)
+    team_df['time_gap'] = team_df['time_seq'] - team_df['prev_time_seq']
+    team_df['transaction_type'] = None
+    team_df.loc[team_df['prev_time_seq'].isna(), 'transaction_type'] = 'joined' 
+    team_df.loc[team_df['time_gap'] > 1, 'transaction_type'] = 'joined'
+    team_df['next_time_seq'] = team_df.groupby('id')['time_seq'].shift(-1)
+    team_df['next_gap'] = team_df['next_time_seq'] - team_df['time_seq']
+    team_df.loc[team_df['next_time_seq'].isna(), 'transaction_type'] = 'left'
+    team_df.loc[team_df['next_gap'] > 1, 'transaction_type'] = 'left'
+    team_df = team_df[team_df['transaction_type'].notna()][['id', 'team_name', 'period', 'Year', 'transaction_type']]
+    return team_df
+
+def send_discord_message(DISCORD_WEBHOOK_URL: str, message: str):
+    payload = {"content": message}
+    response = requests.post(DISCORD_WEBHOOK_URL, json=payload)
+    response.raise_for_status()

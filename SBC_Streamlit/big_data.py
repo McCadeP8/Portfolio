@@ -1,16 +1,15 @@
 import pandas as pd
-import streamlit as st
-import requests
-import json
-from data import current_year, league_ids
-from functions import get_matchup_stats, get_matchup_period_dates
+import os
+from data import current_year
+from functions import get_matchup_stats, get_all_time_schedule, get_fantrax_roster, send_discord_message
+
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 def get_all_team_stats_history() -> pd.DataFrame:
-    df_old = pd.read_parquet("./SBC_Streamlit/all_team_stats_history.parquet")
+    df_old = pd.read_parquet("SBC_Streamlit/all_team_stats_history.parquet")
     df_old = df_old[df_old["Year"] != current_year]
-    all_dates = get_matchup_period_dates()
+    all_dates = get_all_time_schedule()
     all_dates = all_dates[all_dates["Year"] == current_year]
-    all_dates = all_dates[all_dates["Season"] == "Regular"]
     all_dates = (all_dates[["Year", "Period"]].drop_duplicates().reset_index(drop=True))
     dfs = []
     for i, row in enumerate(all_dates.itertuples(index=False), start=1):
@@ -20,21 +19,31 @@ def get_all_team_stats_history() -> pd.DataFrame:
         df["Year"] = year
         df["Period"] = period
         dfs.append(df)
-        print(f"row {i} done for {year} season, period {period}")
     final_df = pd.concat(dfs, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
     final_df.to_parquet("SBC_Streamlit/all_team_stats_history.parquet", index=False)
-    print("Complete")
+    send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_team_stats_history")
 
-@st.cache_data(ttl=86400)
-def get_all_fantrax_standings(year) -> pd.DataFrame:
-    roster_url = f"https://www.fantrax.com/fxea/general/getStandings?leagueId={league_ids.get(year)}"
-    headers = {'Cookie': 'JSESSIONID='}
-    response = requests.get(roster_url, headers=headers)
-    if response.status_code == 200:
-        standings = json.loads(response.text)
-        df = pd.DataFrame(standings)
-    else:
-        print(f"Failed to fetch data - Status code: {response.status_code}")
-    return df
+def get_all_time_rosters_history() -> pd.DataFrame:
+    df_old = pd.read_parquet("SBC_Streamlit/all_time_rosters_history.parquet")
+    df_old = df_old[df_old["Year"] != current_year]
+    csv_url = ("https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429")
+    df = pd.read_csv(csv_url)
+    df = df[df["Year"] == current_year]
+    df = (df[["games", "Year"]].drop_duplicates().reset_index(drop=True))
+    all_rosters = []
+    for i, row in df.iterrows():
+        year = row["Year"]
+        games = row["games"]
+        df2 = get_fantrax_roster(year, games)
+        df2["Year"] = year
+        cols = ["id", "position", "status", "team_name", "period", "Year"]
+        df2 = df2[[c for c in cols if c in df2.columns]]
+        all_rosters.append(df2)
+    final_df = pd.concat(all_rosters, ignore_index=True)
+    final_df = pd.concat([df_old, final_df], ignore_index=True)
+    final_df.to_parquet("SBC_Streamlit/all_time_rosters_history.parquet", index=False)
+    send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_rosters_history")
 
+get_all_team_stats_history()
+get_all_time_rosters_history()
