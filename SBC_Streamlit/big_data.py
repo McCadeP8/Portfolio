@@ -3,7 +3,7 @@ import os
 from data import current_year
 from functions import get_matchup_stats, get_all_time_schedule, get_fantrax_roster, send_discord_message
 
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 
 def get_all_team_stats_history() -> pd.DataFrame:
     df_old = pd.read_parquet("all_team_stats_history.parquet")
