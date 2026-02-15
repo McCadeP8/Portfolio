@@ -1,0 +1,31 @@
+name: Nightly Data Update
+
+on:
+  schedule:
+    # Runs at 2 AM UTC every day (adjust time as needed)
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install pandas requests python-dateutil pyarrow streamlit typing_extensions packaging tornado
+        
+    - name: Run data update script
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        cd SBC_Streamlit
+        python big_data.py
