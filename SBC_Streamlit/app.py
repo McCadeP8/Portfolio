@@ -626,6 +626,10 @@ with tab9:
         st.subheader("Southwest Division Champion")
         SWChampion = get_team_award(team_award_history, 2025, "Southwest Champion")
         st.image(SWChampion)
+        st.subheader("Regular Season Champion")
+        RSChampion = get_team_award(team_award_history, 2025, "RS Champion")
+        st.image(RSChampion)
+
 
 
     with col2:
