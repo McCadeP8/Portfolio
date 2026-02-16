@@ -1403,6 +1403,7 @@ def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, 
         return None 
     df["logo"] = df["team_name"].apply(lambda x: get_team_logo(x, team_info))
     df["conf"] = df["conf"].apply(lambda x: get_team_logo(x, team_info))
+    df["conf"] = df["conf"].apply(lambda x: get_team_conf(x, team_info))
     df = df[df["conf"] == Conference]
     df = df[["logo", "Winner", "Picture_Online"]]
     df = df.sort_values("Winner")
