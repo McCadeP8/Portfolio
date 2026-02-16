@@ -617,6 +617,16 @@ with tab9:
         st.subheader("SBCFBL Western Conference Most Valuable Player")
         WFinalsMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "WCF MVP")
         st.dataframe(WFinalsMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+        st.subheader("Pacific Division Champion")
+        PacChampion = get_team_award(team_award_history, 2025, "Pacific Champion")
+        st.image(PacChampion)
+        st.subheader("Northwest Division Champion")
+        NWChampion = get_team_award(team_award_history, 2025, "Northwest Champion")
+        st.image(NWChampion)
+        st.subheader("Southwest Division Champion")
+        SWChampion = get_team_award(team_award_history, 2025, "Southwest Champion")
+        st.image(SWChampion)
+
 
     with col2:
         st.subheader("Eastern Conference Champion")
@@ -625,6 +635,16 @@ with tab9:
         st.subheader("SBCFBL Eastern Conference Most Valuable Player")
         EFinalsMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "ECF MVP")
         st.dataframe(EFinalsMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+        st.subheader("Central Division Champion")
+        CChampion = get_team_award(team_award_history, 2025, "Central Champion")
+        st.image(CChampion)
+        st.subheader("Atlantic Division Champion")
+        AChampion = get_team_award(team_award_history, 2025, "Atlantic Champion")
+        st.image(AChampion)
+        st.subheader("Southeast Division Champion")
+        SEChampion = get_team_award(team_award_history, 2025, "Southeast Champion")
+        st.image(SEChampion)
+
 
     col1, col2, col3 = st.columns([1,1,1])
     with col1:
