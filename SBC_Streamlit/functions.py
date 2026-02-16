@@ -1391,6 +1391,7 @@ def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, 
     df = df.merge(df3, how="left", left_on="fantraxId", right_on="id")
     df = df.merge(df4, how="left", left_on="Winner", right_on="Player")
     def get_team_logo(team_name, team_info):
+        for city, info in team_info.items():
             full_name = f"{city} {info['nickname']}"
             if team_name == full_name:
                 return info["logo"]
@@ -1402,7 +1403,6 @@ def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, 
                 return info["conf"]
         return None 
     df["logo"] = df["team_name"].apply(lambda x: get_team_logo(x, team_info))
-    df["conf"] = df["conf"].apply(lambda x: get_team_logo(x, team_info))
     df["conf"] = df["conf"].apply(lambda x: get_team_conf(x, team_info))
     df = df[df["conf"] == Conference]
     df = df[["logo", "Winner", "Picture_Online"]]
