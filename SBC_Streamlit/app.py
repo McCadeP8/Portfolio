@@ -580,18 +580,31 @@ with tab8:
         st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
 
 with tab9:
-    st.title("2022 SBCFBL Awards")
+    st.title("2023 SBCFBL Awards")
 
     col1, col2 = st.columns([1,1])
 
     with col1:
         st.subheader("SBCFBL Champion")
-        Champion = get_team_award(team_award_history, 2022, "Champion")
+        Champion = get_team_award(team_award_history, 2023, "Champion")
         st.image(Champion)
+        st.subheader("SBCFBL Finals MVP")
+        FinalsMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Finals MVP")
+        st.dataframe(FinalsMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+        st.subheader("List of Champions")
+        PChampion = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Champion")
+        st.dataframe(PChampion, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
     with col2:
         st.subheader("SBCFBL Cup Winner")
         CupChamp = get_team_award(team_award_history, 2024, "Cup Winner")
         st.image(CupChamp)
+        st.subheader("SBCFBL Cup MVP")
+        CupMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Cup MVP")
+        st.dataframe(CupMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+        st.subheader("List of Cup Winners")
+        CupPlayers = get_single_award(award_history, ft_players, all_time_rosters, pics, 2024, "Cup Winner")
+        st.dataframe(CupPlayers, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     col1, col2, col3 = st.columns([1,1,1])
     with col1:
