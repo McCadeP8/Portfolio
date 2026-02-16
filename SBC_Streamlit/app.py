@@ -630,8 +630,6 @@ with tab9:
         RSChampion = get_team_award(team_award_history, 2025, "RS Champion")
         st.image(RSChampion)
 
-
-
     with col2:
         st.subheader("Eastern Conference Champion")
         EChampion = get_team_award(team_award_history, 2025, "EC Champion")
@@ -674,6 +672,23 @@ with tab9:
         st.subheader("Sixth Man of the Year")
         MOY6 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "6MOY")
         st.dataframe(MOY6, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+    col1, col2, col3 = st.columns([1,1,1])
+
+    with col1:
+        st.subheader("All-SBC First Team")
+        ASBC1 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-SBC 1st Team")
+        st.dataframe(ASBC1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+    with col2:
+        st.subheader("All-SBC Second Team")
+        ASBC2 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-SBC 2nd Team")
+        st.dataframe(ASBC2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+    with col3:
+        st.subheader("All-SBC Third Team")
+        ASBC3 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-SBC 3rd Team")
+        st.dataframe(ASBC3, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
 with tab10:
     st.subheader("SBCFBL Introduction")
