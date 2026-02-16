@@ -608,6 +608,24 @@ with tab9:
         CupPlayers = CupPlayers.drop(columns=["logo"])
         st.dataframe(CupPlayers, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
+    col1, col2 = st.columns([1,1])
+
+    with col1:
+        st.subheader("Western Conference Champion")
+        WChampion = get_team_award(team_award_history, 2025, "WC Champion")
+        st.image(WChampion)
+        st.subheader("SBCFBL Western Conference Most Valuable Player")
+        WFinalsMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "WCF MVP")
+        st.dataframe(WFinalsMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+    with col2:
+        st.subheader("Eastern Conference Champion")
+        EChampion = get_team_award(team_award_history, 2025, "EC Champion")
+        st.image(EChampion)
+        st.subheader("SBCFBL Eastern Conference Most Valuable Player")
+        EFinalsMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "ECF MVP")
+        st.dataframe(EFinalsMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
     col1, col2, col3 = st.columns([1,1,1])
     with col1:
         st.subheader("Most Valuable Player")
