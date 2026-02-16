@@ -593,18 +593,20 @@ with tab9:
         st.dataframe(FinalsMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
         st.subheader("List of Champions")
         PChampion = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Champion")
-        st.dataframe(PChampion, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+        PChampion = PChampion.drop(columns=["logo"])
+        st.dataframe(PChampion, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     with col2:
         st.subheader("SBCFBL Cup Winner")
         CupChamp = get_team_award(team_award_history, 2024, "Cup Winner")
         st.image(CupChamp)
         st.subheader("SBCFBL Cup MVP")
-        CupMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Cup MVP")
+        CupMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2024, "Cup MVP")
         st.dataframe(CupMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
         st.subheader("List of Cup Winners")
         CupPlayers = get_single_award(award_history, ft_players, all_time_rosters, pics, 2024, "Cup Winner")
-        st.dataframe(CupPlayers, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+        CupPlayers = CupPlayers.drop(columns=["logo"])
+        st.dataframe(CupPlayers, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     col1, col2, col3 = st.columns([1,1,1])
     with col1:
