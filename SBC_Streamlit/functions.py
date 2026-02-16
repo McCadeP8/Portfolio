@@ -1432,7 +1432,7 @@ def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame
     df["logo"] = df["team_name"].apply(lambda x: get_team_logo(x, team_info))
     df["conf"] = df["team_name"].apply(lambda x: get_team_conf(x, team_info))
     df = df[df["conf"] == Conference]
-    df = df["Week", "logo", "Winner", "Picture_Online"]
-    df = df.sort_values("Week", "Winner")
+    df = df[["Week", "logo", "Winner", "Picture_Online"]]
+    df = df.sort_values("Week")
     return df
 
