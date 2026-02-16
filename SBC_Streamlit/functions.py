@@ -1372,6 +1372,7 @@ def get_single_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4
         return None 
     df["logo"] = df["team_name"].apply(lambda x: get_team_logo(x, team_info))
     df = df[["logo", "Winner", "Picture_Online"]]
+    df = df.sort_values("Winner")
     return df
 
 def get_team_award(df: pd.DataFrame, Year: int, Award: str) -> str:
@@ -1380,5 +1381,3 @@ def get_team_award(df: pd.DataFrame, Year: int, Award: str) -> str:
     winner = df.iloc[0]["Winner"] 
     logo = team_info.get(winner, {}).get("wordmark", "")
     return logo
-
-#DSB
