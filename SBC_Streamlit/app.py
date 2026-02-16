@@ -580,57 +580,57 @@ with tab8:
         st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
 
 with tab9:
-    st.title("2023 SBCFBL Awards")
+    st.title("2025 SBCFBL Awards")
 
     col1, col2 = st.columns([1,1])
 
     with col1:
         st.subheader("SBCFBL Champion")
-        Champion = get_team_award(team_award_history, 2023, "Champion")
+        Champion = get_team_award(team_award_history, 2025, "Champion")
         st.image(Champion)
-        st.subheader("SBCFBL Finals MVP")
-        FinalsMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Finals MVP")
+        st.subheader("SBCFBL Finals Most Valuable Player")
+        FinalsMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "Finals MVP")
         st.dataframe(FinalsMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
-        st.subheader("List of Champions")
-        PChampion = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Champion")
+        st.subheader("List of SBCFBL Champions")
+        PChampion = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "Champion")
         PChampion = PChampion.drop(columns=["logo"])
         st.dataframe(PChampion, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     with col2:
         st.subheader("SBCFBL Cup Winner")
-        CupChamp = get_team_award(team_award_history, 2024, "Cup Winner")
+        CupChamp = get_team_award(team_award_history, 2025, "Cup Winner")
         st.image(CupChamp)
-        st.subheader("SBCFBL Cup MVP")
-        CupMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2024, "Cup MVP")
+        st.subheader("SBCFBL Cup Most Valuable Player")
+        CupMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "Cup MVP")
         st.dataframe(CupMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
-        st.subheader("List of Cup Winners")
-        CupPlayers = get_single_award(award_history, ft_players, all_time_rosters, pics, 2024, "Cup Winner")
+        st.subheader("List of SBCFBL Cup Winners")
+        CupPlayers = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "Cup Winner")
         CupPlayers = CupPlayers.drop(columns=["logo"])
         st.dataframe(CupPlayers, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     col1, col2, col3 = st.columns([1,1,1])
     with col1:
         st.subheader("Most Valuable Player")
-        MVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "MVP")
+        MVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "MVP")
         st.dataframe(MVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
         st.subheader("Clutch Player of the Year")
-        Clutch = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Clutch")
+        Clutch = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "Clutch")
         st.dataframe(Clutch, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     with col2:
         st.subheader("Defensive Player of the Year")
-        DPOY = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "DPOY")
+        DPOY = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "DPOY")
         st.dataframe(DPOY, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
         st.subheader("Most Improved Player")
-        MIP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "MIP")
+        MIP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "MIP")
         st.dataframe(MIP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     with col3:
         st.subheader("Rookie of the Year")
-        ROY = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "ROY")
+        ROY = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "ROY")
         st.dataframe(ROY, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
         st.subheader("Sixth Man of the Year")
-        MOY6 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "6MOY")
+        MOY6 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "6MOY")
         st.dataframe(MOY6, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
 with tab10:
