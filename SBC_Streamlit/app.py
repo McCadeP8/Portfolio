@@ -700,7 +700,7 @@ with tab9:
         AR1 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-Rookie 1st Team")
         st.dataframe(AR1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
         st.subheader("Western Conference All-Stars")
-        ASW = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-Star", "West")
+        ASW = get_all_stars_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-Star", "West")
         st.dataframe(ASW, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
 
@@ -712,7 +712,7 @@ with tab9:
         AR2 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-Rookie 2nd Team")
         st.dataframe(AR2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
         st.subheader("Eastern Conference All-Stars")
-        ASE = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-Star", "East")
+        ASE = get_all_stars_award(award_history, ft_players, all_time_rosters, pics, 2025, "All-Star", "East")
         st.dataframe(ASE, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
 
