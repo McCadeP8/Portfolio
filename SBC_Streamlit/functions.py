@@ -1408,3 +1408,31 @@ def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, 
     df = df[["logo", "Winner", "Picture_Online"]]
     df = df.sort_values("Winner")
     return df
+
+def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str, Conference: str) -> pd.DataFrame:
+    df = df[df["Award"] == Award]
+    df = df[df["Year"] == Year]
+    df = df.merge(df2, how="left", left_on="Winner", right_on="name")
+    df3 = df3[df3["Year"] == Year]
+    df3 = df3[df3["period"] == df3["period"].max()]
+    df = df.merge(df3, how="left", left_on="fantraxId", right_on="id")
+    df = df.merge(df4, how="left", left_on="Winner", right_on="Player")
+    def get_team_logo(team_name, team_info):
+        for city, info in team_info.items():
+            full_name = f"{city} {info['nickname']}"
+            if team_name == full_name:
+                return info["logo"]
+        return None
+    def get_team_conf(team_name, team_info):
+        for city, info in team_info.items():
+            full_name = f"{city} {info['nickname']}"
+            if team_name == full_name:
+                return info["conf"]
+        return None 
+    df["logo"] = df["team_name"].apply(lambda x: get_team_logo(x, team_info))
+    df["conf"] = df["team_name"].apply(lambda x: get_team_conf(x, team_info))
+    df = df[df["conf"] == Conference]
+    df = df["Week", "logo", "Winner", "Picture_Online"]
+    df = df.sort_values("Week", "Winner")
+    return df
+
