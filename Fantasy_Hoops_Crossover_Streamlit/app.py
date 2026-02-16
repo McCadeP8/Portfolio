@@ -15,16 +15,16 @@ col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
 with col1:
     SelectedTeam1 = st.selectbox("Select a team", options=teams["Team"].tolist())
-    st.image(get_logo(SelectedTeam1))
+    st.image(get_logo(teams, SelectedTeam1))
 
 with col2:
     SelectedTeam2 = st.selectbox("Select a team", options=teams["Team"].tolist())
-    st.image(get_logo(SelectedTeam2))
+    st.image(get_logo(teams, SelectedTeam2))
 
 with col3:
     SelectedTeam3 = st.selectbox("Select a team", options=teams["Team"].tolist())
-    st.image(get_logo(SelectedTeam3))
+    st.image(get_logo(teams, SelectedTeam3))
 
 with col4:
     SelectedTeam4 = st.selectbox("Select a team", options=teams["Team"].tolist())
-    st.image(get_logo(SelectedTeam4))
+    st.image(get_logo(teams, SelectedTeam4))
