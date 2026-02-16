@@ -1,0 +1,30 @@
+import streamlit as st
+import re as re
+from data import get_weekly_scores, get_schedule, get_teams, get_logo
+
+st.set_page_config(
+    page_title = "Fantasy Hoops Crossover",
+    page_icon = ":basketball:",
+    layout = "wide")
+
+teams = get_teams()
+schedule = get_schedule()
+scores = get_weekly_scores()
+
+col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+
+with col1:
+    SelectedTeam1 = st.selectbox("Select a team", options=teams["Team"].tolist())
+    st.image(get_logo(SelectedTeam1))
+
+with col2:
+    SelectedTeam2 = st.selectbox("Select a team", options=teams["Team"].tolist())
+    st.image(get_logo(SelectedTeam2))
+
+with col3:
+    SelectedTeam3 = st.selectbox("Select a team", options=teams["Team"].tolist())
+    st.image(get_logo(SelectedTeam3))
+
+with col4:
+    SelectedTeam4 = st.selectbox("Select a team", options=teams["Team"].tolist())
+    st.image(get_logo(SelectedTeam4))
