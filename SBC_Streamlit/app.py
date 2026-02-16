@@ -1,7 +1,7 @@
 import streamlit as st
 import re as re
 import pandas as pd
-from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_fantrax_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents
+from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_fantrax_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, period, stat_to_scipId
 
@@ -14,9 +14,11 @@ ft_roster = get_fantrax_roster(current_year, period)
 ft_players = get_fantrax_players()
 standings = get_fantrax_standings(current_year)
 dh = get_draft_history()
-all_time_team_stats = pd.read_parquet("SBC_Streamlit/all_team_stats_history.parquet")
-current_matchup = current_matchup_period()
+all_time_team_stats = get_all_time_team_stats()
+all_time_rosters = get_all_time_rosters()
 all_time_schedule = get_all_time_schedule()
+current_matchup = current_matchup_period()
+award_history = get_award_history()
 
 with st.sidebar:
     Teams = sorted(team_info.keys())
@@ -78,7 +80,7 @@ with col1:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", f"{SelectedTeam} Live Score", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "About SBCFBL", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", f"{SelectedTeam} Live Score", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "About SBCFBL", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
@@ -575,9 +577,34 @@ with tab8:
     
     with tablottery:
         base_table = lottery_table(standings)
-        st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—") #ABC
+        st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
 
 with tab9:
+    st.title("2022 SBCFBL Awards")
+    col1, col2 = st.columns([1,1])
+    with col1:
+        st.subheader("Most Valuable Player")
+        MVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "MVP")
+        st.dataframe(MVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small")})
+        st.subheader("Rookie of the Year")
+        ROY = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "ROY")
+        st.dataframe(ROY, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small")})
+        st.subheader("Clutch Player of the Year")
+        Clutch = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "Clutch")
+        st.dataframe(Clutch, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small")})
+
+    with col2:
+        st.subheader("Defensive Player of the Year")
+        DPOY = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "DPOY")
+        st.dataframe(DPOY, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small")})
+        st.subheader("Most Improved Player")
+        MIP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "MIP")
+        st.dataframe(MIP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small")})
+        st.subheader("Sixth Man of the Year")
+        MOY6 = get_single_award(award_history, ft_players, all_time_rosters, pics, 2023, "6MOY")
+        st.dataframe(MOY6, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small")})
+
+with tab10:
     st.subheader("SBCFBL Introduction")
     st.markdown("""
     The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from Seth Partnow, who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
@@ -729,7 +756,7 @@ with tab9:
     This document is intended as a **quick-reference guide** and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered **the premier fantasy basketball experience**.
     """)
 
-with tab10:
+with tab11:
 
     picture_check = data_picture_check(df, pics)
     if picture_check.shape[0] > 0:
@@ -770,5 +797,3 @@ with tab10:
     if positoinal_check_df.shape[0] > 0:
         st.header("Fantrax Positional Check")
         st.dataframe(positoinal_check_df)
-
-        #AB

@@ -42,6 +42,16 @@ def get_draft_picks() -> pd.DataFrame:
     return df
 
 @st.cache_data(ttl=86400)
+def get_all_time_team_stats() -> pd.DataFrame:
+    df = pd.read_parquet("SBC_Streamlit/all_team_stats_history.parquet")
+    return df
+
+@st.cache_data(ttl=86400)
+def get_all_time_rosters() -> pd.DataFrame:
+    df = pd.read_parquet("SBC_Streamlit/all_time_rosters_history.parquet")
+    return df
+
+@st.cache_data(ttl=86400)
 def get_fantrax_roster(year, period) -> pd.DataFrame:
     all_rosters_list = []    
     roster_url = f"https://www.fantrax.com/fxea/general/getTeamRosters?leagueId={league_ids.get(year)}&period={period}"
@@ -117,6 +127,12 @@ def get_fantrax_matchups(year) -> pd.DataFrame:
 @st.cache_data()
 def get_draft_history() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1546613902"
+    df = pd.read_csv(csv_url)
+    return df
+
+@st.cache_data()
+def get_award_history() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=1698988928"
     df = pd.read_csv(csv_url)
     return df
 
@@ -1333,3 +1349,28 @@ def send_discord_message(DISCORD_WEBHOOK_URL: str, message: str):
     payload = {"content": message}
     response = requests.post(DISCORD_WEBHOOK_URL, json=payload)
     response.raise_for_status()
+
+def get_single_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str) -> pd.DataFrame:
+    df = get_award_history()
+    df = df[df["Award"] == Award]
+    df = df[df["Year"] == Year]
+    df = df.merge(df2, how="left", left_on="Winner", right_on="name")
+    df3 = df3[df3["Year"] == Year]
+    df3 = df3[df3["period"] == df3["period"].max()]
+    df = df.merge(df3, how="left", left_on="fantraxId", right_on="id")
+    df = df.merge(df4, how="left", left_on="Winner", right_on="Player")
+    def get_team_logo(team_name, team_info):
+        for city, info in team_info.items():
+            full_name = f"{city} {info['nickname']}"
+            if team_name == full_name:
+                return info["logo"]
+        return None 
+    df["logo"] = df["team_name"].apply(lambda x: get_team_logo(x, team_info))
+    df = df[["logo", "Winner", "Picture_Online"]]
+    return df
+
+df = get_award_history()
+df2 = get_fantrax_players()
+df3 = get_all_time_rosters()
+df4 = get_pictures()
+get_single_award(df, df2, df3, df4, 2023, "MVP")
