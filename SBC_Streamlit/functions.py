@@ -137,6 +137,12 @@ def get_award_history() -> pd.DataFrame:
     return df
 
 @st.cache_data()
+def get_team_award_history() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=451021615"
+    df = pd.read_csv(csv_url)
+    return df
+
+@st.cache_data()
 def get_all_time_schedule() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=998177566"
     df = pd.read_csv(csv_url)
@@ -1351,7 +1357,6 @@ def send_discord_message(DISCORD_WEBHOOK_URL: str, message: str):
     response.raise_for_status()
 
 def get_single_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str) -> pd.DataFrame:
-    df = get_award_history()
     df = df[df["Award"] == Award]
     df = df[df["Year"] == Year]
     df = df.merge(df2, how="left", left_on="Winner", right_on="name")
@@ -1369,8 +1374,9 @@ def get_single_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4
     df = df[["logo", "Winner", "Picture_Online"]]
     return df
 
-df = get_award_history()
-df2 = get_fantrax_players()
-df3 = get_all_time_rosters()
-df4 = get_pictures()
-get_single_award(df, df2, df3, df4, 2023, "MVP")
+def get_team_award(df: pd.DataFrame, Year: int, Award: str) -> str:
+    df = df[df["Award"] == Award]
+    df = df[df["Year"] == Year]
+    winner = df.iloc[0]["Winner"] 
+    logo = team_info.get(winner, {}).get("wordmark", "")
+    return logo
