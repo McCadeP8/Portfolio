@@ -20,7 +20,7 @@ Quad3 = get_quad_record(schedule, scores, RPI, "Quad 3")
 Quad4 = get_quad_record(schedule, scores, RPI, "Quad 4")
 WPPG = get_weighted_ppg(scores)
 
-col1, col2, col3, col4 = st.columns([1, 0.02, 1, 1, 1])
+col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
 with col1:
     SelectedTeam1 = st.selectbox("Select Team 1", options=teams["Team"].tolist(), index=teams["Team"].tolist().index("Jacksonville"))
