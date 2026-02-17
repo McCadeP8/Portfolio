@@ -107,8 +107,8 @@ def get_RPI(df: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     base_2 = base_2[["Team", "OWin %"]]
     base_1 = base_1.merge(base_2, how="left", left_on="Team", right_on="Team")
     base_1 = base_1.merge(base_3, how="left", left_on="Team", right_on="Team")
-    base_1["RPI"] = (0.25 * base_1["Win %"] +0.50 * base_1["OWin %"] + 0.25 * base_1["OOWin %"])
-    base_1["SOS"] = (2/3 * base_1["OWin %"] + 1/3 * base_1["OOWin %"])
+    base_1["RPI"] = (0.25 * base_1["Win %"] +0.50 * base_1["OWin %"] + 0.25 * base_1["OOWin %"]).round(4)
+    base_1["SOS"] = (2/3 * base_1["OWin %"] + 1/3 * base_1["OOWin %"]).round(4)
     base_1 = base_1[["Team", "RPI", "SOS"]]
     base_1["RPI_Rk"] = base_1["RPI"].rank(method="min", ascending=False).astype(int)
     base_1["SOS_Rk"] = base_1["SOS"].rank(method="min", ascending=False).astype(int)
