@@ -27,7 +27,7 @@ with col1:
     with col2:
         st.metric(label = "Conference Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
         st.metric(label = "Quad 1 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
-        st.metric(label = "Quad 4 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+        st.metric(label = "Quad 4 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True) #ABC
 
     st.subheader("Conference Games")
     CG1 = get_team_schedule(schedule, scores, teams, SelectedTeam1, "Conf")
