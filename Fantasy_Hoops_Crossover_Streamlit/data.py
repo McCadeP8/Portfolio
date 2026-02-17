@@ -36,7 +36,7 @@ def get_team_schedule(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, Se
     df = df.merge(df2, how="left", left_on=["Opponent", "Week"], right_on=["Team", "Week"]).rename(columns={"Score": "Opponent Score"})
     df["Result"] = np.select([df["Team Score"] > df["Opponent Score"], df["Team Score"] < df["Opponent Score"]], ["Win", "Loss"], default="Tie")
     df = df.merge(df3[["Team", "Logo"]], how="left", left_on="Opponent", right_on="Team")
-    df = df[["Week", "Type", "Opponent", "Logo", "Team Score", "Opponent Score", "Result"]]
+    df = df[["Week", "Type", "Logo", "Team Score", "Opponent Score", "Result"]]
     df["Result"] = np.where(df["Opponent Score"].isna(), np.nan, df["Result"])
     df = df[df["Type"] == Tournament]
     df = df.drop("Type", axis=1)
