@@ -154,3 +154,20 @@ def get_weighted_ppg(df):
     df["Weight_Rk"] = df["Weighted"].rank(method="min", ascending=False).astype(int)
     df = df[["Team", "Weighted", "Weight_Rk"]]
     return df
+
+def best_wins(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, SelectedTeam: str, Direction: str) -> str:
+    df = df[df["Team"] == SelectedTeam]
+    df[["Week", "Type"]] = df["Matchup"].str.split("_", n=1, expand=True)
+    df = df.merge(df2, how="left", on=["Team", "Week"]).rename(columns={"Score": "Team Score"})
+    df = df.merge(df2, how="left", left_on=["Opponent", "Week"], right_on=["Team", "Week"]).rename(columns={"Score": "Opponent Score"})
+    df["Result"] = np.select([df["Team Score"] > df["Opponent Score"], df["Team Score"] < df["Opponent Score"]], ["Win", "Loss"], default="Tie")
+    df = df.merge(df3[["Team", "Logo"]], how="left", left_on="Opponent", right_on="Team")
+    df = df.drop("Team_y", axis=1)
+    df = df.rename(columns={"Team_x": "Team"})
+    df = df.merge(df4[["Team", "RPI_Rk"]], how="left", left_on="Opponent", right_on="Team")
+    df = df[df["Result"] == Direction]
+    if Direction == "Win":
+        df = (df.sort_values("RPI_Rk", ascending=True).head(8)[["RPI_Rk", "Logo"]])
+    else:
+        df = (df.sort_values("RPI_Rk", ascending=False).head(8)[["RPI_Rk", "Logo"]])
+    return df
