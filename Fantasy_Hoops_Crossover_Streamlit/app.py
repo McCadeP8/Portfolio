@@ -23,6 +23,7 @@ WPPG = get_weighted_ppg(scores)
 col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
 with col1:
+    st.markdown('<div style="border-right:1px solid gray; padding-right:10px">Content 1</div>', unsafe_allow_html=True)
     SelectedTeam1 = st.selectbox("Select Team 1", options=teams["Team"].tolist(), index=teams["Team"].tolist().index("Jacksonville"))
     st.image(get_logo(teams, SelectedTeam1))
 
