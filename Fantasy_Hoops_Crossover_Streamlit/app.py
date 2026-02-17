@@ -23,7 +23,7 @@ WPPG = get_weighted_ppg(scores)
 col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
 with col1:
-    SelectedTeam1 = st.selectbox("Select Team 1", options=teams["Team"].tolist())
+    SelectedTeam1 = st.selectbox("Select Team 1", options=teams["Team"].tolist(), index=teams["Team"].tolist().index("Jacksonville"))
     st.image(get_logo(teams, SelectedTeam1))
 
     col5, col6 = st.columns([1,1])
@@ -79,7 +79,7 @@ with col1:
     st.dataframe(CT1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
 
 with col2:
-    SelectedTeam2 = st.selectbox("Select Team 2", options=teams["Team"].tolist())
+    SelectedTeam2 = st.selectbox("Select Team 2", options=teams["Team"].tolist(), index=teams["Team"].tolist().index("Georgia"))
     st.image(get_logo(teams, SelectedTeam2))
 
     col7, col8 = st.columns([1,1])
@@ -135,7 +135,7 @@ with col2:
     st.dataframe(CT2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
 
 with col3:
-    SelectedTeam3 = st.selectbox("Select Team 3", options=teams["Team"].tolist())
+    SelectedTeam3 = st.selectbox("Select Team 3", options=teams["Team"].tolist(), index=teams["Team"].tolist().index("Boston College"))
     st.image(get_logo(teams, SelectedTeam3))
 
     col9, col10 = st.columns([1,1])
@@ -191,7 +191,7 @@ with col3:
     st.dataframe(CT3, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
 
 with col4:
-    SelectedTeam4 = st.selectbox("Select Team 4", options=teams["Team"].tolist())
+    SelectedTeam4 = st.selectbox("Select Team 4", options=teams["Team"].tolist(), index=teams["Team"].tolist().index("Arkansas State"))
     st.image(get_logo(teams, SelectedTeam4))
 
     col11, col12 = st.columns([1,1])
