@@ -175,7 +175,7 @@ def best_wins(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.Da
 
 def get_final_table(df, df2, df3, df4, df5, df6, df7, df8, df9, df10):
     df = df[["Team", "Record", "Win %", "Rank"]]
-    df = df.rename(columns={"Rank": "Win% Rk", "Record": "W-L", "Win %": "W%"})
+    df = df.rename(columns={"Rank": "W% Rk", "Record": "W-L", "Win %": "W%"})
     df2 = df2[["Team", "Record", "Win %", "Rank"]]
     df2 = df2.rename(columns={"Rank": "C Rk", "Record": "C W-L", "Win %": "C W%"})
     df3 = df3.rename(columns={"Avg Score": "PPG"})
