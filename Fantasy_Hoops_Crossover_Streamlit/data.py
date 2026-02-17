@@ -150,6 +150,7 @@ def get_quad_record(df, df2, df3, Quad):
 def get_weighted_ppg(df):
     df = df.pivot(index="Team", columns="Week", values="Score").reset_index()
     df["Weighted"] = (df["W17"] +0.9 * df["W16"] + 0.8 * df["W15"] + 0.7 * df["W14"] + 0.6 * df["W13"] + 0.5 * df["W12"] + 0.4 * df["W11"] + 0.3 * df["W10"] + 0.2 * df["W9"] + 0.1 * df["W8"]) / 5.5
+    df["Weighted"] = df["Weighted"].round(1)
     df["Weight_Rk"] = df["Weighted"].rank(method="min", ascending=False).astype(int)
     df = df[["Team", "Weighted", "Weight_Rk"]]
     return df
