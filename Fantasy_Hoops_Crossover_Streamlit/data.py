@@ -175,22 +175,22 @@ def best_wins(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.Da
 
 def get_final_table(df, df2, df3, df4, df5, df6, df7, df8, df9, df10):
     df = df[["Team", "Record", "Win %", "Rank"]]
-    df = df.rename(columns={"Rank": "Win% Rk", "Record": "W-L", "Win %": " Win%"})
+    df = df.rename(columns={"Rank": "Win% Rk", "Record": "W-L", "Win %": " W%"})
     df2 = df2[["Team", "Record", "Win %", "Rank"]]
-    df2 = df2.rename(columns={"Rank": "C Rk", "Record": "C W-L", "Win %": "C Win%"})
+    df2 = df2.rename(columns={"Rank": "C Rk", "Record": "C W-L", "Win %": "C W%"})
     df3 = df3.rename(columns={"Avg Score": "PPG"})
     df4 = df4[["Team", "Record", "Win %", "Rank"]]
-    df4 = df4.rename(columns={"Rank": "Q1 Rk", "Record": "Q1 W-L", "Win %": "Q1 Win%"})
+    df4 = df4.rename(columns={"Rank": "Q1 Rk", "Record": "Q1 W-L", "Win %": "Q1 W%"})
     df5 = df5[["Team", "Record", "Win %", "Rank"]]
-    df5 = df5.rename(columns={"Rank": "Q2 Rk", "Record": "Q2 W-L", "Win %": "Q2 Win%"})
+    df5 = df5.rename(columns={"Rank": "Q2 Rk", "Record": "Q2 W-L", "Win %": "Q2 W%"})
     df6 = df6[["Team", "Record", "Win %", "Rank"]]
-    df6 = df6.rename(columns={"Rank": "Q3 Rk", "Record": "Q4 W-L", "Win %": "Q3 Win%"})
+    df6 = df6.rename(columns={"Rank": "Q3 Rk", "Record": "Q3 W-L", "Win %": "Q3 W%"})
     df7 = df7[["Team", "Record", "Win %", "Rank"]]
-    df7 = df7.rename(columns={"Rank": "Q4 Rk", "Record": "Q4 W-L", "Win %": "Q4 Win%"})
+    df7 = df7.rename(columns={"Rank": "Q4 Rk", "Record": "Q4 W-L", "Win %": "Q4 W%"})
     df8 = df8[["Team", "RPI", "RPI_Rk", "SOS", "SOS_Rk"]]
     df8 = df8.rename(columns={"RPI_Rk": "RPI Rk", "SOS_Rk": "SOS Rk"})
     df9 = df9[["Logo", "Team", "Conf"]]
-    df10 = df10.rename(columns={"Weighted": "W8ed PPG", "Weight_Rk": "W8_Rk"})
+    df10 = df10.rename(columns={"Weighted": "W8ed PPG", "Weight_Rk": "W8 Rk"})
     df11 = df9.merge(df, how="left", on = "Team")
     df11 = df11.merge(df2, how="left", on = "Team")
     df11 = df11.merge(df4, how="left", on = "Team")
@@ -200,5 +200,11 @@ def get_final_table(df, df2, df3, df4, df5, df6, df7, df8, df9, df10):
     df11 = df11.merge(df3, how="left", on = "Team")
     df11 = df11.merge(df10, how="left", on = "Team")
     df11 = df11.merge(df8, how="left", on = "Team")
+    pct_cols = ["W%", "C W%", "Q1 W%", "Q2 W%", "Q3 W%", "Q4 W%"]
+    rank_cols = ["Win% Rk", "C Rk", "Q1 Rk", "Q2 Rk", "Q3 Rk", "Q4 Rk"]
+    for col in pct_cols:
+        df11[col] = pd.to_numeric(df11[col], errors="coerce").mul(100).round(2)
+    for col in rank_cols:
+        df11[col] = pd.to_numeric(df11[col].str.replace("T-", "", regex=False),
+                                errors="coerce")
     return df11
-    
