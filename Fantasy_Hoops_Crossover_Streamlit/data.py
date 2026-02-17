@@ -67,17 +67,8 @@ def get_team_record_rank(df: pd.DataFrame, SelectedTeam: str) -> str:
     team_row = df[df["Team"] == SelectedTeam]
     return team_row["Rank"].iloc[0]
 
-def get_opponent_record(df: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    df = get_schedule()
-    df3 = get_base_records(df, df2)
+#def get_opponent_record(df: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+ #   df = get_schedule()
+ #   df3 = get_base_records(df, df2)
 
 
-def PointsPerWeek()
-
-def get_RPI()
-
-def get_SOS()
-
-def get_Weighted_Pts()
-
-def get_
