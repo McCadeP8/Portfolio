@@ -26,7 +26,7 @@ FinalTable = get_final_table(base_records, conf_records, PPG, Quad1, Quad2, Quad
 tab1, tab2 = st.tabs(["All Stats", "Resume Comparison"])
 
 with tab1:
-    SelectedTeamAll = st.multiselect("Select All Teams", options=teams["Team"].tolist(), index=teams["Team"].tolist())
+    SelectedTeamAll = st.multiselect("Select All Teams", options=teams["Team"].tolist())
     if SelectedTeamAll:
         FinalTable = FinalTable[FinalTable["Team"].isin(SelectedTeamAll)]
     st.dataframe(FinalTable, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("")})
