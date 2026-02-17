@@ -1,6 +1,6 @@
 import streamlit as st
 import re as re
-from data import get_weekly_scores, get_schedule, get_teams, get_logo, get_team_schedule, get_base_records, get_conf_records, get_RPI, get_team_stat
+from data import get_weekly_scores, get_schedule, get_teams, get_logo, get_team_schedule, get_base_records, get_conf_records, get_RPI, get_team_stat, points_per_game
 
 st.set_page_config(
     page_title = "Fantasy Hoops Crossover",
@@ -13,6 +13,7 @@ scores = get_weekly_scores()
 base_records = get_base_records(schedule, scores)
 conf_records = get_conf_records(schedule, scores, teams)
 RPI = get_RPI(base_records, schedule)
+PPG = points_per_game(scores)
 
 col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
@@ -26,14 +27,14 @@ with col1:
         st.metric(label = "Quad 2 Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
         st.metric(label = "Quad 3 Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
         st.metric(label = "Ratings Power Index", value = get_team_stat(RPI, SelectedTeam1, "RPI"), delta = get_team_stat(RPI, SelectedTeam1, "RPI_Rk"), delta_color = "off", border = True)
-        st.metric(label = "Points Per Week", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
+        st.metric(label = "Points Per Week", value = get_team_stat(PPG, SelectedTeam1, "Avg_Score"), delta = get_team_stat(base_records, SelectedTeam1, "PPG_Rk"), delta_color = "off", border = True)
 
     with col6:
         st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam1, "Record"), delta = get_team_stat(conf_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 1 Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
         st.metric(label = "Quad 4 Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
         st.metric(label = "Strength of Schedule", value = get_team_stat(RPI, SelectedTeam1, "SOS"), delta = get_team_stat(RPI, SelectedTeam1, "SOS_Rk"), delta_color = "off", border = True)
-        st.metric(label = "Weighted Recent Points", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
+        st.metric(label = "Weighted Recent", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
 
     st.subheader("Conference Games")
     CG1 = get_team_schedule(schedule, scores, teams, SelectedTeam1, "Conf")

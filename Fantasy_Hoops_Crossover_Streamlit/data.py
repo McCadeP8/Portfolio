@@ -121,3 +121,9 @@ def get_team_stat(df, team_name, column_name):
         return None 
     return team_row.iloc[0][column_name]
 
+def points_per_game(df):
+    df = get_weekly_scores()
+    df2 = (df.groupby("Team", as_index=False)["Score"].mean().round(1).rename(columns={"Score": "Avg Score"}))
+    df2["PPG_Rk"] = df2["Avg Score"].rank(method="min", ascending=False).astype(int)
+    return df2
+
