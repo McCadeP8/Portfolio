@@ -28,7 +28,7 @@ with col1:
         st.metric(label = "Points Per Week", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
 
     with col6:
-        st.metric(label = "Conference Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+        st.metric(label = "Conference Record", value = get_team_record(conf_records, SelectedTeam1), delta = get_team_record_rank(conf_records, SelectedTeam1), delta_color = "off", border = True)
         st.metric(label = "Quad 1 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
         st.metric(label = "Quad 4 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
         st.metric(label = "Strength of Schedule", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
