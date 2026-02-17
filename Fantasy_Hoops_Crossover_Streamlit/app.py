@@ -81,7 +81,28 @@ with col1:
 with col2:
     SelectedTeam2 = st.selectbox("Select Team 2", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam2))
-    st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
+
+    col7, col8 = st.columns([1,1])
+    with col7:
+        st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam2, "Record"), delta = get_team_stat(base_records, SelectedTeam2, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 2 Record", value = get_team_stat(Quad2, SelectedTeam2, "Record"), delta = get_team_stat(Quad2, SelectedTeam2, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 3 Record", value = get_team_stat(Quad3, SelectedTeam2, "Record"), delta = get_team_stat(Quad3, SelectedTeam2, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Ratings Power Index", value = get_team_stat(RPI, SelectedTeam2, "RPI"), delta = get_team_stat(RPI, SelectedTeam2, "RPI_Rk"), delta_color = "off", border = True)
+        st.metric(label = "Points Per Week", value = get_team_stat(PPG, SelectedTeam2, "Avg Score"), delta = get_team_stat(PPG, SelectedTeam2, "PPG_Rk"), delta_color = "off", border = True)
+        st.subheader("Best Wins")
+        BestWins2 = best_wins(schedule, scores, teams, RPI, SelectedTeam2, "Win")
+        st.dataframe(BestWins2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})        
+
+    with col8:
+        st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam2, "Record"), delta = get_team_stat(conf_records, SelectedTeam2, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 1 Record", value = get_team_stat(Quad1, SelectedTeam2, "Record"), delta = get_team_stat(Quad1, SelectedTeam2, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 4 Record", value = get_team_stat(Quad4, SelectedTeam2, "Record"), delta = get_team_stat(Quad4, SelectedTeam2, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Strength of Schedule", value = get_team_stat(RPI, SelectedTeam2, "SOS"), delta = get_team_stat(RPI, SelectedTeam2, "SOS_Rk"), delta_color = "off", border = True)
+        st.metric(label = "Weighted Recent", value = get_team_stat(WPPG, SelectedTeam2, "Weighted"), delta = get_team_stat(WPPG, SelectedTeam2, "Weight_Rk"), delta_color = "off", border = True)
+        st.subheader("Worst Losses")
+        BestLoss2 = best_wins(schedule, scores, teams, RPI, SelectedTeam2, "Loss")
+        st.dataframe(BestLoss2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
+
     st.subheader("Conference Games")
     CG2 = get_team_schedule(schedule, scores, teams, SelectedTeam2, "Conf")
     st.dataframe(CG2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
@@ -116,7 +137,28 @@ with col2:
 with col3:
     SelectedTeam3 = st.selectbox("Select Team 3", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam3))
-    st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
+
+    col9, col10 = st.columns([1,1])
+    with col9:
+        st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam3, "Record"), delta = get_team_stat(base_records, SelectedTeam3, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 2 Record", value = get_team_stat(Quad2, SelectedTeam3, "Record"), delta = get_team_stat(Quad2, SelectedTeam3, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 3 Record", value = get_team_stat(Quad3, SelectedTeam3, "Record"), delta = get_team_stat(Quad3, SelectedTeam3, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Ratings Power Index", value = get_team_stat(RPI, SelectedTeam3, "RPI"), delta = get_team_stat(RPI, SelectedTeam3, "RPI_Rk"), delta_color = "off", border = True)
+        st.metric(label = "Points Per Week", value = get_team_stat(PPG, SelectedTeam3, "Avg Score"), delta = get_team_stat(PPG, SelectedTeam3, "PPG_Rk"), delta_color = "off", border = True)
+        st.subheader("Best Wins")
+        BestWins3 = best_wins(schedule, scores, teams, RPI, SelectedTeam3, "Win")
+        st.dataframe(BestWins3, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})        
+
+    with col6:
+        st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam3, "Record"), delta = get_team_stat(conf_records, SelectedTeam3, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 1 Record", value = get_team_stat(Quad1, SelectedTeam3, "Record"), delta = get_team_stat(Quad1, SelectedTeam3, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 4 Record", value = get_team_stat(Quad4, SelectedTeam3, "Record"), delta = get_team_stat(Quad4, SelectedTeam3, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Strength of Schedule", value = get_team_stat(RPI, SelectedTeam3, "SOS"), delta = get_team_stat(RPI, SelectedTeam3, "SOS_Rk"), delta_color = "off", border = True)
+        st.metric(label = "Weighted Recent", value = get_team_stat(WPPG, SelectedTeam3, "Weighted"), delta = get_team_stat(WPPG, SelectedTeam3, "Weight_Rk"), delta_color = "off", border = True)
+        st.subheader("Worst Losses")
+        BestLoss3 = best_wins(schedule, scores, teams, RPI, SelectedTeam3, "Loss")
+        st.dataframe(BestLoss3, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
+
     st.subheader("Conference Games")
     CG3 = get_team_schedule(schedule, scores, teams, SelectedTeam3, "Conf")
     st.dataframe(CG3, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
@@ -151,7 +193,28 @@ with col3:
 with col4:
     SelectedTeam4 = st.selectbox("Select Team 4", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam4))
-    st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
+
+    col5, col6 = st.columns([1,1])
+    with col5:
+        st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam4, "Record"), delta = get_team_stat(base_records, SelectedTeam4, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 2 Record", value = get_team_stat(Quad2, SelectedTeam4, "Record"), delta = get_team_stat(Quad2, SelectedTeam4, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 3 Record", value = get_team_stat(Quad3, SelectedTeam4, "Record"), delta = get_team_stat(Quad3, SelectedTeam4, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Ratings Power Index", value = get_team_stat(RPI, SelectedTeam4, "RPI"), delta = get_team_stat(RPI, SelectedTeam4, "RPI_Rk"), delta_color = "off", border = True)
+        st.metric(label = "Points Per Week", value = get_team_stat(PPG, SelectedTeam4, "Avg Score"), delta = get_team_stat(PPG, SelectedTeam4, "PPG_Rk"), delta_color = "off", border = True)
+        st.subheader("Best Wins")
+        BestWins4 = best_wins(schedule, scores, teams, RPI, SelectedTeam4, "Win")
+        st.dataframe(BestWins4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})        
+
+    with col6:
+        st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam4, "Record"), delta = get_team_stat(conf_records, SelectedTeam4, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 1 Record", value = get_team_stat(Quad1, SelectedTeam4, "Record"), delta = get_team_stat(Quad1, SelectedTeam4, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 4 Record", value = get_team_stat(Quad4, SelectedTeam4, "Record"), delta = get_team_stat(Quad4, SelectedTeam4, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Strength of Schedule", value = get_team_stat(RPI, SelectedTeam4, "SOS"), delta = get_team_stat(RPI, SelectedTeam4, "SOS_Rk"), delta_color = "off", border = True)
+        st.metric(label = "Weighted Recent", value = get_team_stat(WPPG, SelectedTeam4, "Weighted"), delta = get_team_stat(WPPG, SelectedTeam4, "Weight_Rk"), delta_color = "off", border = True)
+        st.subheader("Worst Losses")
+        BestLoss4 = best_wins(schedule, scores, teams, RPI, SelectedTeam4, "Loss")
+        st.dataframe(BestLoss4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
+
     st.subheader("Conference Games")
     CG4 = get_team_schedule(schedule, scores, teams, SelectedTeam4, "Conf")
     st.dataframe(CG4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
