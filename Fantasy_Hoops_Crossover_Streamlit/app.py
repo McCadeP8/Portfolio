@@ -28,15 +28,15 @@ with col1:
     col5, col6 = st.columns([1,1])
     with col5:
         st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
-        st.metric(label = "Quad 2 Record", value = get_team_stat(Quad2, SelectedTeam1, "Record"), delta = get_team_stat(Quad2, SelectedTeam1, "Win %"), delta_color = "off", border = True)
-        st.metric(label = "Quad 3 Record", value = get_team_stat(Quad3, SelectedTeam1, "Record"), delta = get_team_stat(Quad3, SelectedTeam1, "Win %"), delta_color = "off", border = True)
+        st.metric(label = "Quad 2 Record", value = get_team_stat(Quad2, SelectedTeam1, "Record"), delta = get_team_stat(Quad2, SelectedTeam1, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 3 Record", value = get_team_stat(Quad3, SelectedTeam1, "Record"), delta = get_team_stat(Quad3, SelectedTeam1, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Ratings Power Index", value = get_team_stat(RPI, SelectedTeam1, "RPI"), delta = get_team_stat(RPI, SelectedTeam1, "RPI_Rk"), delta_color = "off", border = True)
         st.metric(label = "Points Per Week", value = get_team_stat(PPG, SelectedTeam1, "Avg Score"), delta = get_team_stat(PPG, SelectedTeam1, "PPG_Rk"), delta_color = "off", border = True)
 
     with col6:
         st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam1, "Record"), delta = get_team_stat(conf_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
-        st.metric(label = "Quad 1 Record", value = get_team_stat(Quad1, SelectedTeam1, "Record"), delta = get_team_stat(Quad1, SelectedTeam1, "Win %"), delta_color = "off", border = True)
-        st.metric(label = "Quad 4 Record", value = get_team_stat(Quad4, SelectedTeam1, "Record"), delta = get_team_stat(Quad4, SelectedTeam1, "Win %"), delta_color = "off", border = True)
+        st.metric(label = "Quad 1 Record", value = get_team_stat(Quad1, SelectedTeam1, "Record"), delta = get_team_stat(Quad1, SelectedTeam1, "Rank"), delta_color = "off", border = True)
+        st.metric(label = "Quad 4 Record", value = get_team_stat(Quad4, SelectedTeam1, "Record"), delta = get_team_stat(Quad4, SelectedTeam1, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Strength of Schedule", value = get_team_stat(RPI, SelectedTeam1, "SOS"), delta = get_team_stat(RPI, SelectedTeam1, "SOS_Rk"), delta_color = "off", border = True)
         st.metric(label = "Weighted Recent", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
 
