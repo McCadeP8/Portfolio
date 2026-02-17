@@ -23,7 +23,6 @@ WPPG = get_weighted_ppg(scores)
 col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
 with col1:
-    st.markdown('<div style="border-right:1px solid gray; padding-right:10px">Content 1</div>', unsafe_allow_html=True)
     SelectedTeam1 = st.selectbox("Select Team 1", options=teams["Team"].tolist(), index=teams["Team"].tolist().index("Jacksonville"))
     st.image(get_logo(teams, SelectedTeam1))
 
@@ -78,6 +77,8 @@ with col1:
     st.subheader("Conference Tournament")
     CT1 = get_team_schedule(schedule, scores, teams, SelectedTeam1, "Conf_Tourney")
     st.dataframe(CT1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
+    st.markdown('<div style="border-right:1px solid white; padding-right:10px">Content 1</div>', unsafe_allow_html=True)
+
 
 with col2:
     SelectedTeam2 = st.selectbox("Select Team 2", options=teams["Team"].tolist(), index=teams["Team"].tolist().index("Georgia"))
