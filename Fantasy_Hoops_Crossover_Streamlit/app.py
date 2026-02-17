@@ -19,12 +19,12 @@ with col1:
     SelectedTeam1 = st.selectbox("Select Team 1", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam1))
 
-    col1, col2 = st.columns([1,1,])
-    with col1:
+    col5, col6 = st.columns([1,1,])
+    with col5:
         st.metric(label = "Total Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
         st.metric(label = "Quad 2 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
         st.metric(label = "Quad 3 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
-    with col2:
+    with col6:
         st.metric(label = "Conference Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
         st.metric(label = "Quad 1 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
         st.metric(label = "Quad 4 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True) #ABC
