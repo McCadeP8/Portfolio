@@ -1,6 +1,6 @@
 import streamlit as st
 import re as re
-from data import get_weekly_scores, get_schedule, get_teams, get_logo, get_team_schedule, get_base_records, get_team_record, get_team_record_rank
+from data import get_weekly_scores, get_schedule, get_teams, get_logo, get_team_schedule, get_base_records, get_team_record, get_conf_records, get_team_record_rank
 
 st.set_page_config(
     page_title = "Fantasy Hoops Crossover",
@@ -11,13 +11,24 @@ teams = get_teams()
 schedule = get_schedule()
 scores = get_weekly_scores()
 base_records = get_base_records(schedule, scores)
+conf_records = get_conf_records(schedule, scores, teams)
 
 col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
 with col1:
     SelectedTeam1 = st.selectbox("Select Team 1", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam1))
-    st.metric(label = "Team Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+
+    col1, col2 = st.colums([1,1,])
+    with col1:
+        st.metric(label = "Total Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+        st.metric(label = "Quad 2 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+        st.metric(label = "Quad 3 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+    with col2:
+        st.metric(label = "Conference Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+        st.metric(label = "Quad 1 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+        st.metric(label = "Quad 4 Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
+
     st.subheader("Conference Games")
     CG1 = get_team_schedule(schedule, scores, teams, SelectedTeam1, "Conf")
     st.dataframe(CG1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
