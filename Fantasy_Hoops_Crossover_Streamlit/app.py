@@ -7,6 +7,8 @@ st.set_page_config(
     page_icon = ":basketball:",
     layout = "wide")
 
+st.title(":basketball::trophy: NCAA/NBA College Hoops Crosover:trophy::basketball:")
+
 teams = get_teams()
 schedule = get_schedule()
 scores = get_weekly_scores()
