@@ -149,7 +149,7 @@ with col3:
         BestWins3 = best_wins(schedule, scores, teams, RPI, SelectedTeam3, "Win")
         st.dataframe(BestWins3, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})        
 
-    with col6:
+    with col10:
         st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam3, "Record"), delta = get_team_stat(conf_records, SelectedTeam3, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 1 Record", value = get_team_stat(Quad1, SelectedTeam3, "Record"), delta = get_team_stat(Quad1, SelectedTeam3, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 4 Record", value = get_team_stat(Quad4, SelectedTeam3, "Record"), delta = get_team_stat(Quad4, SelectedTeam3, "Rank"), delta_color = "off", border = True)
@@ -194,8 +194,8 @@ with col4:
     SelectedTeam4 = st.selectbox("Select Team 4", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam4))
 
-    col5, col6 = st.columns([1,1])
-    with col5:
+    col11, col12 = st.columns([1,1])
+    with col11:
         st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam4, "Record"), delta = get_team_stat(base_records, SelectedTeam4, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 2 Record", value = get_team_stat(Quad2, SelectedTeam4, "Record"), delta = get_team_stat(Quad2, SelectedTeam4, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 3 Record", value = get_team_stat(Quad3, SelectedTeam4, "Record"), delta = get_team_stat(Quad3, SelectedTeam4, "Rank"), delta_color = "off", border = True)
@@ -205,7 +205,7 @@ with col4:
         BestWins4 = best_wins(schedule, scores, teams, RPI, SelectedTeam4, "Win")
         st.dataframe(BestWins4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})        
 
-    with col6:
+    with col12:
         st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam4, "Record"), delta = get_team_stat(conf_records, SelectedTeam4, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 1 Record", value = get_team_stat(Quad1, SelectedTeam4, "Record"), delta = get_team_stat(Quad1, SelectedTeam4, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 4 Record", value = get_team_stat(Quad4, SelectedTeam4, "Record"), delta = get_team_stat(Quad4, SelectedTeam4, "Rank"), delta_color = "off", border = True)
