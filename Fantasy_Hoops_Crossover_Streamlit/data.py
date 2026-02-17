@@ -172,3 +172,33 @@ def best_wins(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.Da
         df = (df.sort_values("RPI_Rk", ascending=False).head(8)[["RPI_Rk", "Logo"]])
     df = df.rename(columns={"RPI_Rk": "RPI Rank"})
     return df
+
+def get_final_table(df, df2, df3, df4, df5, df6, df7, df8, df9, df10):
+    df = df[["Team", "Record", "Win %", "Rank"]]
+    df = df.rename(columns={"Rank": "Win% Rk", "Record": "W-L", "Win %": " Win%"})
+    df2 = df2[["Team", "Record", "Win %", "Rank"]]
+    df2 = df2.rename(columns={"Rank": "C Rk", "Record": "C W-L", "Win %": "C Win%"})
+    df3 = df3.rename(columns={"Avg Score": "PPG"})
+    df4 = df4[["Team", "Record", "Win %", "Rank"]]
+    df4 = df4.rename(columns={"Rank": "Q1 Rk", "Record": "Q1 W-L", "Win %": "Q1 Win%"})
+    df5 = df5[["Team", "Record", "Win %", "Rank"]]
+    df5 = df5.rename(columns={"Rank": "Q2 Rk", "Record": "Q2 W-L", "Win %": "Q2 Win%"})
+    df6 = df6[["Team", "Record", "Win %", "Rank"]]
+    df6 = df6.rename(columns={"Rank": "Q3 Rk", "Record": "Q4 W-L", "Win %": "Q3 Win%"})
+    df7 = df7[["Team", "Record", "Win %", "Rank"]]
+    df7 = df7.rename(columns={"Rank": "Q4 Rk", "Record": "Q4 W-L", "Win %": "Q4 Win%"})
+    df8 = df8[["Team", "RPI", "RPI_Rk", "SOS", "SOS_Rk"]]
+    df8 = df8.rename(columns={"RPI_Rk": "RPI Rk", "SOS_Rk": "SOS Rk"})
+    df9 = df9[["Logo", "Team", "Conf"]]
+    df10 = df10.rename(columns={"Weighted": "W8ed PPG", "Weight_Rk": "W8_Rk"})
+    df11 = df9.merge(df, how="left", on = "Team")
+    df11 = df11.merge(df2, how="left", on = "Team")
+    df11 = df11.merge(df4, how="left", on = "Team")
+    df11 = df11.merge(df5, how="left", on = "Team")
+    df11 = df11.merge(df6, how="left", on = "Team")
+    df11 = df11.merge(df7, how="left", on = "Team")
+    df11 = df11.merge(df3, how="left", on = "Team")
+    df11 = df11.merge(df10, how="left", on = "Team")
+    df11 = df11.merge(df8, how="left", on = "Team")
+    return df11
+    
