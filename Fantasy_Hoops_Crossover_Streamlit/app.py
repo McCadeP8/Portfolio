@@ -22,17 +22,17 @@ with col1:
 
     col5, col6 = st.columns([1,1,])
     with col5:
-        st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
+        st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 2 Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
         st.metric(label = "Quad 3 Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
-        st.metric(label = "Ratings Power Index", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
+        st.metric(label = "Ratings Power Index", value = get_team_stat(RPI, SelectedTeam1, "RPI"), delta = get_team_stat(RPI, SelectedTeam1, "RPI_Rk"), delta_color = "off", border = True)
         st.metric(label = "Points Per Week", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
 
     with col6:
-        st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam1, "Record"), delta = get_team_stat(conf_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
+        st.metric(label = "Conference Record", value = get_team_stat(conf_records, SelectedTeam1, "Record"), delta = get_team_stat(conf_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 1 Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
         st.metric(label = "Quad 4 Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
-        st.metric(label = "Strength of Schedule", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
+        st.metric(label = "Strength of Schedule", value = get_team_stat(RPI, SelectedTeam1, "SOS"), delta = get_team_stat(base_records, SelectedTeam1, "SOS_Rk"), delta_color = "off", border = True)
         st.metric(label = "Weighted Recent Points", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
 
     st.subheader("Conference Games")
@@ -69,7 +69,7 @@ with col1:
 with col2:
     SelectedTeam2 = st.selectbox("Select Team 2", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam2))
-    st.metric(label = "Team Record", value = get_team_record(base_records, SelectedTeam2), delta = get_team_record_rank(base_records, SelectedTeam2), delta_color = "off", border = True)
+    st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
     st.subheader("Conference Games")
     CG2 = get_team_schedule(schedule, scores, teams, SelectedTeam2, "Conf")
     st.dataframe(CG2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
@@ -104,7 +104,7 @@ with col2:
 with col3:
     SelectedTeam3 = st.selectbox("Select Team 3", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam3))
-    st.metric(label = "Team Record", value = get_team_record(base_records, SelectedTeam3), delta = get_team_record_rank(base_records, SelectedTeam3), delta_color = "off", border = True)
+    st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
     st.subheader("Conference Games")
     CG3 = get_team_schedule(schedule, scores, teams, SelectedTeam3, "Conf")
     st.dataframe(CG3, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
@@ -139,7 +139,7 @@ with col3:
 with col4:
     SelectedTeam4 = st.selectbox("Select Team 4", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam4))
-    st.metric(label = "Team Record", value = get_team_record(base_records, SelectedTeam4), delta = get_team_record_rank(base_records, SelectedTeam4), delta_color = "off", border = True)
+    st.metric(label = "Total Record", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Rank"), delta_color = "off", border = True)
     st.subheader("Conference Games")
     CG4 = get_team_schedule(schedule, scores, teams, SelectedTeam4, "Conf")
     st.dataframe(CG4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
