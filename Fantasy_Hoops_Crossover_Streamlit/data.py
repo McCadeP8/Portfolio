@@ -127,3 +127,4 @@ def points_per_game(df):
     df2["PPG_Rk"] = df2["Avg Score"].rank(method="min", ascending=False).astype(int)
     return df2
 
+#
