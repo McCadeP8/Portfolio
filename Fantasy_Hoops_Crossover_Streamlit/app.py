@@ -1,6 +1,6 @@
 import streamlit as st
 import re as re
-from data import get_weekly_scores, get_schedule, get_teams, get_logo, get_team_schedule, get_base_records, get_conf_records, get_RPI, get_team_stat, points_per_game, get_quad_record
+from data import get_weekly_scores, get_schedule, get_teams, get_logo, get_team_schedule, get_base_records, get_conf_records, get_RPI, get_team_stat, points_per_game, get_quad_record, get_weighted_ppg
 
 st.set_page_config(
     page_title = "Fantasy Hoops Crossover",
@@ -18,6 +18,7 @@ Quad1 = get_quad_record(schedule, scores, RPI, "Quad 1")
 Quad2 = get_quad_record(schedule, scores, RPI, "Quad 2")
 Quad3 = get_quad_record(schedule, scores, RPI, "Quad 3")
 Quad4 = get_quad_record(schedule, scores, RPI, "Quad 4")
+WPPG = get_weighted_ppg(scores)
 
 col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
@@ -38,7 +39,7 @@ with col1:
         st.metric(label = "Quad 1 Record", value = get_team_stat(Quad1, SelectedTeam1, "Record"), delta = get_team_stat(Quad1, SelectedTeam1, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Quad 4 Record", value = get_team_stat(Quad4, SelectedTeam1, "Record"), delta = get_team_stat(Quad4, SelectedTeam1, "Rank"), delta_color = "off", border = True)
         st.metric(label = "Strength of Schedule", value = get_team_stat(RPI, SelectedTeam1, "SOS"), delta = get_team_stat(RPI, SelectedTeam1, "SOS_Rk"), delta_color = "off", border = True)
-        st.metric(label = "Weighted Recent", value = get_team_stat(base_records, SelectedTeam1, "Record"), delta = get_team_stat(base_records, SelectedTeam1, "Record"), delta_color = "off", border = True)
+        st.metric(label = "Weighted Recent", value = get_team_stat(WPPG, SelectedTeam1, "Weighted"), delta = get_team_stat(WPPG, SelectedTeam1, "Weight_Rk"), delta_color = "off", border = True)
 
     st.subheader("Conference Games")
     CG1 = get_team_schedule(schedule, scores, teams, SelectedTeam1, "Conf")
