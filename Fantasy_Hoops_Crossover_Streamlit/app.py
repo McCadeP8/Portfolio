@@ -1,6 +1,6 @@
 import streamlit as st
 import re as re
-from data import get_weekly_scores, get_schedule, get_teams, get_logo, get_team_schedule
+from data import get_weekly_scores, get_schedule, get_teams, get_logo, get_team_schedule, get_base_records, get_team_record, get_team_record_rank
 
 st.set_page_config(
     page_title = "Fantasy Hoops Crossover",
@@ -10,12 +10,14 @@ st.set_page_config(
 teams = get_teams()
 schedule = get_schedule()
 scores = get_weekly_scores()
+base_records = get_base_records(schedule, scores)
 
 col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
 with col1:
     SelectedTeam1 = st.selectbox("Select Team 1", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam1))
+    st.metric(label = "Team Record", value = get_team_record(base_records, SelectedTeam1), delta = get_team_record_rank(base_records, SelectedTeam1), delta_color = "off", border = True)
     st.subheader("Conference Games")
     CG1 = get_team_schedule(schedule, scores, teams, SelectedTeam1, "Conf")
     st.dataframe(CG1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
@@ -50,6 +52,7 @@ with col1:
 with col2:
     SelectedTeam2 = st.selectbox("Select Team 2", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam2))
+    st.metric(label = "Team Record", value = get_team_record(base_records, SelectedTeam2), delta = get_team_record_rank(base_records, SelectedTeam2), delta_color = "off", border = True)
     st.subheader("Conference Games")
     CG2 = get_team_schedule(schedule, scores, teams, SelectedTeam2, "Conf")
     st.dataframe(CG2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
@@ -84,6 +87,7 @@ with col2:
 with col3:
     SelectedTeam3 = st.selectbox("Select Team 3", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam3))
+    st.metric(label = "Team Record", value = get_team_record(base_records, SelectedTeam3), delta = get_team_record_rank(base_records, SelectedTeam3), delta_color = "off", border = True)
     st.subheader("Conference Games")
     CG3 = get_team_schedule(schedule, scores, teams, SelectedTeam3, "Conf")
     st.dataframe(CG3, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
@@ -118,6 +122,7 @@ with col3:
 with col4:
     SelectedTeam4 = st.selectbox("Select Team 4", options=teams["Team"].tolist())
     st.image(get_logo(teams, SelectedTeam4))
+    st.metric(label = "Team Record", value = get_team_record(base_records, SelectedTeam4), delta = get_team_record_rank(base_records, SelectedTeam4), delta_color = "off", border = True)
     st.subheader("Conference Games")
     CG4 = get_team_schedule(schedule, scores, teams, SelectedTeam4, "Conf")
     st.dataframe(CG4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
