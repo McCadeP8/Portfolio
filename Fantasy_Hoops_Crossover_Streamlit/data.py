@@ -201,7 +201,7 @@ def get_final_table(df, df2, df3, df4, df5, df6, df7, df8, df9, df10):
     df11 = df11.merge(df10, how="left", on = "Team")
     df11 = df11.merge(df8, how="left", on = "Team")
     pct_cols = ["W%", "C W%", "Q1 W%", "Q2 W%", "Q3 W%", "Q4 W%"]
-    rank_cols = ["Win% Rk", "C Rk", "Q1 Rk", "Q2 Rk", "Q3 Rk", "Q4 Rk"]
+    rank_cols = ["W% Rk", "C Rk", "Q1 Rk", "Q2 Rk", "Q3 Rk", "Q4 Rk"]
     for col in pct_cols:
         df11[col] = pd.to_numeric(df11[col], errors="coerce").mul(100).round(2)
     for col in rank_cols:
