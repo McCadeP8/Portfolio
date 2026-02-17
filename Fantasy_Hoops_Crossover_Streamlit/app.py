@@ -21,14 +21,12 @@ Quad4 = get_quad_record(schedule, scores, RPI, "Quad 4")
 WPPG = get_weighted_ppg(scores)
 FinalTable = get_final_table(base_records, conf_records, PPG, Quad1, Quad2, Quad3, Quad4, RPI, teams, WPPG)
 
-tab1, tab2 = st.tabs(["About SBCFBL", "Data Checks"])
+tab1, tab2 = st.tabs(["All Stats", "Resume Comparison"])
 
 with tab1:
     st.dataframe(FinalTable, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("")})
 
 with tab2:
-    st.header("Resume Comparison")
-
     col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
     with col1:
