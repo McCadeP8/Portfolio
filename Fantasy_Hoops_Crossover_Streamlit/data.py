@@ -170,4 +170,5 @@ def best_wins(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.Da
         df = (df.sort_values("RPI_Rk", ascending=True).head(8)[["RPI_Rk", "Logo"]])
     else:
         df = (df.sort_values("RPI_Rk", ascending=False).head(8)[["RPI_Rk", "Logo"]])
+    df = df.rename(columns={"RPI_Rk": "RPI Rank"})
     return df
