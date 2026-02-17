@@ -127,4 +127,22 @@ def points_per_game(df):
     df2["PPG_Rk"] = df2["Avg Score"].rank(method="min", ascending=False).astype(int)
     return df2
 
-#
+def get_quad_record(df, df2, df3, Quad):
+    df[["Week", "Type"]] = df["Matchup"].str.split("_", n=1, expand=True)
+    df = df.merge(df2, how="left", on=["Team", "Week"]).rename(columns={"Score": "Team Score"})
+    df = df.merge(df2, how="left", left_on=["Opponent", "Week"], right_on=["Team", "Week"]).rename(columns={"Score": "Opponent Score"})
+    df["Result"] = np.select([df["Team Score"] > df["Opponent Score"], df["Team Score"] < df["Opponent Score"]], ["Win", "Loss"], default="Tie")
+    df = df[~df["Opponent Score"].isna()]
+    df = df.merge(df3[["Team", "RPI_Quad"]], how="left", left_on = "Opponent", right_on ="Team")
+    df = df[df["RPI_Quad"] == Quad]
+    df = df.groupby("Team_x")["Result"].value_counts().unstack(fill_value=0).reset_index()
+    df["Win %"] = (df["Win"] + 0.5 * df["Tie"]) / (df["Win"] + df["Loss"] + df["Tie"])
+    df["Record"] = np.where(df["Tie"] > 0, df["Win"].astype(str) + "-" + df["Loss"].astype(str) + "-" + df["Tie"].astype(str), df["Win"].astype(str) + "-" + df["Loss"].astype(str))
+    df = df.rename(columns={"Team_x": "Team"})
+    df = df[["Team", "Record", "Win %"]]
+    df["Rank_num"] = df["Win %"].rank(method="min", ascending=False)
+    df["Rank_num"] = df["Rank_num"].astype(int)
+    tie_counts = df.groupby("Win %")["Win %"].transform("count")
+    df["Rank"] = np.where(tie_counts > 1, "T-" + df["Rank_num"].astype(str), df["Rank_num"].astype(str))
+    df = df.drop(columns=["Rank_num"])
+    return df
