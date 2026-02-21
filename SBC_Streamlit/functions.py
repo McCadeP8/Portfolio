@@ -2,6 +2,9 @@ import pandas as pd
 import streamlit as st
 import math as math
 import numpy as np
+import streamlit.components.v1 as components
+import base64
+from pathlib import Path
 from itertools import combinations
 import requests
 import json
@@ -1436,3 +1439,170 @@ def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame
     df = df.sort_values("Week")
     return df
 
+def img_to_base64(path: str) -> str:
+    try:
+        data = Path(path).read_bytes()
+        ext = Path(path).suffix.lstrip(".").lower()
+        mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png", "svg": "svg+xml", "webp": "webp"}.get(ext, "png")
+        return f"data:image/{mime};base64,{base64.b64encode(data).decode()}"
+    except Exception:
+        return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+def render_scorebug(team_a: str,team_b: str, logo_a: str, logo_b: str, record_a: str, record_b: str, score_a: int, score_b: int, color_a: str, color_b: str):
+        logo_a_src = img_to_base64(logo_a) if not logo_a.startswith("http") else logo_a
+        logo_b_src = img_to_base64(logo_b) if not logo_b.startswith("http") else logo_b
+        html = f"""<!DOCTYPE html>
+        <html>
+        <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+        <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+
+        body {{
+            background: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 160px;
+            font-family: 'Barlow Condensed', sans-serif;
+        }}
+
+        .scorebug {{
+            position: relative;
+            width: 420px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 24px 64px rgba(0,0,0,0.6);
+            background: #0d0d0f;
+        }}
+
+        .team-row {{
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0 20px 0 24px;
+            height: 72px;
+            gap: 14px;
+            overflow: hidden;
+        }}
+
+        .team-row::before {{
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.13;
+            pointer-events: none;
+        }}
+
+        .row-a::before {{ background: radial-gradient(ellipse at 30% 50%, {color_a} 0%, transparent 70%); }}
+        .row-b::before {{ background: radial-gradient(ellipse at 30% 50%, {color_b} 0%, transparent 70%); }}
+
+        .row-a::after {{
+            content: '';
+            position: absolute;
+            left: 0; right: 0; top: 0;
+            height: 2px;
+            background: linear-gradient(90deg, {color_a}, transparent 80%);
+            box-shadow: 0 0 12px 2px {color_a};
+            animation: glowPulse 2.4s ease-in-out infinite;
+        }}
+
+        .row-b::after {{
+            content: '';
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 2px;
+            background: linear-gradient(90deg, {color_b}, transparent 80%);
+            box-shadow: 0 0 12px 2px {color_b};
+            animation: glowPulse 2.4s ease-in-out infinite 1.2s;
+        }}
+
+        @keyframes glowPulse {{
+            0%, 100% {{ opacity: 1; }}
+            50%       {{ opacity: 0.4; }}
+        }}
+
+        .divider {{
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 20%, rgba(255,255,255,0.15) 80%, transparent 100%);
+        }}
+
+        .accent-stripe {{
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+        }}
+        .row-a .accent-stripe {{ background: {color_a}; box-shadow: 2px 0 12px 0 {color_a}; }}
+        .row-b .accent-stripe {{ background: {color_b}; box-shadow: 2px 0 12px 0 {color_b}; }}
+
+        .team-logo {{
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+        }}
+
+        .team-info {{ flex: 1; min-width: 0; }}
+
+        .team-name {{
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #ffffff;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+
+        .team-record {{
+            font-family: 'Barlow', sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            color: rgba(255,255,255,0.45);
+            margin-top: 3px;
+            text-transform: uppercase;
+        }}
+
+        .team-score {{
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            min-width: 52px;
+            text-align: right;
+            line-height: 1;
+            text-shadow: 0 0 24px rgba(255,255,255,0.18);
+        }}
+        </style>
+        </head>
+        <body>
+        <div class="scorebug">
+            <div class="team-row row-a">
+            <div class="accent-stripe"></div>
+            <img class="team-logo" src="{logo_a_src}" alt="{team_a}" />
+            <div class="team-info">
+                <div class="team-name">{team_a}</div>
+                <div class="team-record">{record_a}</div>
+            </div>
+            <div class="team-score">{score_a}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="team-row row-b">
+            <div class="accent-stripe"></div>
+            <img class="team-logo" src="{logo_b_src}" alt="{team_b}" />
+            <div class="team-info">
+                <div class="team-name">{team_b}</div>
+                <div class="team-record">{record_b}</div>
+            </div>
+            <div class="team-score">{score_b}</div>
+            </div>
+        </div>
+        </body>
+        </html>"""
+        components.html(html, height=180, scrolling=False)
