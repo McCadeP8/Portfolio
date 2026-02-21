@@ -471,7 +471,7 @@ with tab2:
         color_b  = st.color_picker("Color",  "#1D428A",  key="cb")
 
     
-    col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+    col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
 
     with col1:
         render_scorebug(
@@ -658,6 +658,14 @@ with tab2:
             record_a=record_a, record_b=record_b,
             score_a=int(score_a), score_b=int(score_b),
             color_a=color_a,   color_b=color_b)
+    with col6:
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
+
 
 
     st.divider()
