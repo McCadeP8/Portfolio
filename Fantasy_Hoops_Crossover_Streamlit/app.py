@@ -257,3 +257,269 @@ with tab2:
         st.subheader("Conference Tournament")
         CT4 = get_team_schedule(schedule, scores, teams, SelectedTeam4, "Conf_Tourney")
         st.dataframe(CT4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn("Opponent")})
+
+
+
+    def img_to_base64(path: str) -> str:
+        """Convert a local image file to a base64 data URI."""
+        try:
+            data = Path(path).read_bytes()
+            ext = Path(path).suffix.lstrip(".").lower()
+            mime = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png", "svg": "svg+xml", "webp": "webp"}.get(ext, "png")
+            return f"data:image/{mime};base64,{base64.b64encode(data).decode()}"
+        except Exception:
+            # Return a transparent 1x1 pixel placeholder if file not found
+            return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+
+    def render_scorebug(
+        team_a: str,
+        team_b: str,
+        logo_a: str,
+        logo_b: str,
+        record_a: str,
+        record_b: str,
+        score_a: int,
+        score_b: int,
+        color_a: str = "#E8002D",
+        color_b: str = "#1D428A",
+    ):
+        logo_a_src = img_to_base64(logo_a) if not logo_a.startswith("http") else logo_a
+        logo_b_src = img_to_base64(logo_b) if not logo_b.startswith("http") else logo_b
+
+        html = f"""
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+
+        <style>
+        .scorebug-wrap {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 48px 24px;
+            background: transparent;
+        }}
+
+        .scorebug {{
+            position: relative;
+            width: 420px;
+            border-radius: 16px;
+            overflow: hidden;
+            font-family: 'Barlow Condensed', sans-serif;
+            box-shadow:
+            0 0 0 1px rgba(255,255,255,0.08),
+            0 24px 64px rgba(0,0,0,0.6);
+            background: #0d0d0f;
+        }}
+
+        /* ── Team rows ─────────────────────────────────── */
+        .team-row {{
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            height: 72px;
+            gap: 14px;
+            overflow: hidden;
+            z-index: 1;
+        }}
+
+        .team-row::before {{
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.12;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }}
+        .team-row:hover::before {{ opacity: 0.2; }}
+
+        .row-a::before {{
+            background: radial-gradient(ellipse at 30% 50%, {color_a} 0%, transparent 70%);
+        }}
+        .row-b::before {{
+            background: radial-gradient(ellipse at 30% 50%, {color_b} 0%, transparent 70%);
+        }}
+
+        /* Glow bar at top / bottom */
+        .team-row::after {{
+            content: '';
+            position: absolute;
+            left: 0; right: 0;
+            height: 2px;
+            pointer-events: none;
+        }}
+        .row-a::after {{
+            top: 0;
+            background: linear-gradient(90deg, {color_a}, transparent 80%);
+            box-shadow: 0 0 12px 2px {color_a};
+            animation: glowPulse 2.4s ease-in-out infinite;
+        }}
+        .row-b::after {{
+            bottom: 0;
+            background: linear-gradient(90deg, {color_b}, transparent 80%);
+            box-shadow: 0 0 12px 2px {color_b};
+            animation: glowPulse 2.4s ease-in-out infinite 1.2s;
+        }}
+
+        @keyframes glowPulse {{
+            0%, 100% {{ opacity: 1; }}
+            50%       {{ opacity: 0.45; }}
+        }}
+
+        /* Divider */
+        .divider {{
+            height: 1px;
+            background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255,255,255,0.15) 20%,
+            rgba(255,255,255,0.15) 80%,
+            transparent 100%);
+        }}
+
+        /* Logo */
+        .team-logo {{
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+            border-radius: 6px;
+        }}
+
+        /* Team info */
+        .team-info {{
+            flex: 1;
+            min-width: 0;
+        }}
+        .team-name {{
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #ffffff;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        .team-record {{
+            font-family: 'Barlow', sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            color: rgba(255,255,255,0.45);
+            margin-top: 3px;
+            text-transform: uppercase;
+        }}
+
+        /* Score */
+        .team-score {{
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            min-width: 52px;
+            text-align: right;
+            line-height: 1;
+            text-shadow: 0 0 24px rgba(255,255,255,0.18);
+            transition: transform 0.15s ease;
+        }}
+
+        /* Accent stripe on the left */
+        .accent-stripe {{
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+        }}
+        .row-a .accent-stripe {{
+            background: {color_a};
+            box-shadow: 2px 0 12px 0 {color_a};
+        }}
+        .row-b .accent-stripe {{
+            background: {color_b};
+            box-shadow: 2px 0 12px 0 {color_b};
+        }}
+        </style>
+
+        <div class="scorebug-wrap">
+        <div class="scorebug">
+
+            <!-- Team A -->
+            <div class="team-row row-a">
+            <div class="accent-stripe"></div>
+            <img class="team-logo" src="{logo_a_src}" alt="{team_a} logo" />
+            <div class="team-info">
+                <div class="team-name">{team_a}</div>
+                <div class="team-record">{record_a}</div>
+            </div>
+            <div class="team-score">{score_a}</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Team B -->
+            <div class="team-row row-b">
+            <div class="accent-stripe"></div>
+            <img class="team-logo" src="{logo_b_src}" alt="{team_b} logo" />
+            <div class="team-info">
+                <div class="team-name">{team_b}</div>
+                <div class="team-record">{record_b}</div>
+            </div>
+            <div class="team-score">{score_b}</div>
+            </div>
+
+        </div>
+        </div>
+        """
+        st.markdown(html, unsafe_allow_html=True)
+
+
+    # ── Demo / Sidebar controls ──────────────────────────────────────────────────
+
+    st.markdown("## 🏟️ Scorebug Builder")
+    st.markdown("Adjust the inputs in the sidebar and watch the bug update live.")
+
+    with st.sidebar:
+        st.header("Team A")
+        team_a   = st.text_input("Name",      "CELTICS",    key="na")
+        logo_a   = st.text_input("Logo URL",  "https://upload.wikimedia.org/wikipedia/en/thumb/8/8f/Boston_Celtics.svg/240px-Boston_Celtics.svg.png", key="la")
+        record_a = st.text_input("Record",    "64-18",      key="ra")
+        score_a  = st.number_input("Score",   value=108,    key="sa", step=1)
+        color_a  = st.color_picker("Color",   "#007A33",    key="ca")
+
+        st.divider()
+
+        st.header("Team B")
+        team_b   = st.text_input("Name",      "WARRIORS",   key="nb")
+        logo_b   = st.text_input("Logo URL",  "https://upload.wikimedia.org/wikipedia/en/thumb/0/01/Golden_State_Warriors_logo.svg/240px-Golden_State_Warriors_logo.svg.png", key="lb")
+        record_b = st.text_input("Record",    "46-36",      key="rb")
+        score_b  = st.number_input("Score",   value=97,     key="sb", step=1)
+        color_b  = st.color_picker("Color",   "#1D428A",    key="cb")
+
+    render_scorebug(
+        team_a=team_a,   team_b=team_b,
+        logo_a=logo_a,   logo_b=logo_b,
+        record_a=record_a, record_b=record_b,
+        score_a=int(score_a), score_b=int(score_b),
+        color_a=color_a, color_b=color_b,
+    )
+
+    st.markdown(
+        """
+        ---
+        **Usage as a component in your own app:**
+        ```python
+        render_scorebug(
+            team_a="CELTICS",  team_b="WARRIORS",
+            logo_a="./celtics.png", logo_b="./warriors.png",
+            record_a="64-18",  record_b="46-36",
+            score_a=108,       score_b=97,
+            color_a="#007A33", color_b="#1D428A",
+        )
+        ```
+        Logos accept **local file paths** or **public URLs**.
+        """,
+        unsafe_allow_html=False,
+    )
