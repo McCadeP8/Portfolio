@@ -262,7 +262,7 @@ with tab2:
         import streamlit.components.v1 as components
         import base64
         from pathlib import Path
-    
+
 
     def img_to_base64(path: str) -> str:
         """Convert a local image file to a base64 data URI."""
@@ -477,6 +477,15 @@ with tab2:
         score_a=int(score_a), score_b=int(score_b),
         color_a=color_a,   color_b=color_b,
     )
+
+    render_scorebug(
+        team_a="ABC",     team_b="BCD",
+        logo_a="https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096",     logo_b="https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096",
+        record_a="12-12", record_b="12-12",
+        score_a=int("15"), score_b=int("22"),
+        color_a="#EC0574",   color_b="#EC0574",
+    )
+
 
     st.divider()
     st.markdown("""
