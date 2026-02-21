@@ -506,7 +506,7 @@ with tab2:
         color_a=color_a, color_b=color_b,
     )
 
-    st.markdown(
+    st.components.v1.html(
         """
         ---
         **Usage as a component in your own app:**
