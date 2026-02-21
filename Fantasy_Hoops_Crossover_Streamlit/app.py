@@ -635,6 +635,30 @@ with tab2:
             record_a=record_a, record_b=record_b,
             score_a=int(score_a), score_b=int(score_b),
             color_a=color_a,   color_b=color_b)
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
 
 
 
