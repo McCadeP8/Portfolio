@@ -470,21 +470,41 @@ with tab2:
         score_b  = st.number_input("Score",  value=97,   key="sb", step=1)
         color_b  = st.color_picker("Color",  "#1D428A",  key="cb")
 
-    render_scorebug(
-        team_a=team_a,     team_b=team_b,
-        logo_a=logo_a,     logo_b=logo_b,
-        record_a=record_a, record_b=record_b,
-        score_a=int(score_a), score_b=int(score_b),
-        color_a=color_a,   color_b=color_b,
-    )
+    
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
-    render_scorebug(
-        team_a="ABC",     team_b="BCD",
-        logo_a="https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096",     logo_b="https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=4096x4096",
-        record_a="12-12", record_b="12-12",
-        score_a=int("15"), score_b=int("22"),
-        color_a="#EC0574",   color_b="#EC0574",
-    )
+    with col1:
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
+
+    with col2:
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
+
+    with col3:
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
+
+    with col4:
+        render_scorebug(
+            team_a=team_a,     team_b=team_b,
+            logo_a=logo_a,     logo_b=logo_b,
+            record_a=record_a, record_b=record_b,
+            score_a=int(score_a), score_b=int(score_b),
+            color_a=color_a,   color_b=color_b)
+
 
 
     st.divider()
