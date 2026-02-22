@@ -267,7 +267,7 @@ view = pdk.ViewState(
 deck = pdk.Deck(
     layers=[path_layer, home_layer, dot_layer, text_layer],
     initial_view_state=view,
-    map_style="mapbox://styles/mapbox/dark-v10",
+    map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",    
     tooltip={"text": "{city}"},
 )
 
