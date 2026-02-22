@@ -198,7 +198,7 @@ team_color_a = team_color + [220]
 path_data = []
 for leg in visible_legs:
     is_past = leg["date"] < today
-    color = [40, 60, 80, 80]
+    color = [255, 220, 0, 200]    
     path_data.append({"path": leg["path"], "color": color, "width": 2 if is_past else 4})
 
 path_layer = pdk.Layer(
