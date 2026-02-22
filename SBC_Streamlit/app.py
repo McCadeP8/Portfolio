@@ -1,6 +1,6 @@
 import streamlit as st
 import re as re
-from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_fantrax_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug
+from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_fantrax_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, period, stat_to_scipId
 
@@ -226,39 +226,38 @@ with tab3:
         SelectedPeriod = st.selectbox("Period",  options=list(range(1, 44)), index=list(range(1, 44)).index(current_matchup))
 
     with col2:
-        if st.button("Update Scores"):
-            with st.spinner("Updating matchups..."):
-                live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
-            live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
-            live_stats_df_formatted = format_live_stats_df(live_stats_df_team)
-            st.subheader(f"Stats for {SelectedTeam} in Matchup Period {SelectedPeriod} in {SelectedYear}")
-            st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-            RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
-            PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
-            PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
-            ISTOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "In-Season Tournament")
-            if len(RegOpponents) > 0:
-                st.subheader("Regular Season Matchup(s)")
-                scoreboard1 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[0])
-                st.dataframe(scoreboard1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-            if len(RegOpponents) > 1:
-                scoreboard2 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[1])
-                st.dataframe(scoreboard2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-            if len(PIOpponents) > 0:
-                st.subheader("Play-In Matchup")
-                scoreboard3 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PIOpponents[0])
-                st.dataframe(scoreboard3, width ="stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-            if len(PlayOpponents) > 0:
-                st.subheader("Playoff Matchup")
-                scoreboard4 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PlayOpponents[0])
-                st.dataframe(scoreboard4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-            if len(ISTOpponents) > 0:
-                st.subheader("In-Season Tournament Matchup")
-                scoreboard5 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, ISTOpponents[0])
-                st.dataframe(scoreboard5, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-            SelectedCategory = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
-            season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod)
-            st.altair_chart(season_line_chart_data, use_container_width=True)
+        with st.spinner("Updating matchups..."):
+            live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
+        live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
+        live_stats_df_formatted = format_live_stats_df(live_stats_df_team)
+        st.subheader(f"Stats for {SelectedTeam} in Matchup Period {SelectedPeriod} in {SelectedYear}")
+        st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+        RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
+        PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
+        PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
+        ISTOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "In-Season Tournament")
+        if len(RegOpponents) > 0:
+            st.subheader("Regular Season Matchup(s)")
+            scoreboard1 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[0])
+            st.dataframe(scoreboard1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+        if len(RegOpponents) > 1:
+            scoreboard2 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[1])
+            st.dataframe(scoreboard2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+        if len(PIOpponents) > 0:
+            st.subheader("Play-In Matchup")
+            scoreboard3 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PIOpponents[0])
+            st.dataframe(scoreboard3, width ="stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+        if len(PlayOpponents) > 0:
+            st.subheader("Playoff Matchup")
+            scoreboard4 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PlayOpponents[0])
+            st.dataframe(scoreboard4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+        if len(ISTOpponents) > 0:
+            st.subheader("In-Season Tournament Matchup")
+            scoreboard5 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, ISTOpponents[0])
+            st.dataframe(scoreboard5, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+        SelectedCategory = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
+        season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod)
+        st.altair_chart(season_line_chart_data, use_container_width=True)
 
 with tab4:
     st.subheader("League Scoreboard")
@@ -266,18 +265,47 @@ with tab4:
     SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
     SelectedPeriod2 = st.selectbox("Select Period",  options=list(range(1, 44)), index=list(range(1, 44)).index(current_matchup))
     if st.button("Update Scores"):
-        render_scorebug("Blackjack", "Flamingos", "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small", "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small", "13-11", "15-10", 30, 31, "#489624", "#813569")
-
-
-
-
-
-
-
-
-
-
-
+        with st.spinner("Updating matchups..."):
+            live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
+            live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
+        
+    col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
+    with col1:
+        render_scorebug(live_stats_total_scores.iloc[0])
+        render_scorebug(live_stats_total_scores.iloc[1])
+        render_scorebug(live_stats_total_scores.iloc[2])
+        render_scorebug(live_stats_total_scores.iloc[3])
+        render_scorebug(live_stats_total_scores.iloc[4])
+    with col2:
+        render_scorebug(live_stats_total_scores.iloc[5])
+        render_scorebug(live_stats_total_scores.iloc[6])
+        render_scorebug(live_stats_total_scores.iloc[7])
+        render_scorebug(live_stats_total_scores.iloc[8])
+        render_scorebug(live_stats_total_scores.iloc[9])
+    with col3:
+        render_scorebug(live_stats_total_scores.iloc[10])
+        render_scorebug(live_stats_total_scores.iloc[11])
+        render_scorebug(live_stats_total_scores.iloc[12])
+        render_scorebug(live_stats_total_scores.iloc[13])
+        render_scorebug(live_stats_total_scores.iloc[14])
+    with col4:
+        render_scorebug(live_stats_total_scores.iloc[15])
+        render_scorebug(live_stats_total_scores.iloc[16])
+        render_scorebug(live_stats_total_scores.iloc[17])
+        render_scorebug(live_stats_total_scores.iloc[18])
+        render_scorebug(live_stats_total_scores.iloc[19])
+    with col5:
+        render_scorebug(live_stats_total_scores.iloc[20])
+        render_scorebug(live_stats_total_scores.iloc[21])
+        render_scorebug(live_stats_total_scores.iloc[22])
+        render_scorebug(live_stats_total_scores.iloc[23])
+        render_scorebug(live_stats_total_scores.iloc[24])
+    with col6:
+        render_scorebug(live_stats_total_scores.iloc[25])
+        render_scorebug(live_stats_total_scores.iloc[26])
+        render_scorebug(live_stats_total_scores.iloc[27])
+        render_scorebug(live_stats_total_scores.iloc[28])
+        render_scorebug(live_stats_total_scores.iloc[29])
 
 with tab5:
 
