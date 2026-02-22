@@ -264,10 +264,9 @@ with tab4:
 
     SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
     SelectedPeriod2 = st.selectbox("Select Period",  options=list(range(1, 44)), index=list(range(1, 44)).index(current_matchup))
-    if st.button("Update Scores"):
-        with st.spinner("Updating matchups..."):
-            live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
-            live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
+    with st.spinner("Updating matchups..."):
+        live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
+        live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
         
     col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
     with col1:
