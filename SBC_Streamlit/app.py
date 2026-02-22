@@ -269,65 +269,70 @@ with tab4:
         live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
     
     try:
-        if "Regular Season" in live_stats_total_scores["Type"].values:        
+        if "Regular Season" in live_stats_total_scores["Type"].values:
+            st.subheader("Regular Season Tournament Matchups")     
             col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
-            with col1:
-                render_scorebug(live_stats_total_scores.iloc[0])
-                render_scorebug(live_stats_total_scores.iloc[1])
-                render_scorebug(live_stats_total_scores.iloc[2])
-                render_scorebug(live_stats_total_scores.iloc[3])
-                render_scorebug(live_stats_total_scores.iloc[4])
-            with col2:
-                render_scorebug(live_stats_total_scores.iloc[5])
-                render_scorebug(live_stats_total_scores.iloc[6])
-                render_scorebug(live_stats_total_scores.iloc[7])
-                render_scorebug(live_stats_total_scores.iloc[8])
-                render_scorebug(live_stats_total_scores.iloc[9])
-            with col3:
-                render_scorebug(live_stats_total_scores.iloc[10])
-                render_scorebug(live_stats_total_scores.iloc[11])
-                render_scorebug(live_stats_total_scores.iloc[12])
-                render_scorebug(live_stats_total_scores.iloc[13])
-                render_scorebug(live_stats_total_scores.iloc[14])
-            with col4:
-                render_scorebug(live_stats_total_scores.iloc[15])
-                render_scorebug(live_stats_total_scores.iloc[16])
-                render_scorebug(live_stats_total_scores.iloc[17])
-                render_scorebug(live_stats_total_scores.iloc[18])
-                render_scorebug(live_stats_total_scores.iloc[19])
-            with col5:
-                render_scorebug(live_stats_total_scores.iloc[20])
-                render_scorebug(live_stats_total_scores.iloc[21])
-                render_scorebug(live_stats_total_scores.iloc[22])
-                render_scorebug(live_stats_total_scores.iloc[23])
-                render_scorebug(live_stats_total_scores.iloc[24])
-            with col6:
-                render_scorebug(live_stats_total_scores.iloc[25])
-                render_scorebug(live_stats_total_scores.iloc[26])
-                render_scorebug(live_stats_total_scores.iloc[27])
-                render_scorebug(live_stats_total_scores.iloc[28])
-                render_scorebug(live_stats_total_scores.iloc[29])
+        with col1:
+            render_scorebug(live_stats_total_scores.iloc[0])
+            render_scorebug(live_stats_total_scores.iloc[6])
+            render_scorebug(live_stats_total_scores.iloc[12])
+            render_scorebug(live_stats_total_scores.iloc[18])
+            render_scorebug(live_stats_total_scores.iloc[24])
 
+        with col2:
+            render_scorebug(live_stats_total_scores.iloc[1])
+            render_scorebug(live_stats_total_scores.iloc[7])
+            render_scorebug(live_stats_total_scores.iloc[13])
+            render_scorebug(live_stats_total_scores.iloc[19])
+            render_scorebug(live_stats_total_scores.iloc[25])
+
+        with col3:
+            render_scorebug(live_stats_total_scores.iloc[2])
+            render_scorebug(live_stats_total_scores.iloc[8])
+            render_scorebug(live_stats_total_scores.iloc[14])
+            render_scorebug(live_stats_total_scores.iloc[20])
+            render_scorebug(live_stats_total_scores.iloc[26])
+
+        with col4:
+            render_scorebug(live_stats_total_scores.iloc[3])
+            render_scorebug(live_stats_total_scores.iloc[9])
+            render_scorebug(live_stats_total_scores.iloc[15])
+            render_scorebug(live_stats_total_scores.iloc[21])
+            render_scorebug(live_stats_total_scores.iloc[27])
+
+        with col5:
+            render_scorebug(live_stats_total_scores.iloc[4])
+            render_scorebug(live_stats_total_scores.iloc[10])
+            render_scorebug(live_stats_total_scores.iloc[16])
+            render_scorebug(live_stats_total_scores.iloc[22])
+            render_scorebug(live_stats_total_scores.iloc[28])
+
+        with col6:
+            render_scorebug(live_stats_total_scores.iloc[5])
+            render_scorebug(live_stats_total_scores.iloc[11])
+            render_scorebug(live_stats_total_scores.iloc[17])
+            render_scorebug(live_stats_total_scores.iloc[23])
+            render_scorebug(live_stats_total_scores.iloc[29])
         if "In-Season Tournament" in live_stats_total_scores["Type"].values:     
             st.subheader("In-Season Tournament Matchups")   
             col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
             with col1:
                 render_scorebug(live_stats_total_scores.iloc[30])
-                render_scorebug(live_stats_total_scores.iloc[31])
-            with col2:
-                render_scorebug(live_stats_total_scores.iloc[32])
-                render_scorebug(live_stats_total_scores.iloc[33])
-            with col3:
-                render_scorebug(live_stats_total_scores.iloc[34])
-                render_scorebug(live_stats_total_scores.iloc[35])
-            with col4:
                 render_scorebug(live_stats_total_scores.iloc[36])
+            with col2:
+                render_scorebug(live_stats_total_scores.iloc[31])
                 render_scorebug(live_stats_total_scores.iloc[37])
-            with col5:
+            with col3:
+                render_scorebug(live_stats_total_scores.iloc[32])
                 render_scorebug(live_stats_total_scores.iloc[38])
+            with col4:
+                render_scorebug(live_stats_total_scores.iloc[33])
                 render_scorebug(live_stats_total_scores.iloc[39])
-            with col6:
+            with col5:
+                render_scorebug(live_stats_total_scores.iloc[34])
                 render_scorebug(live_stats_total_scores.iloc[40])
+            with col6:
+                render_scorebug(live_stats_total_scores.iloc[35])
                 render_scorebug(live_stats_total_scores.iloc[41])
 
         if "Play-In" in live_stats_total_scores["Type"].values:     
@@ -347,15 +352,15 @@ with tab4:
             col1, col2, col3, col4 = st.columns([1,1,1,1])
             with col1:
                 render_scorebug(live_stats_total_scores.iloc[0])
-                render_scorebug(live_stats_total_scores.iloc[1])
-            with col2:
-                render_scorebug(live_stats_total_scores.iloc[2])
-                render_scorebug(live_stats_total_scores.iloc[3])
-            with col3:
                 render_scorebug(live_stats_total_scores.iloc[4])
+            with col2:
+                render_scorebug(live_stats_total_scores.iloc[1])
                 render_scorebug(live_stats_total_scores.iloc[5])
-            with col4:
+            with col3:
+                render_scorebug(live_stats_total_scores.iloc[2])
                 render_scorebug(live_stats_total_scores.iloc[6])
+            with col4:
+                render_scorebug(live_stats_total_scores.iloc[3])
                 render_scorebug(live_stats_total_scores.iloc[7])
     except IndexError:
         pass
