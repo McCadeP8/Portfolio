@@ -223,44 +223,48 @@ with tab3:
 
     with col1:
         SelectedYear = st.selectbox("Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
-        SelectedPeriod = st.selectbox("Period",  options=list(range(1, 39)), index=list(range(1, 39)).index(current_matchup))
+        SelectedPeriod = st.selectbox("Period",  options=list(range(1, 44)), index=list(range(1, 44)).index(current_matchup))
 
     with col2:
-        with st.spinner("Updating matchups..."):
-            live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
-        live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
-        live_stats_df_formatted = format_live_stats_df(live_stats_df_team)
-        st.subheader(f"Stats for {SelectedTeam} in Matchup Period {SelectedPeriod} in {SelectedYear}")
-        st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
-        PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
-        PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
-        ISTOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "In-Season Tournament")
-        if len(RegOpponents) > 0:
-            st.subheader("Regular Season Matchup(s)")
-            scoreboard1 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[0])
-            st.dataframe(scoreboard1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(RegOpponents) > 1:
-            scoreboard2 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[1])
-            st.dataframe(scoreboard2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(PIOpponents) > 0:
-            st.subheader("Play-In Matchup")
-            scoreboard3 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PIOpponents[0])
-            st.dataframe(scoreboard3, width ="stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(PlayOpponents) > 0:
-            st.subheader("Playoff Matchup")
-            scoreboard4 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PlayOpponents[0])
-            st.dataframe(scoreboard4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(ISTOpponents) > 0:
-            st.subheader("In-Season Tournament Matchup")
-            scoreboard5 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, ISTOpponents[0])
-            st.dataframe(scoreboard5, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        SelectedCategory = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
-        season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod)
-        st.altair_chart(season_line_chart_data, use_container_width=True)
+        if st.button("Update Scores"):
+            with st.spinner("Updating matchups..."):
+                live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
+            live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
+            live_stats_df_formatted = format_live_stats_df(live_stats_df_team)
+            st.subheader(f"Stats for {SelectedTeam} in Matchup Period {SelectedPeriod} in {SelectedYear}")
+            st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+            RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
+            PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
+            PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
+            ISTOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "In-Season Tournament")
+            if len(RegOpponents) > 0:
+                st.subheader("Regular Season Matchup(s)")
+                scoreboard1 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[0])
+                st.dataframe(scoreboard1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+            if len(RegOpponents) > 1:
+                scoreboard2 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[1])
+                st.dataframe(scoreboard2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+            if len(PIOpponents) > 0:
+                st.subheader("Play-In Matchup")
+                scoreboard3 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PIOpponents[0])
+                st.dataframe(scoreboard3, width ="stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+            if len(PlayOpponents) > 0:
+                st.subheader("Playoff Matchup")
+                scoreboard4 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PlayOpponents[0])
+                st.dataframe(scoreboard4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+            if len(ISTOpponents) > 0:
+                st.subheader("In-Season Tournament Matchup")
+                scoreboard5 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, ISTOpponents[0])
+                st.dataframe(scoreboard5, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+            SelectedCategory = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
+            season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod)
+            st.altair_chart(season_line_chart_data, use_container_width=True)
 
 with tab4:
     st.subheader("League Scoreboard")
+
+    SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
+    SelectedPeriod2 = st.selectbox("Select Period",  options=list(range(1, 44)), index=list(range(1, 44)).index(current_matchup))
     if st.button("Update Scores"):
         render_scorebug("Blackjack", "Flamingos", "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small", "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small", "13-11", "15-10", 30, 31, "#489624", "#813569")
 
