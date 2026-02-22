@@ -1,6 +1,5 @@
 import pandas as pd
 import streamlit as st
-import folium
 import math as math
 import numpy as np
 import streamlit.components.v1 as components
@@ -1684,41 +1683,3 @@ def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     df["Type"] = pd.Categorical(df["Type"], categories=order, ordered=True)
     df = df.sort_values(["Type", "TeamB_Nickname"], ascending=[True, True])    
     return df
-
-def make_league_map(team_info: dict, zoom_start: int = 4) -> folium.Map:
-    m = folium.Map(
-        location=[39, -98],
-        zoom_start=zoom_start,
-        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-        attr="CartoDB",
-        prefer_canvas=True,
-    )
-
-    ICON_SIZE = 36
-
-    for city, t in team_info.items():
-        icon_html = f"""
-        <div style="
-            width:{ICON_SIZE}px; height:{ICON_SIZE}px;
-            border-radius:50%;
-            background:{t['bg']};
-            border:2.5px solid rgba(255,255,255,0.25);
-            box-shadow:0 2px 12px rgba(0,0,0,0.6);
-            overflow:hidden;
-            display:flex; align-items:center; justify-content:center;
-        ">
-            <img src="{t['logo']}"
-                 style="width:{ICON_SIZE - 6}px; height:{ICON_SIZE - 6}px; object-fit:contain;"
-                 onerror="this.style.display='none'"/>
-        </div>
-        """
-        folium.Marker(
-            location=[t["lat"], t["lon"]],
-            icon=folium.DivIcon(
-                html=icon_html,
-                icon_size=(ICON_SIZE, ICON_SIZE),
-                icon_anchor=(ICON_SIZE // 2, ICON_SIZE // 2),
-            ),
-            tooltip=f"{city} {t.get('nickname', '')}",
-        ).add_to(m)
-    return m
