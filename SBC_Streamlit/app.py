@@ -260,7 +260,20 @@ with tab3:
         st.altair_chart(season_line_chart_data, use_container_width=True)
 
 with tab4:
-    st.write("under construction")
+    st.subheader("League Scoreboard")
+    if st.button("Update Scores"):
+        render_scorebug("Blackjack", "Flamingos", "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small", "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small", "13-11", "15-10", 30, 31, "#489624", "#813569")
+
+
+
+
+
+
+
+
+
+
+
 
 with tab5:
 
