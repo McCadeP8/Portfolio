@@ -1582,7 +1582,7 @@ def render_scorebug(row):
         }}
 
         .team-score {{
-            font-size: 32px;
+            font-size: 22px;
             font-weight: 800;
             letter-spacing: -0.02em;
             color: #ffffff;
