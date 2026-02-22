@@ -269,7 +269,7 @@ with tab4:
         live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
     
     try:
-        if "Regular Season" in live_stats_total_scores["type"].values:        
+        if "Regular Season" in live_stats_total_scores["Type"].values:        
             col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
             with col1:
                 render_scorebug(live_stats_total_scores.iloc[0])
@@ -308,7 +308,7 @@ with tab4:
                 render_scorebug(live_stats_total_scores.iloc[28])
                 render_scorebug(live_stats_total_scores.iloc[29])
 
-        if "In-Season Tournament" in live_stats_total_scores["type"].values:     
+        if "In-Season Tournament" in live_stats_total_scores["Type"].values:     
             st.subheader("In-Season Tournament Matchups")   
             col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
             with col1:
@@ -330,7 +330,7 @@ with tab4:
                 render_scorebug(live_stats_total_scores.iloc[40])
                 render_scorebug(live_stats_total_scores.iloc[41])
 
-        if "Play-In" in live_stats_total_scores["type"].values:     
+        if "Play-In" in live_stats_total_scores["Type"].values:     
             st.subheader("Play-In Tournament Matchups")   
             col1, col2, col3, col4 = st.columns([1,1,1,1])
             with col1:
@@ -342,7 +342,7 @@ with tab4:
             with col4:
                 render_scorebug(live_stats_total_scores.iloc[3])
 
-        if "Playoffs" in live_stats_total_scores["type"].values:     
+        if "Playoffs" in live_stats_total_scores["Type"].values:     
             st.subheader("Playoff Matchups")   
             col1, col2, col3, col4 = st.columns([1,1,1,1])
             with col1:
