@@ -1560,7 +1560,7 @@ def render_scorebug(row):
         .team-info {{ flex: 1; min-width: 0; }}
 
         .team-name {{
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 800;
             letter-spacing: 0.04em;
             text-transform: uppercase;
@@ -1582,7 +1582,7 @@ def render_scorebug(row):
         }}
 
         .team-score {{
-            font-size: 22px;
+            font-size: 28px;
             font-weight: 800;
             letter-spacing: -0.02em;
             color: #ffffff;
