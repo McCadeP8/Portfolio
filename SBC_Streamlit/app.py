@@ -270,7 +270,7 @@ with tab4:
     
     try:
         if "Regular Season" in live_stats_total_scores["Type"].values:
-            st.subheader("Regular Season Tournament Matchups")     
+            st.subheader("Regular Season Matchups")     
             col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
         with col1:
             render_scorebug(live_stats_total_scores.iloc[0])
