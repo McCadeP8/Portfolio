@@ -77,6 +77,8 @@ TEAMS = {
     "New York Knicks":       {"city": "New York",      "lat": 40.7128, "lon": -74.0060, "color": [0,  107,182],  "abbr": "NYK"},
     "Phoenix Suns":          {"city": "Phoenix",       "lat": 33.4455, "lon": -112.0712,"color": [29,  17, 96],  "abbr": "PHX"},
     "Toronto Raptors":       {"city": "Toronto",       "lat": 43.6435, "lon": -79.3791, "color": [206, 17, 65],  "abbr": "TOR"},
+    "London Testicles":       {"city": "London",       "lat": 51.5072, "lon": 0.1276, "color": [206, 17, 65],  "abbr": "LOND"},
+
 }
 
 # Sample road trip schedule — (opponent, date, home/away)
@@ -85,6 +87,7 @@ SCHEDULES = {
         ("Miami Heat",        date(2025,  2,  5), "away"),
         ("Chicago Bulls",     date(2025,  2,  7), "away"),
         ("New York Knicks",   date(2025,  2,  9), "away"),
+        ("London Testicles",   date(2025,  2,  10), "away"),
         ("Toronto Raptors",   date(2025,  2, 11), "away"),
         ("Boston Celtics",    date(2025,  2, 14), "home"),
         ("Dallas Mavericks",  date(2025,  2, 18), "away"),
