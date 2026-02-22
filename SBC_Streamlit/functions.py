@@ -1681,5 +1681,5 @@ def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     df[["TeamA_Score", "TeamB_Score"]] = df.apply(compute_scores, axis=1)
     order = ["Regular Season", "In-Season Tournament", "Play-In", "Playoffs"]
     df["Type"] = pd.Categorical(df["Type"], categories=order, ordered=True)
-    df = df.sort_values(["Type", "TeamB"], ascending=[True, True])    
+    df = df.sort_values(["Type", "TeamB_Nickname"], ascending=[True, True])    
     return df
