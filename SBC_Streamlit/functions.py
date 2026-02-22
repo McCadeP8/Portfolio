@@ -1560,7 +1560,7 @@ def render_scorebug(row):
         .team-info {{ flex: 1; min-width: 0; }}
 
         .team-name {{
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 800;
             letter-spacing: 0.04em;
             text-transform: uppercase;
@@ -1582,7 +1582,7 @@ def render_scorebug(row):
         }}
 
         .team-score {{
-            font-size: 42px;
+            font-size: 32px;
             font-weight: 800;
             letter-spacing: -0.02em;
             color: #ffffff;
@@ -1678,5 +1678,3 @@ def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
         return pd.Series([score_a, score_b])
     df[["TeamA_Score", "TeamB_Score"]] = df.apply(compute_scores, axis=1)
     return df
-
-#DF
