@@ -1,8 +1,3 @@
-"""
-🏀 NBA Team Travel Tracker — flight-tracker style map in Streamlit
-pip install streamlit pydeck pandas
-"""
-
 import streamlit as st
 import pydeck as pdk
 import pandas as pd
