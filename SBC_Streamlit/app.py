@@ -365,6 +365,8 @@ with tab4:
     except IndexError:
         pass
 
+    st.dataframe(standings)
+
 with tab5:
 
     col1, col2 = st.columns([1,7])
