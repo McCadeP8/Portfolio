@@ -1651,14 +1651,6 @@ def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
     return team_a_score, team_b_score
 
 def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
-
-    SelectedYear = 2025
-    SelectedPeriod = 4
-    df = all_time_schedule
-    df2 = live_stats_df2
-    df3 = standings
-
-
     df = df[(df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
     def get_team_city(team_name):
         for city, info in team_info.items():
