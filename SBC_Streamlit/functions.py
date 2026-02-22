@@ -1448,10 +1448,22 @@ def img_to_base64(path: str) -> str:
     except Exception:
         return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 
-def render_scorebug(team_a: str,team_b: str, logo_a: str, logo_b: str, record_a: str, record_b: str, score_a: int, score_b: int, color_a: str, color_b: str):
-        logo_a_src = img_to_base64(logo_a) if not logo_a.startswith("http") else logo_a
-        logo_b_src = img_to_base64(logo_b) if not logo_b.startswith("http") else logo_b
-        html = f"""<!DOCTYPE html>
+def render_scorebug(row):
+    team_a = row["TeamA_Nickname"]
+    team_b = row["TeamB_Nickname"]
+    logo_a = row["TeamA_logo"]
+    logo_b = row["TeamB_logo"]
+    record_a = row["TeamA_record"]
+    record_b = row["TeamB_record"]
+    score_a = row["TeamA_Score"]
+    score_b = row["TeamB_Score"]
+    color_a = row["TeamA_color"]
+    color_b = row["TeamB_color"]
+    logo_a_src = img_to_base64(logo_a) if not logo_a.startswith("http") else logo_a
+    logo_b_src = img_to_base64(logo_b) if not logo_b.startswith("http") else logo_b
+
+
+    html = f"""<!DOCTYPE html>
         <html>
         <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1605,4 +1617,64 @@ def render_scorebug(team_a: str,team_b: str, logo_a: str, logo_b: str, record_a:
         </div>
         </body>
         </html>"""
-        components.html(html, height=180, scrolling=False)
+    components.html(html, height=180, scrolling=False)
+
+def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
+    matchup = df[df["Team"].isin([team_a, team_b])].copy()
+    if matchup.shape[0] != 2:
+        raise ValueError("Both teams must exist exactly once in dataframe.")
+    matchup = matchup.set_index("Team").loc[[team_a, team_b]].reset_index()
+    weights = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
+    team_a_score = 0
+    team_b_score = 0
+    for stat, weight in weights.items():
+        val_a = matchup.loc[0, stat]
+        val_b = matchup.loc[1, stat]
+        if stat == "TO":
+            if val_a < val_b:
+                team_a_score += weight
+            elif val_b < val_a:
+                team_b_score += weight
+            else:
+                team_a_score += weight / 2
+                team_b_score += weight / 2
+        else:
+            if val_a > val_b:
+                team_a_score += weight
+            elif val_b > val_a:
+                team_b_score += weight
+            else:
+                team_a_score += weight / 2
+                team_b_score += weight / 2
+    return team_a_score, team_b_score
+
+def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
+    df = df[(df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
+    def get_team_city(team_name):
+        for city, info in team_info.items():
+            if team_name == f"{city} {info['nickname']}":
+                return city
+        return None
+    df = df.merge(df3[["teamName", "points"]], left_on="TeamA", right_on="teamName", how="left")
+    df["points"] = df["points"].str.replace("-0$", "", regex=True)
+    df = df.rename(columns={"points": "TeamA_record"})
+    df = df.drop(columns=["teamName"])
+    df = df.merge(df3[["teamName", "points"]], left_on="TeamB", right_on="teamName", how="left")
+    df["points"] = df["points"].str.replace("-0$", "", regex=True)
+    df = df.rename(columns={"points": "TeamB_record"})
+    df = df.drop(columns=["teamName"])
+    df["TeamA"] = df["TeamA"].apply(get_team_city)
+    df["TeamB"] = df["TeamB"].apply(get_team_city)
+    df["TeamA_Nickname"] = df["TeamA"].apply(lambda x: team_info[x]["nickname"])
+    df["TeamB_Nickname"] = df["TeamB"].apply(lambda x: team_info[x]["nickname"])
+    df["TeamA_logo"] = df["TeamA"].apply(lambda x: team_info[x]["logo"])
+    df["TeamB_logo"] = df["TeamB"].apply(lambda x: team_info[x]["logo"])
+    df["TeamA_color"] = df["TeamA"].apply(lambda x: team_info[x]["bg"])
+    df["TeamB_color"] = df["TeamB"].apply(lambda x: team_info[x]["bg"])
+    def compute_scores(row):
+        team_a = row["TeamA"]
+        team_b = row["TeamB"]
+        score_a, score_b = get_matchup_score(team_a, team_b, df2)
+        return pd.Series([score_a, score_b])
+    df[["TeamA_Score", "TeamB_Score"]] = df.apply(compute_scores, axis=1)
+    return df
