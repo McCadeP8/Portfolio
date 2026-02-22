@@ -1448,7 +1448,7 @@ def img_to_base64(path: str) -> str:
     except Exception:
         return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 
-def render_scorebug(row, index):
+def render_scorebug(row):
     team_a = row["TeamA_Nickname"]
     team_b = row["TeamB_Nickname"]
     logo_a = row["TeamA_logo"]
