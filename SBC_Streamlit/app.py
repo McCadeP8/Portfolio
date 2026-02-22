@@ -364,7 +364,8 @@ with tab4:
                 render_scorebug(live_stats_total_scores.iloc[7])
     except IndexError:
         pass
-
+    
+    st.subheader("SBCFBL Standings")   
     st.dataframe(standings)
 
 with tab5:
