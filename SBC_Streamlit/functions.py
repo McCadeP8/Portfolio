@@ -1295,12 +1295,19 @@ def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, S
     def get_color(col, reverse=False):
         val1 = scores.iloc[0][col]
         val2 = scores.iloc[1][col]
-        if val1 > val2:
+        if col == 'MP':
+            def mp_to_float(v):
+                mins, secs = v.split(':')
+                return int(mins) + int(secs) / 60
+            n1, n2 = mp_to_float(val1), mp_to_float(val2)
+        else:
+            n1, n2 = float(val1), float(val2)
+        if n1 > n2:
             return green if not reverse else red
-        elif val1 == val2:
+        elif n1 == n2:
             return yellow
         else:
-            return red if not reverse else green
+            return red if not reverse else green    
     Color1 = get_color('MP')
     Color2 = get_color('TS%')
     Color3 = get_color('2PT%')
