@@ -49,157 +49,157 @@ type_colors = {
 }
 
 team_info = {
-    "Albuquerque": {"conf": "West", "bg": "#D72C2C", "bg2": "#281B0D", "text": "white",
+    "Albuquerque": {
+        "conf": "West", "div": "Southwest", "bg": "#D72C2C", "bg2": "#281B0D", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamop_aMAIM8OV?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMOfTbUAA0QzS?format=jpg&name=medium",
         "nickname": "Armadillos", "lat": 35.06, "lon": -106.36},
 
-    "Anaheim": {"conf": "West", "bg": "#DA0F10", "bg2": "#FFB1B1", "text": "white",
+    "Anaheim": {"conf": "West", "div": "Pacific", "bg": "#DA0F10", "bg2": "#FFB1B1", "text": "white",
         "logo": "https://pbs.twimg.com/media/FxamoqBaQAAQSwY?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMRu7bAAArhA9?format=jpg&name=medium",
         "nickname": "Mice", "lat": 33.5, "lon": -117.53},
 
-    "Anchorage": {"conf": "West", "bg": "#454B55", "bg2": "#B8C4C4", "text": "white",
+    "Anchorage": {"conf": "West", "div": "Northwest", "bg": "#454B55", "bg2": "#B8C4C4", "text": "white",
         "logo": "https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANiSzSb0AAFwtG?format=jpg&name=medium",
         "nickname": "Killer Whales", "lat": 61.13, "lon": -149.54},
 
-    "Austin": {"conf": "West", "bg": "#040404", "bg2": "#BB8549", "text": "white",
+    "Austin": {"conf": "West", "div": "Southwest", "bg": "#040404", "bg2": "#BB8549", "text": "white",
         "logo": "https://pbs.twimg.com/media/FxvLuE8acAAUiBQ?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMKhgbkAEDRaf?format=jpg&name=medium",
         "nickname": "Bats", "lat": 30.16, "lon": -97.44},
 
-    "Baltimore": {"conf": "East", "bg": "#00CED1", "bg2": "#FBF5E1", "text": "black",
+    "Baltimore": {"conf": "East", "div": "Atlantic", "bg": "#00CED1", "bg2": "#FBF5E1", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxamr7daQAAhwSx?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANiSzTawAEYp_j?format=jpg&name=medium",
         "nickname": "Blue Crabs", "lat": 39.17, "lon": -76.36},
 
-    "Birmingham": {"conf": "East", "bg": "#853500", "bg2": "#EA2507", "text": "white",
+    "Birmingham": {"conf": "East", "div": "Southeast", "bg": "#853500", "bg2": "#EA2507", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamr8GaMAE5xbG?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANL-RLakAA902R?format=png&name=medium",
         "nickname": "Bandits", "lat": 33.31, "lon": -86.48},
 
-    "Boise": {"conf": "West", "bg": "#744529", "bg2": "#EAD676", "text": "white",
+    "Boise": {"conf": "West", "div": "Northwest", "bg": "#744529", "bg2": "#EAD676", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamr80aEAAWgO1?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANiVTnasAAfKtH?format=jpg&name=medium",
         "nickname": "Spuds", "lat": 43.36, "lon": -116.12},
 
-    "Buffalo": {"conf": "East", "bg": "#152238", "bg2": "#FFDE3A", "text": "white",
+    "Buffalo": {"conf": "East", "div": "Atlantic", "bg": "#152238", "bg2": "#FFDE3A", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamr7JaYAADNSj?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMEUxaYAALcTw?format=png&name=medium",
         "nickname": "Daredevils", "lat": 42.54, "lon": -78.5},
 
-    "Cincinnati": {"conf": "East", "bg": "#FFEA61", "bg2": "#D2691E", "text": "black",
+    "Cincinnati": {"conf": "East", "div": "Central", "bg": "#FFEA61", "bg2": "#D2691E", "text": "black",
         "logo": "https://pbs.twimg.com/media/FxamtxqaMAAoWvU?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMBfgbAAA-uur?format=jpg&name=medium",
         "nickname": "Chili", "lat": 39.06, "lon": -84.3},
 
-    "Columbus": {"conf": "East", "bg": "#CD7F32", "bg2": "#666666", "text": "white",
+    "Columbus": {"conf": "East", "div": "Central", "bg": "#CD7F32", "bg2": "#666666", "text": "white",
         "logo": "https://pbs.twimg.com/media/FxamtzbaUAEvyXi?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HAkYZHSacAE1tpK?format=jpg&name=medium",
         "nickname": "Arches", "lat": 39.57, "lon": -83.0},
 
-    "Des Moines": {"conf": "East", "bg": "#1B1E23", "bg2": "#F7F7EE", "text": "white",
+    "Des Moines": {"conf": "East", "div": "Central", "bg": "#1B1E23", "bg2": "#F7F7EE", "text": "white",
         "logo": "https://pbs.twimg.com/media/FxamtzcaMAAPdlW?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANL-RRawAA-Nkf?format=jpg&name=medium",
         "nickname": "Racoons", "lat": 41.35, "lon": -93.37},
 
-    "El Paso": {"conf": "West", "bg": "#F8EFAE", "bg2": "#2A623D", "text": "black",
+    "El Paso": {"conf": "West", "div": "Southwest", "bg": "#F8EFAE", "bg2": "#2A623D", "text": "black",
         "logo": "https://pbs.twimg.com/media/FxamtxraQAANsYd?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANjbVMbwAA7DTW?format=png&name=medium",
         "nickname": "Vipers", "lat": 31.45, "lon": -106.29},
 
-    "Honolulu": {"conf": "West", "bg": "#CDC0C0", "bg2": "#FAFBF5", "text": "black",
+    "Honolulu": {"conf": "West", "div": "Pacific", "bg": "#CDC0C0", "bg2": "#FAFBF5", "text": "black",
         "logo": "https://pbs.twimg.com/media/FxamvzcaUAAnl_g?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANiSzRbIAE7i0d?format=jpg&name=medium",
         "nickname": "Diamonds", "lat": 21.18, "lon": -157.51},
 
-    "Jacksonville": {"conf": "East", "bg": "#36454F", "bg2": "#B0E0E6", "text": "white",
+    "Jacksonville": {"conf": "East", "div": "Southeast", "bg": "#36454F", "bg2": "#B0E0E6", "text": "white",
         "logo": "https://pbs.twimg.com/media/FxamvzoaIAAd9nF?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANL6y-aAAAghlA?format=jpg&name=medium",
         "nickname": "Manatees", "lat": 30.2, "lon": -81.39},
 
-    "Kentucky": {"conf": "East", "bg": "#663399", "bg2": "#FFFF00", "text": "white",
+    "Kentucky": {"conf": "East", "div": "Central", "bg": "#663399", "bg2": "#FFFF00", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamv04aQAQl4UB?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANL-RNbEAA_Dg_?format=jpg&name=medium",
         "nickname": "Thoroughbreds", "lat": 38.15, "lon": -85.45},
 
-    "Lansing": {"conf": "East", "bg": "#B9EFE1", "bg2": "#197419", "text": "black",
+    "Lansing": {"conf": "East", "div": "Central", "bg": "#B9EFE1", "bg2": "#197419", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxamv1ZacAAfxMM?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANL-RJboAEqm60?format=jpg&name=medium",
         "nickname": "Lagoon", "lat": 42.44, "lon": -84.32},
 
-    "Lincoln": {"conf": "West", "bg": "#FC6A03", "bg2": "#1520A6", "text": "black",
+    "Lincoln": {"conf": "West", "div": "Northwest", "bg": "#FC6A03", "bg2": "#1520A6", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxamx14aEAAyD29?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMOj2agAA139A?format=jpg&name=medium",
         "nickname": "Bully", "lat": 40.48, "lon": -96.4},
 
-    "Little Rock": {"conf": "East", "bg": "#710193", "bg2": "#E39FF6", "text": "white",
+    "Little Rock": {"conf": "East", "div": "Southeast", "bg": "#710193", "bg2": "#E39FF6", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamx2xaYAAqupS?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANL6zAbAAIrPa_?format=jpg&name=medium",
         "nickname": "Big Foot", "lat": 34.44, "lon": -92.19},
 
-    "Manchester": {"conf": "East", "bg": "#D7F2FA", "bg2": "#C20700", "text": "black",
+    "Manchester": {"conf": "East", "div": "Atlantic", "bg": "#D7F2FA", "bg2": "#C20700", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxamx3nagAAZXCI?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANiQhVaUAEw78l?format=jpg&name=medium",
         "nickname": "Trout", "lat": 42.59, "lon": -71.27},
 
-    "Nashville": {"conf": "East", "bg": "#450012", "bg2": "#93A9AE", "text": "white",
+    "Nashville": {"conf": "East", "div": "Southeast", "bg": "#450012", "bg2": "#93A9AE", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxamx01aMAAD8na?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANL6y-bQAAWomv?format=jpg&name=medium",
         "nickname": "Strings", "lat": 36.09, "lon": -86.46},
 
-    "Pittsburgh": {"conf": "East", "bg": "#F1F137", "bg2": "#32322C", "text": "black",
+    "Pittsburgh": {"conf": "East", "div": "Atlantic", "bg": "#F1F137", "bg2": "#32322C", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxam0E7agAAc1zF?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMBfqaoAA1noJ?format=png&name=medium",
         "nickname": "Bridge", "lat": 40.26, "lon": -79.58},
 
-    "Providence": {"conf": "East", "bg": "#BF0A30", "bg2": "#1C2E4A", "text": "white",
+    "Providence": {"conf": "East", "div": "Atlantic", "bg": "#BF0A30", "bg2": "#1C2E4A", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxam0GKaQAAlzwx?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMBfkbwAApvJb?format=jpg&name=medium",
         "nickname": "Pilgrims", "lat": 41.49, "lon": -71.25},
 
-    "San Diego": {"conf": "West", "bg": "#31439B", "bg2": "#0BB5FF", "text": "white",
+    "San Diego": {"conf": "West", "div": "Pacific", "bg": "#31439B", "bg2": "#0BB5FF", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxam0INacAIC29O?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANiQgIawAAEZC9?format=jpg&name=medium",
         "nickname": "Seals", "lat": 32.42, "lon": -117.09},
 
-    "San Jose": {"conf": "West", "bg": "#97EBF4", "bg2": "#EDFF21", "text": "black",
+    "San Jose": {"conf": "West", "div": "Pacific", "bg": "#97EBF4", "bg2": "#EDFF21", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxam0EvaIAAcI_3?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANiQhVbAAApSML?format=jpg&name=medium",
         "nickname": "Seagulls", "lat": 37.2, "lon": -121.53},
 
-    "Seattle": {"conf": "West", "bg": "#006241", "bg2": "#FFFFFF", "text": "white",
+    "Seattle": {"conf": "West", "div": "Northwest", "bg": "#006241", "bg2": "#FFFFFF", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxam1s5aAAIanao?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMOfYaIAAUPiY?format=jpg&name=medium",
         "nickname": "Brew", "lat": 47.36, "lon": -122.19},
 
-    "St. Louis": {"conf": "West", "bg": "#B7B1AE", "bg2": "#B90E0A", "text": "black",
+    "St. Louis": {"conf": "West", "div": "Southwest", "bg": "#B7B1AE", "bg2": "#B90E0A", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxam1ugaEAUkbUi?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMLQobQAAdeDO?format=jpg&name=medium",
         "nickname": "66ers", "lat": 38.37, "lon": -90.11},
 
-    "Tampa Bay": {"conf": "East", "bg": "#FC8EAC", "bg2": "#313639", "text": "black",
+    "Tampa Bay": {"conf": "East", "div": "Southeast", "bg": "#FC8EAC", "bg2": "#313639", "text": "black",
         "logo": "https://pbs.twimg.com/media/G_eTqPpacAIV82Y?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANiQhMboAAO1cd?format=jpg&name=medium",
         "nickname": "Flamingos", "lat": 27.58, "lon": -82.28},
 
-    "Tulsa": {"conf": "West", "bg": "#333333", "bg2": "#656565", "text": "white",
+    "Tulsa": {"conf": "West", "div": "Southwest", "bg": "#333333", "bg2": "#656565", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxam1s7aQAAiSsW?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMEU0bwAA95nZ?format=png&name=medium",
         "nickname": "Tornado", "lat": 36.07, "lon": -95.56},
 
-    "Vancouver": {"conf": "West", "bg": "#17780D", "bg2": "#CACE00", "text": "black",
+    "Vancouver": {"conf": "West", "div": "Northwest", "bg": "#17780D", "bg2": "#CACE00", "text": "black",
         "logo": "https://pbs.twimg.com/media/Fxam4eaaMAAW6Pz?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMKg-bAAEpRBD?format=jpg&name=medium",
         "nickname": "Forest", "lat": 49.15, "lon": -123.06},
 
-    "Vegas": {"conf": "West", "bg": "#35654D", "bg2": "#B8000A", "text": "white",
+    "Vegas": {"conf": "West", "div": "Pacific", "bg": "#35654D", "bg2": "#B8000A", "text": "white",
         "logo": "https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=small",
         "wordmark": "https://pbs.twimg.com/media/HANMVMPb0AAwdh2?format=jpg&name=medium",
         "nickname": "Blackjack", "lat": 36.1, "lon": -115.08},
 }
-
 
 cap_sheets_to_fantrax_name_fix = {
     "Eugeny Omoruyi": "Eugene Omoruyi",

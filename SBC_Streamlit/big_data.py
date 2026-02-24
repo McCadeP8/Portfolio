@@ -1,7 +1,7 @@
 import pandas as pd
 import os
-from data import current_year
-from functions import get_matchup_stats, get_all_time_schedule, get_fantrax_roster, send_discord_message
+from data import current_year, team_info
+from functions import get_matchup_stats, get_all_time_schedule, get_fantrax_roster, send_discord_message, get_matchup_score
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 
@@ -47,5 +47,44 @@ def get_all_time_rosters_history() -> pd.DataFrame:
     final_df.to_parquet("all_time_rosters_history.parquet", index=False)
     send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_rosters_history")
 
+def get_all_time_scores() -> pd.DataFrame:
+    df = pd.read_parquet("all_time_scores.parquet")
+    df_old = df[df["Year"] != current_year]
+    df = df[df["Year"] == current_year]
+    def get_team_city(team_name):
+        for city, info in team_info.items():
+            if team_name == f"{city} {info['nickname']}":
+                return city
+        return None
+    df["TeamA"] = df["TeamA"].apply(get_team_city)
+    df["TeamB"] = df["TeamB"].apply(get_team_city)
+    for (year, period), group in df.groupby(["Year", "Period"]):
+        year = int(year)
+        period = int(period)
+        stats_df = get_matchup_stats(year, period)
+        for idx in group.index:
+            team_a = df.at[idx, "TeamA"]
+            team_b = df.at[idx, "TeamB"]
+            team_a_score, team_b_score = get_matchup_score(team_a, team_b, stats_df)
+            team_a_score, team_b_score = get_matchup_score(team_a, team_b, stats_df)
+            df.at[idx, "TeamAScore"] = team_a_score
+            df.at[idx, "TeamBScore"] = team_b_score
+    def get_conference(team_name):
+        if team_name in team_info:
+            return team_info[team_name]['conf']
+        return None
+    df['ConferenceGame'] = df.apply(lambda row: get_conference(row['TeamA']) == get_conference(row['TeamB']), axis=1)
+    df.loc[df['Type'] != 'Regular Season', 'ConferenceGame'] = False
+    def get_division(team_name):
+        if team_name in team_info:
+            return team_info[team_name]['div']
+        return None
+    df['DivisionGame'] = df.apply(lambda row: get_division(row['TeamA']) == get_division(row['TeamB']), axis=1)
+    df.loc[df['Type'] != 'Regular Season', 'DivisionGame'] = False
+    df = pd.concat([df_old, df], ignore_index=True)        
+    df.to_parquet("all_time_scores.parquet", index=False)
+    send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_scores")
+
 get_all_team_stats_history()
 get_all_time_rosters_history()
+get_all_time_scores()
