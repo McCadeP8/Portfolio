@@ -147,11 +147,7 @@ def get_team_award_history() -> pd.DataFrame:
 
 @st.cache_data()
 def get_all_time_schedule() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=998177566"
-    df = pd.read_csv(csv_url)
-    df = df[["Round", "Type", "Year", "Period", "TeamA", "TeamB"]]
-    df["TeamA"] = df["TeamA"].apply(lambda x: "San Diego Seals" if x == "San Diego Wave" else x)
-    df["TeamB"] = df["TeamB"].apply(lambda x: "San Diego Seals" if x == "San Diego Wave" else x)    
+    df = pd.read_parquet("SBC_Streamlit/all_team_stats_history.parquet")
     return df
 
 def current_matchup_period() -> float:
