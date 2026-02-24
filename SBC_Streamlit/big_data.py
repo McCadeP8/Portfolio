@@ -8,7 +8,7 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 def get_all_team_stats_history() -> pd.DataFrame:
     df_old = pd.read_parquet("all_team_stats_history.parquet")
     df_old = df_old[df_old["Year"] != current_year]
-    all_dates = get_all_time_schedule()
+    all_dates = pd.read_parquet("all_time_scores.parquet")
     all_dates = all_dates[all_dates["Year"] == current_year]
     all_dates = (all_dates[["Year", "Period"]].drop_duplicates().reset_index(drop=True))
     dfs = []
