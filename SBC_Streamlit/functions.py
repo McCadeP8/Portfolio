@@ -1327,13 +1327,7 @@ def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, S
     styled_team2 = team2.style.apply(style_matchup, axis=1)
     return styled_team2
 
-def get_opponents(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int, Type: str) -> list:
-    df = get_all_time_schedule()
-    SelectedTeam = "Vegas"
-    SelectedYear = 2024
-    SelectedPeriod = 30
-    Type = "Regular Season"
-    
+def get_opponents(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int, Type: str) -> list:    
     filtered = df[(df["Type"] == Type) & (df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
     filtered = filtered[(filtered["TeamA"].str.contains(SelectedTeam)) | (filtered["TeamB"].str.contains(SelectedTeam))]
     full_team_to_location = {f"{loc} {info['nickname']}": loc for loc, info in team_info.items()}
