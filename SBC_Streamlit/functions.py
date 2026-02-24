@@ -1328,6 +1328,13 @@ def matchup_scoreboard(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, S
     return styled_team2
 
 def get_opponents(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int, Type: str) -> list:    
+    
+    df = get_all_time_schedule()
+    SelectedTeam = "Vegas"
+    SelectedYear = 2024
+    SelectedPeriod = 30
+    Type = "Regular Season"
+
     filtered = df[(df["Type"] == Type) & (df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
     filtered = filtered[(filtered["TeamA"].str.contains(SelectedTeam)) | (filtered["TeamB"].str.contains(SelectedTeam))]
     full_team_to_location = {f"{loc} {info['nickname']}": loc for loc, info in team_info.items()}
@@ -1337,8 +1344,6 @@ def get_opponents(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, Select
             opponents.append(row["TeamB"])
         else:
             opponents.append(row["TeamA"])
-    opponents = ["San Diego Seals" if opponent == "San Diego Wave" else opponent for opponent in opponents]
-    opponents = [full_team_to_location.get(opponent) for opponent in opponents]
     return opponents
 
 def get_transactions(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
