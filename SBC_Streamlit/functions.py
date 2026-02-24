@@ -1651,6 +1651,14 @@ def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
     return team_a_score, team_b_score
 
 def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
+
+    SelectedYear = 2025
+    SelectedPeriod = 35
+    df = get_all_time_schedule()
+    df2 = get_matchup_stats(SelectedYear, SelectedPeriod)
+    df3 = get_fantrax_standings(2025)
+
+
     df = df[(df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
     def get_team_city(team_name):
         for city, info in team_info.items():
@@ -1665,8 +1673,6 @@ def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     df["points"] = df["points"].str.replace("-0$", "", regex=True)
     df = df.rename(columns={"points": "TeamB_record"})
     df = df.drop(columns=["teamName"])
-    df["TeamA"] = df["TeamA"].apply(get_team_city)
-    df["TeamB"] = df["TeamB"].apply(get_team_city)
     df["TeamA_Nickname"] = df["TeamA"].apply(lambda x: team_info[x]["nickname"])
     df["TeamB_Nickname"] = df["TeamB"].apply(lambda x: team_info[x]["nickname"])
     df["TeamA_logo"] = df["TeamA"].apply(lambda x: team_info[x]["logo"])
