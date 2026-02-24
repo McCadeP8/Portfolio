@@ -267,7 +267,6 @@ with tab4:
     with st.spinner("Updating matchups..."):
         live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
         live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
-    
     try:
         if "Regular Season" in live_stats_total_scores["Type"].values:
             st.subheader("Regular Season Matchups")     
