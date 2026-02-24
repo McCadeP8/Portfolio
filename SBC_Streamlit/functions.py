@@ -111,6 +111,12 @@ def get_fantrax_standings(year) -> pd.DataFrame:
     if response.status_code == 200:
         standings = json.loads(response.text)
         df = pd.DataFrame(standings)
+        df["teamName"] = df["teamName"].replace({"San Diego Wave": "San Diego Seals"}) 
+        def get_team_city(team_name):
+            for city, info in team_info.items():
+                if team_name == f"{city} {info['nickname']}":
+                    return city
+        df["teamName"] = df["teamName"].apply(get_team_city)
     else:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return df
@@ -1651,7 +1657,20 @@ def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
     return team_a_score, team_b_score
 
 def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
+
+    SelectedYear = 2025
+    SelectedPeriod = 35
+    df = get_all_time_schedule()
+    df2 = get_matchup_stats(SelectedYear, SelectedPeriod)
+    df3 = get_fantrax_standings(2025)
+
+
     df = df[(df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
+    def get_team_city(team_name):
+        for city, info in team_info.items():
+            if team_name == f"{city} {info['nickname']}":
+                return city
+        return None
     df = df.merge(df3[["teamName", "points"]], left_on="TeamA", right_on="teamName", how="left")
     df["points"] = df["points"].str.replace("-0$", "", regex=True)
     df = df.rename(columns={"points": "TeamA_record"})
