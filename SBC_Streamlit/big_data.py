@@ -1,7 +1,10 @@
+#import os
+#os.chdir("SBC_Streamlit")
+
 import pandas as pd
 import os
 from data import current_year, team_info
-from functions import get_matchup_stats, get_all_time_schedule, get_fantrax_roster, send_discord_message, get_matchup_score
+from functions import get_matchup_stats, get_fantrax_roster, send_discord_message, get_matchup_score
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 
@@ -51,13 +54,6 @@ def get_all_time_scores() -> pd.DataFrame:
     df = pd.read_parquet("all_time_scores.parquet")
     df_old = df[df["Year"] != current_year]
     df = df[df["Year"] == current_year]
-    def get_team_city(team_name):
-        for city, info in team_info.items():
-            if team_name == f"{city} {info['nickname']}":
-                return city
-        return None
-    df["TeamA"] = df["TeamA"].apply(get_team_city)
-    df["TeamB"] = df["TeamB"].apply(get_team_city)
     for (year, period), group in df.groupby(["Year", "Period"]):
         year = int(year)
         period = int(period)
