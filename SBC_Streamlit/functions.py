@@ -107,21 +107,8 @@ def get_fantrax_players() -> pd.DataFrame:
     return players_df
 
 @st.cache_data(ttl=86400)
-def get_fantrax_standings(year) -> pd.DataFrame:
-    roster_url = f"https://www.fantrax.com/fxea/general/getStandings?leagueId={league_ids.get(year)}"
-    headers = {'Cookie': 'JSESSIONID='}
-    response = requests.get(roster_url, headers=headers)
-    if response.status_code == 200:
-        standings = json.loads(response.text)
-        df = pd.DataFrame(standings)
-        df["teamName"] = df["teamName"].replace({"San Diego Wave": "San Diego Seals"}) 
-        def get_team_city(team_name):
-            for city, info in team_info.items():
-                if team_name == f"{city} {info['nickname']}":
-                    return city
-        df["teamName"] = df["teamName"].apply(get_team_city)
-    else:
-        print(f"Failed to fetch data - Status code: {response.status_code}")
+def get_standings() -> pd.DataFrame:
+    df = pd.read_parquet("SBC_Streamlit/all_time_standings.parquet")
     return df
 
 @st.cache_data()
@@ -1146,11 +1133,15 @@ def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rost
     return df
 
 def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFrame:
-    df = df[['teamName', 'winPercentage']]
+    df = pd.read_parquet("all_time_standings.parquet")
+    df = df[(df['Year'] == current_year) & (df['Period'] == 99)]
+    df[['Wins', 'Losses']] = df['Record'].str.split('-', expand=True).astype(int)
+    df = df[df['Wins'] / (df['Wins'] + df['Losses']) == df['winPercentage']]
+    df = df[['Team', 'winPercentage']]
     dp = get_draft_picks()
     dp = dp[dp['Year'] == current_year]
     dp["OGTeam2"] = dp["OGTeam"].map(lambda t: f"{t} {team_info.get(t, {}).get('nickname', '')}".strip())
-    dp = dp.merge(df, how = 'left', left_on = 'OGTeam2', right_on = 'teamName')
+    dp = dp.merge(df, how = 'left', left_on = 'OGTeam2', right_on = 'Team')
     dp = dp[dp['Round'] == round]
     dp = dp.sort_values('winPercentage', ascending=True)
     dp['Pick'] = np.where(round == "1st Round", range(1, 31), range(31, 61))
