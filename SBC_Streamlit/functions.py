@@ -1139,10 +1139,8 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
     df[['Wins', 'Losses']] = df['Record'].str.split('-', expand=True).astype(int)
     df['winPercentage'] = df['Wins'] / (df['Wins'] + df['Losses'])    
     df = df[['Team', 'winPercentage']]
-    dp = get_draft_picks()
     dp = dp[dp['Year'] == current_year]
-    dp["OGTeam2"] = dp["OGTeam"].map(lambda t: f"{t} {team_info.get(t, {}).get('nickname', '')}".strip())
-    dp = dp.merge(df, how = 'left', left_on = 'OGTeam2', right_on = 'Team')
+    dp = dp.merge(df, how = 'left', left_on = 'OGTeam', right_on = 'Team')
     dp = dp[dp['Round'] == round]
     dp = dp.sort_values('winPercentage', ascending=True)
     dp['Pick'] = np.where(round == "1st Round", range(1, 31), range(31, 61))
