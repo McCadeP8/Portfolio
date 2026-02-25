@@ -1133,10 +1133,9 @@ def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rost
     return df
 
 def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFrame:
-    df = pd.read_parquet("all_time_standings.parquet")
     df = df[(df['Year'] == current_year) & (df['Period'] == 99)]
     df[['Wins', 'Losses']] = df['Record'].str.split('-', expand=True).astype(int)
-    df = df[df['Wins'] / (df['Wins'] + df['Losses']) == df['winPercentage']]
+    df['winPercentage'] = df['Wins'] / (df['Wins'] + df['Losses'])    
     df = df[['Team', 'winPercentage']]
     dp = get_draft_picks()
     dp = dp[dp['Year'] == current_year]
@@ -1165,7 +1164,11 @@ def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: flo
 
 def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
     for city, info in team_info.items():
-        standings.loc[standings["teamName"].str.startswith(city), "conference"] = info["conf"]
+        standings.loc[standings["Team"].str.startswith(city), "conference"] = info["conf"]
+    standings = standings[(standings['Year'] == current_year) & (standings['Period'] == 99)]
+    standings[['Wins', 'Losses']] = standings['Record'].str.split('-', expand=True).astype(int)
+    standings['winPercentage'] = standings['Wins'] / (standings['Wins'] + standings['Losses'])    
+    standings = standings[['Team', 'winPercentage','conference']]
     standings["Conf_Rank"] = (standings.groupby("conference")["winPercentage"].rank(method="first", ascending=False).astype(int))
     standings = standings[standings['Conf_Rank'] >= 9]
     standings = standings.sort_values("winPercentage", ascending=True)
@@ -1173,20 +1176,20 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
     combos = list(combinations(items, 4))
     df = pd.DataFrame(combos, columns=["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball"])
     df["Ownership"] = np.concatenate([
-        np.repeat(standings["teamName"].iloc[0], 140),
-        np.repeat(standings["teamName"].iloc[1], 140),
-        np.repeat(standings["teamName"].iloc[2], 140),
-        np.repeat(standings["teamName"].iloc[3], 125),
-        np.repeat(standings["teamName"].iloc[4], 105),
-        np.repeat(standings["teamName"].iloc[5], 90),
-        np.repeat(standings["teamName"].iloc[6], 75),
-        np.repeat(standings["teamName"].iloc[7], 60),
-        np.repeat(standings["teamName"].iloc[8], 45),
-        np.repeat(standings["teamName"].iloc[9], 30),
-        np.repeat(standings["teamName"].iloc[10], 20),
-        np.repeat(standings["teamName"].iloc[11], 15),
-        np.repeat(standings["teamName"].iloc[12], 10),
-        np.repeat(standings["teamName"].iloc[13], 5),
+        np.repeat(standings["Team"].iloc[0], 140),
+        np.repeat(standings["Team"].iloc[1], 140),
+        np.repeat(standings["Team"].iloc[2], 140),
+        np.repeat(standings["Team"].iloc[3], 125),
+        np.repeat(standings["Team"].iloc[4], 105),
+        np.repeat(standings["Team"].iloc[5], 90),
+        np.repeat(standings["Team"].iloc[6], 75),
+        np.repeat(standings["Team"].iloc[7], 60),
+        np.repeat(standings["Team"].iloc[8], 45),
+        np.repeat(standings["Team"].iloc[9], 30),
+        np.repeat(standings["Team"].iloc[10], 20),
+        np.repeat(standings["Team"].iloc[11], 15),
+        np.repeat(standings["Team"].iloc[12], 10),
+        np.repeat(standings["Team"].iloc[13], 5),
         np.repeat("Redraw", 1)])
     return df
 
@@ -1652,25 +1655,26 @@ def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
 
 def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     df = df[(df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
-    def get_team_city(team_name):
-        for city, info in team_info.items():
-            if team_name == f"{city} {info['nickname']}":
-                return city
-        return None
-    df = df.merge(df3[["teamName", "points"]], left_on="TeamA", right_on="teamName", how="left")
-    df["points"] = df["points"].str.replace("-0$", "", regex=True)
-    df = df.rename(columns={"points": "TeamA_record"})
-    df = df.drop(columns=["teamName"])
-    df = df.merge(df3[["teamName", "points"]], left_on="TeamB", right_on="teamName", how="left")
-    df["points"] = df["points"].str.replace("-0$", "", regex=True)
-    df = df.rename(columns={"points": "TeamB_record"})
-    df = df.drop(columns=["teamName"])
     df["TeamA_Nickname"] = df["TeamA"].apply(lambda x: team_info[x]["nickname"])
     df["TeamB_Nickname"] = df["TeamB"].apply(lambda x: team_info[x]["nickname"])
     df["TeamA_logo"] = df["TeamA"].apply(lambda x: team_info[x]["logo"])
     df["TeamB_logo"] = df["TeamB"].apply(lambda x: team_info[x]["logo"])
     df["TeamA_color"] = df["TeamA"].apply(lambda x: team_info[x]["bg"])
     df["TeamB_color"] = df["TeamB"].apply(lambda x: team_info[x]["bg"])
+    conditions = [df["Type"] == "Regular Season", df["Round"] == "Group Stage", (df["Type"] == "In-Season Tournament") & (df["Round"] != "Group Stage"), df["Type"].isin(["Play-In", "Playoffs"])]
+    choices = ["Record", "GSRecord", "IST Seed", "Playoff Seed"]
+    df["lookup_col"] = np.select(conditions, choices, default=None)
+    if ((df3["Year"] == SelectedYear) & (df3["Period"] == SelectedPeriod)).any():
+        df3 = df3[(df3["Year"] == SelectedYear) & (df3["Period"] == SelectedPeriod)].copy()
+    else:
+        df3 = df3[(df3["Year"] == SelectedYear) & (df3["Period"] == 99)].copy()
+    df3_melted = df3.melt(id_vars="Team", value_vars=["Record", "GSRecord", "IST Seed", "Playoff Seed"], var_name="lookup_col", value_name="value")
+    df = df.merge(df3_melted, left_on=["TeamA", "lookup_col"], right_on=["Team", "lookup_col"], how="left")
+    df = df.rename(columns={"value": "TeamA_record"})
+    df = df.drop(columns=["Team"])
+    df = df.merge(df3_melted, left_on=["TeamB", "lookup_col"], right_on=["Team", "lookup_col"],how="left")
+    df = df.rename(columns={"value": "TeamB_record"})
+    df = df.drop(columns=["Team"])
     def compute_scores(row):
         team_a = row["TeamA"]
         team_b = row["TeamB"]
