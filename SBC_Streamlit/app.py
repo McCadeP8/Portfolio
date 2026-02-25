@@ -226,7 +226,8 @@ with tab3:
 
     with col1:
         SelectedYear = st.selectbox("Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
-        SelectedPeriod = st.selectbox("Period",  options=list(range(1, 44)), index=list(range(1, 44)).index(current_matchup))
+        max_period = all_time_schedule[all_time_schedule["Year"] == SelectedYear]["Period"].max()
+        SelectedPeriod = st.selectbox("Select Period", options=list(range(1, max_period+1)), index=list(range(1, max_period+1)).index(min(current_matchup, max_period)))
 
     with col2:
         with st.spinner("Updating matchups..."):
@@ -266,7 +267,8 @@ with tab4:
     st.subheader("League Scoreboard")
 
     SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
-    SelectedPeriod2 = st.selectbox("Select Period", options=list(range(1, 44)), index=list(range(1, 44)).index(current_matchup))
+    max_period2 = all_time_schedule[all_time_schedule["Year"] == SelectedYear2]["Period"].max()
+    SelectedPeriod2 = st.selectbox("Select Period", options=list(range(1, max_period2+1)), index=list(range(1, max_period2+1)).index(min(current_matchup, max_period2)))
 
     with st.spinner("Updating matchups..."):
         live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
