@@ -270,102 +270,164 @@ with tab4:
     with st.spinner("Updating matchups..."):
         live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
         live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
-    try:
-        if "Regular Season" in live_stats_total_scores["Type"].values:
-            st.subheader("Regular Season Matchups")     
-            col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
-        with col1:
+    if "Regular Season" in live_stats_total_scores["Type"].values:
+        st.subheader("Regular Season Matchups")     
+        col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
+    with col1:
+        try:
             render_scorebug(live_stats_total_scores.iloc[0])
             render_scorebug(live_stats_total_scores.iloc[6])
             render_scorebug(live_stats_total_scores.iloc[12])
             render_scorebug(live_stats_total_scores.iloc[18])
             render_scorebug(live_stats_total_scores.iloc[24])
+        except IndexError:
+            pass
 
-        with col2:
+    with col2:
+        try:
             render_scorebug(live_stats_total_scores.iloc[1])
             render_scorebug(live_stats_total_scores.iloc[7])
             render_scorebug(live_stats_total_scores.iloc[13])
             render_scorebug(live_stats_total_scores.iloc[19])
             render_scorebug(live_stats_total_scores.iloc[25])
+        except IndexError:
+            pass
 
-        with col3:
+    with col3:
+        try:
             render_scorebug(live_stats_total_scores.iloc[2])
             render_scorebug(live_stats_total_scores.iloc[8])
             render_scorebug(live_stats_total_scores.iloc[14])
             render_scorebug(live_stats_total_scores.iloc[20])
             render_scorebug(live_stats_total_scores.iloc[26])
+        except IndexError:
+            pass
 
-        with col4:
+
+    with col4:
+        try:
             render_scorebug(live_stats_total_scores.iloc[3])
             render_scorebug(live_stats_total_scores.iloc[9])
             render_scorebug(live_stats_total_scores.iloc[15])
             render_scorebug(live_stats_total_scores.iloc[21])
             render_scorebug(live_stats_total_scores.iloc[27])
+        except IndexError:
+            pass
 
-        with col5:
+
+    with col5:
+        try:
             render_scorebug(live_stats_total_scores.iloc[4])
             render_scorebug(live_stats_total_scores.iloc[10])
             render_scorebug(live_stats_total_scores.iloc[16])
             render_scorebug(live_stats_total_scores.iloc[22])
             render_scorebug(live_stats_total_scores.iloc[28])
+        except IndexError:
+            pass
 
-        with col6:
+
+    with col6:
+        try:
             render_scorebug(live_stats_total_scores.iloc[5])
             render_scorebug(live_stats_total_scores.iloc[11])
             render_scorebug(live_stats_total_scores.iloc[17])
             render_scorebug(live_stats_total_scores.iloc[23])
             render_scorebug(live_stats_total_scores.iloc[29])
-        if "In-Season Tournament" in live_stats_total_scores["Type"].values:     
-            st.subheader("In-Season Tournament Matchups")   
-            col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
-            with col1:
+        except IndexError:
+            pass
+
+
+    if "In-Season Tournament" in live_stats_total_scores["Type"].values:     
+        st.subheader("In-Season Tournament Matchups")   
+        col1, col2, col3, col4, col5, col6 = st.columns([1,1,1,1,1,1])
+        with col1:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[30])
                 render_scorebug(live_stats_total_scores.iloc[36])
-            with col2:
+            except IndexError:
+                pass
+        with col2:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[31])
                 render_scorebug(live_stats_total_scores.iloc[37])
-            with col3:
+            except IndexError:
+                pass
+        with col3:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[32])
                 render_scorebug(live_stats_total_scores.iloc[38])
-            with col4:
+            except IndexError:
+                pass
+        with col4:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[33])
                 render_scorebug(live_stats_total_scores.iloc[39])
-            with col5:
+            except IndexError:
+                pass
+        with col5:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[34])
                 render_scorebug(live_stats_total_scores.iloc[40])
-            with col6:
+            except IndexError:
+                pass
+        with col6:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[35])
                 render_scorebug(live_stats_total_scores.iloc[41])
+            except IndexError:
+                pass
 
-        if "Play-In" in live_stats_total_scores["Type"].values:     
-            st.subheader("Play-In Tournament Matchups")   
-            col1, col2, col3, col4 = st.columns([1,1,1,1])
-            with col1:
+    if "Play-In" in live_stats_total_scores["Type"].values:     
+        st.subheader("Play-In Tournament Matchups")   
+        col1, col2, col3, col4 = st.columns([1,1,1,1])
+        with col1:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[0])
-            with col2:
+            except IndexError:
+                pass
+        with col2:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[1])
-            with col3:
+            except IndexError:
+                pass
+        with col3:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[2])
-            with col4:
+            except IndexError:
+                pass
+        with col4:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[3])
+            except IndexError:
+                pass
 
-        if "Playoffs" in live_stats_total_scores["Type"].values:     
-            st.subheader("Playoff Matchups")   
-            col1, col2, col3, col4 = st.columns([1,1,1,1])
-            with col1:
+    if "Playoffs" in live_stats_total_scores["Type"].values:     
+        st.subheader("Playoff Matchups")   
+        col1, col2, col3, col4 = st.columns([1,1,1,1])
+        with col1:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[0])
                 render_scorebug(live_stats_total_scores.iloc[4])
-            with col2:
+            except IndexError:
+                pass
+        with col2:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[1])
                 render_scorebug(live_stats_total_scores.iloc[5])
-            with col3:
+            except IndexError:
+                pass
+        with col3:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[2])
                 render_scorebug(live_stats_total_scores.iloc[6])
-            with col4:
+            except IndexError:
+                pass
+        with col4:
+            try:
                 render_scorebug(live_stats_total_scores.iloc[3])
                 render_scorebug(live_stats_total_scores.iloc[7])
-    except IndexError:
-        pass
+            except IndexError:
+                pass
     
     st.subheader("SBCFBL Standings")
     st.write("Coming Soon")
