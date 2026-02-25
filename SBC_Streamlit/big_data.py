@@ -3,6 +3,7 @@
 
 import pandas as pd
 import os
+import numpy as np
 from data import current_year, team_info
 from functions import get_matchup_stats, get_fantrax_roster, send_discord_message, get_matchup_score
 
@@ -144,7 +145,27 @@ def get_all_time_standings() -> pd.DataFrame:
     df = df.merge(df3, on=["Year", "Team"], how="left")
     df.to_parquet("all_time_standings.parquet", index=False)
     send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_standings")
-    
+
+def add_game_to_schedule(game_dict):
+    df = pd.read_parquet("all_time_scores.parquet")
+    new_row = pd.DataFrame([game_dict])
+    df = pd.concat([df, new_row], ignore_index=True)
+    df.to_parquet("all_time_scores.parquet", index=False)
+    return df
+
+# add_game_to_schedule({
+#     "Round": 1,
+#     "Type": "Regular Season",
+#     "Year": 2026,
+#     "Period": 39,
+#     "TeamA": "Lakers",
+#     "TeamB": "Celtics",
+#     "TeamAScore": np.nan,
+#     "TeamBScore": np.nan,
+#     "DivisionGame": np.nan,
+#     "ConferenceGame": np.nan
+# })
+
 get_all_team_stats_history()
 get_all_time_rosters_history()
 get_all_time_scores()
