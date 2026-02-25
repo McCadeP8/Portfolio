@@ -227,7 +227,7 @@ with tab3:
     with col1:
         SelectedYear = st.selectbox("Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
         max_period = all_time_schedule[all_time_schedule["Year"] == SelectedYear]["Period"].max()
-        SelectedPeriod = st.selectbox("Select Period", options=list(range(1, max_period+1)), index=list(range(1, max_period+1)).index(min(current_matchup, max_period)))
+        SelectedPeriod = st.selectbox("Period", options=list(range(1, max_period+1)), index=list(range(1, max_period+1)).index(min(current_matchup, max_period)))
 
     with col2:
         with st.spinner("Updating matchups..."):
