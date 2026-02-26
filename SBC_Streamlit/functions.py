@@ -1736,6 +1736,6 @@ def get_team_schedule(df, SelectedTeam, SelectedYear):
     def tier_color(row):
         color = green if row["Result"] == "W" else red
         return [f'background-color: {color}'] * len(row)
-    df = df[["Period", "Location", "Opponent", "Score"]]
+    df = df[["Period", "Location", "Opponent", "Score", "Result"]]
     df = df.style.apply(tier_color, axis=1).hide(axis="index")
     return df
