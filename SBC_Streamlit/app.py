@@ -288,17 +288,17 @@ with tab4:
     render_section("In-Season Tournament Matchups", "In-Season Tournament", 6)
     render_section("Play-In Tournament Matchups", "Play-In", 4)
     render_section("Playoff Matchups", "Playoffs", 4)
-#ABC
-    col1, col2 = st.columns([1, 9])
+
+    col1, col2 = st.columns([1,1])
     with col1:
         st.subheader("Western Conference Standings")
         WestStandings = get_standings_table(standings, SelectedPeriod2, SelectedYear2, "West")
-        st.dataframe(WestStandings, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
+        st.dataframe(WestStandings, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
 
     with col2:
         st.subheader("Easten Conference Standings")
         EastStandings = get_standings_table(standings, SelectedPeriod2, SelectedYear2, "East")
-        st.dataframe(EastStandings, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
+        st.dataframe(EastStandings, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
 
 with tab5:
 
