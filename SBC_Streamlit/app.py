@@ -299,6 +299,8 @@ with tab4:
         st.subheader("Easten Conference Standings")
         EastStandings = get_standings_table(standings, SelectedPeriod2, SelectedYear2, "East")
         st.dataframe(EastStandings, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
+    
+    st.write("Tiebreakers not currently implemented, so teams with identical records are sorted alphabetically within the standings.")
 
 with tab5:
 
