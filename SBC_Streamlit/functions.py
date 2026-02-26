@@ -1696,7 +1696,7 @@ def get_standings_table(df, SelectedPeriod, SelectedYear, Conference):
     df["Win %"] = df["wins"] / (df["wins"] + df["losses"])   
     max_wins = df["wins"].max()
     df["GB"] = (max_wins - df["wins"]).astype(float).round(1).astype(str)    
-    df.loc[df["GB"] == 0, "GB"] = "—"
+    df.loc[df["GB"] == "0.0", "GB"] = "—"
     team_to_logo = {team: info["logo"] for team, info in team_info.items()}
     df["Logo"] = df["Team"].map(team_to_logo)
     df = df[["Logo", "Record", "Win %", "GB", "ConfRecord", "DivRecord"]]    
