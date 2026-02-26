@@ -1702,7 +1702,7 @@ def get_standings_table(df, SelectedPeriod, SelectedYear, Conference):
     df = df[["Logo", "Record", "Win %", "GB", "ConfRecord", "DivRecord"]]    
     df = df.sort_values("Win %", ascending=False).reset_index(drop=True)
     df["Win %"] = (df["Win %"] * 100).round(2).astype(str) + "%"
-
+    df = df.rename(columns={"ConfRecord": "Conf. Record", "DivRecord": "Div. Record"})
     green = '#6B9B6B'
     yellow = '#D4B963'
     red = '#CC8888'
