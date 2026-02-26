@@ -264,7 +264,7 @@ with tab3:
         st.altair_chart(season_line_chart_data, use_container_width=True)
 
 with tab4:
-    st.subheader(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Schedule")
+    st.subheader(f"{SelectedTeam} {current_year-1}-{str(current_year)[-2:]} Schedule")
     TeamSchedule = get_team_schedule(all_time_schedule, SelectedTeam, current_year)
     st.dataframe(TeamSchedule, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="Opp", width="small")})
 
