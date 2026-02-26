@@ -83,7 +83,7 @@ with col1:
 
 st.divider()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", f"{SelectedTeam} Live Score", "League Scoreboard", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "SBCFBL Awards", "About SBCFBL", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", f"{SelectedTeam} Live Score", f"{SelectedTeam} Schedule", "League Scoreboard", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "SBCFBL Awards", "About SBCFBL", "Data Checks"])
 
 with tab1:
     st.header(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
@@ -264,6 +264,9 @@ with tab3:
         st.altair_chart(season_line_chart_data, use_container_width=True)
 
 with tab4:
+    st.write("Coming Soon")
+
+with tab5:
     st.subheader("League Scoreboard")
 
     SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
@@ -302,7 +305,7 @@ with tab4:
     
     st.write("Tiebreakers not currently implemented, so teams with identical records are sorted alphabetically within the standings.")
 
-with tab5:
+with tab6:
 
     col1, col2 = st.columns([1,7])
 
@@ -381,7 +384,7 @@ with tab5:
                 .format({c: "${:,.0f}" for c in trade_restrictins_all_df.columns if re.match(r"\d{4}", c)}))
             st.dataframe(trade_restrictins_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player", "Trade Restriction"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
-with tab6:
+with tab7:
     all_full_team_picks = all_full_draft_picks(dp)
     st.header("Fully Owned Picks")
     st.dataframe(all_full_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
@@ -398,7 +401,7 @@ with tab6:
     st.header("Locked Draft Picks")
     st.dataframe(all_locked_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
-with tab7:
+with tab8:
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -447,7 +450,7 @@ with tab7:
     with col4:
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
-with tab8:
+with tab9:
 
     with st.form("team_selection_form"):
     
@@ -530,7 +533,7 @@ with tab8:
         st.subheader("Draft Pick Check")
         #stepien_check()
 
-with tab9:
+with tab10:
 
     tab2026, tab2025, tab2024, tab2023, tab2022, tab2021, tablottery = st.tabs(["2026 Draft", "2025 Draft", "2024 Draft", "2023 Draft", "2022 Draft", "2021 Draft", "Lottery"])
 
@@ -622,7 +625,7 @@ with tab9:
         base_table = lottery_table(standings)
         st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
 
-with tab10:
+with tab11:
     st.title("2025 SBCFBL Awards")
 
     col1, col2 = st.columns([1,1])
@@ -778,7 +781,7 @@ with tab10:
         ASGMVP = get_single_award(award_history, ft_players, all_time_rosters, pics, 2025, "ASG MVP")
         st.dataframe(ASGMVP, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
-with tab11:
+with tab12:
     st.subheader("SBCFBL Introduction")
     st.markdown("""
     The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from Seth Partnow, who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
@@ -930,7 +933,7 @@ with tab11:
     This document is intended as a **quick-reference guide** and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered **the premier fantasy basketball experience**.
     """)
 
-with tab12:
+with tab13:
 
     picture_check = data_picture_check(df, pics)
     if picture_check.shape[0] > 0:
