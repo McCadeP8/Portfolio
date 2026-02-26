@@ -111,8 +111,6 @@ def get_standings() -> pd.DataFrame:
     df = pd.read_parquet("SBC_Streamlit/all_time_standings.parquet")
     return df
 
-#ABC
-
 @st.cache_data()
 def get_fantrax_matchups(year) -> pd.DataFrame:
     roster_url = f"https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId={league_ids.get(year)}"
@@ -1684,4 +1682,39 @@ def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     order = ["Regular Season", "In-Season Tournament", "Play-In", "Playoffs"]
     df["Type"] = pd.Categorical(df["Type"], categories=order, ordered=True)
     df = df.sort_values(["Type", "TeamB_Nickname"], ascending=[True, True])    
+    return df
+
+def get_standings_table(df, SelectedPeriod, SelectedYear, Conference):
+    df = pd.read_parquet("SBC_Streamlit/all_time_standings.parquet")
+    team_to_conf = {team: info["conf"] for team, info in team_info.items()}
+    df["Conference"] = df["Team"].map(team_to_conf)
+    mask = (df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)
+    if not mask.any():
+        SelectedPeriod = 99
+    df = df[(df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod) & (df["Conference"] == Conference)].copy()
+    df[["wins", "losses"]] = df["Record"].str.split("-", expand=True).astype(int)
+    df["Win %"] = df["wins"] / (df["wins"] + df["losses"])   
+    max_wins = df["wins"].max()
+    df["GB"] = (max_wins - df["wins"]).astype(float).round(1).astype(str)    
+    df.loc[df["GB"] == 0, "GB"] = "—"
+    team_to_logo = {team: info["logo"] for team, info in team_info.items()}
+    df["Logo"] = df["Team"].map(team_to_logo)
+    df = df[["Logo", "Record", "Win %", "GB", "ConfRecord", "DivRecord"]]    
+    df = df.sort_values("Win %", ascending=False).reset_index(drop=True)
+    df["Win %"] = (df["Win %"] * 100).round(2).astype(str) + "%"
+
+    green = '#6B9B6B'
+    yellow = '#D4B963'
+    red = '#CC8888'
+
+    def tier_color(row):
+        if row.name <= 5:
+            color = green
+        elif row.name <= 9:
+            color = yellow
+        else:
+            color = red
+
+        return [f'background-color: {color}'] * len(row)
+    df = df.style.apply(tier_color, axis=1).hide(axis="index")
     return df
