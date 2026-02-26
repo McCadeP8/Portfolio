@@ -268,7 +268,6 @@ with tab4:
     TeamSchedule = get_team_schedule(all_time_schedule, SelectedTeam, current_year)
     st.dataframe(TeamSchedule, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="Opp", width="small")})
 
-
 with tab5:
     st.subheader("League Scoreboard")
 
