@@ -1685,7 +1685,6 @@ def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     return df
 
 def get_standings_table(df, SelectedPeriod, SelectedYear, Conference):
-    df = pd.read_parquet("SBC_Streamlit/all_time_standings.parquet")
     team_to_conf = {team: info["conf"] for team, info in team_info.items()}
     df["Conference"] = df["Team"].map(team_to_conf)
     mask = (df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)
@@ -1716,5 +1715,27 @@ def get_standings_table(df, SelectedPeriod, SelectedYear, Conference):
             color = red
 
         return [f'background-color: {color}'] * len(row)
+    df = df.style.apply(tier_color, axis=1).hide(axis="index")
+    return df
+
+def get_team_schedule(df, SelectedTeam, SelectedYear):
+    df = get_all_time_schedule()
+    df = df[df["Year"] == SelectedYear].copy()
+    df = df[(df["TeamA"].str.contains(SelectedTeam)) | (df["TeamB"].str.contains(SelectedTeam))]
+    df["Team"] = SelectedTeam
+    df["Opponent"] = np.where(df["TeamA"].str.contains(SelectedTeam, na=False), df["TeamB"], df["TeamA"])
+    df["Location"] = np.where(df["TeamA"].str.contains(SelectedTeam, na=False), "", "@")
+    df["TeamScore"] = np.where(df["TeamA"].str.contains(SelectedTeam, na=False), df["TeamAScore"], df["TeamBScore"])
+    df["OpponentScore"] = np.where(df["TeamA"].str.contains(SelectedTeam, na=False), df["TeamBScore"], df["TeamAScore"])
+    df["Result"] = np.where(df["TeamScore"] > df["OpponentScore"], "W", "L")
+    df["Score"] = df["TeamScore"].astype(str) + "-" + df["OpponentScore"].astype(str)
+    team_to_logo = {team: info["logo"] for team, info in team_info.items()}
+    df["Logo"] = df["Opponent"].map(team_to_logo)
+    green = '#6B9B6B'
+    red = '#CC8888'
+    def tier_color(row):
+        color = green if row["Result"] == "W" else red
+        return [f'background-color: {color}'] * len(row)
+    df = df[["Period", "Location", "Opponent", "Score"]]
     df = df.style.apply(tier_color, axis=1).hide(axis="index")
     return df
