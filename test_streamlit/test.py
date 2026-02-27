@@ -317,6 +317,7 @@
 
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="NBA Playoffs 2024",
@@ -879,4 +880,4 @@ full_html = (
     page_open + header + conf_labels + playin + bracket + legend + page_close
 )
 
-st.markdown(full_html, unsafe_allow_html=True)
+components.html(full_html, height=1800, scrolling=True)
