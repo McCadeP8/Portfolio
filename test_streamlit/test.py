@@ -317,6 +317,7 @@
 
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="NBA Playoffs 2024",
@@ -324,22 +325,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ─── CSS ────────────────────────────────────────────────────────────────────────
 CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-body, .stApp {
+body {
     background-color: #080c14;
     font-family: 'DM Sans', sans-serif;
     color: #e8eaf0;
 }
 
-.stApp { background: #080c14; }
-
-/* ── Grain overlay ── */
 .bracket-page {
     position: relative;
     min-height: 100vh;
@@ -348,17 +345,7 @@ body, .stApp {
         radial-gradient(ellipse 120% 60% at 50% -10%, #1a2a4a 0%, transparent 60%),
         #080c14;
 }
-.bracket-page::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-    opacity: 0.03;
-    pointer-events: none;
-    z-index: 0;
-}
 
-/* ── Header ── */
 .nba-header {
     text-align: center;
     margin-bottom: 2.5rem;
@@ -392,7 +379,6 @@ body, .stApp {
     margin: 0.8rem auto;
 }
 
-/* ── Conference labels ── */
 .conf-labels {
     display: flex;
     justify-content: space-between;
@@ -409,7 +395,6 @@ body, .stApp {
     opacity: 0.7;
 }
 
-/* ── Play-in wrapper ── */
 .playin-section {
     display: flex;
     justify-content: space-between;
@@ -453,9 +438,7 @@ body, .stApp {
     gap: 1.2rem;
     align-items: center;
 }
-.playin-match {
-    flex: 1;
-}
+.playin-match { flex: 1; }
 .playin-match-label {
     font-size: 0.62rem;
     letter-spacing: 0.15em;
@@ -469,7 +452,6 @@ body, .stApp {
     flex-shrink: 0;
 }
 
-/* ── Team card ── */
 .team-card {
     display: flex;
     align-items: center;
@@ -487,9 +469,7 @@ body, .stApp {
 .team-card::before {
     content: '';
     position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
+    left: 0; top: 0; bottom: 0;
     width: 3px;
     background: var(--accent, #1a2540);
     border-radius: 3px 0 0 3px;
@@ -499,13 +479,6 @@ body, .stApp {
     border-color: #2a3d60;
     transform: translateX(2px);
 }
-.team-card.winner {
-    border-color: #c8a84b44;
-    background: #14200e;
-}
-.team-card.winner::before { background: #c8a84b; }
-.team-card.tbd { opacity: 0.4; }
-
 .seed {
     font-size: 0.62rem;
     font-weight: 600;
@@ -522,37 +495,41 @@ body, .stApp {
     text-overflow: ellipsis;
     flex: 1;
 }
-.team-card.winner .team-name { color: #e8f0d8; font-weight: 600; }
-.team-score {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #556080;
-    min-width: 20px;
-    text-align: right;
-}
-.team-card.winner .team-score { color: #c8a84b; }
 
-/* ── Bracket layout ── */
+.tbd-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: #080e18;
+    border: 1px dashed #1a2540;
+    margin-bottom: 3px;
+}
+.tbd-card span {
+    font-size: 0.72rem;
+    color: #2a3a5a;
+    letter-spacing: 0.08em;
+}
+
 .bracket-wrapper {
     display: flex;
     align-items: center;
-    gap: 0;
     position: relative;
     z-index: 1;
     overflow-x: auto;
     padding-bottom: 1rem;
 }
-
 .bracket-side {
     flex: 1;
     display: flex;
-    gap: 0;
     min-width: 0;
 }
-.bracket-side.east { flex-direction: row; }
-.bracket-side.west { flex-direction: row-reverse; }
+/* West left: R1 outermost left, R3 closest to center */
+.bracket-side.west { flex-direction: row; }
+/* East right: R1 outermost right, R3 closest to center */
+.bracket-side.east { flex-direction: row-reverse; }
 
-/* ── Round columns ── */
 .round-col {
     flex: 1;
     display: flex;
@@ -561,7 +538,6 @@ body, .stApp {
     padding: 0 4px;
     min-width: 130px;
 }
-
 .round-label {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 0.72rem;
@@ -573,8 +549,6 @@ body, .stApp {
     padding-bottom: 0.4rem;
     border-bottom: 1px solid #151f30;
 }
-
-/* ── Matchup blocks ── */
 .matchup-group {
     display: flex;
     flex-direction: column;
@@ -582,9 +556,8 @@ body, .stApp {
     flex: 1;
     position: relative;
 }
-
-/* bracket connector lines via pseudo-elements */
-.matchup-group.has-connector::after {
+/* West: connectors on right side */
+.bracket-side.west .matchup-group.has-connector::after {
     content: '';
     position: absolute;
     right: -4px;
@@ -595,33 +568,26 @@ body, .stApp {
     border-bottom: 2px solid #1e2d4a;
     border-right: 2px solid #1e2d4a;
 }
-
-.west .matchup-group.has-connector::after {
-    right: auto;
+/* East: connectors on left side */
+.bracket-side.east .matchup-group.has-connector::after {
+    content: '';
+    position: absolute;
     left: -4px;
-    border-right: none;
+    top: 25%;
+    height: 50%;
+    width: 4px;
+    border-top: 2px solid #1e2d4a;
+    border-bottom: 2px solid #1e2d4a;
     border-left: 2px solid #1e2d4a;
 }
-
 .matchup {
     background: linear-gradient(135deg, #0d1625 0%, #0f1a2a 100%);
     border: 1px solid #161f30;
     border-radius: 8px;
     padding: 0.4rem;
     margin: 0.25rem 0;
-    position: relative;
-}
-.matchup::after {
-    content: attr(data-series);
-    position: absolute;
-    right: 4px;
-    top: -10px;
-    font-size: 0.55rem;
-    color: #2a3a5a;
-    letter-spacing: 0.08em;
 }
 
-/* ── Finals ── */
 .finals-col {
     display: flex;
     flex-direction: column;
@@ -657,9 +623,7 @@ body, .stApp {
     width: 100%;
     box-shadow: 0 0 30px #c8a84b18, inset 0 0 20px #c8a84b08;
 }
-.finals-matchup .team-card { min-width: 0; }
 
-/* ── Legend ── */
 .legend {
     display: flex;
     justify-content: center;
@@ -678,205 +642,145 @@ body, .stApp {
     color: #3a4a6a;
     letter-spacing: 0.08em;
 }
-.legend-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-}
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
 </style>
 """
 
-# ─── Data ────────────────────────────────────────────────────────────────────────
-
-EAST = {
-    "playin": {
-        "78_game": ("7 Heat",    "8 Sixers"),
-        "910_game": ("9 Bulls",   "10 Hawks"),
-        "loser_game": ("Loser 7/8", "Winner 9/10"),
-    },
-    "r1": [
-        [("1", "Celtics", 4, True),    ("8", "Heat",   1, False)],
-        [("4", "Cavaliers", 3, True),  ("5", "Magic",  2, False)],
-        [("3", "Bucks", 1, False),     ("6", "Pacers", 3, True)],
-        [("2", "Knicks", 4, True),     ("7", "Sixers", 2, False)],
-    ],
-    "r2": [
-        [("1", "Celtics", 4, True),  ("4", "Cavaliers", 1, False)],
-        [("3", "Pacers", 4, True),   ("2", "Knicks",    3, False)],
-    ],
-    "r3": [
-        [("1", "Celtics", 4, True),  ("3", "Pacers", 0, False)],
-    ],
-    "finals": ("1", "Celtics", 4, True),
+TEAM_COLORS = {
+    "Celtics":   "#007a33", "Heat":      "#98002e", "Cavaliers": "#860038",
+    "Magic":     "#007dc5", "Bucks":     "#00471b", "Pacers":    "#fdbb30",
+    "Knicks":    "#006bb6", "76ers":     "#006bb6", "Thunder":   "#007ac1",
+    "Pelicans":  "#0c2340", "Clippers":  "#c8102e", "Mavericks": "#00538c",
+    "T-Wolves":  "#236192", "Suns":      "#e56020", "Nuggets":   "#0e2240",
+    "Lakers":    "#552583", "Bulls":     "#ce1141", "Hawks":     "#e03a3e",
+    "Kings":     "#5a2d81", "Warriors":  "#1d428a",
 }
 
 WEST = {
     "playin": {
-        "78_game": ("7 Lakers",   "8 Pelicans"),
-        "910_game": ("9 Kings",   "10 Suns"),
-        "loser_game": ("Loser 7/8", "Winner 9/10"),
+        "78_game":    ("7 Lakers",    "8 Warriors"),
+        "910_game":   ("9 Kings",     "10 Suns"),
+        "loser_game": ("Loser 7/8",   "Winner 9/10"),
     },
     "r1": [
-        [("1", "Thunder",   4, True),  ("8", "Pelicans", 0, False)],
-        [("4", "Clippers",  2, False), ("5", "Mavericks", 4, True)],
-        [("3", "Timberwlvs", 4, True), ("6", "Suns",    0, False)],
-        [("2", "Nuggets",   4, True),  ("7", "Lakers",  1, False)],
+        [("1", "Thunder"),   ("8", "TBD")],
+        [("4", "Nuggets"),   ("5", "Clippers")],
+        [("3", "T-Wolves"),  ("6", "Pelicans")],
+        [("2", "Mavericks"), ("7", "TBD")],
     ],
     "r2": [
-        [("1", "Thunder",    4, True),  ("5", "Mavericks", 2, False)],
-        [("3", "Timberwlvs", 2, False), ("2", "Nuggets",   4, True)],
+        [("TBD", ""), ("TBD", "")],
+        [("TBD", ""), ("TBD", "")],
     ],
     "r3": [
-        [("2", "Mavericks", 4, True),  ("2", "Nuggets",  3, False)],
+        [("TBD", ""), ("TBD", "")],
     ],
-    "finals": ("2", "Mavericks", 0, False),
 }
 
-FINALIST_EAST   = EAST["finals"]
-FINALIST_WEST   = WEST["finals"]
-CHAMPION = ("1", "Celtics", "4-1")
-
-# ─── HTML helpers ─────────────────────────────────────────────────────────────
-
-TEAM_COLORS = {
-    "Celtics": "#007a33",   "Heat": "#98002e",    "Cavaliers": "#860038",
-    "Magic": "#007dc5",     "Bucks": "#00471b",   "Pacers": "#fdbb30",
-    "Knicks": "#006bb6",    "Sixers": "#006bb6",  "Thunder": "#007ac1",
-    "Pelicans": "#0c2340",  "Clippers": "#c8102e","Mavericks": "#00538c",
-    "Timberwlvs": "#236192","Suns": "#e56020",    "Nuggets": "#0e2240",
-    "Lakers": "#552583",    "Bulls": "#ce1141",   "Hawks": "#e03a3e",
-    "Kings": "#5a2d81",     "Suns": "#e56020",
+EAST = {
+    "playin": {
+        "78_game":    ("7 Heat",      "8 76ers"),
+        "910_game":   ("9 Bulls",     "10 Hawks"),
+        "loser_game": ("Loser 7/8",   "Winner 9/10"),
+    },
+    "r1": [
+        [("1", "Celtics"),   ("8", "TBD")],
+        [("4", "Cavaliers"), ("5", "Magic")],
+        [("3", "Bucks"),     ("6", "Pacers")],
+        [("2", "Knicks"),    ("7", "TBD")],
+    ],
+    "r2": [
+        [("TBD", ""), ("TBD", "")],
+        [("TBD", ""), ("TBD", "")],
+    ],
+    "r3": [
+        [("TBD", ""), ("TBD", "")],
+    ],
 }
 
-def team_card(seed, name, score, winner, show_score=True):
+def team_card(seed, name):
+    if not name or name == "TBD":
+        return '<div class="tbd-card"><span>TBD</span></div>'
     color = TEAM_COLORS.get(name, "#1e2d4a")
-    w_cls = "winner" if winner else ""
-    score_html = f'<span class="team-score">{score}</span>' if show_score and score > 0 else ""
-    return f"""
-    <div class="team-card {w_cls}" style="--accent:{color}">
-        <span class="seed">{seed}</span>
-        <span class="team-name">{name}</span>
-        {score_html}
-    </div>"""
+    return f'<div class="team-card" style="--accent:{color}"><span class="seed">{seed}</span><span class="team-name">{name}</span></div>'
 
-def matchup_html(teams, series_label="", connector=False):
+def matchup_html(teams, connector=False):
     t1, t2 = teams
     conn = "has-connector" if connector else ""
-    series = series_label
-    return f"""
-    <div class="matchup-group {conn}">
-      <div class="matchup" data-series="{series}">
-        {team_card(*t1)}{team_card(*t2)}
-      </div>
-    </div>"""
+    return f'<div class="matchup-group {conn}"><div class="matchup">{team_card(*t1)}{team_card(*t2)}</div></div>'
 
 def round_col(label, matchups, connector=False):
     inner = "".join(matchup_html(m, connector=connector) for m in matchups)
-    return f"""
-    <div class="round-col">
-      <div class="round-label">{label}</div>
-      {inner}
-    </div>"""
+    return f'<div class="round-col"><div class="round-label">{label}</div>{inner}</div>'
 
 def playin_html(conf_data, conf_name):
-    def pi_match(t1_label, t2_label, note=""):
-        return f"""
-        <div class="playin-match">
+    def pi_match(t1, t2, note=""):
+        return f'''<div class="playin-match">
           <div class="playin-match-label">{note}</div>
           <div class="matchup">
-            <div class="team-card"><span class="seed"></span><span class="team-name">{t1_label}</span></div>
-            <div class="team-card"><span class="seed"></span><span class="team-name">{t2_label}</span></div>
-          </div>
-        </div>"""
-    return f"""
-    <div class="playin-conference">
+            <div class="team-card"><span class="seed"></span><span class="team-name">{t1}</span></div>
+            <div class="team-card"><span class="seed"></span><span class="team-name">{t2}</span></div>
+          </div></div>'''
+    return f'''<div class="playin-conference">
       <div class="playin-title">{conf_name} Play-In Tournament</div>
       <div class="playin-matches">
-        {pi_match(*conf_data["78_game"],  note="Win → 7 Seed")}
+        {pi_match(*conf_data["78_game"],    note="Win → 7 Seed")}
         <div class="playin-arrow">→</div>
-        {pi_match(*conf_data["910_game"], note="Win advances")}
+        {pi_match(*conf_data["910_game"],   note="Win advances")}
         <div class="playin-arrow">→</div>
         {pi_match(*conf_data["loser_game"], note="Win → 8 Seed")}
-      </div>
-    </div>"""
-
-# ─── Build full bracket HTML ──────────────────────────────────────────────────
+      </div></div>'''
 
 def build_bracket():
-    # East side
-    east_r1   = round_col("First Round",   EAST["r1"],  connector=True)
-    east_r2   = round_col("Conf. Semis",   EAST["r2"],  connector=True)
-    east_r3   = round_col("Conf. Finals",  EAST["r3"],  connector=True)
+    west_r1 = round_col("First Round",  WEST["r1"], connector=True)
+    west_r2 = round_col("Conf. Semis",  WEST["r2"], connector=True)
+    west_r3 = round_col("Conf. Finals", WEST["r3"], connector=True)
+    east_r1 = round_col("First Round",  EAST["r1"], connector=True)
+    east_r2 = round_col("Conf. Semis",  EAST["r2"], connector=True)
+    east_r3 = round_col("Conf. Finals", EAST["r3"], connector=True)
 
-    # West side
-    west_r1   = round_col("First Round",   WEST["r1"],  connector=True)
-    west_r2   = round_col("Conf. Semis",   WEST["r2"],  connector=True)
-    west_r3   = round_col("Conf. Finals",  WEST["r3"],  connector=True)
-
-    # Finals center
-    ef = FINALIST_EAST
-    wf = FINALIST_WEST
-    finals_html = f"""
-    <div class="finals-col">
+    finals = '''<div class="finals-col">
       <div class="finals-label">NBA Finals</div>
       <div class="finals-trophy">🏆</div>
       <div class="finals-matchup">
-        {team_card(ef[0], ef[1], ef[2], ef[3])}
-        {team_card(wf[0], wf[1], wf[2], wf[3])}
-      </div>
-      <div style="text-align:center;margin-top:0.5rem;font-size:0.65rem;color:#c8a84b;letter-spacing:0.12em;font-family:'Bebas Neue',sans-serif;">
-        Champion: {CHAMPION[1]} {CHAMPION[2]}
-      </div>
-    </div>"""
+        <div class="tbd-card"><span>West Champion</span></div>
+        <div class="tbd-card"><span>East Champion</span></div>
+      </div></div>'''
 
-    return f"""
-    <div class="bracket-wrapper">
-      <div class="bracket-side east">
-        {east_r1}{east_r2}{east_r3}
-      </div>
-      {finals_html}
-      <div class="bracket-side west">
-        {west_r3}{west_r2}{west_r1}
-      </div>
-    </div>"""
+    return f'''<div class="bracket-wrapper">
+      <div class="bracket-side west">{west_r1}{west_r2}{west_r3}</div>
+      {finals}
+      <div class="bracket-side east">{east_r1}{east_r2}{east_r3}</div>
+    </div>'''
 
-# ─── App layout ──────────────────────────────────────────────────────────────
-
-st.markdown(CSS, unsafe_allow_html=True)
-
-page_open = '<div class="bracket-page">'
-page_close = '</div>'
-
-header = """
-<div class="nba-header">
-  <h1>2024 NBA <span>Playoffs</span></h1>
+header = '''<div class="nba-header">
+  <h1>2024-25 NBA <span>Playoffs</span></h1>
   <div class="divider"></div>
-  <p>Eastern Conference &nbsp;·&nbsp; Western Conference &nbsp;·&nbsp; Play-In Tournament</p>
-</div>"""
+  <p>Western Conference &nbsp;·&nbsp; Play-In Tournament &nbsp;·&nbsp; Eastern Conference</p>
+</div>'''
 
-conf_labels = """
-<div class="conf-labels">
-  <span class="conf-label">⬡ Eastern Conference</span>
-  <span class="conf-label">Western Conference ⬡</span>
-</div>"""
+conf_labels = '''<div class="conf-labels">
+  <span class="conf-label">⬡ Western Conference</span>
+  <span class="conf-label">Eastern Conference ⬡</span>
+</div>'''
 
-playin = f"""
-<div class="playin-section">
-  {playin_html(EAST["playin"], "EAST")}
+playin = f'''<div class="playin-section">
   {playin_html(WEST["playin"], "WEST")}
-</div>"""
+  {playin_html(EAST["playin"], "EAST")}
+</div>'''
 
-bracket = build_bracket()
+legend = '''<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#e05c2a"></div> Play-In Tournament</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#c8a84b"></div> NBA Finals</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1e2d4a"></div> Awaiting Result</div>
+</div>'''
 
-legend = """
-<div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#c8a84b"></div> Series Winner</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#e05c2a"></div> Play-In</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#1e2d4a"></div> Eliminated</div>
-</div>"""
+body = f'<div class="bracket-page">{header}{conf_labels}{playin}{build_bracket()}{legend}</div>'
 
-full_html = (
-    page_open + header + conf_labels + playin + bracket + legend + page_close
-)
+full_doc = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">{CSS}</head>
+<body>{body}</body>
+</html>"""
 
-st.markdown(full_html, unsafe_allow_html=True)
+components.html(full_doc, height=1800, scrolling=True)
