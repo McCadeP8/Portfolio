@@ -880,4 +880,17 @@ full_html = (
     page_open + header + conf_labels + playin + bracket + legend + page_close
 )
 
-components.html(full_html, height=1800, scrolling=True)
+full_doc = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+{CSS.replace('<style>', '<style>')}
+</head>
+<body>
+{page_open + header + conf_labels + playin + bracket + legend + page_close}
+</body>
+</html>
+"""
+
+components.html(full_doc, height=1800, scrolling=True)
