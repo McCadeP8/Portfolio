@@ -658,15 +658,15 @@ TEAM_COLORS = {
 
 WEST = {
     "playin": {
-        "78_game":    ("7 Lakers",    "8 Warriors"),
-        "910_game":   ("9 Kings",     "10 Suns"),
+        "78_game":    ("No. 7 Anchorage Killer Whales",    "No. 8 Albuquerque Armadillos"),
+        "910_game":   ("No. 9 Lincoln Bully",     "No. 10 Vegas Blackjack"),
         "loser_game": ("Loser 7/8",   "Winner 9/10"),
     },
     "r1": [
-        [("No. 1", "Oklahoma City Thunder"),   ("PI. 2", "TBD")],
-        [("No. 5", "Nuggets"),   ("No. 5", "Clippers")],
-        [("No. 3", "T-Wolves"),  ("No. 6", "Pelicans")],
-        [("PI. 1", "TBD"), ("No. 2", "Knicks")],
+        [("No. 1", "Boise Spuds"),   ("PI. 2", "TBD")],
+        [("No. 5", "Anaheim Mice"),   ("No. 4", "Honolulu Diamonds")],
+        [("No. 3", "Vancouver Forest"),  ("No. 6", "Seattle Brew")],
+        [("PI. 1", "TBD"), ("No. 2", "St. Louis 66ers")],
     ],
     "r2": [
         [("TBD", ""), ("TBD", "")],
