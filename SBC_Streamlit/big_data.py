@@ -3,7 +3,7 @@
 
 import pandas as pd
 import os
-import numpy as np
+import numpy as np  # noqa: F401
 from data import current_year, team_info
 from functions import get_matchup_stats, get_fantrax_roster, send_discord_message, get_matchup_score
 
