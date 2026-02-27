@@ -754,7 +754,7 @@ def build_bracket():
     </div>'''
 
 header = '''<div class="nba-header">
-  <h1>2025-26 SBCFBL <span>Playoffs</span></h1>
+  <h1>2026 SBCFBL <span>Playoffs</span></h1>
   <div class="divider"></div>
   <p>Western Conference &nbsp;·&nbsp; Play-In Tournament &nbsp;·&nbsp; Eastern Conference</p>
 </div>'''
