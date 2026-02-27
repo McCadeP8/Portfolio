@@ -647,13 +647,13 @@ body {
 """
 
 TEAM_COLORS = {
-    "Celtics":   "#007a33", "Heat":      "#98002e", "Cavaliers": "#860038",
-    "Magic":     "#007dc5", "Bucks":     "#00471b", "Pacers":    "#fdbb30",
-    "Knicks":    "#006bb6", "76ers":     "#006bb6", "Thunder":   "#007ac1",
-    "Pelicans":  "#0c2340", "Clippers":  "#c8102e", "Mavericks": "#00538c",
-    "T-Wolves":  "#236192", "Suns":      "#e56020", "Nuggets":   "#0e2240",
-    "Lakers":    "#552583", "Bulls":     "#ce1141", "Hawks":     "#e03a3e",
-    "Kings":     "#5a2d81", "Warriors":  "#1d428a",
+    "Boise Spuds":   "#744529", "Lincoln Bully":      "#FC6A03", "Kentucky Thoroughbreds": "#663399",
+    "St. Louis 66ers":     "#B7B1AE", "Vegas Blackjack":     "#35654D", "Providence Pilgrims":    "#BF0A30",
+    "Vancouver Forest":    "#17780D", "Albuquerque Armadillos":     "#D72C2C", "Columbus Arches":   "#CD7F32",
+    "Honolulu Diamonds":  "#CDC0C0", "Cincinnati Chilli":  "#FFEA61", "Des Moines Racoons": "#1B1E23",
+    "Anaheim Mice":  "#DA0F10", "Pittsburgh Bridge":      "#F1F137", "Baltimore Blue Crabs":   "#00CED1",
+    "Seattle Brew":    "#006241", "Tampa Bay Flamingos":     "#FC8EAC", "Buffalo Daredevils":     "#152238",
+    "Anchorage Killer Whales":     "#454B55", "Lansing Lagoon":  "#B9EFE1",
 }
 
 WEST = {
@@ -663,10 +663,10 @@ WEST = {
         "loser_game": ("Loser 7/8",   "Winner 9/10"),
     },
     "r1": [
-        [("No. 1", "Oklahoma City Thunder"),   ("PI. 2", "Knicks")],
+        [("No. 1", "Oklahoma City Thunder"),   ("PI. 2", "TBD")],
         [("No. 5", "Nuggets"),   ("No. 5", "Clippers")],
         [("No. 3", "T-Wolves"),  ("No. 6", "Pelicans")],
-        [("PI. 1", "Mavericks"), ("No. 2", "Knicks")],
+        [("PI. 1", "TBD"), ("No. 2", "Knicks")],
     ],
     "r2": [
         [("TBD", ""), ("TBD", "")],
@@ -679,15 +679,15 @@ WEST = {
 
 EAST = {
     "playin": {
-        "78_game":    ("7 Heat",      "8 76ers"),
-        "910_game":   ("9 Bulls",     "10 Hawks"),
+        "78_game":    ("No. 7 Columbus Arches",      "No. 8 Des Moines Racoons"),
+        "910_game":   ("No. 9 Baltimore Blue Crabs",     "No. 10 Buffalo Daredevils"),
         "loser_game": ("Loser 7/8",   "Winner 9/10"),
     },
     "r1": [
-        [("No. 1", "Celtics"),   ("PI. 1", "Knicks")],
-        [("No. 5", "Cavaliers"), ("No. 4", "Magic")],
-        [("No. 3", "Bucks"),     ("No. 6", "Pacers")],
-        [("PI. 1", "Knicks"),    ("No. 2", "Knicks")],
+        [("No. 1", "Cincinnati Chilli"),   ("PI. 1", "TBD")],
+        [("No. 5", "Kentucky Thoroughbreds"), ("No. 4", "Lansing Lagoon")],
+        [("No. 3", "Tampa Bay Flamingos"),     ("No. 6", "Providence Pilgrims")],
+        [("PI. 1", "TBD"),    ("No. 2", "Pittsburgh Bridge")],
     ],
     "r2": [
         [("TBD", ""), ("TBD", "")],
