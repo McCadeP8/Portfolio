@@ -663,10 +663,10 @@ WEST = {
         "loser_game": ("Loser 7/8",   "Winner 9/10"),
     },
     "r1": [
-        [("A", "Oklahoma City Thunder"),   ("8", "TBD")],
-        [("B", "Nuggets"),   ("5", "Clippers")],
-        [("3", "T-Wolves"),  ("6", "Pelicans")],
-        [("2", "Mavericks"), ("7", "TBD")],
+        [("No. 1", "Oklahoma City Thunder"),   ("PI. 2", "TBD")],
+        [("No. 5", "Nuggets"),   ("No. 5", "Clippers")],
+        [("No. 3", "T-Wolves"),  ("No. 6", "Pelicans")],
+        [("PI. 1", "Mavericks"), ("No. 2", "TBD")],
     ],
     "r2": [
         [("TBD", ""), ("TBD", "")],
@@ -684,10 +684,10 @@ EAST = {
         "loser_game": ("Loser 7/8",   "Winner 9/10"),
     },
     "r1": [
-        [("1", "Celtics"),   ("8", "TBD")],
-        [("4", "Cavaliers"), ("5", "Magic")],
-        [("3", "Bucks"),     ("6", "Pacers")],
-        [("2", "Knicks"),    ("7", "TBD")],
+        [("No. 1", "Celtics"),   ("PI. 1", "TBD")],
+        [("No. 5", "Cavaliers"), ("No. 4", "Magic")],
+        [("No. 3", "Bucks"),     ("No. 6", "Pacers")],
+        [("PI. 1", "Knicks"),    ("No. 2", "TBD")],
     ],
     "r2": [
         [("TBD", ""), ("TBD", "")],
