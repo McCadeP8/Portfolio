@@ -320,7 +320,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="NBA Playoffs 2024",
+    page_title="SBCFBL Playoffs 2026",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -663,8 +663,8 @@ WEST = {
         "loser_game": ("Loser 7/8",   "Winner 9/10"),
     },
     "r1": [
-        [("1", "Thunder"),   ("8", "TBD")],
-        [("4", "Nuggets"),   ("5", "Clippers")],
+        [("A", "Oklahoma City Thunder"),   ("8", "TBD")],
+        [("B", "Nuggets"),   ("5", "Clippers")],
         [("3", "T-Wolves"),  ("6", "Pelicans")],
         [("2", "Mavericks"), ("7", "TBD")],
     ],
@@ -740,7 +740,7 @@ def build_bracket():
     east_r3 = round_col("Conf. Finals", EAST["r3"], connector=True)
 
     finals = '''<div class="finals-col">
-      <div class="finals-label">NBA Finals</div>
+      <div class="finals-label">SBCFBL Finals</div>
       <div class="finals-trophy">🏆</div>
       <div class="finals-matchup">
         <div class="tbd-card"><span>West Champion</span></div>
@@ -754,7 +754,7 @@ def build_bracket():
     </div>'''
 
 header = '''<div class="nba-header">
-  <h1>2024-25 NBA <span>Playoffs</span></h1>
+  <h1>2025-26 SBCFBL <span>Playoffs</span></h1>
   <div class="divider"></div>
   <p>Western Conference &nbsp;·&nbsp; Play-In Tournament &nbsp;·&nbsp; Eastern Conference</p>
 </div>'''
@@ -771,7 +771,7 @@ playin = f'''<div class="playin-section">
 
 legend = '''<div class="legend">
   <div class="legend-item"><div class="legend-dot" style="background:#e05c2a"></div> Play-In Tournament</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#c8a84b"></div> NBA Finals</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#c8a84b"></div> SBCFBL Finals</div>
   <div class="legend-item"><div class="legend-dot" style="background:#1e2d4a"></div> Awaiting Result</div>
 </div>'''
 
