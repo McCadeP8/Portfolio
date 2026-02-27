@@ -154,12 +154,12 @@ def add_game_to_schedule(game_dict):
     return df
 
 # add_game_to_schedule({
-#     "Round": 1,
-#     "Type": "Regular Season",
+#     "Round": "Play-In Round 1",
+#     "Type": "Play-In",
 #     "Year": 2026,
-#     "Period": 39,
-#     "TeamA": "Lakers",
-#     "TeamB": "Celtics",
+#     "Period": 37,
+#     "TeamA": "Buffalo",
+#     "TeamB": "Baltimore",
 #     "TeamAScore": np.nan,
 #     "TeamBScore": np.nan,
 #     "DivisionGame": np.nan,
