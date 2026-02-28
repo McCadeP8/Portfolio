@@ -140,6 +140,7 @@ def get_award_history() -> pd.DataFrame:
 def get_team_award_history() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=451021615"
     df = pd.read_csv(csv_url)
+    df = df.melt(id_vars=["Award"], var_name="Year", value_name="Winner")    
     return df
 
 @st.cache_data()
