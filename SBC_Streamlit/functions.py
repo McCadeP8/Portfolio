@@ -1399,7 +1399,7 @@ def get_team_award(df: pd.DataFrame, Year: int, Award: str) -> str:
     else:
         logo = team_info.get(winner, {}).get("wordmark", "")
     return logo
-    
+
 def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str, Conference: str) -> pd.DataFrame:
     df = df[df["Award"] == Award]
     df = df[df["Year"] == Year]
@@ -1427,8 +1427,10 @@ def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, 
     df = df.sort_values("Winner")
     return df
 
-def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str, Conference: str) -> pd.DataFrame:
-    df = df[df["Award"] == Award]
+def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str) -> pd.DataFrame:
+    df["Award_clean"] = df["Award"].apply(
+    lambda x: " ".join([x.split()[0], x.split()[-1]]))
+    df = df[df["Award_clean"] == Award]
     df = df[df["Year"] == Year]
     df = df.merge(df2, how="left", left_on="Winner", right_on="name")
     df3 = df3[df3["Year"] == Year]
