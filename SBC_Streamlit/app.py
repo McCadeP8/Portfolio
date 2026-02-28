@@ -942,7 +942,7 @@ with tab13:
         st.header("Pictures")
         st.dataframe(picture_check)
 
-    #roster_n_check = data_roster_check(df)
+    roster_n_check = data_roster_check(df)
     #if roster_n_check.shape[0] > 0:
     #    st.header("Roster Count")
     #    st.dataframe(roster_n_check)
