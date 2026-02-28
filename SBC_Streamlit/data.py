@@ -3,7 +3,7 @@ from math import ceil
 
 league_start_date = date(2025, 10, 21)
 today = date.today() + timedelta(days=0)
-period = max(1, min(163, (today - league_start_date).days + 1))
+period = max(1, min(163, (today - leagufe_start_date).days + 1))
 
 if today.month in [8, 9] or (today.month == 7 and today.day >= 2):
     year_offset = 0
@@ -248,7 +248,6 @@ cap_sheets_to_fantrax_name_fix = {
     "Nikola Vučević": "Nikola Vucevic",
     "Patrick Baldwin Jr.": "Patrick Baldwin",
     "Ricky Council IV": "Ricky Council",
-    "Rob Dillingham": "Robert Dillingham",
     "Royce O'Neale": "Royce ONeale",
     "Scotty Pippen Jr.": "Scotty Pippen",
     "Terrence Shannon Jr.": "Terrence Shannon",

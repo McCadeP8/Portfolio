@@ -684,10 +684,10 @@ EAST = {
         "loser_game": ("Loser 7/8",   "Winner 9/10"),
     },
     "r1": [
-        [("No. 1", "Pittsburgh Bridge"),   ("PI. 1", "TBD")],
+        [("No. 1", "Cincinnati Chilli"),   ("PI. 1", "TBD")],
         [("No. 5", "Kentucky Thoroughbreds"), ("No. 4", "Lansing Lagoon")],
         [("No. 3", "Tampa Bay Flamingos"),     ("No. 6", "Providence Pilgrims")],
-        [("PI. 1", "TBD"),    ("No. 2", "Cincinnati Chilli")],
+        [("PI. 1", "TBD"),    ("No. 2", "Pittsburgh Bridge")],
     ],
     "r2": [
         [("TBD", ""), ("TBD", "")],
