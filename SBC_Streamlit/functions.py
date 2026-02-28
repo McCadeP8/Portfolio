@@ -1428,6 +1428,8 @@ def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, 
     return df
 
 def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str) -> pd.DataFrame:
+    df["Week"] = df["Award"].str.extract(
+    r'(Week \d+|January|February|March|April|May|June|July|August|September|October|November|December)')[0]
     df["Award_clean"] = df["Award"].apply(
     lambda x: " ".join([x.split()[0], x.split()[-1]]))
     df = df[df["Award_clean"] == Award]
