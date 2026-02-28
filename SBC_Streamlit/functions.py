@@ -1393,10 +1393,13 @@ def get_single_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4
 def get_team_award(df: pd.DataFrame, Year: int, Award: str) -> str:
     df = df[df["Award"] == Award]
     df = df[df["Year"] == Year]
-    winner = df.iloc[0]["Winner"] 
-    logo = team_info.get(winner, {}).get("wordmark", "")
+    winner = df.iloc[0]["Winner"]
+    if winner == "Not Awarded":
+        logo = "https://pbs.twimg.com/media/HCRpyEUaQAAPORi?format=png&name=medium"
+    else:
+        logo = team_info.get(winner, {}).get("wordmark", "")
     return logo
-
+    
 def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str, Conference: str) -> pd.DataFrame:
     df = df[df["Award"] == Award]
     df = df[df["Year"] == Year]
