@@ -133,6 +133,7 @@ def get_draft_history() -> pd.DataFrame:
 def get_award_history() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=1698988928"
     df = pd.read_csv(csv_url)
+    df = df.melt(id_vars=["Award"], var_name="Year", value_name="Winner")    
     return df
 
 @st.cache_data()
@@ -1065,6 +1066,11 @@ def stepien_check(dp: pd.DataFrame, DraftPicksIn: list[str], DraftPicksOut: list
     return "A"
 
 def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
+
+    df = get_data()
+    ft_players = get_fantrax_players()
+    ft_roster = get_fantrax_roster(2026, 130)
+
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
