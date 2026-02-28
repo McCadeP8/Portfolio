@@ -4,6 +4,7 @@
 import pandas as pd
 import os
 import numpy as np  # noqa: F401
+from datetime import datetime
 from data import current_year, team_info
 from functions import get_matchup_stats, get_fantrax_roster, send_discord_message, get_matchup_score
 
@@ -28,6 +29,10 @@ def get_all_team_stats_history() -> pd.DataFrame:
     final_df["Created"] = pd.Timestamp.now()
     final_df.to_parquet("all_team_stats_history.parquet", index=False)
     send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_team_stats_history")
+    today = datetime.now().date()
+    april_15 = datetime(today.year, 4, 15).date()
+    if today > april_15:
+        send_discord_message(DISCORD_WEBHOOK_URL, "Turn back on Roster Count")
 
 def get_all_time_rosters_history() -> pd.DataFrame:
     df_old = pd.read_parquet("all_time_rosters_history.parquet")
