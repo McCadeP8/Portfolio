@@ -745,6 +745,7 @@ with tab11:
         st.subheader("All-Rookie First Team")
         AR1 = get_single_award(award_history, ft_players, all_time_rosters, pics, AwardYears, "All-Rookie 1st Team")
         st.dataframe(AR1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+        st.subheader("Regular Season Champion")
         RSChampion = get_team_award(team_award_history, AwardYears, "RS Champion")
         st.image(RSChampion)
         st.subheader("Western Conference All-Stars")
@@ -759,7 +760,6 @@ with tab11:
         st.subheader("Western Conference Player of the Week")
         WCPOW = get_short_term_awards(award_history, ft_players, all_time_rosters, pics, AwardYears, "West POW")
         st.dataframe(WCPOW, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
-        st.subheader("Regular Season Champion")
 
     with col2:
         st.subheader("All-Defense Second Team")
