@@ -1453,6 +1453,7 @@ def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame
     df["logo"] = df["team_name"].apply(lambda x: get_team_logo(x, team_info))
     df["conf"] = df["team_name"].apply(lambda x: get_team_conf(x, team_info))
     df = df[["Week", "logo", "Winner", "Picture_Online"]]
+    df["Week"] = pd.Categorical(df["Week"], categories=["November", "December", "January", "February", "March"] +[f"Week {i}" for i in range(1, 39)],ordered=True)
     df = df.sort_values("Week")
     return df
 
