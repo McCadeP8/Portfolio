@@ -489,12 +489,12 @@ if __name__ == "__main__":
     # ── NBA Example ──────────────────────────
     st.subheader("NBA Example", anchor=False)
     render_scoreboard(
-        home_team="Philadelphia 76ers",
-        away_team="Utah Jazz",
-        home_score=106,
-        away_score=102,
-        home_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/phi.png&h=200&w=200",
-        away_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/utah.png&h=200&w=200",
+        home_team="Utah Jazz",
+        away_team="Philadelphia 76ers",
+        home_score=102,
+        away_score=106,
+        home_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/utah.png&h=200&w=200",
+        away_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/phi.png&h=200&w=200",
         game_date="March 4, 2026",
         league="NBA",
         venue="Xfinity Arena, Philadelphia",
@@ -514,20 +514,20 @@ if __name__ == "__main__":
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Soccer Example ──────────────────────────
-    st.subheader("Soccer Example (no period scores)", anchor=False)
-    render_scoreboard(
-        home_team="Manchester City",
-        away_team="Arsenal FC",
-        home_score=2,
-        away_score=2,
-        home_logo_url="https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/1200px-Manchester_City_FC_badge.svg.png",
-        away_logo_url="https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/1200px-Arsenal_FC.svg.png",
-        game_date="March 31, 2024",
-        league="Premier League · GW30",
-        venue="Etihad Stadium, Manchester",
-        game_status="FINAL",
-        home_record="15W 5D 3L",
-        away_record="16W 4D 3L",
-        home_color="#6CABDD",
-        away_color="#EF0107",
-    )
+    # st.subheader("Soccer Example (no period scores)", anchor=False)
+    # render_scoreboard(
+    #     home_team="Manchester City",
+    #     away_team="Arsenal FC",
+    #     home_score=2,
+    #     away_score=2,
+    #     home_logo_url="https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/1200px-Manchester_City_FC_badge.svg.png",
+    #     away_logo_url="https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/1200px-Arsenal_FC.svg.png",
+    #     game_date="March 31, 2024",
+    #     league="Premier League · GW30",
+    #     venue="Etihad Stadium, Manchester",
+    #     game_status="FINAL",
+    #     home_record="15W 5D 3L",
+    #     away_record="16W 4D 3L",
+    #     home_color="#6CABDD",
+    #     away_color="#EF0107",
+    # )
