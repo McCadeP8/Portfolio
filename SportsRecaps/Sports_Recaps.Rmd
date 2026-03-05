@@ -329,6 +329,8 @@ FilteredGames <- AllGames %>%
 ```{r}
 BYUGames <- GetSchedule("BYU")
 
+game_id <- 401827717
+
 PBP <- hoopR::espn_mbb_pbp(game_id)
 WP <- hoopR::espn_mbb_wp(game_id)
 
@@ -373,7 +375,7 @@ WPVisual <- function(game_id) {
     theme(panel.spacing = unit(0, "cm"), plot.margin = margin(0, 0, 0, 0), axis.ticks.length = unit(0.25, "cm"))}
 
 
-GetStarters <- espn_mbb_player_box(401819835)
+GetStarters <- espn_mbb_player_box(401827693)
 GetStarters <- GetStarters %>%
   filter(starter == TRUE) %>%
   select(athlete_display_name, team_short_display_name) %>%
