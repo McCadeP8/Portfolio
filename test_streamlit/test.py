@@ -499,8 +499,8 @@ if __name__ == "__main__":
         league="NBA",
         venue="Xfinity Arena, Philadelphia",
         game_status="FINAL",
-        home_record="34-28",
-        away_record="18-44",
+        home_record="18-44",
+        away_record="34-28",
         home_color="#31006F",
         away_color="#D50032",
         quarter_scores=[
