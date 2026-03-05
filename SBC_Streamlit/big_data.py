@@ -159,12 +159,12 @@ def add_game_to_schedule(game_dict):
     return df
 
 # add_game_to_schedule({
-#     "Round": "Play-In Round 2",
-#     "Type": "Play-In",
+#     "Round": "Conference Quarterfinals",
+#     "Type": "Playoffs",
 #     "Year": 2026,
-#     "Period": 38,
-#     "TeamA": "Baltimore",
-#     "TeamB": "Des Moines",
+#     "Period": 39,
+#     "TeamA": "Kentucky",
+#     "TeamB": "Lansing",
 #     "TeamAScore": np.nan,
 #     "TeamBScore": np.nan,
 #     "DivisionGame": np.nan,
