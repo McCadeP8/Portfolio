@@ -463,23 +463,23 @@ if __name__ == "__main__":
     render_scoreboard(
         home_team="Utah Jazz",
         away_team="Washington Wizards",
-        home_score=122,
-        away_score=112,
+        home_score=0,
+        away_score=0,
         home_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/utah.png&h=200&w=200",
         away_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/was.png&h=200&w=200",
         game_date="March 5, 2026",
         league="NBA",
         venue="Capital One Arena, Washington D.C.",
         game_status="FINAL",
-        home_record="19-44",
-        away_record="16-46",
+        home_record="18-44",
+        away_record="16-45",
         home_color="#31006F",
         away_color="#E31837",
         quarter_scores=[
-            {"label": "Q1", "home": 37, "away": 23},
-            {"label": "Q2", "home": 30, "away": 26},
-            {"label": "Q3", "home": 26, "away": 35},
-            {"label": "Q4", "home": 29, "away": 28},
+            {"label": "Q1", "home": 0, "away": 0},
+            {"label": "Q2", "home": 0, "away": 0},
+            {"label": "Q3", "home": 0, "away": 0},
+            {"label": "Q4", "home": 0, "away": 0},
         ],
     )
 
@@ -491,7 +491,7 @@ if __name__ == "__main__":
     render_scoreboard(
         home_team="Utah Mammoth",
         away_team="Philadelphia Flyers",
-        home_score=0,
+        home_score=3,
         away_score=0,
         home_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nhl/500/utah.png&h=200&w=200",
         away_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nhl/500/phi.png&h=200&w=200",
@@ -499,18 +499,18 @@ if __name__ == "__main__":
         league="NHL",
         venue="Xfinity Arena, Philadelphia",
         game_status="FINAL",
-        home_record="32-25-4",
-        away_record="28-21-11",
-        home_color="#31006F",
-        away_color="#E31837",
+        home_record="33-25-4",
+        away_record="28-22-11",
+        home_color="#6CACE3",
+        away_color="#F74902",
         quarter_scores=[
             {"label": "P1", "home": 0, "away": 0},
-            {"label": "P2", "home": 0, "away": 0},
-            {"label": "P3", "home": 0, "away": 0},
+            {"label": "P2", "home": 2, "away": 0},
+            {"label": "P3", "home": 1, "away": 0},
         ],
     )
 
-#A 
+#A
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Soccer Example ──────────────────────────
