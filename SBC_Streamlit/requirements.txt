@@ -4,5 +4,5 @@ numpy
 folium
 streamlit-folium
 requests
-altair
+altair==4.2.2
 pathlib
