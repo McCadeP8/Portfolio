@@ -1811,6 +1811,7 @@ def plot_team_flights(SelectedTeam, Year, df):
 
     home = team_info[SelectedTeam]
     team_color = home["bg"]
+    team_color2 = home["bg2"]
 
     current_lat = home["lat"]
     current_lon = home["lon"]
@@ -1839,7 +1840,7 @@ def plot_team_flights(SelectedTeam, Year, df):
             folium.CircleMarker(
                 location=[dest_lat, dest_lon],
                 radius=5,
-                color="white",
+                color=team_color2,
                 fill=True,
                 fill_color=team_color,
                 fill_opacity=0.9,
