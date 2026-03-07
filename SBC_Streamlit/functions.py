@@ -5,7 +5,8 @@ import pandas as pd
 import streamlit as st
 import math as math
 import numpy as np
-import pydeck as pdk
+import folium
+from streamlit_folium import st_folium
 import streamlit.components.v1 as components
 import base64
 from pathlib import Path
@@ -1798,10 +1799,6 @@ def arc_points(lat1, lon1, lat2, lon2, n=40):
         pts.append([lon, lat + bow])
     return pts
 
-def hex_to_rgb(hex_color):
-    hex_color = hex_color.lstrip("#")
-    return [int(hex_color[i:i+2], 16) for i in (0, 2, 4)]
-
 def plot_team_flights(SelectedTeam, Year, df):
     team_df = df[
         (df["Year"] == Year) &
@@ -1813,95 +1810,52 @@ def plot_team_flights(SelectedTeam, Year, df):
     team_df["TypeOrder"] = team_df["Type"].map(type_order)
     team_df = team_df.sort_values(["Period", "TypeOrder"]).reset_index(drop=True)
 
-    current_lat = team_info[SelectedTeam]["lat"]
-    current_lon = team_info[SelectedTeam]["lon"]
-    team_color = hex_to_rgb(team_info[SelectedTeam]["bg"])
+    home = team_info[SelectedTeam]
+    team_color = home["bg"]
 
-    path_data = []
-    visited = {}
+    current_lat = home["lat"]
+    current_lon = home["lon"]
+
+    m = folium.Map(location=[current_lat, current_lon], zoom_start=4, tiles="CartoDB dark_matter")
+
+    visited = set()
 
     for _, row in team_df.iterrows():
         dest = row["TeamB"] if row["TeamA"] == SelectedTeam else SelectedTeam
-
         dest_lat = team_info[dest]["lat"]
         dest_lon = team_info[dest]["lon"]
 
         if dest_lat != current_lat or dest_lon != current_lon:
-            path_data.append({
-                "path": arc_points(current_lat, current_lon, dest_lat, dest_lon),
-                "color": team_color + [200]
-            })
+            folium.PolyLine(
+                locations=[[current_lat, current_lon], [dest_lat, dest_lon]],
+                color=team_color,
+                weight=2,
+                opacity=0.7
+            ).add_to(m)
 
-        visited[dest] = (dest_lat, dest_lon)
+        if dest not in visited:
+            folium.CircleMarker(
+                location=[dest_lat, dest_lon],
+                radius=5,
+                color="white",
+                fill=True,
+                fill_color=team_color,
+                fill_opacity=0.9,
+                tooltip=dest
+            ).add_to(m)
+            visited.add(dest)
+
         current_lat, current_lon = dest_lat, dest_lon
 
-    home = team_info[SelectedTeam]
-    visited[SelectedTeam] = (home["lat"], home["lon"])
+    # Home base marker
+    folium.CircleMarker(
+        location=[home["lat"], home["lon"]],
+        radius=9,
+        color=team_color,
+        fill=True,
+        fill_color=team_color,
+        fill_opacity=0.4,
+        tooltip=f"{SelectedTeam} (Home)"
+    ).add_to(m)
 
-    dot_data = [
-        {"city": c, "lat": v[0], "lon": v[1]}
-        for c, v in visited.items()
-    ]
-
-    if len(path_data) == 0:
-        path_data = [{"path": [[home["lon"], home["lat"]]], "color": team_color + [200]}]
-
-    path_layer = pdk.Layer(
-        "PathLayer",
-        data=path_data,
-        get_path="path",
-        get_color="color",
-        get_width=3,
-        width_min_pixels=1
-    )
-
-    dot_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=dot_data,
-        get_position=["lon", "lat"],
-        get_radius=35000,
-        get_fill_color=team_color + [180],
-        get_line_color=[255, 255, 255, 180],
-        stroked=True,
-        line_width_min_pixels=1,
-        pickable=True
-    )
-
-    home_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=[{"lat": home["lat"], "lon": home["lon"]}],
-        get_position=["lon", "lat"],
-        get_radius=60000,
-        get_fill_color=team_color + [40],
-        get_line_color=team_color + [255],
-        stroked=True,
-        line_width_min_pixels=2
-    )
-
-    text_layer = pdk.Layer(
-        "TextLayer",
-        data=dot_data,
-        get_position=["lon", "lat"],
-        get_text="city",
-        get_size=13,
-        get_color=[200, 220, 255, 220],
-        get_anchor="middle",
-        get_alignment_baseline="bottom",
-        get_pixel_offset=[0, -18],
-        font_family="monospace"
-    )
-
-    view = pdk.ViewState(
-        latitude=home["lat"],
-        longitude=home["lon"],
-        zoom=3.5,
-        pitch=25,
-        bearing=-10
-    )
-
-    return pdk.Deck(
-        layers=[path_layer, home_layer, dot_layer, text_layer],
-        initial_view_state=view,
-        map_style="dark",
-        tooltip={"text": "{city}"}
-    )
+    return m
