@@ -6,7 +6,6 @@ import streamlit as st
 import math as math
 import numpy as np
 import folium
-import folium.plugins as AntPath
 import streamlit.components.v1 as components
 import base64
 from pathlib import Path
@@ -1829,12 +1828,11 @@ def plot_team_flights(SelectedTeam, Year, df):
         dest_lon = team_info[dest]["lon"]
 
         if dest_lat != current_lat or dest_lon != current_lon:
-            AntPath(
+            folium.PolyLine(
                 locations=[[current_lat, current_lon], [dest_lat, dest_lon]],
                 color=team_color,
                 weight=3,
-                opacity=0.8,
-                delay=800,
+                opacity=0.8
             ).add_to(m)
 
         if dest not in visited:
