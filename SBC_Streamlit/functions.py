@@ -1855,8 +1855,8 @@ def plot_team_flights(SelectedTeam, Year, df):
         get_text="city",
         get_size=13,
         get_color=[200, 220, 255, 220],
-        get_anchor="'middle'",
-        get_alignment_baseline="'bottom'",
+        get_anchor="middle",
+        get_alignment_baseline="bottom",        
         get_pixel_offset=[0, -18],
         font_family="'DM Mono', monospace")
     view = pdk.ViewState(
