@@ -1866,7 +1866,7 @@ def plot_team_flights(SelectedTeam, Year, df):
         pitch=25,
         bearing=-10)
     return pdk.Deck(
-        layers=[path_layer, home_layer, dot_layer],
+        layers=[path_layer],
         initial_view_state=view,
         map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
         tooltip={"text": "{city}"})
