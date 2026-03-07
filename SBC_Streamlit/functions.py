@@ -1826,42 +1826,42 @@ def plot_team_flights(SelectedTeam, Year, df):
     visited[SelectedTeam] = (home["lat"], home["lon"])
     dot_data = [{"city": c, "lat": v[0], "lon": v[1]} for c, v in visited.items()]
     path_layer = pdk.Layer(
-        "PathLayer",
-        data=path_data,
-        get_path="path",
-        get_color="color",
-        get_width=3,
-        width_min_pixels=1)
+    "PathLayer",
+    data=path_data,
+    get_path="@@=path",
+    get_color="@@=color",
+    get_width=3,
+    width_min_pixels=1)
     dot_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=dot_data,
-        get_position="[lon, lat]",
-        get_radius=35000,
-        get_fill_color=team_color + [180],
-        get_line_color=[255, 255, 255, 180],
-        stroked=True,
-        line_width_min_pixels=1,
-        pickable=True)
+    "ScatterplotLayer",
+    data=dot_data,
+    get_position="@@=[lon, lat]",
+    get_radius=35000,
+    get_fill_color=team_color + [180],
+    get_line_color=[255, 255, 255, 180],
+    stroked=True,
+    line_width_min_pixels=1,
+    pickable=True)
     home_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=[{"lat": home["lat"], "lon": home["lon"]}],
-        get_position="[lon, lat]",
-        get_radius=60000,
-        get_fill_color=team_color + [40],
-        get_line_color=team_color + [255],
-        stroked=True,
-        line_width_min_pixels=2)
+    "ScatterplotLayer",
+    data=[{"lat": home["lat"], "lon": home["lon"]}],
+    get_position="@@=[lon, lat]",
+    get_radius=60000,
+    get_fill_color=team_color + [40],
+    get_line_color=team_color + [255],
+    stroked=True,
+    line_width_min_pixels=2)
     text_layer = pdk.Layer(
-        "TextLayer",
-        data=dot_data,
-        get_position="[lon, lat]",
-        get_text="city",
-        get_size=13,
-        get_color=[200, 220, 255, 220],
-        get_anchor="middle",
-        get_alignment_baseline="bottom",        
-        get_pixel_offset=[0, -18],
-        font_family="monospace")
+    "TextLayer",
+    data=dot_data,
+    get_position="@@=[lon, lat]",
+    get_text="@@=city",
+    get_size=13,
+    get_color=[200, 220, 255, 220],
+    get_anchor="middle",
+    get_alignment_baseline="bottom",
+    get_pixel_offset=[0, -18],
+    font_family="monospace")
     view = pdk.ViewState(
         latitude=home["lat"],
         longitude=home["lon"],
