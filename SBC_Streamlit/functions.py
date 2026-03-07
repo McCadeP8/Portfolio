@@ -1843,6 +1843,9 @@ def plot_team_flights(SelectedTeam, Year, df):
         for c, v in visited.items()
     ]
 
+    if len(path_data) == 0:
+        path_data = [{"path": [[home["lon"], home["lat"]]], "color": team_color + [200]}]
+
     path_layer = pdk.Layer(
         "PathLayer",
         data=path_data,
