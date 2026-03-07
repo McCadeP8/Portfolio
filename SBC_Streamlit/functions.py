@@ -1818,7 +1818,7 @@ def plot_team_flights(SelectedTeam, Year, df):
     m = folium.Map(
         location=[current_lat, current_lon], 
         zoom_start=4, 
-        tiles="Stamen Toner",
+        tiles="CartoDB Positron",
         zoom_control=False)
     visited = set()
 
