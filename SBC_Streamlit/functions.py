@@ -6,7 +6,7 @@ import streamlit as st
 import math as math
 import numpy as np
 import folium
-from streamlit_folium import st_folium
+import folium.plugins as AntPath
 import streamlit.components.v1 as components
 import base64
 from pathlib import Path
@@ -1816,8 +1816,11 @@ def plot_team_flights(SelectedTeam, Year, df):
     current_lat = home["lat"]
     current_lon = home["lon"]
 
-    m = folium.Map(location=[current_lat, current_lon], zoom_start=4, tiles="CartoDB dark_matter")
-
+    m = folium.Map(
+        location=[current_lat, current_lon], 
+        zoom_start=4, 
+        tiles="CartoDB dark_matter",
+        zoom_control=False)
     visited = set()
 
     for _, row in team_df.iterrows():
@@ -1826,11 +1829,13 @@ def plot_team_flights(SelectedTeam, Year, df):
         dest_lon = team_info[dest]["lon"]
 
         if dest_lat != current_lat or dest_lon != current_lon:
-            folium.PolyLine(
+            AntPath(
                 locations=[[current_lat, current_lon], [dest_lat, dest_lon]],
                 color=team_color,
-                weight=2,
-                opacity=0.7
+                weight=3,
+                opacity=0.8,
+                delay=800,
+                dash_array=[10, 20]
             ).add_to(m)
 
         if dest not in visited:
