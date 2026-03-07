@@ -1798,6 +1798,9 @@ def arc_points(lat1, lon1, lat2, lon2, n=40):
         pts.append([lon, lat + bow])
     return pts
 
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip("#")
+    return [int(hex_color[i:i+2], 16) for i in (0, 2, 4)]
 
 def plot_team_flights(SelectedTeam, Year, df):
     team_df = df[(df["Year"] == Year) & (df["Type"].isin(["Regular Season", "In-Season Tournament"])) & ((df["TeamA"] == SelectedTeam) | (df["TeamB"] == SelectedTeam))].copy()
@@ -1806,7 +1809,7 @@ def plot_team_flights(SelectedTeam, Year, df):
     team_df = team_df.sort_values(["Period", "TypeOrder"]).reset_index(drop=True)
     current_lat = team_info[SelectedTeam]["lat"]
     current_lon = team_info[SelectedTeam]["lon"]
-    team_color = list(team_info[SelectedTeam]["bg"])
+    team_color = hex_to_rgb(team_info[SelectedTeam]["bg"])    
     path_data = []
     visited = {}
     for _, row in team_df.iterrows():
@@ -1866,7 +1869,7 @@ def plot_team_flights(SelectedTeam, Year, df):
         pitch=25,
         bearing=-10)
     return pdk.Deck(
-        layers=[path_layer],
+        layers=[path_layer, home_layer, dot_layer, text_layer],
         initial_view_state=view,
         map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
         tooltip={"text": "{city}"})
