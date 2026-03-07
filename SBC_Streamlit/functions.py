@@ -1835,7 +1835,6 @@ def plot_team_flights(SelectedTeam, Year, df):
                 weight=3,
                 opacity=0.8,
                 delay=800,
-                dash_array=[10, 20]
             ).add_to(m)
 
         if dest not in visited:
