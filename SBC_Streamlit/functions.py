@@ -1799,66 +1799,25 @@ def arc_points(lat1, lon1, lat2, lon2, n=40):
     return pts
 
 def plot_team_flights(SelectedTeam, Year, df):
-    team_df = df[
-        (df["Year"] == Year) &
-        (df["Type"].isin(["Regular Season", "In-Season Tournament"])) &
-        ((df["TeamA"] == SelectedTeam) | (df["TeamB"] == SelectedTeam))
-    ].copy()
-
+    team_df = df[(df["Year"] == Year) & (df["Type"].isin(["Regular Season", "In-Season Tournament"])) & ((df["TeamA"] == SelectedTeam) | (df["TeamB"] == SelectedTeam))].copy()
     type_order = {"Regular Season": 0, "In-Season Tournament": 1}
     team_df["TypeOrder"] = team_df["Type"].map(type_order)
     team_df = team_df.sort_values(["Period", "TypeOrder"]).reset_index(drop=True)
-
     home = team_info[SelectedTeam]
     team_color = home["bg"]
     team_color2 = home["bg2"]
-
     current_lat = home["lat"]
     current_lon = home["lon"]
-
-    m = folium.Map(
-        location=[current_lat, current_lon], 
-        zoom_start=4, 
-        tiles="CartoDB Positron",
-        zoom_control=False)
+    m = folium.Map(location=[current_lat, current_lon], zoom_start=4, tiles="CartoDB Positron", zoom_control=False)
     visited = set()
-
     for _, row in team_df.iterrows():
         dest = row["TeamB"] if row["TeamA"] == SelectedTeam else SelectedTeam
         dest_lat = team_info[dest]["lat"]
         dest_lon = team_info[dest]["lon"]
-
         if dest_lat != current_lat or dest_lon != current_lon:
-            folium.PolyLine(
-                locations=[[current_lat, current_lon], [dest_lat, dest_lon]],
-                color=team_color,
-                weight=3,
-                opacity=0.8
-            ).add_to(m)
-
+            folium.PolyLine(locations=[[current_lat, current_lon], [dest_lat, dest_lon]], color=team_color, weight=3, opacity=0.8).add_to(m)
         if dest not in visited:
-            folium.CircleMarker(
-                location=[dest_lat, dest_lon],
-                radius=5,
-                color=team_color2,
-                fill=True,
-                fill_color=team_color,
-                fill_opacity=0.9,
-                tooltip=dest
-            ).add_to(m)
+            folium.CircleMarker(location=[dest_lat, dest_lon], radius=5, color=team_color2, fill=True, fill_color=team_color, fill_opacity=0.9, tooltip=dest).add_to(m)
             visited.add(dest)
-
         current_lat, current_lon = dest_lat, dest_lon
-
-    # Home base marker
-    folium.CircleMarker(
-        location=[home["lat"], home["lon"]],
-        radius=9,
-        color=team_color,
-        fill=True,
-        fill_color=team_color,
-        fill_opacity=0.4,
-        tooltip=f"{SelectedTeam} (Home)"
-    ).add_to(m)
-
     return m
