@@ -153,8 +153,15 @@ def get_all_time_standings() -> pd.DataFrame:
 
 def add_game_to_schedule(game_dict):
     df = pd.read_parquet("all_time_scores.parquet")
-    new_row = pd.DataFrame([game_dict])
-    df = pd.concat([df, new_row], ignore_index=True)
+    year = game_dict["Year"]
+    df_year = df[df["Game_ID"].str.startswith(str(year)) & df["Game_ID"].notna()]
+    if len(df_year) == 0:
+        next_num = 1
+    else:
+        nums = df_year["Game_ID"].str.split("_").str[1].astype(int)
+        next_num = nums.max() + 1
+    game_dict["Game_ID"] = f"{year}_{str(next_num).zfill(3)}"
+    df = pd.concat([df, pd.DataFrame([game_dict])], ignore_index=True)
     df.to_parquet("all_time_scores.parquet", index=False)
     return df
 
@@ -175,3 +182,4 @@ get_all_team_stats_history()
 get_all_time_rosters_history()
 get_all_time_scores()
 get_all_time_standings()
+

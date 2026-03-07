@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 import math as math
 import numpy as np
+import pydeck as pdk
 import streamlit.components.v1 as components
 import base64
 from pathlib import Path
@@ -1756,3 +1757,116 @@ def get_team_schedule(df, SelectedTeam, SelectedYear):
     df = df[["Period", "Location", "Logo", "Score", "Result"]]
     df = df.style.apply(tier_color, axis=1).hide(axis="index")
     return df
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 3958.8
+    φ1, φ2 = math.radians(lat1), math.radians(lat2)
+    dφ = math.radians(lat2 - lat1)
+    dλ = math.radians(lon2 - lon1)
+    a = math.sin(dφ/2)**2 + math.cos(φ1)*math.cos(φ2)*math.sin(dλ/2)**2
+    return R * 2 * math.asin(math.sqrt(a))
+
+def get_team_mileage(SelectedTeam, Year, df):
+    team_df = df[(df["Year"] == Year) & (df["Type"].isin(["Regular Season", "In-Season Tournament"])) & ((df["TeamA"] == SelectedTeam) | (df["TeamB"] == SelectedTeam))].copy()
+    type_order = {"Regular Season": 0, "In-Season Tournament": 1}
+    team_df["TypeOrder"] = team_df["Type"].map(type_order)
+    team_df = team_df.sort_values(["Period", "TypeOrder"]).reset_index(drop=True)
+    team_df.drop(columns="TypeOrder", inplace=True)
+    current_lat = team_info[SelectedTeam]["lat"]
+    current_lon = team_info[SelectedTeam]["lon"]
+    miles_per_game = []
+    for _, row in team_df.iterrows():
+        dest = row["TeamB"] if row["TeamA"] == SelectedTeam else SelectedTeam
+        dest_lat = team_info[dest]["lat"]
+        dest_lon = team_info[dest]["lon"]
+        miles = haversine(current_lat, current_lon, dest_lat, dest_lon)
+        miles_per_game.append(miles)
+        current_lat, current_lon = dest_lat, dest_lon
+    team_df["MilesThisGame"] = miles_per_game
+    team_df = team_df[["TeamA", "TeamB", "MilesThisGame"]]
+    total_miles = team_df["MilesThisGame"].sum()
+    num_flights = (team_df["MilesThisGame"] > 0).sum()
+    return total_miles, num_flights
+
+def arc_points(lat1, lon1, lat2, lon2, n=40):
+    pts = []
+    for i in range(n + 1):
+        t = i / n
+        lat = lat1 + t * (lat2 - lat1)
+        lon = lon1 + t * (lon2 - lon1)
+        bow = math.sin(math.pi * t) * 3
+        pts.append([lon, lat + bow])
+    return pts
+
+
+def plot_team_flights(SelectedTeam, Year, df):
+    team_df = df[(df["Year"] == Year) & (df["Type"].isin(["Regular Season", "In-Season Tournament"])) & ((df["TeamA"] == SelectedTeam) | (df["TeamB"] == SelectedTeam))].copy()
+    type_order = {"Regular Season": 0, "In-Season Tournament": 1}
+    team_df["TypeOrder"] = team_df["Type"].map(type_order)
+    team_df = team_df.sort_values(["Period", "TypeOrder"]).reset_index(drop=True)
+    current_lat = team_info[SelectedTeam]["lat"]
+    current_lon = team_info[SelectedTeam]["lon"]
+    team_color = team_info[SelectedTeam]["bg"]
+    path_data = []
+    visited = {}
+    for _, row in team_df.iterrows():
+        dest = row["TeamB"] if row["TeamA"] == SelectedTeam else SelectedTeam
+        dest_lat = team_info[dest]["lat"]
+        dest_lon = team_info[dest]["lon"]
+        if dest_lat != current_lat or dest_lon != current_lon:
+            path_data.append({
+                "path": arc_points(current_lat, current_lon, dest_lat, dest_lon),
+                "color": team_color + [200]})
+        visited[dest] = (dest_lat, dest_lon)
+        current_lat, current_lon = dest_lat, dest_lon
+    home = team_info[SelectedTeam]
+    visited[SelectedTeam] = (home["lat"], home["lon"])
+    dot_data = [{"city": c, "lat": v[0], "lon": v[1]} for c, v in visited.items()]
+    path_layer = pdk.Layer(
+        "PathLayer",
+        data=path_data,
+        get_path="path",
+        get_color="color",
+        get_width=3,
+        width_min_pixels=1)
+    dot_layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=dot_data,
+        get_position="[lon, lat]",
+        get_radius=35000,
+        get_fill_color=team_color + [180],
+        get_line_color=[255, 255, 255, 180],
+        stroked=True,
+        line_width_min_pixels=1,
+        pickable=True)
+    home_layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=[{"lat": home["lat"], "lon": home["lon"]}],
+        get_position="[lon, lat]",
+        get_radius=60000,
+        get_fill_color=team_color + [40],
+        get_line_color=team_color + [255],
+        stroked=True,
+        line_width_min_pixels=2)
+    text_layer = pdk.Layer(
+        "TextLayer",
+        data=dot_data,
+        get_position="[lon, lat]",
+        get_text="city",
+        get_size=13,
+        get_color=[200, 220, 255, 220],
+        get_anchor="'middle'",
+        get_alignment_baseline="'bottom'",
+        get_pixel_offset=[0, -18],
+        font_family="'DM Mono', monospace")
+    view = pdk.ViewState(
+        latitude=home["lat"],
+        longitude=home["lon"],
+        zoom=3.5,
+        pitch=25,
+        bearing=-10)
+    return pdk.Deck(
+        layers=[path_layer, home_layer, dot_layer, text_layer],
+        initial_view_state=view,
+        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+        tooltip={"text": "{city}"})
