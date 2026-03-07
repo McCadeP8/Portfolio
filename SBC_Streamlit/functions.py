@@ -1806,7 +1806,7 @@ def plot_team_flights(SelectedTeam, Year, df):
     team_df = team_df.sort_values(["Period", "TypeOrder"]).reset_index(drop=True)
     current_lat = team_info[SelectedTeam]["lat"]
     current_lon = team_info[SelectedTeam]["lon"]
-    team_color = team_info[SelectedTeam]["bg"]
+    team_color = list(team_info[SelectedTeam]["bg"])
     path_data = []
     visited = {}
     for _, row in team_df.iterrows():
