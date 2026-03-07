@@ -1858,7 +1858,7 @@ def plot_team_flights(SelectedTeam, Year, df):
         get_anchor="middle",
         get_alignment_baseline="bottom",        
         get_pixel_offset=[0, -18],
-        font_family="'DM Mono', monospace")
+        font_family="monospace")
     view = pdk.ViewState(
         latitude=home["lat"],
         longitude=home["lon"],
