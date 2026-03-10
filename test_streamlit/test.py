@@ -465,7 +465,7 @@ if __name__ == "__main__":
         home_score=0,
         away_score=0,
         home_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/gsw.png&h=200&w=200",
-        away_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/uta.png&h=200&w=200",
+        away_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/utah.png&h=200&w=200",
         game_date="March 9, 2026",
         league="Delta Center, Salt Lake City",
         game_status="FINAL",
