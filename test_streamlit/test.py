@@ -469,8 +469,8 @@ if __name__ == "__main__":
         game_date="March 9, 2026",
         league="Delta Center, Salt Lake City",
         game_status="FINAL",
-        home_record="32-31",
-        away_record="19-45",
+        home_record="32-32",
+        away_record="20-45",
         home_color="#31006F",
         away_color="#E31837",
         quarter_scores=[
@@ -499,8 +499,8 @@ if __name__ == "__main__":
         game_status="FINAL • OT",
         home_record="34-25-4",
         away_record="23-29-11",
-        home_color="#6CACE3",
-        away_color="#CF0A2C",
+        home_color="#FFC72C",
+        away_color="#753BBD",
         quarter_scores=[
             {"label": "P1", "home": 2, "away": 1},
             {"label": "P2", "home": 0, "away": 1},
