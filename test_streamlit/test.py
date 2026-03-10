@@ -462,8 +462,8 @@ if __name__ == "__main__":
     render_scoreboard(
         home_team="Golden State Warriors",
         away_team="Utah Jazz",
-        home_score=0,
-        away_score=0,
+        home_score = 116,
+        away_score = 119,
         home_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/gsw.png&h=200&w=200",
         away_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/utah.png&h=200&w=200",
         game_date="March 9, 2026",
@@ -474,10 +474,10 @@ if __name__ == "__main__":
         home_color="#31006F",
         away_color="#E31837",
         quarter_scores=[
-            {"label": "Q1", "home": 0, "away": 0},
-            {"label": "Q2", "home": 0, "away": 0},
-            {"label": "Q3", "home": 0, "away": 0},
-            {"label": "Q4", "home": 0, "away": 0},
+            {"label": "Q1", "home": 27, "away": 29},
+            {"label": "Q2", "home": 28, "away": 30},
+            {"label": "Q3", "home": 29, "away": 32},
+            {"label": "Q4", "home": 32, "away": 28},
         ],
     )
 
