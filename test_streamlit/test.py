@@ -489,14 +489,14 @@ if __name__ == "__main__":
     render_scoreboard(
         home_team="Utah Mammoth",
         away_team="Chicago Blackhawks",
-        home_score=3,
-        away_score=0,
+        home_score=2,
+        away_score=3,
         home_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nhl/500/utah.png&h=200&w=200",
         away_logo_url="https://a.espncdn.com/combiner/i?img=/i/teamlogos/nhl/500/chi.png&h=200&w=200",
         game_date="March 9, 2026",
         league="NHL",
         venue="United Center, Chicago",
-        game_status="FINAL",
+        game_status="FINAL • OT",
         home_record="34-25-4",
         away_record="23-29-11",
         home_color="#6CACE3",
@@ -505,6 +505,7 @@ if __name__ == "__main__":
             {"label": "P1", "home": 2, "away": 1},
             {"label": "P2", "home": 0, "away": 1},
             {"label": "P3", "home": 0, "away": 0},
+            {"label": "OT", "home": 0, "away": 1},
         ],
     )
 
