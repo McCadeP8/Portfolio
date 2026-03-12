@@ -14,7 +14,7 @@ scores = score_simulations(picks, sims, projections)
 finish = calculate_finish_chances(scores)
 AllResults = compute_all_results(picks, sims)
 ActualResults = sims[sims['Sim'] == 1].copy()
-cols_to_keep = [f'R64_{i}' for i in range(1, 17)]
+cols_to_keep = [f'R64_{i}' for i in range(1, 30)]
 for col in ActualResults.columns:
     if col not in cols_to_keep and col != 'Sim':
         ActualResults[col] = np.nan
