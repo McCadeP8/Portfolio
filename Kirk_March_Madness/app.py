@@ -25,6 +25,7 @@ selected_bracket = st.selectbox('Select Bracket', picks['Bracket'].unique())
 for round_name in ['R64', 'R32', 'S16', 'E8', 'F4', 'Champ']:
     col1, col2, col3 = st.columns(3)
     with col1:
+        st.subheader("Hi")
     with col2:
         plot_correct_picks(AllResults, selected_bracket, round_name)
     with col3:
