@@ -3,30 +3,27 @@
 
 import streamlit as st
 import numpy as np
-from data import get_projections, get_picks, calculate_expected_points, calculate_risk_score, run_simulations, calculate_finish_chances, score_simulations, plot_correct_picks, compute_all_results, compute_all_results_p, plot_correct_picks_p
+from data import get_projections, get_picks, calculate_risk_score, run_simulations, calculate_sim_ranks, score_simulations_by_round, plot_correct_picks, count_simulations_by_round
 
 st.set_page_config(
-    page_title = "Kir's March Madness Bracket Analysis",
+    page_title = "Kirk's March Madness Bracket Analysis",
     page_icon = ":basketball:",
     layout = "wide")
 
-projections = get_projections()
-picks = get_picks()
-expected_points = calculate_expected_points(projections, picks)
-RiskScore = calculate_risk_score(projections, picks)
-sims   = run_simulations(projections, n_simulations=10000)
-scores = score_simulations(picks, sims, projections)
-finish = calculate_finish_chances(scores)
-AllResults = compute_all_results(picks, sims)
-AllPoints = compute_all_results_p(picks, sims)
+Projections = get_projections()
+Picks = get_picks()
+RiskScore = calculate_risk_score(Projections, Picks)
+Sims = run_simulations(Projections, n_simulations=10000)
+Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, Sims, Projections)
+Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal = count_simulations_by_round(Picks, Sims, Projections)
+Finish = calculate_sim_ranks(ScoresTotal)
 
-        
-selected_bracket = st.selectbox('Select Bracket', picks['Bracket'].unique())
-for round_name in ['R64', 'R32', 'S16', 'E8', 'F4', 'Champ']:
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.subheader("Hi")
-    with col2:
-        plot_correct_picks(AllResults, selected_bracket, round_name)
-    with col3:
-        plot_correct_picks_p(AllPoints, selected_bracket, round_name)
+selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.subheader("Hi")
+with col2:
+    plot_correct_picks(Scores64, selected_bracket, "R64")
+with col3:
+    plot_correct_picks(Counts64, selected_bracket, "R64")
