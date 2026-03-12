@@ -357,7 +357,8 @@ def calculate_finish_chances(scores_df):
     result.index.name = 'Bracket'
     return result.sort_values('P1', ascending=False).reset_index()
 
-def plot_correct_picks(picks, simulations, selected_bracket, round_name='R64'):
+@st.cache_data
+def compute_all_results(picks, simulations):
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
         'R32':   [f'R32_{i}' for i in range(1, 17)],
@@ -366,43 +367,68 @@ def plot_correct_picks(picks, simulations, selected_bracket, round_name='R64'):
         'F4':    ['F4_1', 'F4_2'],
         'Champ': ['Champ'],
     }
+    all_cols = [col for cols in round_cols.values() for col in cols]
+    sim_matrix = simulations[all_cols].values
+
+    records = []
+    for _, row in picks.iterrows():
+        bracket = row['Bracket']
+        entry = {'Bracket': bracket}
+        for round_name, cols in round_cols.items():
+            col_indices = [all_cols.index(c) for c in cols]
+            bracket_picks = row[cols].values
+            sim_slice = sim_matrix[:, col_indices]
+            correct_per_sim = (sim_slice == bracket_picks).sum(axis=1)
+            # Store the full distribution as a list
+            max_correct = len(cols)
+            counts = np.bincount(correct_per_sim, minlength=max_correct + 1)[:max_correct + 1]
+            entry[f'{round_name}_counts'] = counts
+            entry[f'{round_name}_mean'] = correct_per_sim.mean()
+        records.append(entry)
+
+    return pd.DataFrame(records)
+
+def plot_correct_picks(results_df, selected_bracket, round_name='R64'):
+    round_max = {
+        'R64': 32, 'R32': 16, 'S16': 8, 'E8': 4, 'F4': 2, 'Champ': 1, 'All': 63
+    }
+
+    row = results_df[results_df['Bracket'] == selected_bracket].iloc[0]
 
     if round_name == 'All':
-        cols = [col for cols in round_cols.values() for col in cols]
-        max_correct = 63
+        all_rounds = ['R64', 'R32', 'S16', 'E8', 'F4', 'Champ']
+        combined = np.array([1.0])
+        for r in all_rounds:
+            combined = np.convolve(combined, row[f'{r}_counts'])
+        counts = combined.astype(int)
+        mean_val = sum(row[f'{r}_mean'] for r in all_rounds)
     else:
-        cols = round_cols[round_name]
-        max_correct = len(cols)
+        counts = row[f'{round_name}_counts']
+        mean_val = row[f'{round_name}_mean']
 
-    # Pull this bracket's picks for the relevant columns
-    bracket_picks = picks[picks['Bracket'] == selected_bracket][cols].values[0]
+    max_correct = round_max[round_name]
+    x = np.arange(len(counts))
+    pct = counts / counts.sum() * 100
 
-    # Compare against every simulation — (n_sims, n_cols)
-    sim_matrix = simulations[cols].values
-    correct_per_sim = (sim_matrix == bracket_picks).sum(axis=1)
+    with plt.style.context('dark_background'):
+        fig, ax = plt.subplots(figsize=(12, 5))
+        fig.patch.set_facecolor('#0E1117')
+        ax.set_facecolor('#0E1117')
 
-    # Tally counts for every possible value 0..max_correct
-    counts = np.bincount(correct_per_sim, minlength=max_correct + 1)[:max_correct + 1]
+        ax.bar(x, pct, color='#009CDE', edgecolor='none', width=1.0)
 
-    # Plot
-    fig, ax = plt.subplots(figsize=(12, 5))
-    x = np.arange(max_correct + 1)
-    bars = ax.bar(x, counts, color='steelblue', edgecolor='white', linewidth=0.5)
+        ax.axvline(mean_val, color='red', linestyle='--', linewidth=1.5)
 
-    # Highlight the most likely outcome
-    ax.bar(x[np.argmax(counts)], counts[np.argmax(counts)], color='tomato', edgecolor='white')
+        ax.set_xlabel('Number of Correct Picks', fontsize=12, color='white')
+        ax.set_ylabel('Probability (%)', fontsize=12, color='white')
+        ax.set_xticks(x)
+        ax.set_xlim(-0.5, max_correct + 0.5)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}%'))
 
-    ax.set_xlabel('Number of Correct Picks', fontsize=12)
-    ax.set_ylabel('Number of Simulations', fontsize=12)
-    round_label = 'All Rounds' if round_name == 'All' else round_name
-    ax.set_title(f'{selected_bracket} — Correct Picks: {round_label}', fontsize=14, fontweight='bold')
-    ax.set_xticks(x)
-    ax.set_xlim(-0.5, max_correct + 0.5)
+        ax.tick_params(colors='white')
+        for spine in ax.spines.values():
+            spine.set_edgecolor('#444444')
 
-    mean_val = correct_per_sim.mean()
-    ax.axvline(mean_val, color='gold', linestyle='--', linewidth=1.5, label=f'Mean: {mean_val:.1f}')
-    ax.legend()
-
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close()
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
