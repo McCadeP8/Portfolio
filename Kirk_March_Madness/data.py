@@ -4,6 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 def get_picks():
     file_path = "MARCH MADNESS 2021 brackets.xlsm"
 
