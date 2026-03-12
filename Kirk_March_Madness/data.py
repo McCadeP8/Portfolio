@@ -3,9 +3,12 @@ import openpyxl
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def get_picks():
-    file_path = "MARCH MADNESS 2021 brackets.xlsm"
+    file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
 
     wb = openpyxl.load_workbook(file_path, data_only=True)
 
@@ -254,6 +257,7 @@ def calculate_risk_score(projections, picks):
     return df[['Bracket', 'risk_score', 'risk_rank',
                'downside_score', 'concentration_score', 'upset_score']].sort_values('risk_rank')
 
+@st.cache_data
 def run_simulations(projections, n_simulations=100000):
     teams = projections['Team'].values
     group_map = projections.set_index('Team')
@@ -307,6 +311,7 @@ def run_simulations(projections, n_simulations=100000):
 
     return results
 
+@st.cache_data
 def score_simulations(picks, simulations, projections):
     round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
     round_cols   = {
@@ -336,7 +341,7 @@ def score_simulations(picks, simulations, projections):
     print(f"  All {len(simulations)} simulations scored.")
     return pd.DataFrame(scores, columns=picks['Bracket'].values)
 
-
+@st.cache_data
 def calculate_finish_chances(scores_df):
     n_simulations = len(scores_df)
     ranks_matrix  = scores_df.rank(axis=1, ascending=False, method='min').values.astype(int)
