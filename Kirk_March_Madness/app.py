@@ -3,7 +3,7 @@
 
 import streamlit as st
 import numpy as np
-from data import get_projections, get_picks, calculate_expected_points, calculate_risk_score, run_simulations, calculate_finish_chances, score_simulations, plot_correct_picks, compute_all_results
+from data import get_projections, get_picks, calculate_expected_points, calculate_risk_score, run_simulations, calculate_finish_chances, score_simulations, plot_correct_picks, compute_all_results, compute_all_results_p, plot_correct_picks_p
 
 st.set_page_config(
     page_title = "Kir's March Madness Bracket Analysis",
@@ -18,6 +18,8 @@ sims   = run_simulations(projections, n_simulations=10000)
 scores = score_simulations(picks, sims, projections)
 finish = calculate_finish_chances(scores)
 AllResults = compute_all_results(picks, sims)
+AllPoints = compute_all_results_p(picks, sims)
+
         
 selected_bracket = st.selectbox('Select Bracket', picks['Bracket'].unique())
 plot_correct_picks(AllResults, selected_bracket, "R64")
@@ -26,3 +28,9 @@ plot_correct_picks(AllResults, selected_bracket, "S16")
 plot_correct_picks(AllResults, selected_bracket, "E8")
 plot_correct_picks(AllResults, selected_bracket, "F4")
 plot_correct_picks(AllResults, selected_bracket, "Champ")
+plot_correct_picks_p(AllPoints, selected_bracket, "R64")
+plot_correct_picks_p(AllPoints, selected_bracket, "R32")
+plot_correct_picks_p(AllPoints, selected_bracket, "S16")
+plot_correct_picks_p(AllPoints, selected_bracket, "E8")
+plot_correct_picks_p(AllPoints, selected_bracket, "F4")
+plot_correct_picks_p(AllPoints, selected_bracket, "Champ")

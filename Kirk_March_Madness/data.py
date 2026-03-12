@@ -452,3 +452,109 @@ def plot_correct_picks(results_df, selected_bracket, round_name='R64'):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+@st.cache_data
+def compute_all_results_p(picks, simulations):
+    round_cols = {
+        'R64':   [f'R64_{i}' for i in range(1, 33)],
+        'R32':   [f'R32_{i}' for i in range(1, 17)],
+        'S16':   [f'S16_{i}' for i in range(1, 9)],
+        'E8':    [f'E8_{i}'  for i in range(1, 5)],
+        'F4':    ['F4_1', 'F4_2'],
+        'Champ': ['Champ'],
+    }
+    round_points = {
+        'R64':   1,
+        'R32':   2,
+        'S16':   4,
+        'E8':    8,
+        'F4':    16,
+        'Champ': 32,
+    }
+    all_cols = [col for cols in round_cols.values() for col in cols]
+    sim_matrix = simulations[all_cols].values
+
+    records = []
+    for _, row in picks.iterrows():
+        bracket = row['Bracket']
+        entry = {'Bracket': bracket}
+        total_points = np.zeros(len(simulations), dtype=int)
+
+        for round_name, cols in round_cols.items():
+            pts = round_points[round_name]
+            col_indices = [all_cols.index(c) for c in cols]
+            bracket_picks = row[cols].values
+            sim_slice = sim_matrix[:, col_indices]
+            points_per_sim = (sim_slice == bracket_picks).sum(axis=1) * pts
+            total_points += points_per_sim
+
+            max_points = len(cols) * pts
+            counts = np.bincount(points_per_sim, minlength=max_points + 1)[:max_points + 1]
+            entry[f'{round_name}_counts'] = counts
+            entry[f'{round_name}_mean'] = points_per_sim.mean()
+
+        max_total = sum(len(cols) * round_points[r] for r, cols in round_cols.items())  # 192
+        counts_all = np.bincount(total_points, minlength=max_total + 1)[:max_total + 1]
+        entry['All_counts'] = counts_all
+        entry['All_mean'] = total_points.mean()
+
+        records.append(entry)
+    return pd.DataFrame(records)
+
+
+def plot_correct_picks_p(results_df, selected_bracket, round_name='R64'):
+    round_max = {
+        'R64': 32, 'R32': 16, 'S16': 8, 'E8': 4, 'F4': 2, 'Champ': 1, 'All': 63
+    }
+
+    row = results_df[results_df['Bracket'] == selected_bracket].iloc[0]
+
+    if round_name == 'All':
+        counts = row['All_counts']
+        mean_val = row['All_mean']
+    else:
+        counts = row[f'{round_name}_counts']
+        mean_val = row[f'{round_name}_mean']
+
+    max_correct = round_max[round_name]
+    x = list(range(len(counts)))
+    pct = counts / counts.sum() * 100
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=x,
+        y=pct,
+        marker_color='#009CDE',
+        marker_line_width=0,
+    ))
+
+    fig.add_vline(
+        x=mean_val,
+        line_dash='dash',
+        line_color='red',
+        line_width=1.5
+    )
+
+    fig.update_layout(
+        paper_bgcolor='#0E1117',
+        plot_bgcolor='#0E1117',
+        font_color='white',
+        xaxis=dict(
+            title='Number of Correct Picks',
+            range=[-0.5, max_correct + 0.5],
+            tickfont=dict(color='white'),
+            gridcolor='#444444',
+        ),
+        yaxis=dict(
+            title='Probability (%)',
+            ticksuffix='%',
+            tickfont=dict(color='white'),
+            gridcolor='#444444',
+        ),
+        bargap=0,
+        showlegend=False,
+        margin=dict(l=50, r=20, t=20, b=50),
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
