@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 import math as math
 import numpy as np
-import folium
+import folium as folium
 import streamlit.components.v1 as components
 import base64
 from pathlib import Path
