@@ -394,8 +394,8 @@ def compute_all_results(picks, simulations):
         entry['All_mean'] = total_correct.mean()
 
         records.append(entry)
-
     return pd.DataFrame(records)
+
 def plot_correct_picks(results_df, selected_bracket, round_name='R64'):
     round_max = {
         'R64': 32, 'R32': 16, 'S16': 8, 'E8': 4, 'F4': 2, 'Champ': 1, 'All': 63
