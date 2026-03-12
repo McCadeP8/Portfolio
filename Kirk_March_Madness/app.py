@@ -23,8 +23,9 @@ AllPoints = compute_all_results_p(picks, sims)
         
 selected_bracket = st.selectbox('Select Bracket', picks['Bracket'].unique())
 for round_name in ['R64', 'R32', 'S16', 'E8', 'F4', 'Champ']:
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        plot_correct_picks(AllResults, selected_bracket, round_name)
     with col2:
+        plot_correct_picks(AllResults, selected_bracket, round_name)
+    with col3:
         plot_correct_picks_p(AllPoints, selected_bracket, round_name)
