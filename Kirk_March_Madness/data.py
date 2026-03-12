@@ -357,7 +357,6 @@ def calculate_finish_chances(scores_df):
     result.index.name = 'Bracket'
     return result.sort_values('P1', ascending=False).reset_index()
 
-@st.cache_data
 def compute_all_results(picks, simulations):
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
@@ -374,20 +373,28 @@ def compute_all_results(picks, simulations):
     for _, row in picks.iterrows():
         bracket = row['Bracket']
         entry = {'Bracket': bracket}
+        total_correct = np.zeros(len(simulations), dtype=int)
+
         for round_name, cols in round_cols.items():
             col_indices = [all_cols.index(c) for c in cols]
             bracket_picks = row[cols].values
             sim_slice = sim_matrix[:, col_indices]
             correct_per_sim = (sim_slice == bracket_picks).sum(axis=1)
-            # Store the full distribution as a list
+            total_correct += correct_per_sim
+
             max_correct = len(cols)
             counts = np.bincount(correct_per_sim, minlength=max_correct + 1)[:max_correct + 1]
             entry[f'{round_name}_counts'] = counts
             entry[f'{round_name}_mean'] = correct_per_sim.mean()
+
+        # Compute All directly from simulation totals
+        counts_all = np.bincount(total_correct, minlength=64)[:64]
+        entry['All_counts'] = counts_all
+        entry['All_mean'] = total_correct.mean()
+
         records.append(entry)
 
     return pd.DataFrame(records)
-
 def plot_correct_picks(results_df, selected_bracket, round_name='R64'):
     round_max = {
         'R64': 32, 'R32': 16, 'S16': 8, 'E8': 4, 'F4': 2, 'Champ': 1, 'All': 63
