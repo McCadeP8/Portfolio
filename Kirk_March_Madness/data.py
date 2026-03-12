@@ -1,7 +1,7 @@
 import pandas as pd
 import openpyxl
 import numpy as np
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import streamlit as st
 
 import os
@@ -395,7 +395,6 @@ def compute_all_results(picks, simulations):
         records.append(entry)
 
     return pd.DataFrame(records)
-
 def plot_correct_picks(results_df, selected_bracket, round_name='R64'):
     round_max = {
         'R64': 32, 'R32': 16, 'S16': 8, 'E8': 4, 'F4': 2, 'Champ': 1, 'All': 63
@@ -411,27 +410,44 @@ def plot_correct_picks(results_df, selected_bracket, round_name='R64'):
         mean_val = row[f'{round_name}_mean']
 
     max_correct = round_max[round_name]
-    x = np.arange(len(counts))
+    x = list(range(len(counts)))
     pct = counts / counts.sum() * 100
 
-    with plt.style.context('dark_background'):
-        fig, ax = plt.subplots(figsize=(12, 5))
-        fig.patch.set_facecolor('#0E1117')
-        ax.set_facecolor('#0E1117')
+    fig = go.Figure()
 
-        ax.bar(x, pct, color='#009CDE', edgecolor='none', width=1.0)
-        ax.axvline(mean_val, color='red', linestyle='--', linewidth=1.5)
+    fig.add_trace(go.Bar(
+        x=x,
+        y=pct,
+        marker_color='#009CDE',
+        marker_line_width=0,
+    ))
 
-        ax.set_xlabel('Number of Correct Picks', fontsize=12, color='white')
-        ax.set_ylabel('Probability (%)', fontsize=12, color='white')
-        ax.set_xticks(x)
-        ax.set_xlim(-0.5, max_correct + 0.5)
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}%'))
+    fig.add_vline(
+        x=mean_val,
+        line_dash='dash',
+        line_color='red',
+        line_width=1.5
+    )
 
-        ax.tick_params(colors='white')
-        for spine in ax.spines.values():
-            spine.set_edgecolor('#444444')
+    fig.update_layout(
+        paper_bgcolor='#0E1117',
+        plot_bgcolor='#0E1117',
+        font_color='white',
+        xaxis=dict(
+            title='Number of Correct Picks',
+            range=[-0.5, max_correct + 0.5],
+            tickfont=dict(color='white'),
+            gridcolor='#444444',
+        ),
+        yaxis=dict(
+            title='Probability (%)',
+            ticksuffix='%',
+            tickfont=dict(color='white'),
+            gridcolor='#444444',
+        ),
+        bargap=0,
+        showlegend=False,
+        margin=dict(l=50, r=20, t=20, b=50),
+    )
 
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
+    st.plotly_chart(fig, use_container_width=True)
