@@ -785,10 +785,6 @@ full_doc = f"""<!DOCTYPE html>
 
 components.html(full_doc, height=1800, scrolling=True)
 
-import streamlit as st
-from datetime import date
-
-
 def render_scoreboard(
     home_team: str,
     away_team: str,
