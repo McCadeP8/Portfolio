@@ -395,47 +395,50 @@ def compute_all_results(picks, simulations):
         records.append(entry)
 
     return pd.DataFrame(records)
-def plot_correct_picks(results_df, selected_bracket, round_name='R64'):
-    round_max = {
-        'R64': 32, 'R32': 16, 'S16': 8, 'E8': 4, 'F4': 2, 'Champ': 1, 'All': 63
+
+def plot_correct_picks(results_df, picks, actual, selected_bracket, round_name='R64'):
+    round_cols = {
+        'R64':   [f'R64_{i}' for i in range(1, 33)],
+        'R32':   [f'R32_{i}' for i in range(1, 17)],
+        'S16':   [f'S16_{i}' for i in range(1, 9)],
+        'E8':    [f'E8_{i}'  for i in range(1, 5)],
+        'F4':    ['F4_1', 'F4_2'],
+        'Champ': ['Champ'],
     }
 
     row = results_df[results_df['Bracket'] == selected_bracket].iloc[0]
 
     if round_name == 'All':
-        all_rounds = ['R64', 'R32', 'S16', 'E8', 'F4', 'Champ']
-        combined = np.array([1.0])
-        for r in all_rounds:
-            combined = np.convolve(combined, row[f'{r}_counts'])
-        counts = combined.astype(int)
-        mean_val = sum(row[f'{r}_mean'] for r in all_rounds)
+        cols = [col for cols in round_cols.values() for col in cols]
+        counts = row['All_counts']
+        mean_val = row['All_mean']
     else:
+        cols = round_cols[round_name]
         counts = row[f'{round_name}_counts']
         mean_val = row[f'{round_name}_mean']
 
-    max_correct = round_max[round_name]
+    # Compute actual correct picks (drop NAs so incomplete rounds are ignored)
+    bracket_picks = picks[picks['Bracket'] == selected_bracket][cols].values[0]
+    actual_vals = actual[cols].values[0]
+    mask = ~pd.isna(actual_vals)
+    actual_correct = int((actual_vals[mask] == bracket_picks[mask]).sum())
+
+    max_correct = round_max = {
+        'R64': 32, 'R32': 16, 'S16': 8, 'E8': 4, 'F4': 2, 'Champ': 1, 'All': 63
+    }[round_name]
+
     x = np.arange(len(counts))
     pct = counts / counts.sum() * 100
+    colors = ['gold' if i == actual_correct else '#009CDE' for i in x]
 
     with plt.style.context('dark_background'):
         fig, ax = plt.subplots(figsize=(12, 5))
         fig.patch.set_facecolor('#0E1117')
         ax.set_facecolor('#0E1117')
 
-        ax.bar(x, pct, color='#009CDE', edgecolor='none', width=1.0)
-
+        ax.bar(x, pct, color=colors, edgecolor='none', width=1.0)
         ax.axvline(mean_val, color='red', linestyle='--', linewidth=1.5)
 
         ax.set_xlabel('Number of Correct Picks', fontsize=12, color='white')
         ax.set_ylabel('Probability (%)', fontsize=12, color='white')
         ax.set_xticks(x)
-        ax.set_xlim(-0.5, max_correct + 0.5)
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}%'))
-
-        ax.tick_params(colors='white')
-        for spine in ax.spines.values():
-            spine.set_edgecolor('#444444')
-
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
