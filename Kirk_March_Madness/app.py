@@ -24,60 +24,60 @@ st.subheader("Overall Outlook")
 with col1:
     st.write("Hello There")
 with col2:
-    plot_correct_picks(ScoresTotal, selected_bracket, "Total")
+    plot_correct_picks(ScoresTotal, selected_bracket)
 with col3:
-    plot_correct_picks(CountsTotal, selected_bracket, "Total")
+    plot_correct_picks(CountsTotal, selected_bracket)
 
 col1, col2, col3 = st.columns(3)
 st.subheader("Round of 64")
 with col1:
     st.write("Hello There")
 with col2:
-    plot_correct_picks(Scores64, selected_bracket, "R64")
+    plot_correct_picks(Scores64, selected_bracket)
 with col3:
-    plot_correct_picks(Counts64, selected_bracket, "R64")
+    plot_correct_picks(Counts64, selected_bracket)
 
 col1, col2, col3 = st.columns(3)
 st.subheader("Round of 32")
 with col1:
     st.write("Hello There")
 with col2:
-    plot_correct_picks(Scores64, selected_bracket, "R32")
+    plot_correct_picks(Scores32, selected_bracket)
 with col3:
-    plot_correct_picks(Counts64, selected_bracket, "R32")
+    plot_correct_picks(Counts32, selected_bracket)
 
 col1, col2, col3 = st.columns(3)
 st.subheader("Sweet Sixteen")
 with col1:
     st.write("Hello There")
 with col2:
-    plot_correct_picks(Scores64, selected_bracket, "S16")
+    plot_correct_picks(Scores16, selected_bracket)
 with col3:
-    plot_correct_picks(Counts64, selected_bracket, "S16")
+    plot_correct_picks(Counts16, selected_bracket)
 
 col1, col2, col3 = st.columns(3)
 st.subheader("Elite Eight")
 with col1:
     st.write("Hello There")
 with col2:
-    plot_correct_picks(Scores64, selected_bracket, "E8")
+    plot_correct_picks(Scores8, selected_bracket)
 with col3:
-    plot_correct_picks(Counts64, selected_bracket, "E8")
+    plot_correct_picks(Counts8, selected_bracket)
 
 col1, col2, col3 = st.columns(3)
 st.subheader("Final Four")
 with col1:
     st.write("Hello There")
 with col2:
-    plot_correct_picks(Scores64, selected_bracket, "F4")
+    plot_correct_picks(Scores4, selected_bracket)
 with col3:
-    plot_correct_picks(Counts64, selected_bracket, "F4")
+    plot_correct_picks(Counts4, selected_bracket)
 
 col1, col2, col3 = st.columns(3)
 st.subheader("Championship")
 with col1:
     st.write("Hello There")
 with col2:
-    plot_correct_picks(Scores64, selected_bracket, "Champ")
+    plot_correct_picks(Scores2, selected_bracket)
 with col3:
-    plot_correct_picks(Counts64, selected_bracket, "Champ")
+    plot_correct_picks(Counts2, selected_bracket)
