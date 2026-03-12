@@ -2,7 +2,6 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-import numpy as np
 from data import get_projections, get_picks, calculate_risk_score, run_simulations, calculate_sim_ranks, score_simulations_by_round, plot_correct_picks, count_simulations_by_round
 
 st.set_page_config(
@@ -15,7 +14,7 @@ Picks = get_picks()
 RiskScore = calculate_risk_score(Projections, Picks)
 Sims = run_simulations(Projections, n_simulations=10000)
 Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, Sims, Projections)
-Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal = count_simulations_by_round(Picks, Sims, Projections)
+Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal = count_simulations_by_round(Picks, Sims)
 Finish = calculate_sim_ranks(ScoresTotal)
 
 selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
