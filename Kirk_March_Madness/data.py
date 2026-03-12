@@ -557,6 +557,6 @@ def plot_correct_picks_p(results_df, selected_bracket, round_name='R64'):
         margin=dict(l=50, r=20, t=20, b=50),
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=f"correct_{selected_bracket}_{round_name}")
 
 # F
