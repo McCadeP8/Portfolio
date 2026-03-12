@@ -19,6 +19,8 @@ scores = score_simulations(picks, sims, projections)
 finish = calculate_finish_chances(scores)
 AllResults = compute_all_results(picks, sims)
     
+    #A
+    
 selected_bracket = st.selectbox('Select Bracket', picks['Bracket'].unique())
 round_name = st.selectbox('Select Round', ['R64', 'R32', 'S16', 'E8', 'F4', 'Champ'])
 plot_correct_picks(AllResults, selected_bracket, round_name)
