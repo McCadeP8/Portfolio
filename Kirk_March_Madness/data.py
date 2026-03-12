@@ -1,6 +1,8 @@
 import pandas as pd
 import openpyxl
 import numpy as np
+import matplotlib.pyplot as plt
+import streamlit as st
 
 def get_picks():
     file_path = "MARCH MADNESS 2021 brackets.xlsm"
@@ -123,7 +125,7 @@ def get_projections():
     df = pd.read_csv(csv_url)
     return df
 
-def calculate_expected_points():
+def calculate_expected_points(projections, picks):
 
     round_points = {
         'R64':   1,
@@ -181,7 +183,7 @@ def calculate_expected_points():
 
     return expected_df
 
-def calculate_risk_score():
+def calculate_risk_score(projections, picks):
 
     round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
 
@@ -198,40 +200,29 @@ def calculate_risk_score():
         'F4':    ['F4_1', 'F4_2'],
         'Champ': ['Champ']
     }
-
     team_info = projections.set_index('Team')
     results = []
-
     for _, row in picks.iterrows():
         downside      = 0.0
         total_exp     = 0.0
         champ_exp     = 0.0
         upset_num     = 0.0
         upset_denom   = 0.0
-
         for round_name, cols in round_cols.items():
             base_pts = round_points[round_name]
             prob_col = round_prob_col[round_name]
-
             for col in cols:
                 team = row[col]
                 if pd.isna(team) or team not in team_info.index:
                     continue
-
                 seed     = team_info.loc[team, 'Seed']
                 prob     = team_info.loc[team, prob_col]
                 pts      = base_pts + seed
                 exp_pts  = prob * pts
-
-                # Component 1: Downside exposure
                 downside += (1 - prob) * pts
-
-                # Component 2: Track champ + total expected pts
                 total_exp += exp_pts
                 if round_name == 'Champ':
                     champ_exp = exp_pts
-
-                # Component 3: Upset tendency — seed weighted by round multiplier
                 upset_num   += seed * base_pts
                 upset_denom += base_pts
 
@@ -245,8 +236,6 @@ def calculate_risk_score():
         })
 
     df = pd.DataFrame(results)
-
-    # Normalize each component to 0–100
     def normalize(col):
         mn, mx = col.min(), col.max()
         return (col - mn) / (mx - mn) * 100 if mx > mn else col * 0
@@ -254,70 +243,71 @@ def calculate_risk_score():
     df['downside_score']       = normalize(df['downside'])
     df['concentration_score']  = normalize(df['champ_concentration'])
     df['upset_score']          = normalize(df['avg_upset_seed'])
-
-    # Weighted composite — downside matters most
     df['risk_score'] = (
         df['downside_score']      * 0.50 +
         df['concentration_score'] * 0.25 +
         df['upset_score']         * 0.25
     )
-
-    # Add bracket name and rank
     df['Bracket']   = picks['Bracket'].values
     df['risk_rank'] = df['risk_score'].rank(ascending=False).astype(int)
 
     return df[['Bracket', 'risk_score', 'risk_rank',
                'downside_score', 'concentration_score', 'upset_score']].sort_values('risk_rank')
 
-def run_simulations(projections, n_simulations=10000):
-    next_round_prob = {
-        'R64': 'R32', 'R32': 'S16', 'S16': 'E8',
-        'E8': 'F4', 'F4': 'Champ', 'Champ': 'Champ'
-    }
-    round_slots = {
-        'R64':   [f'R64_{i}'   for i in range(1, 33)],
-        'R32':   [f'R32_{i}'   for i in range(1, 17)],
-        'S16':   [f'S16_{i}'   for i in range(1, 9)],
-        'E8':    [f'E8_{i}'    for i in range(1, 5)],
-        'F4':    ['F4_1', 'F4_2'],
-        'Champ': ['Champ']
-    }
-    team_info = projections.set_index('Team')
+def run_simulations(projections, n_simulations=100000):
+    teams = projections['Team'].values
+    group_map = projections.set_index('Team')
+    def draw_round(prob_col, group_col, n_groups):
+        draws = {}
+        for g in range(1, n_groups + 1):
+            g_teams = projections[projections[group_col] == g]
+            probs = g_teams[prob_col].values / g_teams[prob_col].sum()
+            draws[g] = np.random.choice(g_teams['Team'].values, size=n_simulations, p=probs)
+        return draws
+    champ_probs = projections['Champ'].values / projections['Champ'].sum()
+    champions = np.random.choice(teams, size=n_simulations, p=champ_probs)
+    f4  = draw_round('F4',  'F4Group',  2)
+    e8  = draw_round('E8',  'E8Group',  4)
+    s16 = draw_round('S16', 'S16Group', 8)
+    r32 = draw_round('R32', 'R32Group', 16)
+    r64 = draw_round('R64', 'R64Group', 32)
+    champ_f4 = group_map.loc[champions, 'F4Group'].values
+    for g in [1, 2]:
+        f4[g] = np.where(champ_f4 == g, champions, f4[g])
+    for g in [1, 2]:
+        winner_e8 = group_map.loc[f4[g], 'E8Group'].values
+        for eg in [2*g-1, 2*g]:
+            e8[eg] = np.where(winner_e8 == eg, f4[g], e8[eg])
+    for g in range(1, 5):
+        winner_s16 = group_map.loc[e8[g], 'S16Group'].values
+        for sg in [2*g-1, 2*g]:
+            s16[sg] = np.where(winner_s16 == sg, e8[g], s16[sg])
+    for g in range(1, 9):
+        winner_r32 = group_map.loc[s16[g], 'R32Group'].values
+        for rg in [2*g-1, 2*g]:
+            r32[rg] = np.where(winner_r32 == rg, s16[g], r32[rg])
+    for g in range(1, 17):
+        winner_r64 = group_map.loc[r32[g], 'R64Group'].values
+        for rg in [2*g-1, 2*g]:
+            r64[rg] = np.where(winner_r64 == rg, r32[g], r64[rg])
+    results = pd.DataFrame({'Sim': range(1, n_simulations + 1), 'Champ': champions})
+    for g in [1, 2]:          
+        results[f'F4_{g}']  = f4[g]
+    for g in range(1, 5):   
+        results[f'E8_{g}']  = e8[g]
+    for g in range(1, 9):     
+        results[f'S16_{g}'] = s16[g]
+    for g in range(1, 17):    
+        results[f'R32_{g}'] = r32[g]
+    for g in range(1, 33):    
+        results[f'R64_{g}'] = r64[g]
+    for i in range(0, n_simulations, 10000):
+        print(f"  Simulations {i+1}-{min(i+10000, n_simulations)} complete...")
+    print(f"  All {n_simulations} simulations complete.")
 
-    def simulate_one():
-        current_teams = projections['Team'].values.tolist()
-        row = {}
-        for round_name, slots in round_slots.items():
-            winners = []
-            for i in range(len(current_teams) // 2):
-                team_a = current_teams[i * 2]
-                team_b = current_teams[i * 2 + 1]
-                # Always use Champ prob as the strength signal — avoids
-                # the cumulative-probability mismatch in later rounds
-                pa = team_info.loc[team_a, 'Champ']
-                pb = team_info.loc[team_b, 'Champ']
-                total = pa + pb
-                p_a = pa / total if total > 0 else 0.5
-                winners.append(team_a if np.random.random() < p_a else team_b)
-            for slot, winner in zip(slots, winners):
-                row[slot] = winner
-            current_teams = winners
-        return row
-
-    rows = []
-    for sim in range(n_simulations):
-        if sim % 1000 == 0:
-            print(f"  Simulation {sim}/{n_simulations}...")
-        rows.append(simulate_one())
-
-    return pd.DataFrame(rows)
+    return results
 
 def score_simulations(picks, simulations, projections):
-    """
-    Scores every bracket against every simulated tournament.
-    Returns a dataframe of shape (n_simulations, 136)
-    Columns = bracket names, rows = simulations
-    """
     round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
     round_cols   = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
@@ -327,45 +317,87 @@ def score_simulations(picks, simulations, projections):
         'F4':    ['F4_1', 'F4_2'],
         'Champ': ['Champ']
     }
-    team_info = projections.set_index('Team')
-
+    seed_map = projections.set_index('Team')['Seed']
     all_cols = [col for cols in round_cols.values() for col in cols]
-    scores   = np.zeros((len(simulations), len(picks)))
-
-    for sim_idx, sim_row in simulations.iterrows():
-        if sim_idx % 1000 == 0:
-            print(f"  Scoring simulation {sim_idx}/{len(simulations)}...")
-
-        sim_winners = {
-            round_name: set(sim_row[cols].values)
-            for round_name, cols in round_cols.items()
-        }
-
-        for bracket_idx, (_, picks_row) in enumerate(picks.iterrows()):
-            total = 0
-            for round_name, cols in round_cols.items():
-                base_pts = round_points[round_name]
-                for col in cols:
-                    team = picks_row[col]
-                    if pd.isna(team) or team not in team_info.index:
-                        continue
-                    if team in sim_winners[round_name]:
-                        total += base_pts + team_info.loc[team, 'Seed']
-            scores[sim_idx, bracket_idx] = total
-
+    slot_points = {col: round_points[rnd] for rnd, cols in round_cols.items() for col in cols}
+    sim_arr   = simulations[all_cols].values
+    picks_arr = picks[all_cols].values
+    pick_points = np.array([
+        [slot_points[col] + seed_map.get(picks_arr[b, j], 0)
+         for j, col in enumerate(all_cols)]
+        for b in range(len(picks))
+    ], dtype=np.float32)
+    scores = np.zeros((len(simulations), len(picks)), dtype=np.float32)
+    for j in range(len(all_cols)):
+        match = sim_arr[:, j, None] == picks_arr[None, :, j]  # (n_sims, n_brackets)
+        scores += match * pick_points[None, :, j]
+    for i in range(0, len(simulations), 1000):
+        print(f"  Scored simulations {i+1}-{min(i+1000, len(simulations))}...")
+    print(f"  All {len(simulations)} simulations scored.")
     return pd.DataFrame(scores, columns=picks['Bracket'].values)
 
 
-def calculate_finish_chances(scores_df, top_n=20):
-    """
-    Takes scores dataframe (n_simulations x 136) and returns
-    p_first and p_top_n for each bracket.
-    """
+def calculate_finish_chances(scores_df):
     n_simulations = len(scores_df)
-    ranks_matrix  = scores_df.rank(axis=1, ascending=False, method='min').values
+    ranks_matrix  = scores_df.rank(axis=1, ascending=False, method='min').values.astype(int)
+    brackets = scores_df.columns
+    finish_matrix = np.zeros((len(brackets), 30), dtype=np.float32)
+    for place in range(1, 31):
+        finish_matrix[:, place - 1] = (ranks_matrix == place).sum(axis=0) / n_simulations * 100
+    result = pd.DataFrame(
+        finish_matrix,
+        index=brackets,
+        columns=[f'P{place}' for place in range(1, 31)]
+    ).round(2)
+    result.index.name = 'Bracket'
+    return result.sort_values('P1', ascending=False).reset_index()
 
-    return pd.DataFrame({
-        'Bracket': scores_df.columns,
-        'p_first': ((ranks_matrix == 1).sum(axis=0)    / n_simulations * 100).round(2),
-        f'p_top{top_n}': ((ranks_matrix <= top_n).sum(axis=0) / n_simulations * 100).round(2),
-    }).sort_values('p_first', ascending=False).reset_index(drop=True)
+def plot_correct_picks(picks, simulations, selected_bracket, round_name='R64'):
+    round_cols = {
+        'R64':   [f'R64_{i}' for i in range(1, 33)],
+        'R32':   [f'R32_{i}' for i in range(1, 17)],
+        'S16':   [f'S16_{i}' for i in range(1, 9)],
+        'E8':    [f'E8_{i}'  for i in range(1, 5)],
+        'F4':    ['F4_1', 'F4_2'],
+        'Champ': ['Champ'],
+    }
+
+    if round_name == 'All':
+        cols = [col for cols in round_cols.values() for col in cols]
+        max_correct = 63
+    else:
+        cols = round_cols[round_name]
+        max_correct = len(cols)
+
+    # Pull this bracket's picks for the relevant columns
+    bracket_picks = picks[picks['Bracket'] == selected_bracket][cols].values[0]
+
+    # Compare against every simulation — (n_sims, n_cols)
+    sim_matrix = simulations[cols].values
+    correct_per_sim = (sim_matrix == bracket_picks).sum(axis=1)
+
+    # Tally counts for every possible value 0..max_correct
+    counts = np.bincount(correct_per_sim, minlength=max_correct + 1)[:max_correct + 1]
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(12, 5))
+    x = np.arange(max_correct + 1)
+    bars = ax.bar(x, counts, color='steelblue', edgecolor='white', linewidth=0.5)
+
+    # Highlight the most likely outcome
+    ax.bar(x[np.argmax(counts)], counts[np.argmax(counts)], color='tomato', edgecolor='white')
+
+    ax.set_xlabel('Number of Correct Picks', fontsize=12)
+    ax.set_ylabel('Number of Simulations', fontsize=12)
+    round_label = 'All Rounds' if round_name == 'All' else round_name
+    ax.set_title(f'{selected_bracket} — Correct Picks: {round_label}', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xlim(-0.5, max_correct + 0.5)
+
+    mean_val = correct_per_sim.mean()
+    ax.axvline(mean_val, color='gold', linestyle='--', linewidth=1.5, label=f'Mean: {mean_val:.1f}')
+    ax.legend()
+
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
