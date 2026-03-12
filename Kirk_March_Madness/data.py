@@ -8,8 +8,8 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def get_picks():
-    file_path = "MARCH MADNESS 2021 brackets.xlsm"
-
+    file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
+    
     wb = openpyxl.load_workbook(file_path, data_only=True)
 
     cells = []
