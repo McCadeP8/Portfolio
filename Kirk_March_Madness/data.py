@@ -325,10 +325,7 @@ def plot_correct_picks(counts_df, selected_bracket, round_name='R64'):
         x=mean_val,
         line_dash='dash',
         line_color='red',
-        line_width=1.5,
-        annotation_text=f"Mean: {mean_val:.1f}",
-        annotation_position="top right",
-        annotation_font_color="red")
+        line_width=1.5)
     fig.update_layout(
         paper_bgcolor='#0E1117',
         plot_bgcolor='#0E1117',

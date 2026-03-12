@@ -18,11 +18,66 @@ Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal = count_sim
 Finish = calculate_sim_ranks(ScoresTotal)
 
 selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
-col1, col2, col3 = st.columns(3)
 
+col1, col2, col3 = st.columns(3)
+st.subheader("Overall Outlook")
 with col1:
-    st.subheader("Hi")
+    st.write("Hello There")
+with col2:
+    plot_correct_picks(ScoresTotal, selected_bracket, "Total")
+with col3:
+    plot_correct_picks(CountsTotal, selected_bracket, "Total")
+
+col1, col2, col3 = st.columns(3)
+st.subheader("Round of 64")
+with col1:
+    st.write("Hello There")
 with col2:
     plot_correct_picks(Scores64, selected_bracket, "R64")
 with col3:
     plot_correct_picks(Counts64, selected_bracket, "R64")
+
+col1, col2, col3 = st.columns(3)
+st.subheader("Round of 32")
+with col1:
+    st.write("Hello There")
+with col2:
+    plot_correct_picks(Scores64, selected_bracket, "R32")
+with col3:
+    plot_correct_picks(Counts64, selected_bracket, "R32")
+
+col1, col2, col3 = st.columns(3)
+st.subheader("Sweet Sixteen")
+with col1:
+    st.write("Hello There")
+with col2:
+    plot_correct_picks(Scores64, selected_bracket, "S16")
+with col3:
+    plot_correct_picks(Counts64, selected_bracket, "S16")
+
+col1, col2, col3 = st.columns(3)
+st.subheader("Elite Eight")
+with col1:
+    st.write("Hello There")
+with col2:
+    plot_correct_picks(Scores64, selected_bracket, "E8")
+with col3:
+    plot_correct_picks(Counts64, selected_bracket, "E8")
+
+col1, col2, col3 = st.columns(3)
+st.subheader("Final Four")
+with col1:
+    st.write("Hello There")
+with col2:
+    plot_correct_picks(Scores64, selected_bracket, "F4")
+with col3:
+    plot_correct_picks(Counts64, selected_bracket, "F4")
+
+col1, col2, col3 = st.columns(3)
+st.subheader("Championship")
+with col1:
+    st.write("Hello There")
+with col2:
+    plot_correct_picks(Scores64, selected_bracket, "Champ")
+with col3:
+    plot_correct_picks(Counts64, selected_bracket, "Champ")
