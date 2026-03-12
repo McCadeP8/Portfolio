@@ -357,6 +357,7 @@ def calculate_finish_chances(scores_df):
     result.index.name = 'Bracket'
     return result.sort_values('P1', ascending=False).reset_index()
 
+@st.cache_data
 def compute_all_results(picks, simulations):
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
