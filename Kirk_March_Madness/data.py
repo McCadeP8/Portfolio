@@ -1,6 +1,7 @@
 import pandas as pd
 import openpyxl
 import numpy as np
+import streamlit.components.v1 as components
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -892,4 +893,4 @@ def render_ev_matchup(
     </div>
     """
 
-    st.html(html)
+    components.html(html, height=340, scrolling=False)
