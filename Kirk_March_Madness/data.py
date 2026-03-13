@@ -9,6 +9,81 @@ import streamlit as st
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+def actual_results(Sims):
+    Actual = pd.DataFrame({
+    "Sim": [len(Sims) + 1],
+
+    "Champ": [np.nan],
+
+    "F4_1": [np.nan],
+    "F4_2": [np.nan],
+
+    "E8_1": [np.nan],
+    "E8_2": [np.nan],
+    "E8_3": [np.nan],
+    "E8_4": [np.nan],
+
+    "S16_1": [np.nan],
+    "S16_2": [np.nan],
+    "S16_3": [np.nan],
+    "S16_4": [np.nan],
+    "S16_5": [np.nan],
+    "S16_6": [np.nan],
+    "S16_7": [np.nan],
+    "S16_8": [np.nan],
+
+    "R32_1": [np.nan],
+    "R32_2": [np.nan],
+    "R32_3": [np.nan],
+    "R32_4": [np.nan],
+    "R32_5": [np.nan],
+    "R32_6": [np.nan],
+    "R32_7": [np.nan],
+    "R32_8": [np.nan],
+    "R32_9": [np.nan],
+    "R32_10": [np.nan],
+    "R32_11": [np.nan],
+    "R32_12": [np.nan],
+    "R32_13": [np.nan],
+    "R32_14": [np.nan],
+    "R32_15": [np.nan],
+    "R32_16": [np.nan],
+
+    "R64_1": [np.nan],
+    "R64_2": [np.nan],
+    "R64_3": [np.nan],
+    "R64_4": [np.nan],
+    "R64_5": [np.nan],
+    "R64_6": [np.nan],
+    "R64_7": [np.nan],
+    "R64_8": [np.nan],
+    "R64_9": [np.nan],
+    "R64_10": [np.nan],
+    "R64_11": [np.nan],
+    "R64_12": [np.nan],
+    "R64_13": [np.nan],
+    "R64_14": [np.nan],
+    "R64_15": [np.nan],
+    "R64_16": [np.nan],
+    "R64_17": [np.nan],
+    "R64_18": [np.nan],
+    "R64_19": [np.nan],
+    "R64_20": [np.nan],
+    "R64_21": [np.nan],
+    "R64_22": [np.nan],
+    "R64_23": [np.nan],
+    "R64_24": [np.nan],
+    "R64_25": [np.nan],
+    "R64_26": [np.nan],
+    "R64_27": [np.nan],
+    "R64_28": [np.nan],
+    "R64_29": [np.nan],
+    "R64_30": [np.nan],
+    "R64_31": [np.nan],
+    "R64_32": [np.nan]})
+
+    return Actual
+
 def get_picks():
     file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
     #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
@@ -163,8 +238,17 @@ def calculate_risk_score(projections, picks):
         df['upset_score']         * 0.25)
     df['Bracket']   = picks['Bracket'].values
     df['risk_rank'] = df['risk_score'].rank(ascending=False).astype(int)
-    return df[['Bracket', 'risk_score', 'risk_rank',
-               'downside_score', 'concentration_score', 'upset_score']].sort_values('risk_rank')
+    df['downside_rank'] = df['downside_score'].rank(ascending=False).astype(int)
+    df['concentration_rank'] = df['concentration_score'].rank(ascending=False).astype(int)
+    df['upset_score_rank'] = df['upset_score'].rank(ascending=False).astype(int)
+    return df[['Bracket', 'risk_score', 'risk_rank', 'downside_rank', 'concentration_rank', 'upset_score_rank',
+               'downside', 'champ_concentration', 'avg_upset_seed']].sort_values('risk_rank')
+
+def get_risk_value(RiskScore, SelectedTeam, SelectedColumn):
+    filtered = RiskScore[RiskScore["Bracket"] == SelectedTeam]
+    if filtered.empty:
+        return None
+    return filtered.iloc[0][SelectedColumn]
 
 def run_simulations(projections, n_simulations=100000):
     teams = projections['Team'].values
@@ -293,7 +377,7 @@ def calculate_sim_ranks(scores_total):
     ranks_df.insert(0, "Sim", np.arange(1, len(ranks_df) + 1))
     return ranks_df
 
-def plot_correct_picks(counts_df, selected_bracket):
+def plot_correct_picks(counts_df, selected_bracket, title):
     counts = counts_df[selected_bracket]
     mean_val = counts.mean()
     min_val = counts.min()
@@ -318,7 +402,7 @@ def plot_correct_picks(counts_df, selected_bracket):
         plot_bgcolor='#0E1117',
         font_color='white',
         xaxis=dict(
-            title='Number of Correct Picks',
+            title=title,   # 👈 updated here
             tickfont=dict(color='white'),
             gridcolor='#444444'),
         yaxis=dict(
