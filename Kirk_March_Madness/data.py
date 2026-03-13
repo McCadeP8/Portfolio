@@ -501,8 +501,7 @@ def build_ev_table(Projections2, simulations, PayoutMatrix):
     return pd.DataFrame(
         results,
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff"])
-        
-def render_ev_matchup(
+        def render_ev_matchup(
     team_a: str,
     team_b: str,
     logo_a: str,
@@ -668,6 +667,35 @@ def render_ev_matchup(
         color: rgba(255,255,255,0.2);
         padding: 0 20px;
         flex-shrink: 0;
+      }}
+
+      /* ── mobile: stack teams vertically ── */
+      @media (max-width: 520px) {{
+        .ev-teams {{
+          flex-direction: column;
+          gap: 0;
+          margin-bottom: 16px;
+        }}
+        .ev-team {{
+          flex-direction: row !important;
+          text-align: left !important;
+          width: 100%;
+          padding: 10px 0;
+        }}
+        .ev-team.right {{
+          flex-direction: row-reverse !important;
+          text-align: right !important;
+          border-top: 1px solid rgba(255,255,255,0.07);
+        }}
+        .ev-logo {{
+          width: 52px; height: 52px;
+        }}
+        .ev-team-name {{
+          font-size: 20px;
+        }}
+        .ev-vs {{
+          display: none;
+        }}
       }}
 
       /* ── EV bar section ── */
@@ -888,4 +916,4 @@ def render_ev_matchup(
     </div>
     """
 
-    st.html(html)
+    components.html(html, height=380, scrolling=False)
