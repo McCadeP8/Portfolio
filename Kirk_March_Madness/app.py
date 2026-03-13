@@ -97,11 +97,11 @@ with tab1:
         with col1:
             st.metric(label="Overall Risk Score", value = get_risk_value(RiskScore, selected_bracket, "risk_score"), delta = get_risk_value(RiskScore, selected_bracket, "risk_rank"), help = "This score is calculated based on the probabilities of each pick being correct and the points awarded for each correct pick. A higher risk score indicates a more aggressive bracket with picks that are less likely to be correct but yield higher points.", border = True)
         with col2:
-            plot_correct_picks(ScoresTotal, selected_bracket, "Distribution of Points")
+            st.write("LOL")
         with col3:
-            plot_correct_picks(CountsTotal, selected_bracket, "Distribution of Correct Picks")
+            st.write("LOL")
         with col4:
-            plot_correct_picks(CountsTotal, selected_bracket, "Distribution of Correct Picks")
+            st.write("LOL")
 
 
         col1, col2, col3 = st.columns(3)
