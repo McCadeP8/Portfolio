@@ -596,7 +596,8 @@ def render_ev_matchup(SelectedTeam, RowNumber, TotalPayout):
     def logo_src(path):
         if path.startswith("http"):
             return path
-        import base64, pathlib
+        import base64 
+        import pathlib
         data = pathlib.Path(path).read_bytes()
         ext = pathlib.Path(path).suffix.lstrip(".")
         mime = "png" if ext == "png" else "jpeg" if ext in ("jpg", "jpeg") else "png"
