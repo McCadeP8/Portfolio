@@ -94,33 +94,33 @@ with tab1:
     with tab4:
         st.subheader("Overall Outlook")
         col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        risk_value = round(float(get_risk_value(RiskScore, selected_bracket, "risk_score")), 1)
-        risk_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'risk_rank'))} Overall"
-        st.metric(label="Overall Risk Score", value=risk_value, delta=risk_rank,
-                help="Composite score blending downside, concentration, and upset risk. Higher = more aggressive bracket.",
-                border=True)
+        with col1:
+            risk_value = round(float(get_risk_value(RiskScore, selected_bracket, "risk_score")), 1)
+            risk_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'risk_rank'))} Overall"
+            st.metric(label="Overall Risk Score", value=risk_value, delta=risk_rank,
+                    help="Composite score blending downside, concentration, and upset risk. Higher = more aggressive bracket.",
+                    border=True)
 
-    with col2:
-        downside_value = round(float(get_risk_value(RiskScore, selected_bracket, "downside")), 1)
-        downside_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'downside_rank'))} Overall"
-        st.metric(label="Downside Risk", value=downside_value, delta=downside_rank,
-                help="Total points at risk across all picks, weighted by loss probability. Higher = more points riding on unlikely outcomes.",
-                border=True)
+        with col2:
+            downside_value = round(float(get_risk_value(RiskScore, selected_bracket, "downside")), 1)
+            downside_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'downside_rank'))} Overall"
+            st.metric(label="Downside Risk", value=downside_value, delta=downside_rank,
+                    help="Total points at risk across all picks, weighted by loss probability. Higher = more points riding on unlikely outcomes.",
+                    border=True)
 
-    with col3:
-        concentration_value = round(float(get_risk_value(RiskScore, selected_bracket, "champ_concentration")), 1)
-        concentration_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'concentration_rank'))} Overall"
-        st.metric(label="Concentration Risk", value=concentration_value, delta=concentration_rank,
-                help="Percentage of expected points coming from your champion pick. Higher = bracket lives and dies with one team.",
-                border=True)
+        with col3:
+            concentration_value = round(float(get_risk_value(RiskScore, selected_bracket, "champ_concentration")), 1)
+            concentration_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'concentration_rank'))} Overall"
+            st.metric(label="Concentration Risk", value=concentration_value, delta=concentration_rank,
+                    help="Percentage of expected points coming from your champion pick. Higher = bracket lives and dies with one team.",
+                    border=True)
 
-    with col4:
-        upset_value = round(float(get_risk_value(RiskScore, selected_bracket, "avg_upset_seed")), 2)
-        upset_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'upset_score_rank'))} Overall"
-        st.metric(label="Upset Risk", value=upset_value, delta=upset_rank,
-                help="Weighted average seed of teams picked to win each round. Higher = more Cinderella picks.",
-                border=True)
+        with col4:
+            upset_value = round(float(get_risk_value(RiskScore, selected_bracket, "avg_upset_seed")), 2)
+            upset_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'upset_score_rank'))} Overall"
+            st.metric(label="Upset Risk", value=upset_value, delta=upset_rank,
+                    help="Weighted average seed of teams picked to win each round. Higher = more Cinderella picks.",
+                    border=True)
 
         col1, col2, col3 = st.columns(3)
         with col1:
