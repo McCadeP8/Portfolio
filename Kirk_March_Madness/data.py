@@ -501,7 +501,7 @@ def build_ev_table(Projections2, simulations, PayoutMatrix):
     return pd.DataFrame(
         results,
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff"])
-
+        
 def render_ev_matchup(
     team_a: str,
     team_b: str,
@@ -561,7 +561,7 @@ def render_ev_matchup(
 
     # ── dollar formatting ─────────────────────────────────────────────────────
     def fmt(v):
-        return f"+${abs(v):.2f}" if v >= 0 else f"-${abs(v):.2f}"
+        return f"${abs(v):.2f}"
 
     label_a = fmt(ev_a)
     label_b = fmt(ev_b)
@@ -696,8 +696,8 @@ def render_ev_matchup(
         letter-spacing: -0.5px;
         display: block; line-height: 1;
       }}
-      .ev-amount.a {{ color: {color_a}; text-shadow: 0 0 20px {color_a}88; }}
-      .ev-amount.b {{ color: {color_b}; text-shadow: 0 0 20px {color_b}88; }}
+      .ev-amount.a {{ color: #ffffff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }}
+      .ev-amount.b {{ color: #ffffff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }}
 
       .ev-label-block {{ display: flex; flex-direction: column; gap: 3px; }}
       .ev-label-block.right {{ text-align: right; }}
@@ -762,7 +762,6 @@ def render_ev_matchup(
           0 0 60px 20px {edge_color}55; }}
       }}
 
-      /* callout line + tooltip above indicator */
       .ev-callout {{
         position: absolute;
         left: {indicator_pct}%;
@@ -771,25 +770,25 @@ def render_ev_matchup(
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-bottom: 14px;
+        margin-bottom: 6px;
         pointer-events: none;
       }}
       .ev-callout-bubble {{
-        background: {edge_color};
-        color: #000000;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #ffffff;
         font-family: 'Barlow Condensed', sans-serif;
-        font-size: 13px; font-weight: 900;
+        font-size: 13px; font-weight: 700;
         letter-spacing: 0.5px;
-        padding: 5px 12px;
-        border-radius: 8px;
+        padding: 4px 12px;
+        border-radius: 6px;
         white-space: nowrap;
-        box-shadow: 0 4px 20px {edge_color}88;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
       }}
       .ev-callout-line {{
         width: 2px;
-        height: 16px;
-        background: linear-gradient({edge_color}, transparent);
+        height: 10px;
+        background: linear-gradient(rgba(255,255,255,0.4), transparent);
         border-radius: 1px;
       }}
 
@@ -868,8 +867,7 @@ def render_ev_matchup(
           <!-- Callout above indicator -->
           <div class="ev-callout">
             <div class="ev-callout-bubble">
-              {'Team A has the edge' if edge_side == 'A' else 'Team B has the edge' if edge_side == 'B' else 'Even'}
-              &nbsp;·&nbsp; Δ${abs(ev_diff):.2f}
+              {team_a if edge_side == 'A' else team_b if edge_side == 'B' else 'Even'} · ${abs(ev_diff):.2f}
             </div>
             <div class="ev-callout-line"></div>
           </div>
@@ -890,4 +888,4 @@ def render_ev_matchup(
     </div>
     """
 
-    components.html(html, height=340, scrolling=False)
+    st.html(html)
