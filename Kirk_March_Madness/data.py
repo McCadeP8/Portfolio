@@ -3,15 +3,16 @@ import openpyxl
 import numpy as np
 import streamlit.components.v1 as components
 import plotly.graph_objects as go
+from functools import reduce
 import streamlit as st
 
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @st.cache_data
 def get_picks():
-    file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
-    #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
+    #file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
+    file_path = ("MARCH MADNESS 2021 brackets.xlsm")
     wb = openpyxl.load_workbook(file_path, data_only=True)
     cells = []
     for r in [4,8,12,16,20,24,28,32,38,42,46,50,54,58,62,66]:
@@ -422,8 +423,7 @@ def count_simulations_by_region(picks, simulations, projections, region):
     df.insert(0, "Sim", np.arange(1, len(df) + 1))
     return df
 
-@st.cache_data
-def calculate_expected_value(Scores, Counts, payout):
+def calculate_expected_value(Scores, Counts, payout, Type):
     payout = np.array(payout)
     score_vals = Scores.iloc[:, 1:].values
     count_vals = Counts.iloc[:, 1:].values
@@ -439,7 +439,8 @@ def calculate_expected_value(Scores, Counts, payout):
     expected_values = total_returns / n_sims
     return pd.DataFrame({
         "Bracket": Scores.columns[1:],
-        "ExpectedPayout": expected_values})
+        Type: expected_values
+    })
 
 @st.cache_data
 def build_games_table(projections):
@@ -475,8 +476,12 @@ def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     payout_matrix = payout[final_order]
     return payout_matrix
 
-@st.cache_data
-def build_ev_table(Projections2, simulations, PayoutMatrix):
+def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, Type):
+
+    ScoresTotal = ScoresTotal.drop(columns=["Sim"], errors="ignore")
+    CountsTotal = CountsTotal.drop(columns=["Sim"], errors="ignore")
+
+    PayoutMatrix = build_payout_matrix(ScoresTotal, CountsTotal, payout)
     results = []
     brackets = range(PayoutMatrix.shape[1])
     for _, game in Projections2.iterrows():
@@ -497,42 +502,83 @@ def build_ev_table(Projections2, simulations, PayoutMatrix):
                 PayoutMatrix.shape[1] and j,
                 ev_a[j],
                 ev_b[j],
-                ev_diff[j]])
+                ev_diff[j],
+                Type])
     return pd.DataFrame(
         results,
-        columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff"])
+        columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
 
-def render_ev_matchup(
-    team_a: str,
-    team_b: str,
-    logo_a: str,
-    logo_b: str,
-    record_a: str,
-    record_b: str,
-    color_a: str,
-    color_b: str,
-    ev_a: float,
-    ev_b: float,
-    ev_diff: float,
-):
-    """
-    Renders a March Madness cheering guide matchup card with an EV indicator bar.
+def get_total_payout():
+    payout = [2000/34] * 33 + [10000] * 1 + [0] * 103
+    ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
+    TotalPayoutOutput = build_ev_table(Projections2, ScoresTotal, CountsTotal, Sims, payout, "Total")
+    payout = [10] * 1 + [0] * 136
+    ExpThurs = calculate_expected_value(ScoresThurs, CountsThurs, payout, "Thurs")
+    ThursPayoutOutput = build_ev_table(Projections2, ScoresThurs, CountsThurs, Sims, payout, "Thurs")
+    payout = [10] * 1 + [0] * 136
+    ExpFri = calculate_expected_value(ScoresFri, CountsFri, payout, "Fri")
+    FriPayoutOutput = build_ev_table(Projections2, ScoresFri, CountsFri, Sims, payout, "Fri")
+    payout = [10] * 1 + [0] * 136
+    ExpWest = calculate_expected_value(ScoresWest, CountsWest, payout, "West")
+    WestPayoutOutput = build_ev_table(Projections2, ScoresWest, CountsWest, Sims, payout, "West")
+    payout = [10] * 1 + [0] * 136
+    ExpEast = calculate_expected_value(ScoresEast, CountsEast, payout, "East")
+    EastPayoutOutput = build_ev_table(Projections2, ScoresEast, CountsEast, Sims, payout, "East")
+    payout = [10] * 1 + [0] * 136
+    ExpSouth = calculate_expected_value(ScoresSouth, CountsSouth, payout, "South")
+    SouthPayoutOutput = build_ev_table(Projections2, ScoresSouth, CountsSouth, Sims, payout, "South")
+    payout = [10] * 1 + [0] * 136
+    ExpMidwest = calculate_expected_value(ScoresMidwest, CountsMidwest, payout, "Midwest")
+    MidwestPayoutOutput = build_ev_table(Projections2, ScoresMidwest, CountsMidwest, Sims, payout, "Midwest")
+    payout = [10] * 1 + [0] * 136
+    ExpS16 = calculate_expected_value(Scores32, Counts32, payout, "S16")
+    S16PayoutOutput = build_ev_table(Projections2, Scores32, Counts32, Sims, payout, "S16")
+    exp_tables = [
+        ExpTotal, ExpThurs, ExpFri,
+        ExpWest, ExpEast, ExpSouth,
+        ExpMidwest, ExpS16]
+    ExpCombined = reduce(
+        lambda left, right: pd.merge(left, right, on="Bracket", how="left"),
+        exp_tables)
+    payout_tables = [
+        TotalPayoutOutput, ThursPayoutOutput, FriPayoutOutput,
+        WestPayoutOutput, EastPayoutOutput, SouthPayoutOutput,
+        MidwestPayoutOutput, S16PayoutOutput]
+    PayoutCombined = pd.concat(payout_tables, axis=0, ignore_index=True)
+    PayoutCombined = (
+    PayoutCombined
+    .groupby(["GameID", "Bracket"], as_index=False)
+    .agg({
+        "EV_A": "sum",
+        "EV_B": "sum"}))
+    PayoutCombined["EV_Diff"] = PayoutCombined["EV_B"] - PayoutCombined["EV_A"]
+    PayoutCombined["Bracket"] = np.tile(Picks["Bracket"].values, len(PayoutCombined) // len(Picks))
+    PayoutCombined = PayoutCombined.merge(Projections2[["GameID", "TeamA", "TeamB"]], on="GameID", how="left")
+    PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamA", right_on="Team", how="left", suffixes=("", "_a")).drop(columns="Team")
+    PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamB", right_on="Team", how="left", suffixes=("", "_b")).drop(columns="Team")
+    PayoutCombined["Record"] = ("No. " + PayoutCombined["Seed"].astype(str) + " " + PayoutCombined["Record"])
+    PayoutCombined["Record_b"] = ("No. " + PayoutCombined["Seed_b"].astype(str) + " " + PayoutCombined["Record_b"])
+    PayoutCombined = PayoutCombined[["Bracket",  "ActualName", "ActualName_b", "Logo", "Logo_b", "Record", "Record_b", "Color", "Color_b", "EV_A", "EV_B", "EV_Diff"]]
+    return ExpCombined, PayoutCombined
 
-    Parameters:
-    -----------
-    team_a      : Team A name (displayed on the left)
-    team_b      : Team B name (displayed on the right)
-    logo_a      : URL or local path to Team A logo
-    logo_b      : URL or local path to Team B logo
-    record_a    : Win-loss record string for Team A (e.g. "28-5")
-    record_b    : Win-loss record string for Team B
-    color_a     : Hex accent color for Team A (e.g. "#1D4ED8")
-    color_b     : Hex accent color for Team B
-    ev_a        : Expected value (dollars) if Team A wins — e.g. 2.45
-    ev_b        : Expected value (dollars) if Team B wins — e.g. 0.45
-    ev_diff     : Positive = leans Team A, Negative = leans Team B
-                  Drives the glow indicator position on the bar.
-    """
+
+def render_ev_matchup(SelectedTeam, RowNumber):
+
+    df = TotalPayout[TotalPayout["Bracket"] == SelectedTeam].reset_index(drop=True)
+
+    row = df.iloc[RowNumber]
+
+    team_a   = row["ActualName"]
+    team_b   = row["ActualName_b"]
+    logo_a   = row["Logo"]
+    logo_b   = row["Logo_b"]
+    record_a = row["Record"]
+    record_b = row["Record_b"]
+    color_a  = row["Color"]
+    color_b  = row["Color_b"]
+    ev_a     = row["EV_A"]
+    ev_b     = row["EV_B"]
+    ev_diff  = row["EV_Diff"]
 
     # ── normalize indicator position ─────────────────────────────────────────
     # Map ev_diff onto [-1, 1] using the sum of absolute EVs as scale.
