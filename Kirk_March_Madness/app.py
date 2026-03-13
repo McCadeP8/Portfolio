@@ -111,7 +111,7 @@ with col1:
         color_b="#0033A0",
         ev_a=2.45,
         ev_b=0.45,
-        ev_diff=-1.80,
+        ev_diff=-1.85,
     )
 with col2:
     render_ev_matchup(
