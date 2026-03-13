@@ -2,7 +2,7 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-from data import get_projections, get_picks, calculate_risk_score, run_simulations, calculate_sim_ranks, score_simulations_by_round, plot_correct_picks, count_simulations_by_round
+from data import get_projections, get_picks, calculate_risk_score, run_simulations, calculate_sim_ranks, score_simulations_by_round, plot_correct_picks, count_simulations_by_round, score_opening_rounds, count_opening_round_simulations, score_simulations_by_region, count_simulations_by_region, calculate_expected_value, build_games_table, build_payout_matrix, build_ev_table, render_ev_matchup
 
 st.set_page_config(
     page_title = "Kirk's March Madness Bracket Analysis",
@@ -10,15 +10,31 @@ st.set_page_config(
     layout = "wide")
 
 Projections = get_projections()
+Projections2 = build_games_table(Projections)
 Picks = get_picks()
 RiskScore = calculate_risk_score(Projections, Picks)
 Sims = run_simulations(Projections, n_simulations=10000)
 Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, Sims, Projections)
 Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal = count_simulations_by_round(Picks, Sims)
 Finish = calculate_sim_ranks(ScoresTotal)
+ScoresThurs = score_opening_rounds(Picks, Sims, Projections, "Thursday")
+ScoresFri = score_opening_rounds(Picks, Sims, Projections, "Friday")
+CountsThurs = count_opening_round_simulations(Picks, Sims, Projections, "Thursday")
+CountsFri = count_opening_round_simulations(Picks, Sims, Projections, "Friday")
+ScoresWest = score_simulations_by_region(Picks, Sims, Projections, "West")
+ScoresEast = score_simulations_by_region(Picks, Sims, Projections, "East")
+ScoresSouth = score_simulations_by_region(Picks, Sims, Projections, "South")
+ScoresMidwest = score_simulations_by_region(Picks, Sims, Projections, "Midwest")
+CountWest = count_simulations_by_region(Picks, Sims, Projections, "West")
+CountEast = count_simulations_by_region(Picks, Sims, Projections, "East")
+CountSouth = count_simulations_by_region(Picks, Sims, Projections, "South")
+CountMidwest = count_simulations_by_region(Picks, Sims, Projections, "Midwest")
+payout = [2000/34] * 33 + [10000] * 1 + [0] * 103
+ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout)
+TotalPayoutMatrix = build_payout_matrix(ScoresTotal, CountsTotal, payout)
+TotalPayoutOutput = build_ev_table(Projections2, Sims, TotalPayoutMatrix)
 
 selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
-
 st.subheader("Overall Outlook")
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -81,3 +97,17 @@ with col2:
     plot_correct_picks(Scores2, selected_bracket)
 with col3:
     plot_correct_picks(Counts2, selected_bracket)
+
+render_ev_matchup(
+    team_a="Duke",
+    team_b="Kentucky",
+    logo_a="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Duke_Athletics_logo.svg/800px-Duke_Athletics_logo.svg.png",
+    logo_b="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Kentucky_Wildcats_logo.svg/800px-Kentucky_Wildcats_logo.svg.png",
+    record_a="30-4",
+    record_b="26-8",
+    color_a="#003087",
+    color_b="#0033A0",
+    ev_a=2.45,
+    ev_b=0.45,
+    ev_diff=1.80,
+)
