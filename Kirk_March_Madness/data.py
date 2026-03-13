@@ -7,11 +7,11 @@ from functools import reduce
 import streamlit as st
 
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def get_picks():
-    file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
-    #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
+    #file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
+    file_path = ("MARCH MADNESS 2021 brackets.xlsm")
     wb = openpyxl.load_workbook(file_path, data_only=True)
     cells = []
     for r in [4,8,12,16,20,24,28,32,38,42,46,50,54,58,62,66]:
