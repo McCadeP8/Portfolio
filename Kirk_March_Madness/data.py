@@ -941,7 +941,7 @@ def render_ev_matchup(df, RowNumber):
           <!-- Callout above indicator -->
           <div class="ev-callout">
             <div class="ev-callout-bubble">
-              {team_a if edge_side == 'A' else team_b if edge_side == 'B' else 'Even'} · ${abs(ev_diff):.2f}
+              {team_b if edge_side == 'A' else team_a if edge_side == 'B' else 'Even'} · ${abs(ev_diff):.2f}
             </div>
             <div class="ev-callout-line"></div>
           </div>
