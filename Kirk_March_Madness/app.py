@@ -98,16 +98,32 @@ with col2:
 with col3:
     plot_correct_picks(Counts2, selected_bracket)
 
-render_ev_matchup(
-    team_a="Duke",
-    team_b="Kentucky",
-    logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
-    logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
-    record_a="30-4",
-    record_b="26-8",
-    color_a="#003087",
-    color_b="#0033A0",
-    ev_a=2.45,
-    ev_b=0.45,
-    ev_diff=1.80,
-)
+col1, col2 = st.columns(2)
+with col1:
+        render_ev_matchup(
+        team_a="Duke",
+        team_b="Kentucky",
+        logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+        logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+        record_a="30-4",
+        record_b="26-8",
+        color_a="#003087",
+        color_b="#0033A0",
+        ev_a=2.45,
+        ev_b=0.45,
+        ev_diff=-1.80,
+    )
+with col2:
+    render_ev_matchup(
+        team_a="Duke",
+        team_b="Kentucky",
+        logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+        logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+        record_a="30-4",
+        record_b="26-8",
+        color_a="#003087",
+        color_b="#0033A0",
+        ev_a=2.45,
+        ev_b=0.45,
+        ev_diff=1.80,
+    )
