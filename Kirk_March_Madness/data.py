@@ -924,12 +924,12 @@ def render_ev_matchup(df, RowNumber):
         <!-- Dollar labels above bar -->
         <div class="ev-labels">
           <div class="ev-label-block">
-            <span class="ev-label">If {team_b} wins</span>
-            <span class="ev-amount a">{label_b}</span>
+            <span class="ev-label">If {team_a} wins</span>
+            <span class="ev-amount a">{label_a}</span>
           </div>
           <div class="ev-label-block right">
-            <span class="ev-label">If {team_a} wins</span>
-            <span class="ev-amount b">{label_a}</span>
+            <span class="ev-label">If {team_b} wins</span>
+            <span class="ev-amount b">{label_b}</span>
           </div>
         </div>
 
@@ -938,7 +938,7 @@ def render_ev_matchup(df, RowNumber):
           <!-- Callout above indicator -->
           <div class="ev-callout">
             <div class="ev-callout-bubble">
-                {team_b if edge_side == 'A' else team_a if edge_side == 'B' else 'Even'} +${abs(ev_diff):.2f}
+                +${abs(ev_diff):.2f}
             </div>
             <div class="ev-callout-line"></div>
           </div>
