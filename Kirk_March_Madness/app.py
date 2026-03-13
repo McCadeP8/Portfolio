@@ -35,7 +35,8 @@ CountsWest = count_simulations_by_region(Picks, Sims, Projections, "West")
 CountsEast = count_simulations_by_region(Picks, Sims, Projections, "East")
 CountsSouth = count_simulations_by_region(Picks, Sims, Projections, "South")
 CountsMidwest = count_simulations_by_region(Picks, Sims, Projections, "Midwest")
-TotalExpected, TotalPayout = get_total_payout()
+TotalExpected, TotalPayout = get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections)
+
 
 
 tab1, tab2 = st.tabs(["Bracket Outlook", "Overall Standings"])
@@ -46,9 +47,9 @@ with tab1:
     with tab3:
         col1, col2 = st.columns(2)
         with col1:
-                render_ev_matchup(selected_bracket, 1)
+                render_ev_matchup(selected_bracket, 1, TotalPayout)
         with col2:
-                render_ev_matchup(selected_bracket, 2)
+                render_ev_matchup(selected_bracket, 2, TotalPayout)
     with tab4:
         st.subheader("Overall Outlook")
         col1, col2, col3 = st.columns(3)
