@@ -34,96 +34,110 @@ ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout)
 TotalPayoutMatrix = build_payout_matrix(ScoresTotal, CountsTotal, payout)
 TotalPayoutOutput = build_ev_table(Projections2, Sims, TotalPayoutMatrix)
 
-selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
-st.subheader("Overall Outlook")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.write("Hello There")
-with col2:
-    plot_correct_picks(ScoresTotal, selected_bracket)
-with col3:
-    plot_correct_picks(CountsTotal, selected_bracket)
+tab1, tab2 = st.tabs(["About SBCFBL", "Data Checks"])
 
-st.subheader("Round of 64")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.write("Hello There")
-with col2:
-    plot_correct_picks(Scores64, selected_bracket)
-with col3:
-    plot_correct_picks(Counts64, selected_bracket)
+with tab1:
 
-st.subheader("Round of 32")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.write("Hello There")
-with col2:
-    plot_correct_picks(Scores32, selected_bracket)
-with col3:
-    plot_correct_picks(Counts32, selected_bracket)
+    tab3, tab4 = st.tabs(["About SBCFBL", "Data Checks"])
+    with tab3:
+        st.write("Hello")
+    with tab4:
+        st.write("Hello")
 
-st.subheader("Sweet Sixteen")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.write("Hello There")
-with col2:
-    plot_correct_picks(Scores16, selected_bracket)
-with col3:
-    plot_correct_picks(Counts16, selected_bracket)
 
-st.subheader("Elite Eight")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.write("Hello There")
-with col2:
-    plot_correct_picks(Scores8, selected_bracket)
-with col3:
-    plot_correct_picks(Counts8, selected_bracket)
+with tab2:
+    st.write("Ehllo")
 
-st.subheader("Final Four")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.write("Hello There")
-with col2:
-    plot_correct_picks(Scores4, selected_bracket)
-with col3:
-    plot_correct_picks(Counts4, selected_bracket)
+    selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
+    st.subheader("Overall Outlook")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("Hello There")
+    with col2:
+        plot_correct_picks(ScoresTotal, selected_bracket)
+    with col3:
+        plot_correct_picks(CountsTotal, selected_bracket)
 
-st.subheader("Championship")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.write("Hello There")
-with col2:
-    plot_correct_picks(Scores2, selected_bracket)
-with col3:
-    plot_correct_picks(Counts2, selected_bracket)
+    st.subheader("Round of 64")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("Hello There")
+    with col2:
+        plot_correct_picks(Scores64, selected_bracket)
+    with col3:
+        plot_correct_picks(Counts64, selected_bracket)
 
-col1, col2 = st.columns(2)
-with col1:
+    st.subheader("Round of 32")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("Hello There")
+    with col2:
+        plot_correct_picks(Scores32, selected_bracket)
+    with col3:
+        plot_correct_picks(Counts32, selected_bracket)
+
+    st.subheader("Sweet Sixteen")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("Hello There")
+    with col2:
+        plot_correct_picks(Scores16, selected_bracket)
+    with col3:
+        plot_correct_picks(Counts16, selected_bracket)
+
+    st.subheader("Elite Eight")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("Hello There")
+    with col2:
+        plot_correct_picks(Scores8, selected_bracket)
+    with col3:
+        plot_correct_picks(Counts8, selected_bracket)
+
+    st.subheader("Final Four")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("Hello There")
+    with col2:
+        plot_correct_picks(Scores4, selected_bracket)
+    with col3:
+        plot_correct_picks(Counts4, selected_bracket)
+
+    st.subheader("Championship")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write("Hello There")
+    with col2:
+        plot_correct_picks(Scores2, selected_bracket)
+    with col3:
+        plot_correct_picks(Counts2, selected_bracket)
+
+    col1, col2 = st.columns(2)
+    with col1:
+            render_ev_matchup(
+            team_a="Duke",
+            team_b="Kentucky",
+            logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+            logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+            record_a="30-4",
+            record_b="26-8",
+            color_a="#003087",
+            color_b="#0033A0",
+            ev_a=2.45,
+            ev_b=0.45,
+            ev_diff=-1.85,
+        )
+    with col2:
         render_ev_matchup(
-        team_a="Duke",
-        team_b="Kentucky",
-        logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
-        logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
-        record_a="30-4",
-        record_b="26-8",
-        color_a="#003087",
-        color_b="#0033A0",
-        ev_a=2.45,
-        ev_b=0.45,
-        ev_diff=-1.85,
-    )
-with col2:
-    render_ev_matchup(
-        team_a="Duke",
-        team_b="Kentucky",
-        logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
-        logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
-        record_a="No. 1 Seed (30-4)",
-        record_b="No. 4 Seed (26-8)",
-        color_a="#000000",
-        color_b="#FF0000",
-        ev_a=2.45,
-        ev_b=0.45,
-        ev_diff=1.80,
-    )
+            team_a="Duke",
+            team_b="Kentucky",
+            logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+            logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+            record_a="No. 1 Seed (30-4)",
+            record_b="No. 4 Seed (26-8)",
+            color_a="#000000",
+            color_b="#FF0000",
+            ev_a=2.45,
+            ev_b=0.45,
+            ev_diff=1.80,
+        )
