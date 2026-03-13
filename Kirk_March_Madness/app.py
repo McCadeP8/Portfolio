@@ -72,7 +72,7 @@ with tab1:
                 render_ev_matchup(selected_bracket, 8, TotalPayout)
                 render_ev_matchup(selected_bracket, 10, TotalPayout)
                 render_ev_matchup(selected_bracket, 12, TotalPayout)
-                render_ev_matchup(selected_bracket, 14, TotalPayout)
+                render_ev_matchup(selected_bracket, 14, TotalPayout) #A
                 render_ev_matchup(selected_bracket, 16, TotalPayout)
                 render_ev_matchup(selected_bracket, 18, TotalPayout)
                 render_ev_matchup(selected_bracket, 20, TotalPayout)
