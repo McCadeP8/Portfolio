@@ -603,7 +603,7 @@ def render_ev_matchup(SelectedTeam, RowNumber):
         return f"data:image/{mime};base64,{base64.b64encode(data).decode()}"
 
     src_a = logo_src(logo_a)
-    src_b = logo_src(logo_b)
+    src_b = logo_src(logo_b) ##A
 
     # ── dollar formatting ─────────────────────────────────────────────────────
     def fmt(v):
