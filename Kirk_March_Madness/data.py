@@ -111,7 +111,6 @@ def get_projections():
     df = pd.read_csv(csv_url)
     return df
 
-@st.cache_data
 def calculate_risk_score(projections, picks):
     round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
     round_prob_col = {'R64': 'R32', 'R32': 'S16', 'S16': 'E8', 'E8': 'F4', 'F4': 'Champ', 'Champ': 'Champ'}
@@ -442,7 +441,6 @@ def calculate_expected_value(Scores, Counts, payout, Type):
         Type: expected_values
     })
 
-@st.cache_data
 def build_games_table(projections):
     games = []
     rounds = ["R64", "R32", "S16", "E8", "F4", "Champ"]
@@ -463,7 +461,6 @@ def build_games_table(projections):
                 })
     return pd.DataFrame(games)
 
-@st.cache_data
 def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     payout = np.array(payout)
     scores = ScoresFinal.values
@@ -941,7 +938,7 @@ def render_ev_matchup(df, RowNumber):
           <!-- Callout above indicator -->
           <div class="ev-callout">
             <div class="ev-callout-bubble">
-              {team_b if edge_side == 'A' else team_a if edge_side == 'B' else 'Even'} · ${abs(ev_diff):.2f}
+              {team_a if edge_side == 'A' else team_b if edge_side == 'B' else 'Even'} · +${abs(ev_diff):.2f}
             </div>
             <div class="ev-callout-line"></div>
           </div>
