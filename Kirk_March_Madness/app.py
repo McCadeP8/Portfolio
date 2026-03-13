@@ -2,7 +2,7 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-from data import get_projections, get_picks, calculate_risk_score, run_simulations, calculate_sim_ranks, score_simulations_by_round, plot_correct_picks, count_simulations_by_round, score_opening_rounds, count_opening_round_simulations, score_simulations_by_region, count_simulations_by_region, build_games_table, render_ev_matchup, get_total_payout
+from data import get_projections, get_picks, calculate_risk_score, run_simulations, calculate_sim_ranks, score_simulations_by_round, plot_correct_picks, count_simulations_by_round, score_opening_rounds, count_opening_round_simulations, score_simulations_by_region, count_simulations_by_region, build_games_table, render_ev_matchup, get_total_payout, get_risk_value
 
 st.set_page_config(
     page_title = "Kirk's March Madness Bracket Analysis",
@@ -39,6 +39,7 @@ TotalExpected, TotalPayout = get_total_payout(ScoresTotal, CountsTotal, Projecti
 
 
 
+st.title(":basketball::trophy: Kirk's March Madness Pool:trophy::basketball:")
 
 tab1, tab2 = st.tabs(["Bracket Outlook", "Overall Standings"])
 
@@ -92,71 +93,133 @@ with tab1:
 
     with tab4:
         st.subheader("Overall Outlook")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(label="Overall Risk Score", value = get_risk_value(RiskScore, selected_bracket, "risk_score"), delta = get_risk_value(RiskScore, selected_bracket, "risk_rank"), help = "This score is calculated based on the probabilities of each pick being correct and the points awarded for each correct pick. A higher risk score indicates a more aggressive bracket with picks that are less likely to be correct but yield higher points.", border = True)
+        with col2:
+            plot_correct_picks(ScoresTotal, selected_bracket, "Distribution of Points")
+        with col3:
+            plot_correct_picks(CountsTotal, selected_bracket, "Distribution of Correct Picks")
+        with col4:
+            plot_correct_picks(CountsTotal, selected_bracket, "Distribution of Correct Picks")
+
+
         col1, col2, col3 = st.columns(3)
         with col1:
             st.write("Hello There")
         with col2:
-            plot_correct_picks(ScoresTotal, selected_bracket)
+            plot_correct_picks(ScoresTotal, selected_bracket, "Distribution of Points")
         with col3:
-            plot_correct_picks(CountsTotal, selected_bracket)
+            plot_correct_picks(CountsTotal, selected_bracket, "Distribution of Correct Picks")
 
         st.subheader("Round of 64")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.write("Hello There")
         with col2:
-            plot_correct_picks(Scores64, selected_bracket)
+            plot_correct_picks(Scores64, selected_bracket, "Distribution of Points")
         with col3:
-            plot_correct_picks(Counts64, selected_bracket)
+            plot_correct_picks(Counts64, selected_bracket, "Distribution of Correct Picks")
 
         st.subheader("Round of 32")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.write("Hello There")
         with col2:
-            plot_correct_picks(Scores32, selected_bracket)
+            plot_correct_picks(Scores32, selected_bracket, "Distribution of Points")
         with col3:
-            plot_correct_picks(Counts32, selected_bracket)
+            plot_correct_picks(Counts32, selected_bracket, "Distribution of Correct Picks")
 
         st.subheader("Sweet Sixteen")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.write("Hello There")
         with col2:
-            plot_correct_picks(Scores16, selected_bracket)
+            plot_correct_picks(Scores16, selected_bracket, "Distribution of Points")
         with col3:
-            plot_correct_picks(Counts16, selected_bracket)
+            plot_correct_picks(Counts16, selected_bracket, "Distribution of Correct Picks")
 
         st.subheader("Elite Eight")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.write("Hello There")
         with col2:
-            plot_correct_picks(Scores8, selected_bracket)
+            plot_correct_picks(Scores8, selected_bracket, "Distribution of Points")
         with col3:
-            plot_correct_picks(Counts8, selected_bracket)
+            plot_correct_picks(Counts8, selected_bracket, "Distribution of Correct Picks")
 
         st.subheader("Final Four")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.write("Hello There")
         with col2:
-            plot_correct_picks(Scores4, selected_bracket)
+            plot_correct_picks(Scores4, selected_bracket, "Distribution of Points")
         with col3:
-            plot_correct_picks(Counts4, selected_bracket)
+            plot_correct_picks(Counts4, selected_bracket, "Distribution of Correct Picks")
 
         st.subheader("Championship")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.write("Hello There")
         with col2:
-            plot_correct_picks(Scores2, selected_bracket)
+            plot_correct_picks(Scores2, selected_bracket, "Distribution of Points")
         with col3:
-            plot_correct_picks(Counts2, selected_bracket)
+            plot_correct_picks(Counts2, selected_bracket, "Distribution of Correct Picks")
+
+        st.subheader("Thursday")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.write("Hello There")
+        with col2:
+            plot_correct_picks(ScoresThurs, selected_bracket, "Distribution of Points")
+        with col3:
+            plot_correct_picks(CountsThurs, selected_bracket, "Distribution of Correct Picks")
+
+        st.subheader("Friday")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.write("Hello There")
+        with col2:
+            plot_correct_picks(ScoresFri, selected_bracket, "Distribution of Points")
+        with col3:
+            plot_correct_picks(CountsFri, selected_bracket, "Distribution of Correct Picks")
+
+        st.subheader("West")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.write("Hello There")
+        with col2:
+            plot_correct_picks(ScoresWest, selected_bracket, "Distribution of Points")
+        with col3:
+            plot_correct_picks(CountsWest, selected_bracket, "Distribution of Correct Picks")
+
+        st.subheader("East")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.write("Hello There")
+        with col2:
+            plot_correct_picks(ScoresEast, selected_bracket, "Distribution of Points")
+        with col3:
+            plot_correct_picks(CountsEast, selected_bracket, "Distribution of Correct Picks")
+
+        st.subheader("South")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.write("Hello There")
+        with col2:
+            plot_correct_picks(ScoresSouth, selected_bracket, "Distribution of Points")
+        with col3:
+            plot_correct_picks(CountsSouth, selected_bracket, "Distribution of Correct Picks")
+
+        st.subheader("Midwest")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.write("Hello There")
+        with col2:
+            plot_correct_picks(ScoresMidwest, selected_bracket, "Distribution of Points")
+        with col3:
+            plot_correct_picks(CountsMidwest, selected_bracket, "Distribution of Correct Picks")
 
 
 with tab2:
     st.write("Ehllo")
-
-
- 
