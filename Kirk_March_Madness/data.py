@@ -1,7 +1,6 @@
 import pandas as pd
 import openpyxl
 import numpy as np
-import uuid
 import streamlit.components.v1 as components
 import plotly.graph_objects as go
 from functools import reduce
@@ -560,10 +559,6 @@ def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, Counts
     return ExpCombined, PayoutCombined
 
 
-import uuid
-import streamlit.components.v1 as components
-
-
 def render_ev_matchup(df, RowNumber):
 
     row = df.iloc[RowNumber]
@@ -580,42 +575,48 @@ def render_ev_matchup(df, RowNumber):
     ev_b     = row["EV_B"]
     ev_diff  = row["EV_Diff"]
 
-    # ── unique ID per card so CSS never collides across 32 cards ─────────────
-    uid = uuid.uuid4().hex[:8]
-    c = f"#{uid}"  # CSS scope prefix
-
-    # ── normalize indicator position ──────────────────────────────────────────
+    # ── normalize indicator position ─────────────────────────────────────────
+    # Map ev_diff onto [-1, 1] using the sum of absolute EVs as scale.
+    # Clamp to avoid extreme edge cases.
     scale = abs(ev_a) + abs(ev_b)
-    norm = 0.0 if scale == 0 else max(-1.0, min(1.0, ev_diff / scale))
-    indicator_pct = 50 + norm * 45  # center=50, max 5% padding from edges
+    if scale == 0:
+        norm = 0.0
+    else:
+        norm = max(-1.0, min(1.0, ev_diff / scale))
+
+    # Convert norm [-1,1] → bar percentage [0,100], center = 50
+    indicator_pct = 50 + norm * 45  # max 5% padding from edges
 
     # ── logo src helper ───────────────────────────────────────────────────────
     def logo_src(path):
         if path.startswith("http"):
             return path
-        import base64, pathlib
+        import base64 
+        import pathlib
         data = pathlib.Path(path).read_bytes()
-        ext  = pathlib.Path(path).suffix.lstrip(".")
+        ext = pathlib.Path(path).suffix.lstrip(".")
         mime = "png" if ext == "png" else "jpeg" if ext in ("jpg", "jpeg") else "png"
         return f"data:image/{mime};base64,{base64.b64encode(data).decode()}"
 
     src_a = logo_src(logo_a)
-    src_b = logo_src(logo_b)
+    src_b = logo_src(logo_b) ##A
 
     # ── dollar formatting ─────────────────────────────────────────────────────
-    label_a = f"${abs(ev_a):.2f}"
-    label_b = f"${abs(ev_b):.2f}"
+    def fmt(v):
+        return f"${abs(v):.2f}"
 
-    # ── edge logic ────────────────────────────────────────────────────────────
-    edge_side  = "A" if ev_diff > 0 else "B" if ev_diff < 0 else None
+    label_a = fmt(ev_a)
+    label_b = fmt(ev_b)
+
+    # Which side has the edge?
+    edge_side = "A" if ev_diff > 0 else "B" if ev_diff < 0 else None
     edge_color = color_a if edge_side == "A" else color_b if edge_side == "B" else "#ffffff"
-    edge_team  = team_a  if edge_side == "A" else team_b  if edge_side == "B" else "Even"
 
     html = f"""
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
-      {c} .ev-root {{
+      .ev-root {{
         font-family: 'Barlow', sans-serif;
         background: #0a0a0f;
         border-radius: 16px;
@@ -629,7 +630,8 @@ def render_ev_matchup(df, RowNumber):
         padding: 20px 24px 28px;
       }}
 
-      {c} .ev-root::before {{
+      /* grain overlay */
+      .ev-root::before {{
         content: '';
         position: absolute;
         inset: 0;
@@ -640,44 +642,50 @@ def render_ev_matchup(df, RowNumber):
         border-radius: 16px;
       }}
 
-      {c} .ev-glow-left {{
+      /* split background glow */
+      .ev-glow-left {{
         position: absolute; left: -5%; top: -20%;
         width: 50%; height: 140%;
         background: radial-gradient(ellipse at 20% 50%, {color_a}55 0%, transparent 60%);
         pointer-events: none; z-index: 0; filter: blur(4px);
       }}
-      {c} .ev-glow-right {{
+      .ev-glow-right {{
         position: absolute; right: -5%; top: -20%;
         width: 50%; height: 140%;
         background: radial-gradient(ellipse at 80% 50%, {color_b}55 0%, transparent 60%);
         pointer-events: none; z-index: 0; filter: blur(4px);
       }}
 
-      {c} .ev-teams {{
+      /* teams row */
+      .ev-teams {{
         position: relative; z-index: 5;
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-bottom: 22px;
       }}
-      {c} .ev-team {{
+
+      .ev-team {{
         display: flex;
         align-items: center;
         gap: 14px;
         flex: 1;
       }}
-      {c} .ev-team.right {{
+      .ev-team.right {{
         flex-direction: row-reverse;
         text-align: right;
       }}
-      {c} .ev-logo {{
+
+      .ev-logo {{
         width: 72px; height: 72px;
         object-fit: contain;
         flex-shrink: 0;
         filter: drop-shadow(0 4px 16px rgba(0,0,0,0.6));
       }}
-      {c} .ev-team-info {{ line-height: 1.2; }}
-      {c} .ev-team-name {{
+
+      .ev-team-info {{ line-height: 1.2; }}
+
+      .ev-team-name {{
         font-family: 'Barlow Condensed', sans-serif;
         font-size: 26px; font-weight: 900;
         text-transform: uppercase;
@@ -685,7 +693,7 @@ def render_ev_matchup(df, RowNumber):
         letter-spacing: 0.5px;
         display: block; line-height: 1;
       }}
-      {c} .ev-team-record {{
+      .ev-team-record {{
         font-family: 'Barlow Condensed', sans-serif;
         font-size: 12px; font-weight: 600;
         letter-spacing: 2px;
@@ -693,7 +701,9 @@ def render_ev_matchup(df, RowNumber):
         display: block; margin-top: 4px;
         text-transform: uppercase;
       }}
-      {c} .ev-vs {{
+
+      /* VS badge */
+      .ev-vs {{
         font-family: 'Barlow Condensed', sans-serif;
         font-size: 13px; font-weight: 700;
         letter-spacing: 3px;
@@ -702,63 +712,98 @@ def render_ev_matchup(df, RowNumber):
         flex-shrink: 0;
       }}
 
+      /* ── mobile: stack teams vertically ── */
       @media (max-width: 520px) {{
-        {c} .ev-teams {{ flex-direction: column; gap: 0; margin-bottom: 16px; }}
-        {c} .ev-team {{ flex-direction: row !important; text-align: left !important; width: 100%; padding: 10px 0; }}
-        {c} .ev-team.right {{ flex-direction: row-reverse !important; text-align: right !important; border-top: 1px solid rgba(255,255,255,0.07); }}
-        {c} .ev-logo {{ width: 52px; height: 52px; }}
-        {c} .ev-team-name {{ font-size: 20px; }}
-        {c} .ev-vs {{ display: none; }}
+        .ev-teams {{
+          flex-direction: column;
+          gap: 0;
+          margin-bottom: 16px;
+        }}
+        .ev-team {{
+          flex-direction: row !important;
+          text-align: left !important;
+          width: 100%;
+          padding: 10px 0;
+        }}
+        .ev-team.right {{
+          flex-direction: row-reverse !important;
+          text-align: right !important;
+          border-top: 1px solid rgba(255,255,255,0.07);
+        }}
+        .ev-logo {{
+          width: 52px; height: 52px;
+        }}
+        .ev-team-name {{
+          font-size: 20px;
+        }}
+        .ev-vs {{
+          display: none;
+        }}
       }}
 
-      {c} .ev-bar-section {{ position: relative; z-index: 5; margin-top: 8px; }}
+      /* ── EV bar section ── */
+      .ev-bar-section {{
+        position: relative; z-index: 5;
+        margin-top: 8px;
+      }}
 
-      {c} .ev-labels {{
+      /* label row above bar */
+      .ev-labels {{
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
         margin-bottom: 10px;
       }}
-      {c} .ev-label {{
+      .ev-label {{
         font-family: 'Barlow Condensed', sans-serif;
         font-size: 11px; font-weight: 700;
         letter-spacing: 2px;
         text-transform: uppercase;
         color: rgba(255,255,255,0.4);
       }}
-      {c} .ev-amount {{
+      .ev-amount {{
         font-family: 'Barlow Condensed', sans-serif;
         font-size: 22px; font-weight: 900;
         letter-spacing: -0.5px;
         display: block; line-height: 1;
-        color: #ffffff;
-        text-shadow: 0 0 20px rgba(255,255,255,0.2);
       }}
-      {c} .ev-label-block {{ display: flex; flex-direction: column; gap: 3px; }}
-      {c} .ev-label-block.right {{ text-align: right; }}
+      .ev-amount.a {{ color: #ffffff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }}
+      .ev-amount.b {{ color: #ffffff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }}
 
-      {c} .ev-track {{
+      .ev-label-block {{ display: flex; flex-direction: column; gap: 3px; }}
+      .ev-label-block.right {{ text-align: right; }}
+
+      /* the track */
+      .ev-track {{
         position: relative;
         height: 8px;
         border-radius: 99px;
         background: rgba(255,255,255,0.08);
         overflow: visible;
       }}
-      {c} .ev-fill-a {{
+
+      /* left fill (Team A color) */
+      .ev-fill-a {{
         position: absolute;
         left: 0; top: 0; bottom: 0;
         width: {indicator_pct}%;
         border-radius: 99px 0 0 99px;
         background: linear-gradient(90deg, {color_a}99, {color_a}dd);
+        transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
       }}
-      {c} .ev-fill-b {{
+
+      /* right fill (Team B color) */
+      .ev-fill-b {{
         position: absolute;
         right: 0; top: 0; bottom: 0;
         width: {100 - indicator_pct}%;
         border-radius: 0 99px 99px 0;
         background: linear-gradient(270deg, {color_b}99, {color_b}dd);
+        transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
       }}
-      {c} .ev-indicator {{
+
+      /* glowing indicator dot */
+      .ev-indicator {{
         position: absolute;
         top: 50%;
         left: {indicator_pct}%;
@@ -772,9 +817,10 @@ def render_ev_matchup(df, RowNumber):
           0 0 20px 6px {edge_color}88,
           0 0 40px 12px {edge_color}44;
         z-index: 10;
-        animation: pulse-{uid} 2s ease-in-out infinite;
+        animation: indicatorPulse 2s ease-in-out infinite;
       }}
-      @keyframes pulse-{uid} {{
+
+      @keyframes indicatorPulse {{
         0%, 100% {{ box-shadow:
           0 0 0 3px rgba(10,10,15,0.9),
           0 0 0 5px {edge_color}66,
@@ -787,7 +833,7 @@ def render_ev_matchup(df, RowNumber):
           0 0 60px 20px {edge_color}55; }}
       }}
 
-      {c} .ev-callout {{
+      .ev-callout {{
         position: absolute;
         left: {indicator_pct}%;
         bottom: 100%;
@@ -798,7 +844,7 @@ def render_ev_matchup(df, RowNumber):
         margin-bottom: 6px;
         pointer-events: none;
       }}
-      {c} .ev-callout-bubble {{
+      .ev-callout-bubble {{
         background: rgba(255,255,255,0.12);
         border: 1px solid rgba(255,255,255,0.2);
         color: #ffffff;
@@ -810,18 +856,20 @@ def render_ev_matchup(df, RowNumber):
         white-space: nowrap;
         margin-bottom: 4px;
       }}
-      {c} .ev-callout-line {{
-        width: 2px; height: 10px;
+      .ev-callout-line {{
+        width: 2px;
+        height: 10px;
         background: linear-gradient(rgba(255,255,255,0.4), transparent);
         border-radius: 1px;
       }}
 
-      {c} .ev-bar-labels {{
+      /* bottom team name labels under bar */
+      .ev-bar-labels {{
         display: flex;
         justify-content: space-between;
         margin-top: 10px;
       }}
-      {c} .ev-bar-team-label {{
+      .ev-bar-team-label {{
         font-family: 'Barlow Condensed', sans-serif;
         font-size: 10px; font-weight: 700;
         letter-spacing: 2.5px;
@@ -829,13 +877,14 @@ def render_ev_matchup(df, RowNumber):
         color: rgba(255,255,255,0.25);
       }}
 
-      {c} .ev-stripe-a {{
+      /* color accent stripes on the card edges */
+      .ev-stripe-a {{
         position: absolute; left: 0; top: 0; bottom: 0;
         width: 4px; border-radius: 16px 0 0 16px;
         background: {color_a};
         box-shadow: 2px 0 16px {color_a}88;
       }}
-      {c} .ev-stripe-b {{
+      .ev-stripe-b {{
         position: absolute; right: 0; top: 0; bottom: 0;
         width: 4px; border-radius: 0 16px 16px 0;
         background: {color_b};
@@ -843,61 +892,68 @@ def render_ev_matchup(df, RowNumber):
       }}
     </style>
 
-    <div id="{uid}">
-      <div class="ev-root">
-        <div class="ev-stripe-a"></div>
-        <div class="ev-stripe-b"></div>
-        <div class="ev-glow-left"></div>
-        <div class="ev-glow-right"></div>
+    <div class="ev-root">
+      <div class="ev-stripe-a"></div>
+      <div class="ev-stripe-b"></div>
+      <div class="ev-glow-left"></div>
+      <div class="ev-glow-right"></div>
 
-        <div class="ev-teams">
-          <div class="ev-team left">
-            <img class="ev-logo" src="{src_a}" alt="{team_a}" onerror="this.style.opacity='0.3'" />
-            <div class="ev-team-info">
-              <span class="ev-team-name">{team_a}</span>
-              <span class="ev-team-record">{record_a}</span>
-            </div>
-          </div>
-
-          <div class="ev-vs">VS</div>
-
-          <div class="ev-team right">
-            <img class="ev-logo" src="{src_b}" alt="{team_b}" onerror="this.style.opacity='0.3'" />
-            <div class="ev-team-info">
-              <span class="ev-team-name">{team_b}</span>
-              <span class="ev-team-record">{record_b}</span>
-            </div>
+      <!-- Teams -->
+      <div class="ev-teams">
+        <div class="ev-team left">
+          <img class="ev-logo" src="{src_a}" alt="{team_a}" onerror="this.style.opacity='0.3'" />
+          <div class="ev-team-info">
+            <span class="ev-team-name">{team_a}</span>
+            <span class="ev-team-record">{record_a}</span>
           </div>
         </div>
 
-        <div class="ev-bar-section">
-          <div class="ev-labels">
-            <div class="ev-label-block">
-              <span class="ev-label">If {team_a} wins</span>
-              <span class="ev-amount">{label_a}</span>
+        <div class="ev-vs">VS</div>
+
+        <div class="ev-team right">
+          <img class="ev-logo" src="{src_b}" alt="{team_b}" onerror="this.style.opacity='0.3'" />
+          <div class="ev-team-info">
+            <span class="ev-team-name">{team_b}</span>
+            <span class="ev-team-record">{record_b}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- EV Bar -->
+      <div class="ev-bar-section">
+        <!-- Dollar labels above bar -->
+        <div class="ev-labels">
+          <div class="ev-label-block">
+            <span class="ev-label">If {team_a} wins</span>
+            <span class="ev-amount a">{label_a}</span>
+          </div>
+          <div class="ev-label-block right">
+            <span class="ev-label">If {team_b} wins</span>
+            <span class="ev-amount b">{label_b}</span>
+          </div>
+        </div>
+
+        <!-- Track with fills and indicator -->
+        <div style="position:relative; padding-top: 40px;">
+          <!-- Callout above indicator -->
+          <div class="ev-callout">
+            <div class="ev-callout-bubble">
+                {team_b if edge_side == 'A' else team_a if edge_side == 'B' else 'Even'} · ${abs(ev_diff):.2f}
             </div>
-            <div class="ev-label-block right">
-              <span class="ev-label">If {team_b} wins</span>
-              <span class="ev-amount">{label_b}</span>
-            </div>
+            <div class="ev-callout-line"></div>
           </div>
 
-          <div style="position:relative; padding-top: 40px;">
-            <div class="ev-callout">
-              <div class="ev-callout-bubble">{edge_team} · ${abs(ev_diff):.2f}</div>
-              <div class="ev-callout-line"></div>
-            </div>
-            <div class="ev-track">
-              <div class="ev-fill-a"></div>
-              <div class="ev-fill-b"></div>
-              <div class="ev-indicator"></div>
-            </div>
+          <div class="ev-track">
+            <div class="ev-fill-a"></div>
+            <div class="ev-fill-b"></div>
+            <div class="ev-indicator"></div>
           </div>
+        </div>
 
-          <div class="ev-bar-labels">
-            <span class="ev-bar-team-label">◀ {team_a}</span>
-            <span class="ev-bar-team-label">{team_b} ▶</span>
-          </div>
+        <!-- Team name labels under bar -->
+        <div class="ev-bar-labels">
+          <span class="ev-bar-team-label">◀ {team_a}</span>
+          <span class="ev-bar-team-label">{team_b} ▶</span>
         </div>
       </div>
     </div>
