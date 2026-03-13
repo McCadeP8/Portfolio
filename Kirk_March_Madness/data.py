@@ -422,6 +422,7 @@ def count_simulations_by_region(picks, simulations, projections, region):
     df.insert(0, "Sim", np.arange(1, len(df) + 1))
     return df
 
+@st.cache_data
 def calculate_expected_value(Scores, Counts, payout):
     payout = np.array(payout)
     score_vals = Scores.iloc[:, 1:].values
@@ -440,6 +441,7 @@ def calculate_expected_value(Scores, Counts, payout):
         "Bracket": Scores.columns[1:],
         "ExpectedPayout": expected_values})
 
+@st.cache_data
 def build_games_table(projections):
     games = []
     rounds = ["R64", "R32", "S16", "E8", "F4", "Champ"]
@@ -460,6 +462,7 @@ def build_games_table(projections):
                 })
     return pd.DataFrame(games)
 
+@st.cache_data
 def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     payout = np.array(payout)
     scores = ScoresFinal.values
@@ -472,13 +475,7 @@ def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     payout_matrix = payout[final_order]
     return payout_matrix
 
-def game_ev_difference_fast(simulations, PayoutMatrix, game_id, team_a, team_b):
-    mask_a = simulations[game_id].values == team_a
-    mask_b = simulations[game_id].values == team_b
-    ev_a = PayoutMatrix[mask_a].mean()
-    ev_b = PayoutMatrix[mask_b].mean()
-    return ev_a - ev_b
-
+@st.cache_data
 def build_ev_table(Projections2, simulations, PayoutMatrix):
     results = []
     brackets = range(PayoutMatrix.shape[1])
