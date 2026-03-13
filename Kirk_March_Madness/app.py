@@ -101,8 +101,8 @@ with col3:
 render_ev_matchup(
     team_a="Duke",
     team_b="Kentucky",
-    logo_a="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Duke_Athletics_logo.svg/800px-Duke_Athletics_logo.svg.png",
-    logo_b="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Kentucky_Wildcats_logo.svg/800px-Kentucky_Wildcats_logo.svg.png",
+    logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
+    logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
     record_a="30-4",
     record_b="26-8",
     color_a="#003087",
