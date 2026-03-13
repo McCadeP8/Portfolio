@@ -69,7 +69,7 @@ with tab1:
                 render_ev_matchup(render_df, 24)
                 render_ev_matchup(render_df, 26)
                 render_ev_matchup(render_df, 28)
-                render_ev_matchup(render_df, 30)
+                render_ev_matchup(render_df, 30)#
 
         with col2:
                 render_ev_matchup(render_df, 1)
