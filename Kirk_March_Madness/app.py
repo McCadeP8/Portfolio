@@ -34,11 +34,11 @@ ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout)
 TotalPayoutMatrix = build_payout_matrix(ScoresTotal, CountsTotal, payout)
 TotalPayoutOutput = build_ev_table(Projections2, Sims, TotalPayoutMatrix)
 
-tab1, tab2 = st.tabs(["About SBCFBL", "Data Checks"])
+tab1, tab2 = st.tabs(["Bracket Outlook", "Overall Standings"])
 
 with tab1:
     selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
-    tab3, tab4 = st.tabs(["About SBCFBL", "Data Checks"])
+    tab3, tab4 = st.tabs(["Cheering Guide", "Bracket Performance"])
     with tab3:
         col1, col2 = st.columns(2)
         with col1:
