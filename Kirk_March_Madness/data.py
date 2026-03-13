@@ -9,7 +9,6 @@ import streamlit as st
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-@st.cache_data
 def get_picks():
     file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
     #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
@@ -105,7 +104,6 @@ def get_picks():
         "L1": "Bracket"})
     return result
 
-@st.cache_data
 def get_projections():
     csv_url = "https://docs.google.com/spreadsheets/d/12f4bu9JRwZ9TDXVw6T2GI0fPgjeKCk1GxrdDFdjHds8/export?format=csv&gid=1837691522"
     df = pd.read_csv(csv_url)
@@ -168,7 +166,6 @@ def calculate_risk_score(projections, picks):
     return df[['Bracket', 'risk_score', 'risk_rank',
                'downside_score', 'concentration_score', 'upset_score']].sort_values('risk_rank')
 
-@st.cache_data
 def run_simulations(projections, n_simulations=100000):
     teams = projections['Team'].values
     group_map = projections.set_index('Team')
@@ -222,7 +219,6 @@ def run_simulations(projections, n_simulations=100000):
 
     return results
 
-@st.cache_data
 def score_simulations_by_round(picks, simulations, projections):
     round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
     round_cols = {
@@ -255,7 +251,6 @@ def score_simulations_by_round(picks, simulations, projections):
 
     return (results["R64"], results["R32"], results["S16"], results["E8"], results["F4"], results["Champ"], results["Total"])
 
-@st.cache_data
 def count_simulations_by_round(picks, simulations):
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
@@ -290,7 +285,6 @@ def count_simulations_by_round(picks, simulations):
         results["Champ"],
         results["Total"])
 
-@st.cache_data
 def calculate_sim_ranks(scores_total):
     ranks_df = (
         scores_total.drop(columns="Sim")
@@ -337,7 +331,6 @@ def plot_correct_picks(counts_df, selected_bracket):
         margin=dict(l=50, r=20, t=20, b=50))
     st.plotly_chart(fig, use_container_width=True)
 
-@st.cache_data
 def score_opening_rounds(picks, simulations, projections, day="Thu"):
     round_points = 1
     r64_cols = [f'R64_{i}' for i in range(1, 33)]
@@ -356,7 +349,6 @@ def score_opening_rounds(picks, simulations, projections, day="Thu"):
     df.insert(0, "Sim", np.arange(1, len(df) + 1))
     return df
 
-@st.cache_data
 def count_opening_round_simulations(picks, simulations, projections, day="Thu"):
     r64_cols = [f'R64_{i}' for i in range(1, 33)]
     day_map = projections.set_index("Team")["R64Day"]
@@ -370,7 +362,6 @@ def count_opening_round_simulations(picks, simulations, projections, day="Thu"):
     df.insert(0, "Sim", np.arange(1, len(df) + 1))
     return df
 
-@st.cache_data
 def score_simulations_by_region(picks, simulations, projections, region):
     round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12}
     round_cols = {
@@ -398,7 +389,6 @@ def score_simulations_by_region(picks, simulations, projections, region):
     df.insert(0, "Sim", np.arange(1, len(df) + 1))
     return df
 
-@st.cache_data
 def count_simulations_by_region(picks, simulations, projections, region):
     round_cols = {
         'R64': [f'R64_{i}' for i in range(1, 33)],
