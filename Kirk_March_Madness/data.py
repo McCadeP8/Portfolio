@@ -186,7 +186,6 @@ def get_projections():
     df = pd.read_csv(csv_url)
     return df
 
-@st.cache_data
 def calculate_risk_score(projections, picks):
     round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
     round_prob_col = {'R64': 'R32', 'R32': 'S16', 'S16': 'E8', 'E8': 'F4', 'F4': 'Champ', 'Champ': 'Champ'}
@@ -308,7 +307,6 @@ def run_simulations(projections, n_simulations=100000):
 
     return results
 
-@st.cache_data
 def score_simulations_by_round(picks, simulations, projections):
     round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
     round_cols = {
@@ -341,7 +339,6 @@ def score_simulations_by_round(picks, simulations, projections):
 
     return (results["R64"], results["R32"], results["S16"], results["E8"], results["F4"], results["Champ"], results["Total"])
 
-@st.cache_data
 def count_simulations_by_round(picks, simulations):
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
@@ -554,7 +551,6 @@ def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     payout_matrix = payout[final_order]
     return payout_matrix
 
-@st.cache_data
 def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, Type):
 
     ScoresTotal = ScoresTotal.drop(columns=["Sim"], errors="ignore")
@@ -587,7 +583,6 @@ def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, 
         results,
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
 
-@st.cache_data
 def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections):
     payout = [2000/34] * 33 + [10000] * 1 + [0] * 103
     ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
