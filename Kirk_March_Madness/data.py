@@ -554,7 +554,7 @@ def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, Counts
     PayoutCombined["EV_Diff"] = PayoutCombined["EV_B"] - PayoutCombined["EV_A"]
     PayoutCombined["Bracket"] = np.tile(Picks["Bracket"].values, len(PayoutCombined) // len(Picks))
     PayoutCombined = PayoutCombined.merge(Projections2[["GameID", "TeamA", "TeamB"]], on="GameID", how="left")
-    PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamA", right_on="Team", how="left", suffixes=("", "_a")).drop(columns="Team")
+    PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamA", right_on="Team", how="left").drop(columns="Team")
     PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamB", right_on="Team", how="left", suffixes=("", "_b")).drop(columns="Team")
     PayoutCombined["Record"] = ("No. " + PayoutCombined["Seed"].astype(str) + " " + PayoutCombined["Record"])
     PayoutCombined["Record_b"] = ("No. " + PayoutCombined["Seed_b"].astype(str) + " " + PayoutCombined["Record_b"])
