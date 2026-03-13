@@ -39,6 +39,7 @@ TotalExpected, TotalPayout = get_total_payout(ScoresTotal, CountsTotal, Projecti
 
 
 
+
 tab1, tab2 = st.tabs(["Bracket Outlook", "Overall Standings"])
 
 with tab1:
@@ -48,8 +49,40 @@ with tab1:
         col1, col2 = st.columns(2)
         with col1:
                 render_ev_matchup(selected_bracket, 1, TotalPayout)
+                render_ev_matchup(selected_bracket, 3, TotalPayout)
+                render_ev_matchup(selected_bracket, 5, TotalPayout)
+                render_ev_matchup(selected_bracket, 7, TotalPayout)
+                render_ev_matchup(selected_bracket, 9, TotalPayout)
+                render_ev_matchup(selected_bracket, 11, TotalPayout)
+                render_ev_matchup(selected_bracket, 13, TotalPayout)
+                render_ev_matchup(selected_bracket, 15, TotalPayout)
+                render_ev_matchup(selected_bracket, 17, TotalPayout)
+                render_ev_matchup(selected_bracket, 19, TotalPayout)
+                render_ev_matchup(selected_bracket, 21, TotalPayout)
+                render_ev_matchup(selected_bracket, 23, TotalPayout)
+                render_ev_matchup(selected_bracket, 25, TotalPayout)
+                render_ev_matchup(selected_bracket, 27, TotalPayout)
+                render_ev_matchup(selected_bracket, 29, TotalPayout)
+                render_ev_matchup(selected_bracket, 31, TotalPayout)
+
         with col2:
                 render_ev_matchup(selected_bracket, 2, TotalPayout)
+                render_ev_matchup(selected_bracket, 4, TotalPayout)
+                render_ev_matchup(selected_bracket, 6, TotalPayout)
+                render_ev_matchup(selected_bracket, 8, TotalPayout)
+                render_ev_matchup(selected_bracket, 10, TotalPayout)
+                render_ev_matchup(selected_bracket, 12, TotalPayout)
+                render_ev_matchup(selected_bracket, 14, TotalPayout)
+                render_ev_matchup(selected_bracket, 16, TotalPayout)
+                render_ev_matchup(selected_bracket, 18, TotalPayout)
+                render_ev_matchup(selected_bracket, 20, TotalPayout)
+                render_ev_matchup(selected_bracket, 22, TotalPayout)
+                render_ev_matchup(selected_bracket, 24, TotalPayout)
+                render_ev_matchup(selected_bracket, 26, TotalPayout)
+                render_ev_matchup(selected_bracket, 28, TotalPayout)
+                render_ev_matchup(selected_bracket, 30, TotalPayout)
+                render_ev_matchup(selected_bracket, 32, TotalPayout)
+
     with tab4:
         st.subheader("Overall Outlook")
         col1, col2, col3 = st.columns(3)
