@@ -562,15 +562,7 @@ def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, Counts
     return ExpCombined, PayoutCombined
 
 
-def render_ev_matchup(SelectedTeam, RowNumber, TotalPayout):
-
-    df = TotalPayout[TotalPayout["Bracket"] == SelectedTeam].reset_index(drop=True)
-    df = (
-        TotalPayout[TotalPayout["Bracket"] == SelectedTeam]
-        .assign(AbsEV=lambda x: x["EV_Diff"].abs())
-        .sort_values("AbsEV", ascending=False)
-        .reset_index(drop=True)
-    )
+def render_ev_matchup(df, RowNumber):
 
     row = df.iloc[RowNumber]
 
