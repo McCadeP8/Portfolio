@@ -115,12 +115,12 @@ with col1:
     )
 with col2:
     render_ev_matchup(
-        team_a="No. 1 Duke",
-        team_b="No. 3 Kentucky",
+        team_a="Duke Blue Devils",
+        team_b="Kentucky Wildcats",
         logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
         logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
-        record_a="30-4",
-        record_b="26-8",
+        record_a="No. 1 Sed (30-4)",
+        record_b="No. 4 Seed (26-8)",
         color_a="#000000",
         color_b="#FF0000",
         ev_a=2.45,
