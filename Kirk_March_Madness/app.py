@@ -115,8 +115,8 @@ with col1:
     )
 with col2:
     render_ev_matchup(
-        team_a="Duke",
-        team_b="Kentucky",
+        team_a="No. 1 Duke",
+        team_b="No. 3 Kentucky",
         logo_a="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
         logo_b="https://a.espncdn.com/combiner/i?img=/i/teamlogos/ncaa/500/2750.png&h=200&w=200",
         record_a="30-4",
