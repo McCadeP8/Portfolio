@@ -554,11 +554,11 @@ def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, Counts
     PayoutCombined["EV_Diff"] = PayoutCombined["EV_B"] - PayoutCombined["EV_A"]
     PayoutCombined["Bracket"] = np.tile(Picks["Bracket"].values, len(PayoutCombined) // len(Picks))
     PayoutCombined = PayoutCombined.merge(Projections2[["GameID", "TeamA", "TeamB"]], on="GameID", how="left")
-    PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamA", right_on="Team", how="left").drop(columns="Team")
+    PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamA", right_on="Team", how="left", suffixes=("", "_a")).drop(columns="Team")
     PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamB", right_on="Team", how="left", suffixes=("", "_b")).drop(columns="Team")
-    PayoutCombined["Record"] = ("No. " + PayoutCombined["Seed"].astype(str) + " " + PayoutCombined["Record"])
+    PayoutCombined["Record_a"] = ("No. " + PayoutCombined["Seed_a"].astype(str) + " " + PayoutCombined["Record_a"])
     PayoutCombined["Record_b"] = ("No. " + PayoutCombined["Seed_b"].astype(str) + " " + PayoutCombined["Record_b"])
-    PayoutCombined = PayoutCombined[["Bracket",  "ActualName", "ActualName_b", "Logo", "Logo_b", "Record", "Record_b", "Color", "Color_b", "EV_A", "EV_B", "EV_Diff"]]
+    PayoutCombined = PayoutCombined[["Bracket",  "ActualName_a", "ActualName_b", "Logo_a", "Logo_b", "Record_a", "Record_b", "Color_a", "Color_b", "EV_A", "EV_B", "EV_Diff"]]
     return ExpCombined, PayoutCombined
 
 
@@ -568,13 +568,13 @@ def render_ev_matchup(SelectedTeam, RowNumber, TotalPayout):
 
     row = df.iloc[RowNumber]
 
-    team_a   = row["ActualName"]
+    team_a   = row["ActualName_a"]
     team_b   = row["ActualName_b"]
-    logo_a   = row["Logo"]
+    logo_a   = row["Logo_a"]
     logo_b   = row["Logo_b"]
-    record_a = row["Record"]
+    record_a = row["Record_a"]
     record_b = row["Record_b"]
-    color_a  = row["Color"]
+    color_a  = row["Color_a"]
     color_b  = row["Color_b"]
     ev_a     = row["EV_A"]
     ev_b     = row["EV_B"]
