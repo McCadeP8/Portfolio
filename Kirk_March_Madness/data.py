@@ -501,7 +501,8 @@ def build_ev_table(Projections2, simulations, PayoutMatrix):
     return pd.DataFrame(
         results,
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff"])
-        def render_ev_matchup(
+
+def render_ev_matchup(
     team_a: str,
     team_b: str,
     logo_a: str,
