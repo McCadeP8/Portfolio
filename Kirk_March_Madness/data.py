@@ -178,6 +178,10 @@ def get_picks():
         "N38": "F4_2",
         "N35": "Champ",
         "L1": "Bracket"})
+
+        team_map = dict(zip(Projections["Team"], Projections["ActualName"]))
+        cols = result.columns.difference(["Bracket"])
+        result[cols] = result[cols].replace(team_map)
     return result
 
 @st.cache_data
@@ -1164,8 +1168,8 @@ REG_GAP = 16      # vertical gap between the two regions on each side
 # Bracket-line spacers in SLOT_H units: (before-first-matchup, between-matchups)
 SPACERS = dict(R64=(0, 0), R32=(1, 2), S16=(3, 6), E8=(7, 0))
 
-BL  = '#253655'    # bracket line colour
-BG  = '#080c19'    # page background
+BL  = '#009CDE'    # bracket line colour
+BG  = '#0e1117'    # page background
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1399,7 +1403,7 @@ def _region_html(proj, regions, region_idx, by_name, by_rs, picks_row, side):
     rounds_html = "".join(cols[k] for k in order)
 
     lbl = (
-        f'<div style="font-size:9px;font-weight:700;letter-spacing:3px;'
+        f'<div style="font-size:16px;font-weight:700;letter-spacing:3px;'
         f'text-transform:uppercase;color:#e8c96a;padding:0 4px 4px 4px;">'
         f'{region_name}</div>'
     )
@@ -1456,7 +1460,7 @@ def _f4_block(t1, t2, winner, label, by_name):
     w1 = bool(t1 and winner and t1 == winner)
     w2 = bool(t2 and winner and t2 == winner)
     lbl = (
-        f'<div style="font-size:7px;letter-spacing:2px;text-transform:uppercase;'
+        f'<div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;'
         f'color:#2e4060;text-align:center;margin-bottom:2px;">{label}</div>'
     )
     return f'<div style="margin:10px 0 4px;">{lbl}{_f4_slot(t1, by_name, w1)}{_f4_slot(t2, by_name, w2)}</div>'
@@ -1490,7 +1494,7 @@ def _center_html(picks_row, by_name):
             f'object-fit:contain;display:block;margin:0 auto 4px;" '
             f'onerror="this.style.display=\'none\'">'
         ) if logo else ""
-        rec_html = f'<div style="font-size:10px;color:#6272a4;margin-top:2px;">#{seed} · {rec}</div>' if rec else ""
+        rec_html = f'<div style="font-size:13px;color:#6272a4;margin-top:2px;">#{seed} · {rec}</div>' if rec else ""
         body = (
             f'{logo_h}'
             f'<div style="font-size:15px;font-weight:700;color:#e8c96a;'
@@ -1502,7 +1506,7 @@ def _center_html(picks_row, by_name):
 
     champ_box = (
         f'<div style="margin:14px 0;text-align:center;">'
-        f'<div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;'
+        f'<div style="font-size:13px;letter-spacing:3px;text-transform:uppercase;'
         f'color:#e8c96a;margin-bottom:6px;">Champion</div>'
         f'<div style="font-size:20px;margin-bottom:5px;">🏆</div>'
         f'<div style="display:inline-block;width:152px;padding:10px 12px;'
@@ -1514,7 +1518,7 @@ def _center_html(picks_row, by_name):
 
     champ_game = (
         f'<div style="margin:4px 0;">'
-        f'<div style="font-size:7px;letter-spacing:2px;text-transform:uppercase;'
+        f'<div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;'
         f'color:#2e4060;text-align:center;margin-bottom:2px;">Championship</div>'
         f'{_f4_slot(champ_t1, by_name, bool(champ_t1 and champ_t1 == champ))}'
         f'{_f4_slot(champ_t2, by_name, bool(champ_t2 and champ_t2 == champ))}'
