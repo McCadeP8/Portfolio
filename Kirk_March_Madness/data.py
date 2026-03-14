@@ -198,7 +198,7 @@ def get_projections():
     return df
 
 def calculate_risk_score(projections, picks):
-    round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
+    round_points = {'R64': 1, 'R32': 4, 'S16': 9, 'E8': 15, 'F4': 22, 'Champ': 30}
     round_prob_col = {'R64': 'R32', 'R32': 'S16', 'S16': 'E8', 'E8': 'F4', 'F4': 'Champ', 'Champ': 'Champ'}
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],

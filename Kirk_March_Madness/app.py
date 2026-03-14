@@ -77,7 +77,7 @@ with tab1:
         with col3:
             concentration_value = round(float(get_risk_value(RiskScore, selected_bracket, "champ_concentration")), 1)
             concentration_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'concentration_rank'))} Overall"
-            st.metric(label="Concentration Risk", value=concentration_value, delta=concentration_rank,
+            st.metric(label="Champion Risk", value=concentration_value, delta=concentration_rank,
                     help="Percentage of expected points coming from your champion pick. Higher = bracket lives and dies with one team.",
                     border=True)
 
