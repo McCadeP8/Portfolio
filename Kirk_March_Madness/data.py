@@ -577,7 +577,7 @@ def get_projections2():
     df = pd.read_csv(csv_url)
     df = df[df["Scheduled"]]
     df = df.drop(columns=["Scheduled"])
-    return 
+    return df
 
 def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     payout = np.array(payout)
