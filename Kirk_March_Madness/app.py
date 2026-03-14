@@ -131,7 +131,7 @@ with tab1:
         render_bracket(Projections, Picks, selected_bracket)
 
 with tab2:
-    OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
+    OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish, ActualResultsExp)
     st.dataframe(
         OverallData,
         use_container_width=True, height="content", hide_index=True,
