@@ -351,7 +351,7 @@ def plot_correct_picks(counts_df, selected_bracket, title, actual=None):
         fig.add_vline(x=actual, line_dash='dash', line_color='gold', line_width=1.5)
         fig.add_annotation(
             x=actual, y=0.95, yref='paper',
-            text="Actual",
+            text="Current",
             showarrow=False,
             xanchor='left', yanchor='top',
             font=dict(color='gold', size=12))
