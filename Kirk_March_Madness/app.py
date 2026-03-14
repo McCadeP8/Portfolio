@@ -100,8 +100,8 @@ with tab1:
             expectedS = get_risk_value(ExpectedDFPre, selected_bracket, "Total_Score")
             actualC = get_risk_value(ActualResultsExp, selected_bracket, "Total_Count")
             expectedC = get_risk_value(ExpectedDFPre, selected_bracket, "Total_Count")
-            st.metric(label="Total Points", value=actualS, delta= round(actualC-expectedC,2),border=True)
-            st.metric(label="Total Correct", value=actualS, delta= round(actualC-expectedC,2),border=True)                
+            st.metric(label="Total Points", value=actualS, delta= round(actualS-expectedS,2),border=True)
+            st.metric(label="Total Correct", value=actualC, delta= round(actualC-expectedC,2),border=True)                
         with col2:
             plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points", actualS)
         with col3:
