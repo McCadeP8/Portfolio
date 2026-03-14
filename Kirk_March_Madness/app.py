@@ -16,7 +16,7 @@ with st.spinner("In Progress"):
     Picks = get_picks()
     st.toast("Pulled Picks")
     RiskScore = calculate_risk_score(Projections, Picks)
-    Sims = run_simulations(Projections, n_simulations=100000)
+    Sims = run_simulations(Projections, n_simulations=10000)
     st.toast("Ran 100,000 Simulations")
     Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, Sims, Projections)
     Scores2.insert(0, "Sim", range(1, len(Scores2) + 1))
