@@ -207,7 +207,7 @@ def calculate_risk_score(projections, picks):
         'E8':    [f'E8_{i}'  for i in range(1, 5)],
         'F4':    ['F4_1', 'F4_2'],
         'Champ': ['Champ']}
-    team_info = projections.set_index('Team')
+    team_info = projections.set_index('ActualTeam')
     results = []
     for _, row in picks.iterrows():
         downside      = 0.0
