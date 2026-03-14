@@ -343,7 +343,7 @@ def plot_correct_picks(counts_df, selected_bracket, title, actual=None):
     fig.add_vline(x=mean_val, line_dash='dash', line_color='red', line_width=1.5)
     fig.add_annotation(
         x=mean_val, y=1.02, yref='paper',
-        text="Expected",
+        text="Expected Pre-Tournament",
         showarrow=False,
         xanchor='left', yanchor='top',
         font=dict(color='red', size=12))

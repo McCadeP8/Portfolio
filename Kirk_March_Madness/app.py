@@ -96,14 +96,16 @@ with tab1:
 
         col1, col2, col3 = st.columns([1,2,2])
         with col1:
-            actual = get_risk_value(ActualResultsExp, selected_bracket, "Total_Score")
-            expected = get_risk_value(ExpectedDFPre, selected_bracket, "Total_Score")
-            st.metric(label="Total Points", value=actual, delta= round(actual-expected,2),border=True)                
+            actualS = get_risk_value(ActualResultsExp, selected_bracket, "Total_Score")
+            expectedS = get_risk_value(ExpectedDFPre, selected_bracket, "Total_Score")
+            actualC = get_risk_value(ActualResultsExp, selected_bracket, "Total_Count")
+            expectedC = get_risk_value(ExpectedDFPre, selected_bracket, "Total_Count")
+            st.metric(label="Total Points", value=actualS, delta= round(actualC-expectedC,2),border=True)
+            st.metric(label="Total Correct", value=actualS, delta= round(actualC-expectedC,2),border=True)                
         with col2:
-            plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points", get_risk_value(ActualResultsExp, selected_bracket, "Total_Score"))
-
+            plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points", actualS)
         with col3:
-            plot_correct_picks(CountsTotalPre, selected_bracket, "Distribution of Correct Picks",get_risk_value(ActualResultsExp, selected_bracket, "Total_Count"))
+            plot_correct_picks(CountsTotalPre, selected_bracket, "Distribution of Correct Picks", actualC)
 
         st.subheader("Round of 64")
         col1, col2, col3 = st.columns([1,2,2])
