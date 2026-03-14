@@ -319,7 +319,7 @@ def run_simulations(projections, n_simulations=100000):
     return results
 
 def score_simulations_by_round(picks, simulations, projections):
-    round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12, 'F4': 24, 'Champ': 32}
+    round_points = {'R64': 1, 'R32': 4, 'S16': 9, 'E8': 15, 'F4': 22, 'Champ': 30}
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
         'R32':   [f'R32_{i}' for i in range(1, 17)],
@@ -473,7 +473,7 @@ def count_opening_round_simulations(picks, simulations, projections, day="Thu"):
     return df
 
 def score_simulations_by_region(picks, simulations, projections, region):
-    round_points = {'R64': 1, 'R32': 3, 'S16': 6, 'E8': 12}
+    round_points = {'R64': 1, 'R32': 4, 'S16': 9, 'E8': 15}
     round_cols = {
         'R64': [f'R64_{i}' for i in range(1, 33)],
         'R32': [f'R32_{i}' for i in range(1, 17)],
