@@ -575,7 +575,7 @@ def run_analysis(sims_data, Projections, Projections2, Picks):
 def get_projections2():
     csv_url = "https://docs.google.com/spreadsheets/d/12f4bu9JRwZ9TDXVw6T2GI0fPgjeKCk1GxrdDFdjHds8/export?format=csv&gid=783864246"
     df = pd.read_csv(csv_url)
-    df = df[df["Scheduled"] == True]
+    df = df[df["Scheduled"]]
     df = df.drop(columns=["Scheduled"])
     return 
 
