@@ -2,7 +2,7 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, build_games_table, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre
+from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, get_projections2, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre
 
 st.set_page_config(
     page_title = "Kirk's March Madness Bracket Analysis",
@@ -13,9 +13,9 @@ st.title(":basketball::trophy: Kirk's March Madness Pool:trophy::basketball:")
 
 with st.spinner("In Progress"):
     Projections = get_projections()
-    Projections2 = build_games_table(Projections)
     Picks = get_picks(Projections)
     Projections["Team"] = Projections["ActualName"]
+    Projections2 = get_projections2()
     RiskScore = calculate_risk_score(Projections, Picks)
     Sims = run_simulations(Projections, n_simulations=10000)
 #   Sims.to_parquet("SimsPre.parquet", index=False)

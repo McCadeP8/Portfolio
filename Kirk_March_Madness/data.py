@@ -572,25 +572,12 @@ def run_analysis(sims_data, Projections, Projections2, Picks):
         TotalExpected, TotalPayout
     )
 
-def build_games_table(projections):
-    games = []
-    rounds = ["R64", "R32", "S16", "E8", "F4", "Champ"]
-    for rnd in rounds:
-        group_col = f"{rnd}Group"
-        if rnd == "Champ":
-            continue
-        groups = projections[group_col].unique()
-        for g in groups:
-            teams = projections[projections[group_col] == g]
-
-            if len(teams) == 2:
-                games.append({
-                    "GameID": f"{rnd}_{g}",
-                    "Round": rnd,
-                    "TeamA": teams.iloc[0]["Team"],
-                    "TeamB": teams.iloc[1]["Team"]
-                })
-    return pd.DataFrame(games)
+def get_projections2():
+    csv_url = "https://docs.google.com/spreadsheets/d/12f4bu9JRwZ9TDXVw6T2GI0fPgjeKCk1GxrdDFdjHds8/export?format=csv&gid=783864246"
+    df = pd.read_csv(csv_url)
+    df = df[df["Scheduled"] == True]
+    df = df.drop(columns=["Scheduled"])
+    return 
 
 def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     payout = np.array(payout)
