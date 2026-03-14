@@ -1190,7 +1190,7 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
         "In The Money %": "ITM%",
         "Champ": "Champion",
         "Runner_Up": "Runner Up"
-    }
+    } #A
     df = df.rename(columns=rename_map)
     ordered_cols = [
         "Bracket",
