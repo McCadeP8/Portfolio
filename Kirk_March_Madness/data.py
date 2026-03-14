@@ -1109,4 +1109,24 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     ]
     ordered_cols = [c for c in ordered_cols if c in df.columns]
     df = df[ordered_cols]
+
+    df = df.style.format({
+    "Pred. Pts": "{:.2f}",
+    "Pred. Games": "{:.2f}",
+    "Total EV": "${:,.2f}",
+    "Win%": "{:.1f}%",
+    "ITM%": "{:.1f}%",
+    "Th Win%": "{:.1f}%",
+    "Fr Win%": "{:.1f}%",
+    "W Win%": "{:.1f}%",
+    "E Win%": "{:.1f}%",
+    "S Win%": "{:.1f}%",
+    "MW Win%": "{:.1f}%",
+    "S16 Win%": "{:.1f}%",
+    "Risk Score": "{:.2f}",
+    "Downside": "{:.2f}",
+    "Champ Risk": "{:.2f}",
+    "Avg. Upset": "{:.2f}"
+    })
+
     return df
