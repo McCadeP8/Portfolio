@@ -1110,3 +1110,587 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     ordered_cols = [c for c in ordered_cols if c in df.columns]
     df = df[ordered_cols]
     return df
+
+"""
+March Madness Bracket Renderer for Streamlit
+=============================================
+
+Usage
+-----
+    from march_madness_bracket import render_bracket
+
+    # projections: 64-row DataFrame
+    #   Required columns: Region, Seed, ActualName, Color, Logo, Record
+    #   - Region   : one of 4 region names (consistent order matters – see below)
+    #   - Seed     : 1-16
+    #   - ActualName: display name of the team
+    #   - Color    : hex color string, e.g. '#1a4789'
+    #   - Logo     : URL string (or empty)
+    #   - Record   : e.g. '28-5'
+
+    # picks: DataFrame with one row per bracket
+    #   Required columns:
+    #     Bracket                 – bracket owner/name
+    #     R64_1 … R64_32         – winners of Round of 64 (team names)
+    #     R32_1 … R32_16         – winners of Round of 32
+    #     S16_1 … S16_8          – winners of Sweet 16
+    #     E8_1  … E8_4           – winners of Elite 8
+    #     F4_1, F4_2             – winners of Final Four games
+    #     Champ                  – champion
+
+    # Game-numbering convention (matches your column ordering):
+    #   The 4 regions appear in the order projections['Region'].unique() returns them.
+    #   Region 0 → R64_1..8,  R32_1..4,  S16_1..2, E8_1
+    #   Region 1 → R64_9..16, R32_5..8,  S16_3..4, E8_2
+    #   Region 2 → R64_17..24, R32_9..12, S16_5..6, E8_3
+    #   Region 3 → R64_25..32, R32_13..16, S16_7..8, E8_4
+    #   F4_1 = left-side F4 (E8_1 winner vs E8_2 winner)
+    #   F4_2 = right-side F4 (E8_3 winner vs E8_4 winner)
+
+    render_bracket(projections, picks)          # shows bracket selector
+    render_bracket(projections, picks, "Alice") # pre-selects Alice's bracket
+"""
+
+# ── Seeding order per region (top → bottom) ──────────────────────────────────
+SEED_ORDER = [1, 16, 9, 8, 5, 12, 13, 4, 3, 14, 11, 6, 7, 10, 15, 2]
+
+# ── Layout constants (pixels) ─────────────────────────────────────────────────
+SLOT_H   = 26      # height of one team slot
+W        = dict(R64=132, R32=116, S16=100, E8=88, F4=124)
+CONN     = 10      # connector extension on each slot (bracket line space)
+LBL_H   = 18      # height of round-label row
+REG_GAP = 16      # vertical gap between the two regions on each side
+
+# Bracket-line spacers in SLOT_H units: (before-first-matchup, between-matchups)
+SPACERS = dict(R64=(0, 0), R32=(1, 2), S16=(3, 6), E8=(7, 0))
+
+BL  = '#253655'    # bracket line colour
+BG  = '#080c19'    # page background
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _safe(val):
+    """Return stripped string or None."""
+    if val is None:
+        return None
+    try:
+        if pd.isna(val):
+            return None
+    except Exception:
+        pass
+    s = str(val).strip()
+    return s if s else None
+
+
+def _build_lookups(proj: pd.DataFrame):
+    by_name = {}
+    by_rs   = {}   # (region_str, seed_int) → team dict
+    for _, row in proj.iterrows():
+        name = _safe(row.get("ActualName"))
+        if not name:
+            continue
+        t = {
+            "name":   name,
+            "seed":   int(row["Seed"]),
+            "color":  _safe(row.get("Color"))  or "#334155",
+            "logo":   _safe(row.get("Logo"))   or "",
+            "record": _safe(row.get("Record")) or "",
+        }
+        by_name[name] = t
+        by_rs[(str(row["Region"]), int(row["Seed"]))] = t
+    return by_name, by_rs
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Single team-slot renderer
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _slot(name, by_name, is_winner, pos, side, width):
+    """
+    Render one team slot div.
+
+    Parameters
+    ----------
+    name     : team name (str) or None → empty grey slot
+    by_name  : dict from _build_lookups
+    is_winner: whether this team won the game shown in this column
+    pos      : 'top' | 'bot'  – determines which bracket-line border
+    side     : 'left' | 'right' – determines which side the vertical line is on
+    width    : inner team-display width (px); total div = width + CONN
+    """
+    total = width + CONN
+    v_border = f'border-{"right" if side == "left" else "left"}:1px solid {BL};'
+    h_border = f'border-{"top"   if pos  == "top"  else "bottom"}:1px solid {BL};'
+
+    if not name or name not in by_name:
+        return (
+            f'<div style="height:{SLOT_H}px;width:{total}px;'
+            f'background:{BG};{v_border}{h_border}box-sizing:border-box;'
+            f'flex-shrink:0;"></div>'
+        )
+
+    t     = by_name[name]
+    color = t["color"]
+    seed  = t["seed"]
+    logo  = t["logo"]
+
+    ibg    = "#14203d" if is_winner else "#0c1123"
+    nc     = "#edf2f7" if is_winner else "#5a6e8c"
+    sc     = "#94a3b8" if is_winner else "#3a4d6a"
+    glow   = f"box-shadow:inset 0 0 0 1px {color}66;" if is_winner else ""
+    ibord  = f"1px solid {color}44" if is_winner else "1px solid #18253a"
+    bar_op = "0.9" if is_winner else "0.38"
+
+    logo_h = ""
+    if logo:
+        logo_h = (
+            f'<img src="{logo}" '
+            f'style="width:13px;height:13px;object-fit:contain;flex-shrink:0;" '
+            f'onerror="this.style.display=\'none\'">'
+        )
+
+    mc = max(6, (width - 50) // 7)
+    dn = (name[:mc] + "…") if len(name) > mc else name
+
+    bar = (
+        f'<div style="position:absolute;left:0;top:0;bottom:0;'
+        f'width:3px;background:{color};opacity:{bar_op};"></div>'
+    )
+
+    inner = (
+        f'<div style="position:relative;width:{width}px;height:{SLOT_H}px;'
+        f'background:{ibg};border:{ibord};{glow}'
+        f'display:flex;align-items:center;padding:0 4px 0 7px;gap:3px;'
+        f'overflow:hidden;box-sizing:border-box;flex-shrink:0;">'
+        f'{bar}'
+        f'<span style="font-size:9px;font-weight:700;color:{sc};'
+        f'min-width:12px;text-align:right;flex-shrink:0;">{seed}</span>'
+        f'{logo_h}'
+        f'<span style="font-size:11px;font-weight:600;color:{nc};'
+        f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{dn}</span>'
+        f'</div>'
+    )
+
+    if side == "right":
+        inner = f'<div style="flex:1;min-width:{CONN}px;"></div>' + inner
+
+    return (
+        f'<div style="height:{SLOT_H}px;width:{total}px;'
+        f'display:flex;align-items:center;'
+        f'{v_border}{h_border}box-sizing:border-box;flex-shrink:0;">'
+        f'{inner}</div>'
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Round-column renderer
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _round_col(label, matchups, round_key, side, width):
+    """
+    matchups : list of (name1, name2, winner_name)
+    Returns  : HTML string for one round's column
+    """
+    total    = width + CONN
+    pre_u, inter_u = SPACERS[round_key]
+    region_h = 16 * SLOT_H
+
+    slots = []
+    for i, (n1, n2, winner) in enumerate(matchups):
+        sp_u = pre_u if i == 0 else inter_u
+        if sp_u > 0:
+            sp_px = sp_u * SLOT_H
+            slots.append(
+                f'<div style="height:{sp_px}px;width:{total}px;'
+                f'flex-shrink:0;background:{BG};"></div>'
+            )
+        w1 = bool(n1 and winner and n1 == winner)
+        w2 = bool(n2 and winner and n2 == winner)
+        slots.append(_slot.__wrapped__(n1, _slot.__wrapped__._by_name_ref, w1, "top", side, width)
+                     if False else "")  # placeholder – see below
+
+    # We need by_name in _round_col; pass it as a closure-injected default later.
+    # This function is always called via _round_col_with_lookup.
+    return slots, total, region_h, label
+
+
+def _rcol(label, matchups, round_key, side, width, by_name):
+    total    = width + CONN
+    pre_u, inter_u = SPACERS[round_key]
+    region_h = 16 * SLOT_H
+
+    rows_html = ""
+    for i, (n1, n2, winner) in enumerate(matchups):
+        sp_u = pre_u if i == 0 else inter_u
+        if sp_u > 0:
+            rows_html += (
+                f'<div style="height:{sp_u * SLOT_H}px;width:{total}px;'
+                f'flex-shrink:0;background:{BG};"></div>'
+            )
+        w1 = bool(n1 and winner and n1 == winner)
+        w2 = bool(n2 and winner and n2 == winner)
+        rows_html += _slot(n1, by_name, w1, "top", side, width)
+        rows_html += _slot(n2, by_name, w2, "bot", side, width)
+
+    lbl = (
+        f'<div style="height:{LBL_H}px;width:{total}px;'
+        f'display:flex;align-items:flex-end;justify-content:center;'
+        f'font-size:8px;letter-spacing:1.5px;text-transform:uppercase;'
+        f'color:#2e4060;padding-bottom:2px;">{label}</div>'
+    )
+
+    body = (
+        f'<div style="height:{region_h}px;width:{total}px;'
+        f'display:flex;flex-direction:column;overflow:hidden;">'
+        f'{rows_html}</div>'
+    )
+
+    return f'<div style="display:flex;flex-direction:column;">{lbl}{body}</div>'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Region data builder
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _region_data(proj, regions, region_idx, by_name, by_rs, picks_row):
+    """Return (region_name, r64, r32, s16, e8) where each is list of (n1,n2,winner)."""
+    region = regions[region_idx]
+    r64o   = region_idx * 8
+    r32o   = region_idx * 4
+    s16o   = region_idx * 2
+
+    def gp(col):
+        return _safe(picks_row.get(col, None) if hasattr(picks_row, "get")
+                     else (picks_row[col] if col in picks_row.index else None))
+
+    # R64
+    r64 = []
+    for i in range(8):
+        s1 = SEED_ORDER[i * 2];  s2 = SEED_ORDER[i * 2 + 1]
+        t1 = by_rs.get((region, s1), {}).get("name")
+        t2 = by_rs.get((region, s2), {}).get("name")
+        r64.append((t1, t2, gp(f"R64_{r64o + i + 1}")))
+
+    # R32
+    r32 = []
+    for i in range(4):
+        r32.append((
+            gp(f"R64_{r64o + i * 2 + 1}"),
+            gp(f"R64_{r64o + i * 2 + 2}"),
+            gp(f"R32_{r32o + i + 1}"),
+        ))
+
+    # S16
+    s16 = []
+    for i in range(2):
+        s16.append((
+            gp(f"R32_{r32o + i * 2 + 1}"),
+            gp(f"R32_{r32o + i * 2 + 2}"),
+            gp(f"S16_{s16o + i + 1}"),
+        ))
+
+    # E8
+    e8 = [(
+        gp(f"S16_{s16o + 1}"),
+        gp(f"S16_{s16o + 2}"),
+        gp(f"E8_{region_idx + 1}"),
+    )]
+
+    return region, r64, r32, s16, e8
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Region HTML
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _region_html(proj, regions, region_idx, by_name, by_rs, picks_row, side):
+    region_name, r64, r32, s16, e8 = _region_data(
+        proj, regions, region_idx, by_name, by_rs, picks_row
+    )
+
+    cols = {
+        "R64": _rcol("R64", r64, "R64", side, W["R64"], by_name),
+        "R32": _rcol("R32", r32, "R32", side, W["R32"], by_name),
+        "S16": _rcol("S16", s16, "S16", side, W["S16"], by_name),
+        "E8":  _rcol("E8",  e8,  "E8",  side, W["E8"],  by_name),
+    }
+
+    order = ["R64", "R32", "S16", "E8"] if side == "left" else ["E8", "S16", "R32", "R64"]
+    rounds_html = "".join(cols[k] for k in order)
+
+    lbl = (
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:3px;'
+        f'text-transform:uppercase;color:#e8c96a;padding:0 4px 4px 4px;">'
+        f'{region_name}</div>'
+    )
+
+    return f'<div>{lbl}<div style="display:flex;">{rounds_html}</div></div>'
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Center (Final Four + Champion)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _f4_slot(name, by_name, is_winner):
+    if not name:
+        return (
+            f'<div style="height:{SLOT_H}px;width:{W["F4"]}px;'
+            f'background:#0c1123;border:1px solid #1a2840;'
+            f'box-sizing:border-box;margin:1px 0;"></div>'
+        )
+    t     = by_name.get(name, {"name": name, "seed": "?", "color": "#334", "logo": ""})
+    color = t["color"]
+    ibg   = "#14203d" if is_winner else "#0c1123"
+    nc    = "#edf2f7" if is_winner else "#5a6e8c"
+    sc    = "#94a3b8" if is_winner else "#3a4d6a"
+    logo  = t.get("logo", "")
+    seed  = t.get("seed", "?")
+    glow  = f"box-shadow:inset 0 0 0 1px {color}66;" if is_winner else ""
+    ibord = f"1px solid {color}44" if is_winner else "1px solid #18253a"
+    bar_op = "0.9" if is_winner else "0.38"
+    bar = (
+        f'<div style="position:absolute;left:0;top:0;bottom:0;'
+        f'width:3px;background:{color};opacity:{bar_op};"></div>'
+    )
+    logo_h = (
+        f'<img src="{logo}" style="width:13px;height:13px;object-fit:contain;" '
+        f'onerror="this.style.display=\'none\'">'
+    ) if logo else ""
+    mc = max(8, (W["F4"] - 50) // 7)
+    dn = (name[:mc] + "…") if len(name) > mc else name
+    return (
+        f'<div style="position:relative;height:{SLOT_H}px;width:{W["F4"]}px;'
+        f'background:{ibg};border:{ibord};{glow}'
+        f'display:flex;align-items:center;padding:0 5px 0 8px;gap:3px;'
+        f'overflow:hidden;box-sizing:border-box;flex-shrink:0;margin:1px 0;">'
+        f'{bar}'
+        f'<span style="font-size:9px;font-weight:700;color:{sc};min-width:12px;">{seed}</span>'
+        f'{logo_h}'
+        f'<span style="font-size:11px;font-weight:600;color:{nc};'
+        f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{dn}</span>'
+        f'</div>'
+    )
+
+
+def _f4_block(t1, t2, winner, label, by_name):
+    w1 = bool(t1 and winner and t1 == winner)
+    w2 = bool(t2 and winner and t2 == winner)
+    lbl = (
+        f'<div style="font-size:7px;letter-spacing:2px;text-transform:uppercase;'
+        f'color:#2e4060;text-align:center;margin-bottom:2px;">{label}</div>'
+    )
+    return f'<div style="margin:10px 0 4px;">{lbl}{_f4_slot(t1, by_name, w1)}{_f4_slot(t2, by_name, w2)}</div>'
+
+
+def _center_html(picks_row, by_name):
+    def gp(col):
+        return _safe(picks_row.get(col, None) if hasattr(picks_row, "get")
+                     else (picks_row[col] if col in picks_row.index else None))
+
+    f4_1_t1 = gp("E8_1");  f4_1_t2 = gp("E8_2");  f4_1 = gp("F4_1")
+    f4_2_t1 = gp("E8_3");  f4_2_t2 = gp("E8_4");  f4_2 = gp("F4_2")
+    champ   = gp("Champ")
+
+    # Championship game participants = F4 winners
+    champ_t1 = f4_1;  champ_t2 = f4_2
+
+    # Champion box
+    if champ:
+        t     = by_name.get(champ, {"name": champ, "seed": "?", "record": "", "color": "#e8c96a", "logo": ""})
+        color = t["color"]
+        rec   = t.get("record", "")
+        seed  = t.get("seed", "?")
+        logo  = t.get("logo", "")
+        logo_h = (
+            f'<img src="{logo}" style="width:22px;height:22px;'
+            f'object-fit:contain;display:block;margin:0 auto 4px;" '
+            f'onerror="this.style.display=\'none\'">'
+        ) if logo else ""
+        rec_html = f'<div style="font-size:10px;color:#6272a4;margin-top:2px;">#{seed} · {rec}</div>' if rec else ""
+        body = (
+            f'{logo_h}'
+            f'<div style="font-size:15px;font-weight:700;color:#e8c96a;'
+            f'letter-spacing:0.5px;">{t["name"]}</div>'
+            f'{rec_html}'
+        )
+    else:
+        body = '<div style="font-size:11px;color:#2e4060;letter-spacing:2px;">TBD</div>'
+
+    champ_box = (
+        f'<div style="margin:14px 0;text-align:center;">'
+        f'<div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;'
+        f'color:#e8c96a;margin-bottom:6px;">Champion</div>'
+        f'<div style="font-size:20px;margin-bottom:5px;">🏆</div>'
+        f'<div style="display:inline-block;width:152px;padding:10px 12px;'
+        f'background:linear-gradient(135deg,#141e3c,#090e1e);'
+        f'border:2px solid #e8c96a;border-radius:3px;'
+        f'box-shadow:0 0 24px #e8c96a22;box-sizing:border-box;">'
+        f'{body}</div></div>'
+    )
+
+    champ_game = (
+        f'<div style="margin:4px 0;">'
+        f'<div style="font-size:7px;letter-spacing:2px;text-transform:uppercase;'
+        f'color:#2e4060;text-align:center;margin-bottom:2px;">Championship</div>'
+        f'{_f4_slot(champ_t1, by_name, bool(champ_t1 and champ_t1 == champ))}'
+        f'{_f4_slot(champ_t2, by_name, bool(champ_t2 and champ_t2 == champ))}'
+        f'</div>'
+    )
+
+    f4_w = W["F4"] + 24
+    return (
+        f'<div style="display:flex;flex-direction:column;align-items:center;'
+        f'padding:0 10px;min-width:{f4_w}px;">'
+        f'{_f4_block(f4_1_t1, f4_1_t2, f4_1, "Final Four", by_name)}'
+        f'{champ_box}'
+        f'{champ_game}'
+        f'{_f4_block(f4_2_t1, f4_2_t2, f4_2, "Final Four", by_name)}'
+        f'</div>'
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CSS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _css():
+    return """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.brk-outer {
+    background: #080c19;
+    padding: 14px 10px 20px;
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    overflow-x: auto;
+    min-height: 100%;
+}
+
+.brk-title {
+    text-align: center;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #b89640, #f0d980, #b89640);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    padding-bottom: 3px;
+}
+
+.brk-owner {
+    text-align: center;
+    font-size: 11px;
+    color: #3a4f6e;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+}
+
+.brk-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.brk-side {
+    display: flex;
+    flex-direction: column;
+    gap: """ + str(REG_GAP) + """px;
+}
+</style>
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Public API
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_bracket_html(
+    projections: pd.DataFrame,
+    picks_row,
+    bracket_owner: str = "",
+    title: str = "🏀 MARCH MADNESS",
+) -> str:
+    """Return the full bracket as an HTML string."""
+    by_name, by_rs = _build_lookups(projections)
+    regions = list(dict.fromkeys(str(r) for r in projections["Region"]))[:4]
+
+    left_html = (
+        _region_html(projections, regions, 0, by_name, by_rs, picks_row, "left")
+        + _region_html(projections, regions, 1, by_name, by_rs, picks_row, "left")
+    )
+    right_html = (
+        _region_html(projections, regions, 2, by_name, by_rs, picks_row, "right")
+        + _region_html(projections, regions, 3, by_name, by_rs, picks_row, "right")
+    )
+    center = _center_html(picks_row, by_name)
+
+    owner_div = (
+        f'<div class="brk-owner">📋 {bracket_owner}</div>' if bracket_owner else ""
+    )
+
+    return (
+        _css()
+        + f'<div class="brk-outer">'
+        f'<div class="brk-title">{title}</div>'
+        f'{owner_div}'
+        f'<div class="brk-main">'
+        f'<div class="brk-side">{left_html}</div>'
+        f'{center}'
+        f'<div class="brk-side">{right_html}</div>'
+        f'</div>'
+        f'</div>'
+    )
+
+
+def render_bracket(
+    projections: pd.DataFrame,
+    picks: pd.DataFrame = None,
+    bracket_filter: str = None,
+    title: str = "🏀 MARCH MADNESS",
+    height: int = None,
+):
+    """
+    Main Streamlit entry point.
+
+    Parameters
+    ----------
+    projections    : 64-row team info DataFrame
+    picks          : DataFrame with one row per bracket
+    bracket_filter : pre-select a bracket by name (skips the selectbox)
+    title          : display title above the bracket
+    height         : iframe height in px (auto-calculated if None)
+    """
+    if picks is None or len(picks) == 0:
+        st.warning("No picks data provided.")
+        return
+
+    if "Bracket" not in picks.columns:
+        st.error("Picks DataFrame must have a 'Bracket' column.")
+        return
+
+    brackets = picks["Bracket"].dropna().unique().tolist()
+
+    if bracket_filter and bracket_filter in brackets:
+        selected = bracket_filter
+    else:
+        selected = st.selectbox("Select Bracket", brackets, key="brk_sel")
+
+    row   = picks[picks["Bracket"] == selected].iloc[0]
+    owner = str(selected)
+
+    html = build_bracket_html(projections, row, bracket_owner=owner, title=title)
+
+    # Auto-calculate height: 2 regions stacked + labels + gap + header + center
+    if height is None:
+        region_h = 16 * SLOT_H + LBL_H  # one region column height
+        side_h   = 2 * region_h + REG_GAP + 14  # two regions + gap + region label
+        height   = side_h + 80  # add some breathing room
+
+    components.html(html, height=height, scrolling=True)
