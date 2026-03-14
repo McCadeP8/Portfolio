@@ -411,13 +411,19 @@ def plot_correct_picks(counts_df, selected_bracket, title, actual=None):
         x=mean_val,
         line_dash='dash',
         line_color='red',
-        line_width=1.5)
+        line_width=1.5,
+        annotation_text=f"Expected ({mean_val:.1f})",
+        annotation_position="top right",
+        annotation_font=dict(color='red', size=12))
     if actual is not None:
         fig.add_vline(
             x=actual,
             line_dash='dash',
             line_color='gold',
-            line_width=1.5)
+            line_width=1.5,
+            annotation_text=f"Actual ({actual})",
+            annotation_position="top left",
+            annotation_font=dict(color='gold', size=12))
     fig.update_layout(
         paper_bgcolor='#0E1117',
         plot_bgcolor='#0E1117',
