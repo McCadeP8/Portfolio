@@ -97,7 +97,7 @@ with tab1:
         col1, col2, col3 = st.columns([1,2,2])
         with col1:
             actual = get_risk_value(ActualResultsExp, selected_bracket, "Total_Score")
-            expected = get_risk_value(TotalExpectedPre, selected_bracket, "Total_Score")
+            expected = get_risk_value(ExpectedDFPre, selected_bracket, "Total_Score")
             st.metric(label="Total Points", value=actual, delta=actual - expected if actual is not None and expected is not None else None,border=True)                
         with col2:
             plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points", get_risk_value(ActualResultsExp, selected_bracket, "Total_Score"))
