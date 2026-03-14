@@ -3,7 +3,7 @@
 
 import streamlit as st
 import pandas as pd
-from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, build_games_table, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis
+from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, build_games_table, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre
 
 st.set_page_config(
     page_title = "Kirk's March Madness Bracket Analysis",
@@ -17,7 +17,7 @@ with st.spinner("In Progress"):
     RiskScore = calculate_risk_score(Projections, Picks)
     Sims = run_simulations(Projections, n_simulations=10000)
 #   Sims.to_parquet("SimsPre.parquet", index=False)
-    SimsPre = pd.read_parquet("SimsPre.parquet")
+    SimsPre = get_sims_pre()
     (Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal,
     Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal,
     Finish,

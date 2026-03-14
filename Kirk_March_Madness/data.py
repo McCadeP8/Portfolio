@@ -186,6 +186,11 @@ def get_picks(Projections):
     return result
 
 @st.cache_data
+def get_sims_pre():
+    SimsPre = pd.read_parquet("SimsPre.parquet")
+    return SimsPre
+
+@st.cache_data
 def get_projections():
     csv_url = "https://docs.google.com/spreadsheets/d/12f4bu9JRwZ9TDXVw6T2GI0fPgjeKCk1GxrdDFdjHds8/export?format=csv&gid=1837691522"
     df = pd.read_csv(csv_url)
