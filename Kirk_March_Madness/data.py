@@ -409,7 +409,7 @@ def plot_correct_picks(counts_df, selected_bracket, title, actual=None):
         marker_line_width=0))
     fig.add_vline(x=mean_val, line_dash='dash', line_color='red', line_width=1.5)
     fig.add_annotation(
-        x=mean_val, y=1, yref='paper',
+        x=mean_val, y=1.02, yref='paper',
         text="Expected",
         showarrow=False,
         xanchor='left', yanchor='top',
@@ -417,7 +417,7 @@ def plot_correct_picks(counts_df, selected_bracket, title, actual=None):
     if actual is not None:
         fig.add_vline(x=actual, line_dash='dash', line_color='gold', line_width=1.5)
         fig.add_annotation(
-            x=actual, y=0.8, yref='paper',
+            x=actual, y=0.95, yref='paper',
             text="Actual",
             showarrow=False,
             xanchor='right', yanchor='top',
