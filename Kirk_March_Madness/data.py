@@ -1289,33 +1289,6 @@ def _slot(name, by_name, is_winner, pos, side, width):
 # Round-column renderer
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _round_col(label, matchups, round_key, side, width):
-    """
-    matchups : list of (name1, name2, winner_name)
-    Returns  : HTML string for one round's column
-    """
-    total    = width + CONN
-    pre_u, inter_u = SPACERS[round_key]
-    region_h = 16 * SLOT_H
-
-    slots = []
-    for i, (n1, n2, winner) in enumerate(matchups):
-        sp_u = pre_u if i == 0 else inter_u
-        if sp_u > 0:
-            sp_px = sp_u * SLOT_H
-            slots.append(
-                f'<div style="height:{sp_px}px;width:{total}px;'
-                f'flex-shrink:0;background:{BG};"></div>'
-            )
-        w1 = bool(n1 and winner and n1 == winner)
-        w2 = bool(n2 and winner and n2 == winner)
-        slots.append(_slot.__wrapped__(n1, _slot.__wrapped__._by_name_ref, w1, "top", side, width)
-                     if False else "")  # placeholder – see below
-
-    # We need by_name in _round_col; pass it as a closure-injected default later.
-    # This function is always called via _round_col_with_lookup.
-    return slots, total, region_h, label
-
 
 def _rcol(label, matchups, round_key, side, width, by_name):
     total    = width + CONN
@@ -1369,7 +1342,8 @@ def _region_data(proj, regions, region_idx, by_name, by_rs, picks_row):
     # R64
     r64 = []
     for i in range(8):
-        s1 = SEED_ORDER[i * 2];  s2 = SEED_ORDER[i * 2 + 1]
+        s1 = SEED_ORDER[i * 2]
+        s2 = SEED_ORDER[i * 2 + 1]
         t1 = by_rs.get((region, s1), {}).get("name")
         t2 = by_rs.get((region, s2), {}).get("name")
         r64.append((t1, t2, gp(f"R64_{r64o + i + 1}")))
@@ -1490,17 +1464,21 @@ def _center_html(picks_row, by_name):
         return _safe(picks_row.get(col, None) if hasattr(picks_row, "get")
                      else (picks_row[col] if col in picks_row.index else None))
 
-    f4_1_t1 = gp("E8_1");  f4_1_t2 = gp("E8_2");  f4_1 = gp("F4_1")
-    f4_2_t1 = gp("E8_3");  f4_2_t2 = gp("E8_4");  f4_2 = gp("F4_2")
+    f4_1_t1 = gp("E8_1")
+    f4_1_t2 = gp("E8_2")  
+    f4_1 = gp("F4_1")
+    f4_2_t1 = gp("E8_3")
+    f4_2_t2 = gp("E8_4")
+    f4_2 = gp("F4_2")
     champ   = gp("Champ")
 
     # Championship game participants = F4 winners
-    champ_t1 = f4_1;  champ_t2 = f4_2
+    champ_t1 = f4_1
+    champ_t2 = f4_2
 
     # Champion box
     if champ:
         t     = by_name.get(champ, {"name": champ, "seed": "?", "record": "", "color": "#e8c96a", "logo": ""})
-        color = t["color"]
         rec   = t.get("record", "")
         seed  = t.get("seed", "?")
         logo  = t.get("logo", "")
