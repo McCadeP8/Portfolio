@@ -87,15 +87,22 @@ with tab1:
                     help="Weighted average seed of teams picked to win each round. Higher = more Cinderella picks.",
                     border=True)
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric(label="Points", value=29.4, delta=1.3, border=True)
-            st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(CountsTotalPre, selected_bracket, "Distribution of Correct Picks")
+    col1, col2, col3 = st.columns([1,2,2])
+    with col1:
+        metric1 = st.container(height=200)
+        metric2 = st.container(height=200)
 
+        with metric1:
+            st.metric(label="Points", value=29.4, delta=1.3, border=True)
+
+        with metric2:
+            st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
+
+    with col2:
+        plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points")
+
+    with col3:
+        plot_correct_picks(CountsTotalPre, selected_bracket, "Distribution of Correct Picks")
         st.subheader("Round of 64")
         col1, col2, col3 = st.columns(3)
         with col1:
