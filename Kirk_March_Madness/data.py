@@ -9,79 +9,12 @@ import streamlit as st
 import os
 
 def actual_results(Sims):
-    Actual = pd.DataFrame({
-    "Sim": [len(Sims) + 1],
-
-    "Champ": [np.nan],
-
-    "F4_1": [np.nan],
-    "F4_2": [np.nan],
-
-    "E8_1": [np.nan],
-    "E8_2": [np.nan],
-    "E8_3": [np.nan],
-    "E8_4": [np.nan],
-
-    "S16_1": [np.nan],
-    "S16_2": [np.nan],
-    "S16_3": [np.nan],
-    "S16_4": [np.nan],
-    "S16_5": [np.nan],
-    "S16_6": [np.nan],
-    "S16_7": [np.nan],
-    "S16_8": [np.nan],
-
-    "R32_1": [np.nan],
-    "R32_2": [np.nan],
-    "R32_3": [np.nan],
-    "R32_4": [np.nan],
-    "R32_5": [np.nan],
-    "R32_6": [np.nan],
-    "R32_7": [np.nan],
-    "R32_8": [np.nan],
-    "R32_9": [np.nan],
-    "R32_10": [np.nan],
-    "R32_11": [np.nan],
-    "R32_12": [np.nan],
-    "R32_13": [np.nan],
-    "R32_14": [np.nan],
-    "R32_15": [np.nan],
-    "R32_16": [np.nan],
-
-    "R64_1": [np.nan],
-    "R64_2": [np.nan],
-    "R64_3": [np.nan],
-    "R64_4": [np.nan],
-    "R64_5": [np.nan],
-    "R64_6": [np.nan],
-    "R64_7": [np.nan],
-    "R64_8": [np.nan],
-    "R64_9": [np.nan],
-    "R64_10": [np.nan],
-    "R64_11": [np.nan],
-    "R64_12": [np.nan],
-    "R64_13": [np.nan],
-    "R64_14": [np.nan],
-    "R64_15": [np.nan],
-    "R64_16": [np.nan],
-    "R64_17": [np.nan],
-    "R64_18": [np.nan],
-    "R64_19": [np.nan],
-    "R64_20": [np.nan],
-    "R64_21": [np.nan],
-    "R64_22": [np.nan],
-    "R64_23": [np.nan],
-    "R64_24": [np.nan],
-    "R64_25": [np.nan],
-    "R64_26": [np.nan],
-    "R64_27": [np.nan],
-    "R64_28": [np.nan],
-    "R64_29": [np.nan],
-    "R64_30": [np.nan],
-    "R64_31": [np.nan],
-    "R64_32": [np.nan]})
-
-    return Actual
+    cols = [c for c in Sims.columns if c != "Sim"]
+    actual = {"Sim": len(Sims) + 1}
+    for col in cols:
+        unique = Sims[col].dropna().unique()
+        actual[col] = unique[0] if len(unique) == 1 else np.nan
+    return pd.DataFrame([actual])
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -538,7 +471,6 @@ def calculate_expected_value(Scores, Counts, payout, Type):
         Type: expected_values
     })
 
-#A 
 @st.cache_data
 def run_analysis(sims_data, Projections, Projections2, Picks):
     Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, sims_data, Projections)
@@ -561,7 +493,22 @@ def run_analysis(sims_data, Projections, Projections2, Picks):
     CountsSouth = count_simulations_by_region(Picks, sims_data, Projections, "South")
     CountsMidwest = count_simulations_by_region(Picks, sims_data, Projections, "Midwest")
     TotalExpected, TotalPayout = get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, sims_data, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections)
-    
+    ExpectedDF = get_expected_dataframe(
+        ScoresTotal, CountsTotal,
+        ScoresThurs, CountsThurs,
+        ScoresFri, CountsFri,
+        ScoresWest, CountsWest,
+        ScoresEast, CountsEast,
+        ScoresMidwest, CountsMidwest,
+        ScoresSouth, CountsSouth,
+        Scores64, Counts64,
+        Scores32, Counts32,
+        Scores16, Counts16,
+        Scores8, Counts8,
+        Scores4, Counts4,
+        Scores2, Counts2
+    )
+
     return (
         Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal,
         Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal,
@@ -569,8 +516,122 @@ def run_analysis(sims_data, Projections, Projections2, Picks):
         ScoresThurs, ScoresFri, CountsThurs, CountsFri,
         ScoresWest, ScoresEast, ScoresSouth, ScoresMidwest,
         CountsWest, CountsEast, CountsSouth, CountsMidwest,
-        TotalExpected, TotalPayout
+        TotalExpected, TotalPayout,
+        ExpectedDF
     )
+
+def get_expected_dataframe(
+    ScoresTotal, CountsTotal,
+    ScoresThurs, CountsThurs,
+    ScoresFri, CountsFri,
+    ScoresWest, CountsWest,
+    ScoresEast, CountsEast,
+    ScoresMidwest, CountsMidwest,
+    ScoresSouth, CountsSouth,
+    Scores64, Counts64,
+    Scores32, Counts32,
+    Scores16, Counts16,
+    Scores8, Counts8,
+    Scores4, Counts4,
+    Scores2, Counts2
+):
+    def mean_series(df):
+        return df.drop(columns=["Sim"], errors="ignore").mean(axis=0)
+
+    scores_map = {
+        "Total":        mean_series(ScoresTotal),
+        "Thurs":        mean_series(ScoresThurs),
+        "Fri":          mean_series(ScoresFri),
+        "West":         mean_series(ScoresWest),
+        "East":         mean_series(ScoresEast),
+        "Midwest":      mean_series(ScoresMidwest),
+        "South":        mean_series(ScoresSouth),
+        "Round of 64":  mean_series(Scores64),
+        "Round of 32":  mean_series(Scores32),
+        "Sweet 16":     mean_series(Scores16),
+        "Elite 8":      mean_series(Scores8),
+        "Final Four":   mean_series(Scores4),
+        "Championship": mean_series(Scores2),
+    }
+
+    counts_map = {
+        "Total":        mean_series(CountsTotal),
+        "Thurs":        mean_series(CountsThurs),
+        "Fri":          mean_series(CountsFri),
+        "West":         mean_series(CountsWest),
+        "East":         mean_series(CountsEast),
+        "Midwest":      mean_series(CountsMidwest),
+        "South":        mean_series(CountsSouth),
+        "Round of 64":  mean_series(Counts64),
+        "Round of 32":  mean_series(Counts32),
+        "Sweet 16":     mean_series(Counts16),
+        "Elite 8":      mean_series(Counts8),
+        "Final Four":   mean_series(Counts4),
+        "Championship": mean_series(Counts2),
+    }
+
+    df = pd.DataFrame({"Bracket": scores_map["Total"].index})
+    for col, series in scores_map.items():
+        df[f"{col}_Score"] = series.values
+    for col, series in counts_map.items():
+        df[f"{col}_Count"] = series.values
+
+    return df
+
+def get_scores_dataframe(Actual, Projections, Projections2, Picks):
+    Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, Actual, Projections)
+    Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal = count_simulations_by_round(Picks, Actual)
+    ScoresThurs = score_opening_rounds(Picks, Actual, Projections, "Thursday")
+    ScoresFri   = score_opening_rounds(Picks, Actual, Projections, "Friday")
+    CountsThurs = count_opening_round_simulations(Picks, Actual, Projections, "Thursday")
+    CountsFri   = count_opening_round_simulations(Picks, Actual, Projections, "Friday")
+    ScoresWest  = score_simulations_by_region(Picks, Actual, Projections, "West")
+    ScoresEast  = score_simulations_by_region(Picks, Actual, Projections, "East")
+    ScoresSouth = score_simulations_by_region(Picks, Actual, Projections, "South")
+    ScoresMidwest = score_simulations_by_region(Picks, Actual, Projections, "Midwest")
+    CountsWest  = count_simulations_by_region(Picks, Actual, Projections, "West")
+    CountsEast  = count_simulations_by_region(Picks, Actual, Projections, "East")
+    CountsSouth = count_simulations_by_region(Picks, Actual, Projections, "South")
+    CountsMidwest = count_simulations_by_region(Picks, Actual, Projections, "Midwest")
+    def extract(df):
+        return df.drop(columns=["Sim"], errors="ignore").iloc[0]
+    scores_map = {
+        "Total":          extract(ScoresTotal),
+        "Thurs":          extract(ScoresThurs),
+        "Fri":            extract(ScoresFri),
+        "West":           extract(ScoresWest),
+        "East":           extract(ScoresEast),
+        "Midwest":        extract(ScoresMidwest),
+        "South":          extract(ScoresSouth),
+        "Round of 64":    extract(Scores64),
+        "Round of 32":    extract(Scores32),
+        "Sweet 16":       extract(Scores16),
+        "Elite 8":        extract(Scores8),
+        "Final Four":     extract(Scores4),
+        "Championship":   extract(Scores2),
+    }
+    counts_map = {
+        "Total":          extract(CountsTotal),
+        "Thurs":          extract(CountsThurs),
+        "Fri":            extract(CountsFri),
+        "West":           extract(CountsWest),
+        "East":           extract(CountsEast),
+        "Midwest":        extract(CountsMidwest),
+        "South":          extract(CountsSouth),
+        "Round of 64":    extract(Counts64),
+        "Round of 32":    extract(Counts32),
+        "Sweet 16":       extract(Counts16),
+        "Elite 8":        extract(Counts8),
+        "Final Four":     extract(Counts4),
+        "Championship":   extract(Counts2),
+    }
+    brackets = scores_map["Total"].index
+    df = pd.DataFrame({"Bracket": brackets})
+    for col, series in scores_map.items():
+        df[f"{col}_Score"] = series.values
+    for col, series in counts_map.items():
+        df[f"{col}_Count"] = series.values
+    return df
 
 def get_projections2():
     csv_url = "https://docs.google.com/spreadsheets/d/12f4bu9JRwZ9TDXVw6T2GI0fPgjeKCk1GxrdDFdjHds8/export?format=csv&gid=783864246"

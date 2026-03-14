@@ -2,7 +2,8 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, get_projections2, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre
+from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, get_projections2, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre, actual_results, get_scores_dataframe
+
 
 st.set_page_config(
     page_title = "Kirk's March Madness Bracket Analysis",
@@ -18,6 +19,7 @@ with st.spinner("In Progress"):
     Projections2 = get_projections2()
     RiskScore = calculate_risk_score(Projections, Picks)
     Sims = run_simulations(Projections, n_simulations=10000)
+    ActualResults = actual_results(Sims)
 #   Sims.to_parquet("SimsPre.parquet", index=False)
     SimsPre = get_sims_pre()
     (Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal,
@@ -26,7 +28,8 @@ with st.spinner("In Progress"):
     ScoresThurs, ScoresFri, CountsThurs, CountsFri,
     ScoresWest, ScoresEast, ScoresSouth, ScoresMidwest,
     CountsWest, CountsEast, CountsSouth, CountsMidwest,
-    TotalExpected, TotalPayout) = run_analysis(Sims, Projections, Projections2, Picks)
+    TotalExpected, TotalPayout,
+    ExpectedDF) = run_analysis(Sims, Projections, Projections2, Picks)
 
     (Scores64Pre, Scores32Pre, Scores16Pre, Scores8Pre, Scores4Pre, Scores2Pre, ScoresTotalPre,
     Counts64Pre, Counts32Pre, Counts16Pre, Counts8Pre, Counts4Pre, Counts2Pre, CountsTotalPre,
@@ -34,7 +37,10 @@ with st.spinner("In Progress"):
     ScoresThursPre, ScoresFriPre, CountsThursPre, CountsFriPre,
     ScoresWestPre, ScoresEastPre, ScoresSouthPre, ScoresMidwestPre,
     CountsWestPre, CountsEastPre, CountsSouthPre, CountsMidwestPre,
-    TotalExpectedPre, TotalPayoutPre) = run_analysis(SimsPre, Projections, Projections2, Picks)
+    TotalExpectedPre, TotalPayoutPre,
+    ExpectedDFPre) = run_analysis(SimsPre, Projections, Projections2, Picks)
+
+    ActualResultsExp = get_scores_dataframe(ActualResults, Projections, Projections2, Picks)
 
 tab1, tab2 = st.tabs(["Bracket Outlook", "Overall Standings"])
 
@@ -90,13 +96,13 @@ with tab1:
 
         col1, col2, col3 = st.columns([1,2,2])
         with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
+                st.metric(label="Total Points", value=get_risk_value(ActualResultsExp, selected_bracket, "Total_Score"), delta=get_risk_value(ActualResultsExp, selected_bracket, "Total_Score")-get_risk_value(TotalExpectedPre, selected_bracket, "Total_Score"), border=True)
+                st.metric(label="Total Correct", value=get_risk_value(ActualResultsExp, selected_bracket, "Total_Count"), delta=get_risk_value(ActualResultsExp, selected_bracket, "Total_Count")-get_risk_value(TotalExpectedPre, selected_bracket, "Total_Score"), border=True)
         with col2:
-            plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points")
+            plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points", get_risk_value(ActualResultsExp, selected_bracket, "Total_Score"))
 
         with col3:
-            plot_correct_picks(CountsTotalPre, selected_bracket, "Distribution of Correct Picks")
+            plot_correct_picks(CountsTotalPre, selected_bracket, "Distribution of Correct Picks",get_risk_value(ActualResultsExp, selected_bracket, "Total_Count"))
 
         st.subheader("Round of 64")
         col1, col2, col3 = st.columns([1,2,2])
