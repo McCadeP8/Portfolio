@@ -1350,7 +1350,12 @@ def _region_data(proj, regions, region_idx, by_name, by_rs, picks_row):
         s2 = SEED_ORDER[i * 2 + 1]
         t1 = by_rs.get((region, s1), {}).get("name")
         t2 = by_rs.get((region, s2), {}).get("name")
-        r64.append((t1, t2, gp(f"R64_{r64o + i + 1}")))
+        col = r64o + i + 1
+        if i == 4: 
+            col = r64o + 6
+        elif i == 5: 
+            col = r64o + 5
+        r64.append((t1, t2, gp(f"R64_{col}")))
 
     # R32
     r32 = []
@@ -1395,7 +1400,7 @@ def _region_html(proj, regions, region_idx, by_name, by_rs, picks_row, side):
     cols = {
     "R64": _rcol("Round of 64", r64, "R64", side, W["R64"], by_name),
     "R32": _rcol("Round of 32", r32, "R32", side, W["R32"], by_name),
-    "S16": _rcol("Sweet 16",    s16, "S16", side, W["S16"], by_name),
+    "S16": _rcol("Sweet Sixteen",    s16, "S16", side, W["S16"], by_name),
     "E8":  _rcol("Elite Eight", e8,  "E8",  side, W["E8"],  by_name),
     }
 
@@ -1549,7 +1554,7 @@ def _css():
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 .brk-outer {
-    background: #080c19;
+    background: #0E1117;
     padding: 14px 10px 20px;
     font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
     overflow-x: auto;
