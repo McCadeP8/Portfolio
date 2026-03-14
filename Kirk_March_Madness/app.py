@@ -127,8 +127,8 @@ with tab1:
         with col3:
             plot_correct_picks(count_df, selected_bracket, f"Distribution of {title} Correct Picks", actualC)
         
-        with tab5:
-            render_bracket(Projections, Picks, selected_bracket)
+    with tab5:
+        render_bracket(Projections, Picks, selected_bracket)
 
 with tab2:
     OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
@@ -136,6 +136,7 @@ with tab2:
         OverallData,
         use_container_width=True, height="content", hide_index=True,
         column_config={
+            "Score": st.column_config.NumberColumn(format="%.0f"),
             "Pred. Pts": st.column_config.NumberColumn(format="%.2f"),
             "Pred. Games": st.column_config.NumberColumn(format="%.2f"),
             "Total EV": st.column_config.NumberColumn(format="$%.2f"),

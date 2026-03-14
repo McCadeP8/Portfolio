@@ -1140,7 +1140,7 @@ def render_ev_matchup(df, RowNumber):
 
     components.html(html, height=380, scrolling=False)
 
-def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Picks, Finish):
+def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Picks, Finish, ActualResultsExp):
     df = TotalExpected.copy()
     sum_cols = ["Total", "Thurs", "Fri", "West", "East", "South", "Midwest", "S16"]
     df["Total"] = df[sum_cols].sum(axis=1)
@@ -1169,8 +1169,10 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     money_pct.columns = ["Bracket", "In The Money %"]
     df = df.merge(win_pct, on="Bracket", how="left")
     df = df.merge(money_pct, on="Bracket", how="left")
+    df = df.merge(ActualResultsExp[["Bracket", "Total_Score"]], on="Bracket", how="left")
     rename_map = {
         "Total": "Total EV",
+        "Total_Score": "Score",
         "Thurs": "Th Win%",
         "Fri": "Fr Win%",
         "West": "W Win%",
@@ -1192,6 +1194,7 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     df = df.rename(columns=rename_map)
     ordered_cols = [
         "Bracket",
+        "Score",
         "Pred. Pts",
         "Pred. Games",
         "Total EV",
