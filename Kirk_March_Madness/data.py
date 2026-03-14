@@ -187,7 +187,8 @@ def get_picks(Projections):
 
 @st.cache_data
 def get_sims_pre():
-    SimsPre = pd.read_parquet("SimsPre.parquet")
+    file_path = os.path.join(BASE_DIR, "SimsPre.parquet")
+    SimsPre = pd.read_parquet(file_path)
     return SimsPre
 
 @st.cache_data
