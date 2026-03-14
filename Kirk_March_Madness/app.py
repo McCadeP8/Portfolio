@@ -17,7 +17,7 @@ with st.spinner("In Progress"):
     st.toast("Pulled Picks")
     RiskScore = calculate_risk_score(Projections, Picks)
     Sims = run_simulations(Projections, n_simulations=10000)
-    st.toast("Ran 100,000 Simulations")
+    st.toast("Ran 10,000 Simulations")
     Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, Sims, Projections)
     Scores2.insert(0, "Sim", range(1, len(Scores2) + 1))
     Scores4.insert(0, "Sim", range(1, len(Scores2) + 1))
@@ -244,4 +244,4 @@ with tab1:
 
 with tab2:
     OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
-    st.dataframe(OverallData.sort_values("Expected Points", ascending=False).reset_index(drop=True), use_container_width=True)
+    st.dataframe(OverallData.sort_values("Pred. Pts", ascending=False).reset_index(drop=True), use_container_width=True)
