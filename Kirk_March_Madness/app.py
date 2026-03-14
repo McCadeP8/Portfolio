@@ -9,7 +9,7 @@ st.set_page_config(
     page_icon = ":basketball:",
     layout = "wide")
 
-#st.title(":basketball::trophy: Kirk's March Madness Pool:trophy::basketball:")
+st.title(":basketball::trophy: Kirk's March Madness Pool:trophy::basketball:")
 
 with st.spinner("In Progress"):
     Projections = get_projections()
