@@ -640,28 +640,28 @@ def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, 
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
 
 def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections):
-    payout = [2000/34] * 33 + [10000] * 1 + [0] * 103
+    payout = [983, 260, 125, 125, 75, 50] + [15] * 19 + [0] * 112
     ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
     TotalPayoutOutput = build_ev_table(Projections2, ScoresTotal, CountsTotal, Sims, payout, "Total")
-    payout = [10] * 1 + [0] * 136
+    payout = [15] * 1 + [0] * 136
     ExpThurs = calculate_expected_value(ScoresThurs, CountsThurs, payout, "Thurs")
     ThursPayoutOutput = build_ev_table(Projections2, ScoresThurs, CountsThurs, Sims, payout, "Thurs")
-    payout = [10] * 1 + [0] * 136
+    payout = [15] * 1 + [0] * 136
     ExpFri = calculate_expected_value(ScoresFri, CountsFri, payout, "Fri")
     FriPayoutOutput = build_ev_table(Projections2, ScoresFri, CountsFri, Sims, payout, "Fri")
-    payout = [10] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 136
     ExpWest = calculate_expected_value(ScoresWest, CountsWest, payout, "West")
     WestPayoutOutput = build_ev_table(Projections2, ScoresWest, CountsWest, Sims, payout, "West")
-    payout = [10] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 136
     ExpEast = calculate_expected_value(ScoresEast, CountsEast, payout, "East")
     EastPayoutOutput = build_ev_table(Projections2, ScoresEast, CountsEast, Sims, payout, "East")
-    payout = [10] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 136
     ExpSouth = calculate_expected_value(ScoresSouth, CountsSouth, payout, "South")
     SouthPayoutOutput = build_ev_table(Projections2, ScoresSouth, CountsSouth, Sims, payout, "South")
-    payout = [10] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 136
     ExpMidwest = calculate_expected_value(ScoresMidwest, CountsMidwest, payout, "Midwest")
     MidwestPayoutOutput = build_ev_table(Projections2, ScoresMidwest, CountsMidwest, Sims, payout, "Midwest")
-    payout = [10] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 136
     ExpS16 = calculate_expected_value(Scores32, Counts32, payout, "S16")
     S16PayoutOutput = build_ev_table(Projections2, Scores32, Counts32, Sims, payout, "S16")
     exp_tables = [
@@ -1099,9 +1099,12 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     df = TotalExpected.copy()
     sum_cols = ["Total", "Thurs", "Fri", "West", "East", "South", "Midwest", "S16"]
     df["Total"] = df[sum_cols].sum(axis=1)
-    scale_cols = ["Thurs", "Fri", "West", "East", "South", "Midwest", "S16"]
+    scale_cols2 = ["Thurs", "Fri"]
+    for col in scale_cols2:
+        df[col] = df[col] * 100 / 15
+    scale_cols = ["West", "East", "South", "Midwest", "S16"]
     for col in scale_cols:
-        df[col] = df[col] * 10
+        df[col] = df[col] * 100 / 25
     pred_correct = ScoresTotal.mean(axis=0).reset_index()
     pred_correct.columns = ["Bracket", "Predicted_Correct_Picks"]
     pred_points = CountTotal.mean(axis=0).reset_index()
@@ -1117,7 +1120,7 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     n_sims = finish.shape[0]
     win_pct = ((finish == 1).sum(axis=0).div(n_sims).mul(100).reset_index())
     win_pct.columns = ["Bracket", "Win %"]
-    money_pct = ((finish <= 33).sum(axis=0).div(n_sims).mul(100).reset_index())
+    money_pct = ((finish <= 25).sum(axis=0).div(n_sims).mul(100).reset_index())
     money_pct.columns = ["Bracket", "In The Money %"]
     df = df.merge(win_pct, on="Bracket", how="left")
     df = df.merge(money_pct, on="Bracket", how="left")
