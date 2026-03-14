@@ -49,42 +49,13 @@ with tab1:
         .sort_values("AbsEV", ascending=False)
         .reset_index(drop=True))
 
-        with col1:
-                render_ev_matchup(render_df, 0)
-                render_ev_matchup(render_df, 2)
-                render_ev_matchup(render_df, 4)
-                render_ev_matchup(render_df, 6)
-                render_ev_matchup(render_df, 8)
-                render_ev_matchup(render_df, 10)
-                render_ev_matchup(render_df, 12)
-                render_ev_matchup(render_df, 14)
-                render_ev_matchup(render_df, 16)
-                render_ev_matchup(render_df, 18)
-                render_ev_matchup(render_df, 20)
-                render_ev_matchup(render_df, 22)
-                render_ev_matchup(render_df, 24)
-                render_ev_matchup(render_df, 26)
-                render_ev_matchup(render_df, 28)
-                render_ev_matchup(render_df, 30)
+    with col1:
+        for i in range(0, len(render_df), 2):
+            render_ev_matchup(render_df, i)
 
-        with col2:
-                render_ev_matchup(render_df, 1)
-                render_ev_matchup(render_df, 3)
-                render_ev_matchup(render_df, 5)
-                render_ev_matchup(render_df, 7)
-                render_ev_matchup(render_df, 9)
-                render_ev_matchup(render_df, 11)
-                render_ev_matchup(render_df, 13)
-                render_ev_matchup(render_df, 15)
-                render_ev_matchup(render_df, 17)
-                render_ev_matchup(render_df, 19)
-                render_ev_matchup(render_df, 21)
-                render_ev_matchup(render_df, 23)
-                render_ev_matchup(render_df, 25)
-                render_ev_matchup(render_df, 27)
-                render_ev_matchup(render_df, 29)
-                render_ev_matchup(render_df, 31)
-
+    with col2:
+        for i in range(1, len(render_df), 2):
+            render_ev_matchup(render_df, i)
 
     with tab4: #A
         st.subheader("Overall Outlook")
