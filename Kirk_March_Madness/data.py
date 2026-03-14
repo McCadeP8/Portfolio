@@ -524,6 +524,7 @@ def calculate_expected_value(Scores, Counts, payout, Type):
         Type: expected_values
     })
 
+#A 
 @st.cache_data
 def run_analysis(sims_data, Projections, Projections2, Picks):
     Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, sims_data, Projections)
