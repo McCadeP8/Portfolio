@@ -2,7 +2,7 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-from data import get_projections, get_picks, calculate_risk_score, run_simulations, calculate_sim_ranks, score_simulations_by_round, plot_correct_picks, count_simulations_by_round, score_opening_rounds, count_opening_round_simulations, score_simulations_by_region, count_simulations_by_region, build_games_table, render_ev_matchup, get_total_payout, get_risk_value
+from data import get_projections, get_picks, calculate_risk_score, run_simulations, calculate_sim_ranks, score_simulations_by_round, plot_correct_picks, count_simulations_by_round, score_opening_rounds, count_opening_round_simulations, score_simulations_by_region, count_simulations_by_region, build_games_table, render_ev_matchup, get_total_payout, get_risk_value, update_total_expected
 
 st.set_page_config(
     page_title = "Kirk's March Madness Bracket Analysis",
@@ -240,4 +240,5 @@ with tab1:
 
 
 with tab2:
-    st.write("Ehllo")
+    OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
+    st.dataframe(OverallData.sort_values("Expected Points", ascending=False).reset_index(drop=True), use_container_width=True)
