@@ -1534,10 +1534,10 @@ def _center_html(picks_row, by_name):
     return (
         f'<div style="display:flex;flex-direction:column;align-items:center;'
         f'padding:0 10px;min-width:{f4_w}px;">'
-        f'{_f4_block(f4_1_t1, f4_1_t2, f4_1, "Final Four", by_name)}'
         f'{champ_box}'
         f'{champ_game}'
-        f'{_f4_block(f4_2_t1, f4_2_t2, f4_2, "Final Four", by_name)}'
+        f'{_f4_block(f4_1_t1, f4_1_t2, f4_1, "Final Four", by_name)}'
+        f'{_f4_block(f4_2_t1, f4_2_t2, f4_2, "", by_name)}'
         f'</div>'
     )
 
@@ -1584,7 +1584,7 @@ def _css():
 
 .brk-main {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
 }
 
@@ -1628,8 +1628,7 @@ def build_bracket_html(
     return (
         _css()
         + f'<div class="brk-outer">'
-        f'<div class="brk-title">{title}</div>'
-        f'{owner_div}'
+        f'<div class="brk-title">{bracket_owner}</div>'
         f'<div class="brk-main">'
         f'<div class="brk-side">{left_html}</div>'
         f'{center}'
@@ -1681,6 +1680,6 @@ def render_bracket(
     if height is None:
         region_h = 16 * SLOT_H + LBL_H  # one region column height
         side_h   = 2 * region_h + REG_GAP + 14  # two regions + gap + region label
-        height   = side_h + 80  # add some breathing room
+        height   = side_h + 140  # add some breathing room
 
     components.html(html, height=height, scrolling=True) #GD

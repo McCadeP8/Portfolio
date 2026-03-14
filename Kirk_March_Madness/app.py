@@ -44,7 +44,6 @@ tab1, tab2 = st.tabs(["Bracket Outlook", "Overall Standings"])
 
 with tab1:
     selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
-    render_bracket(Projections, Picks, selected_bracket)
     tab3, tab4 = st.tabs(["Cheering Guide", "Bracket Performance"])
     with tab3:
         col1, col2 = st.columns(2)
@@ -237,8 +236,9 @@ with tab1:
             plot_correct_picks(ScoresMidwest, selected_bracket, "Distribution of Points")
         with col3:
             plot_correct_picks(CountsMidwest, selected_bracket, "Distribution of Correct Picks")
-
-
+    
+    st.markdown("<style>.stMainBlockContainer { max-width: 98%; padding: 0 1rem; }</style>", unsafe_allow_html=True)
+    render_bracket(Projections, Picks, selected_bracket)
 
 with tab2:
     OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
