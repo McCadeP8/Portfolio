@@ -420,7 +420,7 @@ def plot_correct_picks(counts_df, selected_bracket, title, actual=None):
             x=actual, y=0.95, yref='paper',
             text="Actual",
             showarrow=False,
-            xanchor='right', yanchor='top',
+            xanchor='left', yanchor='top',
             font=dict(color='gold', size=12))
     fig.update_layout(
         paper_bgcolor='#0E1117',
