@@ -1778,4 +1778,4 @@ def render_bracket(
         side_h   = 2 * region_h + REG_GAP + 14  # two regions + gap + region label
         height   = side_h + 140  # add some breathing room
 
-    components.html(html, height=height, scrolling=True) #GD
+    components.html(html, height=height, scrolling=True) #GD6
