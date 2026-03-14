@@ -241,24 +241,4 @@ with tab1:
 with tab2:
     OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
     OverallData = OverallData.sort_values("Pred. Pts", ascending=False).reset_index(drop=True)
-
-    styled = OverallData.style.format({
-        "Pred. Pts": "{:.2f}",
-        "Pred. Games": "{:.2f}",
-        "Total EV": "${:,.2f}",
-        "Win%": "{:.1f}%",
-        "ITM%": "{:.1f}%",
-        "Th Win%": "{:.1f}%",
-        "Fr Win%": "{:.1f}%",
-        "W Win%": "{:.1f}%",
-        "E Win%": "{:.1f}%",
-        "S Win%": "{:.1f}%",
-        "MW Win%": "{:.1f}%",
-        "S16 Win%": "{:.1f}%",
-        "Risk Score": "{:.2f}",
-        "Downside": "{:.2f}",
-        "Champ Risk": "{:.2f}",
-        "Avg. Upset": "{:.2f}"
-    })
-
-    st.dataframe(styled, use_container_width=True)
+    st.dataframe(OverallData, use_container_width=True)
