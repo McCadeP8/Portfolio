@@ -113,7 +113,7 @@ with tab1:
                 st.metric(label="Points", value=29.4, delta=1.3, border=True)
                 st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
         with col2:
-            plot_correct_picks(Scores32Pre, selected_bracket, "Distribution of Points", 11)
+            plot_correct_picks(Scores32Pre, selected_bracket, "Distribution of Points", 29)
         with col3:
             plot_correct_picks(Counts32Pre, selected_bracket, "Distribution of Correct Picks")
 
