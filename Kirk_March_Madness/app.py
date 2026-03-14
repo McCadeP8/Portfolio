@@ -2,13 +2,14 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-import pandas as pd
 from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, build_games_table, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre
 
 st.set_page_config(
     page_title = "Kirk's March Madness Bracket Analysis",
     page_icon = ":basketball:",
     layout = "wide")
+
+st.title(":basketball::trophy: Kirk's March Madness Pool:trophy::basketball:")
 
 with st.spinner("In Progress"):
     Projections = get_projections()
@@ -33,8 +34,6 @@ with st.spinner("In Progress"):
     ScoresWestPre, ScoresEastPre, ScoresSouthPre, ScoresMidwestPre,
     CountsWestPre, CountsEastPre, CountsSouthPre, CountsMidwestPre,
     TotalExpectedPre, TotalPayoutPre) = run_analysis(SimsPre, Projections, Projections2, Picks)
-
-st.title(":basketball::trophy: Kirk's March Madness Pool:trophy::basketball:")
 
 tab1, tab2 = st.tabs(["Bracket Outlook", "Overall Standings"])
 
