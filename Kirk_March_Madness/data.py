@@ -1045,7 +1045,7 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     df["Total"] = df[sum_cols].sum(axis=1)
     scale_cols = ["Thurs", "Fri", "West", "East", "South", "Midwest", "S16"]
     for col in scale_cols:
-        df[col] = df[col] / 10
+        df[col] = df[col] * 10
     pred_correct = ScoresTotal.mean(axis=0).reset_index()
     pred_correct.columns = ["Bracket", "Predicted_Correct_Picks"]
     pred_points = CountTotal.mean(axis=0).reset_index()
