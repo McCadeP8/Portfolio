@@ -1038,3 +1038,75 @@ def render_ev_matchup(df, RowNumber):
     """
 
     components.html(html, height=380, scrolling=False)
+
+def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Picks, Finish):
+    df = TotalExpected.copy()
+    sum_cols = ["Total", "Thurs", "Fri", "West", "East", "South", "Midwest", "S16"]
+    df["Total"] = df[sum_cols].sum(axis=1)
+    scale_cols = ["Thurs", "Fri", "West", "East", "South", "Midwest", "S16"]
+    for col in scale_cols:
+        df[col] = df[col] / 10
+    pred_correct = ScoresTotal.mean(axis=0).reset_index()
+    pred_correct.columns = ["Bracket", "Predicted_Correct_Picks"]
+    pred_points = CountTotal.mean(axis=0).reset_index()
+    pred_points.columns = ["Bracket", "Predicted_Points"]
+    df = df.merge(pred_correct, on="Bracket", how="left")
+    df = df.merge(pred_points, on="Bracket", how="left")
+    risk_cols = ["risk_score", "downside", "champ_concentration", "avg_upset_seed"]
+    df = df.merge( RiskScore[["Bracket"] + risk_cols], on="Bracket", how="left")
+    picks = Picks.copy()
+    picks["Runner_Up"] = picks.apply(lambda row: row["F4_1"] if row["F4_1"] != row["Champ"] else row["F4_2"], axis=1)
+    df = df.merge(picks[["Bracket", "Champ", "Runner_Up"]], on="Bracket", how="left")
+    finish = Finish.drop(columns=["Sim"], errors="ignore")
+    n_sims = finish.shape[0]
+    win_pct = ((finish == 1).sum(axis=0).div(n_sims).mul(100).reset_index())
+    win_pct.columns = ["Bracket", "Win %"]
+    money_pct = ((finish <= 33).sum(axis=0).div(n_sims).mul(100).reset_index())
+    money_pct.columns = ["Bracket", "In The Money %"]
+    df = df.merge(win_pct, on="Bracket", how="left")
+    df = df.merge(money_pct, on="Bracket", how="left")
+    rename_map = {
+        "Total": "Total EV",
+        "Thurs": "Th Win%",
+        "Fri": "Fr Win%",
+        "West": "W Win%",
+        "East": "E Win%",
+        "South": "S Win%",
+        "Midwest": "MW Win%",
+        "S16": "S16 Win%",
+        "Predicted_Correct_Picks": "Pred. Pts",
+        "Predicted_Points": "Pred. Games",
+        "risk_score": "Risk Score",
+        "downside": "Downside",
+        "champ_concentration": "Champ Risk",
+        "avg_upset_seed": "Avg. Upset",
+        "Win %": "Win%",
+        "In The Money %": "ITM%",
+        "Champ": "Champion",
+        "Runner_Up": "Runner Up"
+    }
+    df = df.rename(columns=rename_map)
+    ordered_cols = [
+        "Bracket",
+        "Total EV",
+        "Win%",
+        "ITM%",
+        "Th Win%",
+        "Fr Win%",
+        "W Win%",
+        "E Win%",
+        "S Win%",
+        "MW Win%",
+        "S16 Win%",
+        "Pred. Pts",
+        "Pred. Games",
+        "Risk Score",
+        "Downside",
+        "Champ Risk",
+        "Avg. Upset",
+        "Champion",
+        "Runner Up"
+    ]
+    ordered_cols = [c for c in ordered_cols if c in df.columns]
+    df = df[ordered_cols]
+    return df
