@@ -1088,6 +1088,8 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     df = df.rename(columns=rename_map)
     ordered_cols = [
         "Bracket",
+        "Pred. Pts",
+        "Pred. Games",
         "Total EV",
         "Win%",
         "ITM%",
@@ -1098,8 +1100,6 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
         "S Win%",
         "MW Win%",
         "S16 Win%",
-        "Pred. Pts",
-        "Pred. Games",
         "Risk Score",
         "Downside",
         "Champ Risk",
