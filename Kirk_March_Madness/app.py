@@ -94,38 +94,38 @@ with tab1:
                     help="Weighted average seed of teams picked to win each round. Higher = more Cinderella picks.",
                     border=True)
 
-    sections = [
-    ("Total", "Total_Score", "Total_Count", ScoresTotalPre, CountsTotalPre),
-    ("Thursday", "Thurs_Score", "Thurs_Count", ScoresThursPre, CountsThursPre),
-    ("Friday", "Fri_Score", "Fri_Count", ScoresFriPre, CountsFriPre),
-    ("East Region", "East_Score", "East_Count", ScoresEastPre, CountsEastPre),
-    ("West Region", "West_Score", "West_Count", ScoresWestPre, CountsWestPre),
-    ("South Region", "South_Score", "South_Count", ScoresSouthPre, CountsSouthPre),
-    ("Midwest Region", "Midwest_Score", "Midwest_Count", ScoresMidwestPre, CountsMidwestPre),
-    ("Round of 64", "Round of 64_Score", "Round of 64_Count", Scores64Pre, Counts64Pre),
-    ("Round of 32", "Round of 32_Score", "Round of 32_Count", Scores32Pre, Counts32Pre),
-    ("Sweet Sixteen", "Sweet 16_Score", "Sweet 16_Count", Scores16Pre, Counts16Pre),
-    ("Elite Eight", "Elite 8_Score", "Elite 8_Count", Scores8Pre, Counts8Pre),
-    ("Final Four", "Final Four_Score", "Final Four_Count", Scores4Pre, Counts4Pre),
-    ("Champion", "Championship_Score", "Championship_Count", Scores2Pre, Counts2Pre)]
+        sections = [
+        ("Total", "Total_Score", "Total_Count", ScoresTotalPre, CountsTotalPre),
+        ("Thursday", "Thurs_Score", "Thurs_Count", ScoresThursPre, CountsThursPre),
+        ("Friday", "Fri_Score", "Fri_Count", ScoresFriPre, CountsFriPre),
+        ("East Region", "East_Score", "East_Count", ScoresEastPre, CountsEastPre),
+        ("West Region", "West_Score", "West_Count", ScoresWestPre, CountsWestPre),
+        ("South Region", "South_Score", "South_Count", ScoresSouthPre, CountsSouthPre),
+        ("Midwest Region", "Midwest_Score", "Midwest_Count", ScoresMidwestPre, CountsMidwestPre),
+        ("Round of 64", "Round of 64_Score", "Round of 64_Count", Scores64Pre, Counts64Pre),
+        ("Round of 32", "Round of 32_Score", "Round of 32_Count", Scores32Pre, Counts32Pre),
+        ("Sweet Sixteen", "Sweet 16_Score", "Sweet 16_Count", Scores16Pre, Counts16Pre),
+        ("Elite Eight", "Elite 8_Score", "Elite 8_Count", Scores8Pre, Counts8Pre),
+        ("Final Four", "Final Four_Score", "Final Four_Count", Scores4Pre, Counts4Pre),
+        ("Champion", "Championship_Score", "Championship_Count", Scores2Pre, Counts2Pre)]
 
 
-    for title, score_col, count_col, score_df, count_df in sections:
+        for title, score_col, count_col, score_df, count_df in sections:
 
-        st.subheader(title)
-        col10, col11, col12 = st.columns([1,2,2])
-        actualS = get_risk_value(ActualResultsExp, selected_bracket, score_col)
-        expectedS = get_risk_value(ExpectedDFPre, selected_bracket, score_col)
-        actualC = get_risk_value(ActualResultsExp, selected_bracket, count_col)
-        expectedC = get_risk_value(ExpectedDFPre, selected_bracket, count_col)
+            st.subheader(title)
+            col10, col11, col12 = st.columns([1,2,2])
+            actualS = get_risk_value(ActualResultsExp, selected_bracket, score_col)
+            expectedS = get_risk_value(ExpectedDFPre, selected_bracket, score_col)
+            actualC = get_risk_value(ActualResultsExp, selected_bracket, count_col)
+            expectedC = get_risk_value(ExpectedDFPre, selected_bracket, count_col)
 
-        with col10:
-            st.metric(label="Points", value=actualS, delta=round(actualS - expectedS, 2), border=True)
-            st.metric(label="Correct", value=actualC, delta=round(actualC - expectedC, 2), border=True)
-        with col11:
-            plot_correct_picks(score_df, selected_bracket, f"Distribution of {title} Points", actualS)
-        with col12:
-            plot_correct_picks(count_df, selected_bracket, f"Distribution of {title} Correct Picks", actualC)
+            with col10:
+                st.metric(label="Points", value=actualS, delta=round(actualS - expectedS, 2), border=True)
+                st.metric(label="Correct", value=actualC, delta=round(actualC - expectedC, 2), border=True)
+            with col11:
+                plot_correct_picks(score_df, selected_bracket, f"Distribution of {title} Points", actualS)
+            with col12:
+                plot_correct_picks(count_df, selected_bracket, f"Distribution of {title} Correct Picks", actualC)
         
     with tab5:
         render_bracket(Projections, Picks, selected_bracket)
