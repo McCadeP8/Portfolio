@@ -637,28 +637,28 @@ def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, 
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
 
 def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections):
-    payout = [958, 250, 125, 125, 75, 50] + [15] * 19 + [0] * 111 + [5]
+    payout = [958, 250, 125, 125, 75, 50] + [15] * 19 + [0] * 110 + [5]
     ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
     TotalPayoutOutput = build_ev_table(Projections2, ScoresTotal, CountsTotal, Sims, payout, "Total")
-    payout = [15] * 1 + [0] * 136
+    payout = [15] * 1 + [0] * 135
     ExpThurs = calculate_expected_value(ScoresThurs, CountsThurs, payout, "Thurs")
     ThursPayoutOutput = build_ev_table(Projections2, ScoresThurs, CountsThurs, Sims, payout, "Thurs")
-    payout = [15] * 1 + [0] * 136
+    payout = [15] * 1 + [0] * 135
     ExpFri = calculate_expected_value(ScoresFri, CountsFri, payout, "Fri")
     FriPayoutOutput = build_ev_table(Projections2, ScoresFri, CountsFri, Sims, payout, "Fri")
-    payout = [25] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 135
     ExpWest = calculate_expected_value(ScoresWest, CountsWest, payout, "West")
     WestPayoutOutput = build_ev_table(Projections2, ScoresWest, CountsWest, Sims, payout, "West")
-    payout = [25] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 135
     ExpEast = calculate_expected_value(ScoresEast, CountsEast, payout, "East")
     EastPayoutOutput = build_ev_table(Projections2, ScoresEast, CountsEast, Sims, payout, "East")
-    payout = [25] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 135
     ExpSouth = calculate_expected_value(ScoresSouth, CountsSouth, payout, "South")
     SouthPayoutOutput = build_ev_table(Projections2, ScoresSouth, CountsSouth, Sims, payout, "South")
-    payout = [25] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 135
     ExpMidwest = calculate_expected_value(ScoresMidwest, CountsMidwest, payout, "Midwest")
     MidwestPayoutOutput = build_ev_table(Projections2, ScoresMidwest, CountsMidwest, Sims, payout, "Midwest")
-    payout = [25] * 1 + [0] * 136
+    payout = [25] * 1 + [0] * 135
     ExpS16 = calculate_expected_value(Scores32, Counts32, payout, "S16")
     S16PayoutOutput = build_ev_table(Projections2, Scores32, Counts32, Sims, payout, "S16")
     exp_tables = [
