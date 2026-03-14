@@ -392,7 +392,7 @@ def calculate_sim_ranks(scores_total):
     ranks_df.insert(0, "Sim", np.arange(1, len(ranks_df) + 1))
     return ranks_df
 
-def plot_correct_picks(counts_df, selected_bracket, title):
+def plot_correct_picks(counts_df, selected_bracket, title, actual=None):
     counts = counts_df[selected_bracket]
     mean_val = counts.mean()
     min_val = counts.min()
@@ -412,13 +412,19 @@ def plot_correct_picks(counts_df, selected_bracket, title):
         line_dash='dash',
         line_color='red',
         line_width=1.5)
+    if actual is not None:
+        fig.add_vline(
+            x=actual,
+            line_dash='dash',
+            line_color='gold',
+            line_width=1.5)
     fig.update_layout(
         paper_bgcolor='#0E1117',
         plot_bgcolor='#0E1117',
         font_color='white',
-        height = 350,
+        height=350,
         xaxis=dict(
-            title=title,   # 👈 updated here
+            title=title,
             tickfont=dict(color='white'),
             gridcolor='#444444'),
         yaxis=dict(
