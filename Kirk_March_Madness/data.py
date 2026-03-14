@@ -1311,7 +1311,7 @@ def _rcol(label, matchups, round_key, side, width, by_name):
     lbl = (
         f'<div style="height:{LBL_H}px;width:{total}px;'
         f'display:flex;align-items:flex-end;justify-content:center;'
-        f'font-size:8px;letter-spacing:1.5px;text-transform:uppercase;'
+        f'font-size:13px;letter-spacing:1.5px;text-transform:uppercase;'
         f'color:#2e4060;padding-bottom:2px;">{label}</div>'
     )
 
@@ -1351,11 +1351,14 @@ def _region_data(proj, regions, region_idx, by_name, by_rs, picks_row):
     # R32
     r32 = []
     for i in range(4):
-        r32.append((
-            gp(f"R64_{r64o + i * 2 + 1}"),
-            gp(f"R64_{r64o + i * 2 + 2}"),
-            gp(f"R32_{r32o + i + 1}"),
-        ))
+        # Bottom half of region: games 5&6 are swapped vs visual order
+        if i == 2:
+            top_col = f"R64_{r64o + i * 2 + 2}"
+            bot_col = f"R64_{r64o + i * 2 + 1}"
+        else:
+            top_col = f"R64_{r64o + i * 2 + 1}"
+            bot_col = f"R64_{r64o + i * 2 + 2}"
+        r32.append((gp(top_col), gp(bot_col), gp(f"R32_{r32o + i + 1}")))
 
     # S16
     s16 = []
@@ -1386,10 +1389,10 @@ def _region_html(proj, regions, region_idx, by_name, by_rs, picks_row, side):
     )
 
     cols = {
-        "R64": _rcol("R64", r64, "R64", side, W["R64"], by_name),
-        "R32": _rcol("R32", r32, "R32", side, W["R32"], by_name),
-        "S16": _rcol("S16", s16, "S16", side, W["S16"], by_name),
-        "E8":  _rcol("E8",  e8,  "E8",  side, W["E8"],  by_name),
+    "R64": _rcol("Round of 64", r64, "R64", side, W["R64"], by_name),
+    "R32": _rcol("Round of 32", r32, "R32", side, W["R32"], by_name),
+    "S16": _rcol("Sweet 16",    s16, "S16", side, W["S16"], by_name),
+    "E8":  _rcol("Elite Eight", e8,  "E8",  side, W["E8"],  by_name),
     }
 
     order = ["R64", "R32", "S16", "E8"] if side == "left" else ["E8", "S16", "R32", "R64"]
