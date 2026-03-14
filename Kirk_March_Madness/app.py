@@ -242,21 +242,21 @@ with tab2:
     OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
 st.dataframe(
     OverallData,
-    use_container_width=True,
+    use_container_width=True, height="content",
     column_config={
         "Pred. Pts": st.column_config.NumberColumn(format="%.2f"),
         "Pred. Games": st.column_config.NumberColumn(format="%.2f"),
         "Total EV": st.column_config.NumberColumn(format="$%.2f"),
 
-        "Win%": st.column_config.NumberColumn(format="%.1f%%"),
-        "ITM%": st.column_config.NumberColumn(format="%.1f%%"),
-        "Th Win%": st.column_config.NumberColumn(format="%.1f%%"),
-        "Fr Win%": st.column_config.NumberColumn(format="%.1f%%"),
-        "W Win%": st.column_config.NumberColumn(format="%.1f%%"),
-        "E Win%": st.column_config.NumberColumn(format="%.1f%%"),
-        "S Win%": st.column_config.NumberColumn(format="%.1f%%"),
-        "MW Win%": st.column_config.NumberColumn(format="%.1f%%"),
-        "S16 Win%": st.column_config.NumberColumn(format="%.1f%%"),
+        "Win%": st.column_config.NumberColumn(format="%.2f%%"),
+        "ITM%": st.column_config.NumberColumn(format="%.2f%%"),
+        "Th Win%": st.column_config.NumberColumn(format="%.2f%%"),
+        "Fr Win%": st.column_config.NumberColumn(format="%.2f%%"),
+        "W Win%": st.column_config.NumberColumn(format="%.2f%%"),
+        "E Win%": st.column_config.NumberColumn(format="%.2f%%"),
+        "S Win%": st.column_config.NumberColumn(format="%.2f%%"),
+        "MW Win%": st.column_config.NumberColumn(format="%.2f%%"),
+        "S16 Win%": st.column_config.NumberColumn(format="%.2f%%"),
 
         "Risk Score": st.column_config.NumberColumn(format="%.2f"),
         "Downside": st.column_config.NumberColumn(format="%.2f"),
