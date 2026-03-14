@@ -416,7 +416,7 @@ def plot_correct_picks(counts_df, selected_bracket, title):
         paper_bgcolor='#0E1117',
         plot_bgcolor='#0E1117',
         font_color='white',
-        height = 200,
+        height = 400,
         xaxis=dict(
             title=title,   # 👈 updated here
             tickfont=dict(color='white'),
