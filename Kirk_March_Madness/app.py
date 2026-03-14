@@ -89,7 +89,8 @@ with tab1:
 
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.write("Hello There")
+            st.metric(label="Points", value=29.4, delta=1.3, border=True)
+            st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
         with col2:
             plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points")
         with col3:
