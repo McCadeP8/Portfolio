@@ -529,10 +529,7 @@ def calculate_expected_value(Scores, Counts, payout, Type):
     n_sims, n_brackets = score_vals.shape
     total_returns = np.zeros(n_brackets)
     for s in range(n_sims):
-        order = np.argsort(-score_vals[s])
-        sorted_counts = count_vals[s][order]
-        tie_order = np.argsort(-sorted_counts, kind="stable")
-        final_order = order[tie_order]
+        final_order = np.lexsort((-count_vals[s], -score_vals[s]))
         ranked_payout = payout[:n_brackets]
         total_returns[final_order] += ranked_payout
     expected_values = total_returns / n_sims
@@ -640,7 +637,7 @@ def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, 
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
 
 def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections):
-    payout = [983, 260, 125, 125, 75, 50] + [15] * 19 + [0] * 112
+    payout = [968, 275, 125, 125, 75, 50] + [15] * 19 + [0] * 112
     ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
     TotalPayoutOutput = build_ev_table(Projections2, ScoresTotal, CountsTotal, Sims, payout, "Total")
     payout = [15] * 1 + [0] * 136
