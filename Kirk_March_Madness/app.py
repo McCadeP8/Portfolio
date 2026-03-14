@@ -63,7 +63,7 @@ with tab1:
         for i in range(1, len(render_df), 2):
             render_ev_matchup(render_df, i)
 
-    with tab4: #A
+    with tab4:
         st.subheader("Overall Outlook")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -94,141 +94,41 @@ with tab1:
                     help="Weighted average seed of teams picked to win each round. Higher = more Cinderella picks.",
                     border=True)
 
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-            actualS = get_risk_value(ActualResultsExp, selected_bracket, "Total_Score")
-            expectedS = get_risk_value(ExpectedDFPre, selected_bracket, "Total_Score")
-            actualC = get_risk_value(ActualResultsExp, selected_bracket, "Total_Count")
-            expectedC = get_risk_value(ExpectedDFPre, selected_bracket, "Total_Count")
-            st.metric(label="Total Points", value=actualS, delta= round(actualS-expectedS,2),border=True)
-            st.metric(label="Total Correct", value=actualC, delta= round(actualC-expectedC,2),border=True)                
-        with col2:
-            plot_correct_picks(ScoresTotalPre, selected_bracket, "Distribution of Points", actualS)
-        with col3:
-            plot_correct_picks(CountsTotalPre, selected_bracket, "Distribution of Correct Picks", actualC)
+    sections = [
+    ("Total", "Total_Score", "Total_Count", ScoresTotalPre, CountsTotalPre),
+    ("Thursday", "Thurs_Score", "Thurs_Count", ScoresThursPre, CountsThursPre),
+    ("Friday", "Fri_Score", "Fri_Count", ScoresFriPre, CountsFriPre),
+    ("East Region", "East_Score", "East_Count", ScoresEastPre, CountsEastPre),
+    ("West Region", "West_Score", "West_Count", ScoresWestPre, CountsWestPre),
+    ("South Region", "South_Score", "South_Count", ScoresSouthPre, CountsSouthPre),
+    ("Midwest Region", "Midwest_Score", "Midwest_Count", ScoresMidwestPre, CountsMidwestPre),
+    ("Round of 64", "Round of 64_Score", "Round of 64_Count", Scores64Pre, Counts64Pre),
+    ("Round of 32", "Round of 32_Score", "Round of 32_Count", Scores32Pre, Counts32Pre),
+    ("Sweet Sixteen", "Sweet 16_Score", "Sweet 16_Count", Scores16Pre, Counts16Pre),
+    ("Elite Eight", "Elite 8_Score", "Elite 8_Count", Scores8Pre, Counts8Pre),
+    ("Final Four", "Final Four_Score", "Final Four_Count", Scores4Pre, Counts4Pre),
+    ("Champion", "Championship_Score", "Championship_Count", Scores2Pre, Counts2Pre)]
 
-        st.subheader("Round of 64")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(Scores64Pre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(Counts64Pre, selected_bracket, "Distribution of Correct Picks")
 
-        st.subheader("Round of 32")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(Scores32Pre, selected_bracket, "Distribution of Points", 29)
-        with col3:
-            plot_correct_picks(Counts32Pre, selected_bracket, "Distribution of Correct Picks")
+    for title, score_col, count_col, score_df, count_df in sections:
 
-        st.subheader("Sweet Sixteen")
+        st.subheader(title)
         col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(Scores16Pre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(Counts16Pre, selected_bracket, "Distribution of Correct Picks")
+        actualS = get_risk_value(ActualResultsExp, selected_bracket, score_col)
+        expectedS = get_risk_value(ExpectedDFPre, selected_bracket, score_col)
+        actualC = get_risk_value(ActualResultsExp, selected_bracket, count_col)
+        expectedC = get_risk_value(ExpectedDFPre, selected_bracket, count_col)
 
-        st.subheader("Elite Eight")
-        col1, col2, col3 = st.columns([1,2,2])
         with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
+            st.metric(label="Points", value=actualS, delta=round(actualS - expectedS, 2), border=True)
+            st.metric(label="Correct", value=actualC, delta=round(actualC - expectedC, 2), border=True)
         with col2:
-            plot_correct_picks(Scores8Pre, selected_bracket, "Distribution of Points")
+            plot_correct_picks(score_df, selected_bracket, f"Distribution of {title} Points", actualS)
         with col3:
-            plot_correct_picks(Counts8Pre, selected_bracket, "Distribution of Correct Picks")
-
-        st.subheader("Final Four")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(Scores4Pre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(Counts4Pre, selected_bracket, "Distribution of Correct Picks")
-
-        st.subheader("Championship")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(Scores2Pre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(Counts2Pre, selected_bracket, "Distribution of Correct Picks")
-
-        st.subheader("Thursday")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(ScoresThursPre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(CountsThursPre, selected_bracket, "Distribution of Correct Picks")
-
-        st.subheader("Friday")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(ScoresFriPre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(CountsFriPre, selected_bracket, "Distribution of Correct Picks")
-
-        st.subheader("West")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(ScoresWestPre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(CountsWestPre, selected_bracket, "Distribution of Correct Picks")
-
-        st.subheader("East")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(ScoresEastPre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(CountsEastPre, selected_bracket, "Distribution of Correct Picks")
-
-        st.subheader("South")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(ScoresSouthPre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(CountsSouthPre, selected_bracket, "Distribution of Correct Picks")
-
-        st.subheader("Midwest")
-        col1, col2, col3 = st.columns([1,2,2])
-        with col1:
-                st.metric(label="Points", value=29.4, delta=1.3, border=True)
-                st.metric(label="Picks", value=4.8, delta=-0.5, border=True)
-        with col2:
-            plot_correct_picks(ScoresMidwestPre, selected_bracket, "Distribution of Points")
-        with col3:
-            plot_correct_picks(CountsMidwestPre, selected_bracket, "Distribution of Correct Picks")
-    
-    with tab5:
-        render_bracket(Projections, Picks, selected_bracket)
+            plot_correct_picks(count_df, selected_bracket, f"Distribution of {title} Correct Picks", actualC)
+        
+        with tab5:
+            render_bracket(Projections, Picks, selected_bracket)
 
 with tab2:
     OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
