@@ -12,7 +12,7 @@ st.set_page_config(
 with st.spinner("In Progress"):
     Projections = get_projections()
     Projections2 = build_games_table(Projections)
-    Picks = get_picks()
+    Picks = get_picks(Projections)
     RiskScore = calculate_risk_score(Projections, Picks)
     Sims = run_simulations(Projections, n_simulations=10000)
     Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, Sims, Projections)

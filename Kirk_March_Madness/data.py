@@ -85,7 +85,7 @@ def actual_results(Sims):
     return Actual
 
 @st.cache_data
-def get_picks():
+def get_picks(Projections):
     file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
     #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
     wb = openpyxl.load_workbook(file_path, data_only=True)
@@ -179,9 +179,9 @@ def get_picks():
         "N35": "Champ",
         "L1": "Bracket"})
 
-        team_map = dict(zip(Projections["Team"], Projections["ActualName"]))
-        cols = result.columns.difference(["Bracket"])
-        result[cols] = result[cols].replace(team_map)
+    team_map = dict(zip(Projections["Team"], Projections["ActualName"]))
+    cols = result.columns.difference(["Bracket"])
+    result[cols] = result[cols].replace(team_map)
     return result
 
 @st.cache_data
