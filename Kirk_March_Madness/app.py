@@ -240,5 +240,4 @@ with tab1:
 
 with tab2:
     OverallData = update_total_expected(TotalExpected, ScoresTotal, CountsTotal, RiskScore, Picks, Finish)
-    OverallData = OverallData.sort_values("Pred. Pts", ascending=False).reset_index(drop=True)
     st.dataframe(OverallData, use_container_width=True)

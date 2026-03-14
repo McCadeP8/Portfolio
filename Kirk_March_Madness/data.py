@@ -1109,5 +1109,4 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     ]
     ordered_cols = [c for c in ordered_cols if c in df.columns]
     df = df[ordered_cols]
-
     return df
