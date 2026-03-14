@@ -7,7 +7,6 @@ from functools import reduce
 import streamlit as st
 
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def actual_results(Sims):
     Actual = pd.DataFrame({
@@ -84,10 +83,12 @@ def actual_results(Sims):
 
     return Actual
 
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 @st.cache_data
 def get_picks(Projections):
-    file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
-    #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
+    #file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
+    file_path = ("MARCH MADNESS 2021 brackets.xlsm")
     wb = openpyxl.load_workbook(file_path, data_only=True)
     cells = []
     for r in [4,8,12,16,20,24,28,32,38,42,46,50,54,58,62,66]:
@@ -522,6 +523,38 @@ def calculate_expected_value(Scores, Counts, payout, Type):
         "Bracket": Scores.columns[1:],
         Type: expected_values
     })
+
+def run_analysis(sims_data, Projections, Projections2, Picks):
+    Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, sims_data, Projections)
+    
+    for scores in [Scores2, Scores4, Scores8, Scores16, Scores32, Scores64]:
+        scores.insert(0, "Sim", range(1, len(Scores2) + 1))
+    
+    Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal = count_simulations_by_round(Picks, sims_data)
+    Finish = calculate_sim_ranks(ScoresTotal)
+    ScoresThurs = score_opening_rounds(Picks, sims_data, Projections, "Thursday")
+    ScoresFri = score_opening_rounds(Picks, sims_data, Projections, "Friday")
+    CountsThurs = count_opening_round_simulations(Picks, sims_data, Projections, "Thursday")
+    CountsFri = count_opening_round_simulations(Picks, sims_data, Projections, "Friday")
+    ScoresWest = score_simulations_by_region(Picks, sims_data, Projections, "West")
+    ScoresEast = score_simulations_by_region(Picks, sims_data, Projections, "East")
+    ScoresSouth = score_simulations_by_region(Picks, sims_data, Projections, "South")
+    ScoresMidwest = score_simulations_by_region(Picks, sims_data, Projections, "Midwest")
+    CountsWest = count_simulations_by_region(Picks, sims_data, Projections, "West")
+    CountsEast = count_simulations_by_region(Picks, sims_data, Projections, "East")
+    CountsSouth = count_simulations_by_region(Picks, sims_data, Projections, "South")
+    CountsMidwest = count_simulations_by_region(Picks, sims_data, Projections, "Midwest")
+    TotalExpected, TotalPayout = get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, sims_data, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections)
+    
+    return (
+        Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal,
+        Counts64, Counts32, Counts16, Counts8, Counts4, Counts2, CountsTotal,
+        Finish,
+        ScoresThurs, ScoresFri, CountsThurs, CountsFri,
+        ScoresWest, ScoresEast, ScoresSouth, ScoresMidwest,
+        CountsWest, CountsEast, CountsSouth, CountsMidwest,
+        TotalExpected, TotalPayout
+    )
 
 def build_games_table(projections):
     games = []
