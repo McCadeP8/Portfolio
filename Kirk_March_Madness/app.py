@@ -11,10 +11,13 @@ st.set_page_config(
 
 with st.spinner("In Progress"):
     Projections = get_projections()
+    st.toast("Pulled Projections")
     Projections2 = build_games_table(Projections)
     Picks = get_picks()
+    st.toast("Pulled Picks")
     RiskScore = calculate_risk_score(Projections, Picks)
-    Sims = run_simulations(Projections, n_simulations=10000)
+    Sims = run_simulations(Projections, n_simulations=100000)
+    st.toast("Ran 100,000 Simulations")
     Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, Sims, Projections)
     Scores2.insert(0, "Sim", range(1, len(Scores2) + 1))
     Scores4.insert(0, "Sim", range(1, len(Scores2) + 1))
@@ -28,6 +31,7 @@ with st.spinner("In Progress"):
     ScoresFri = score_opening_rounds(Picks, Sims, Projections, "Friday")
     CountsThurs = count_opening_round_simulations(Picks, Sims, Projections, "Thursday")
     CountsFri = count_opening_round_simulations(Picks, Sims, Projections, "Friday")
+    st.toast("Tallied Up Scores")
     ScoresWest = score_simulations_by_region(Picks, Sims, Projections, "West")
     ScoresEast = score_simulations_by_region(Picks, Sims, Projections, "East")
     ScoresSouth = score_simulations_by_region(Picks, Sims, Projections, "South")
