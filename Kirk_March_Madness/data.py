@@ -1621,10 +1621,6 @@ def build_bracket_html(
     )
     center = _center_html(picks_row, by_name)
 
-    owner_div = (
-        f'<div class="brk-owner">📋 {bracket_owner}</div>' if bracket_owner else ""
-    )
-
     return (
         _css()
         + f'<div class="brk-outer">'
