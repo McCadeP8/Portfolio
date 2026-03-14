@@ -204,7 +204,6 @@ with tab1:
             plot_correct_picks(CountsMidwestPre, selected_bracket, "Distribution of Correct Picks")
     
     with tab5:
-        st.markdown("<style>.stMainBlockContainer { max-width: 98%; padding: 0 1rem; }</style>", unsafe_allow_html=True)
         render_bracket(Projections, Picks, selected_bracket)
 
 with tab2:
