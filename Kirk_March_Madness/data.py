@@ -246,10 +246,6 @@ def run_simulations(projections, n_simulations=100000):
         results[f'R32_{g}'] = r32[g]
     for g in range(1, 33):    
         results[f'R64_{g}'] = r64[g]
-    for i in range(0, n_simulations, 10000):
-        print(f"  Simulations {i+1}-{min(i+10000, n_simulations)} complete...")
-    print(f"  All {n_simulations} simulations complete.")
-
     return results
 
 def score_simulations_by_round(picks, simulations, projections):
@@ -642,6 +638,8 @@ def get_projections2():
     return df
 
 def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
+    ScoresFinal = ScoresFinal.drop(columns=["Sim"], errors="ignore")
+    ScoresCounts = ScoresCounts.drop(columns=["Sim"], errors="ignore")
     payout = np.array(payout)
     scores = ScoresFinal.values
     counts = ScoresCounts.values
@@ -670,16 +668,6 @@ def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, 
         sim_col = simulations[game_id].values
         mask_a = sim_col == team_a
         mask_b = sim_col == team_b
-
-        # DIAGNOSTIC
-        if team_b == "Queens" or team_a == "Queens":
-            print(f"Type: {Type}")
-            print(f"GameID: {game_id}")
-            print(f"team_a: {team_a}, team_b: {team_b}")
-            print(f"mask_a sum: {mask_a.sum()}, mask_b sum: {mask_b.sum()}")
-            print(f"mask_a + mask_b = {mask_a.sum() + mask_b.sum()} (should equal {len(sim_col)})")
-            print(f"Unique sim_col values: {np.unique(sim_col)[:5]}")
-
         if mask_a.sum() == 0 or mask_b.sum() == 0:
             continue
         ev_a = PayoutMatrix[mask_a].mean(axis=0)
@@ -734,12 +722,6 @@ def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, Counts
         WestPayoutOutput, EastPayoutOutput, SouthPayoutOutput,
         MidwestPayoutOutput, S16PayoutOutput]
     PayoutCombined = pd.concat(payout_tables, axis=0, ignore_index=True)
-    print(PayoutCombined.groupby("GameID").size().value_counts())
-    test = PayoutCombined[
-        (PayoutCombined["GameID"] == "R64_6") & 
-        (PayoutCombined["Bracket"] == 42)
-    ]
-    print(test[["Type", "EV_A", "EV_B"]])
     PayoutCombined = (
     PayoutCombined
     .groupby(["GameID", "Bracket"], as_index=False)
