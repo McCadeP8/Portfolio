@@ -670,6 +670,16 @@ def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, 
         sim_col = simulations[game_id].values
         mask_a = sim_col == team_a
         mask_b = sim_col == team_b
+
+        # DIAGNOSTIC
+        if team_b == "Queens" or team_a == "Queens":
+            print(f"Type: {Type}")
+            print(f"GameID: {game_id}")
+            print(f"team_a: {team_a}, team_b: {team_b}")
+            print(f"mask_a sum: {mask_a.sum()}, mask_b sum: {mask_b.sum()}")
+            print(f"mask_a + mask_b = {mask_a.sum() + mask_b.sum()} (should equal {len(sim_col)})")
+            print(f"Unique sim_col values: {np.unique(sim_col)[:5]}")
+
         if mask_a.sum() == 0 or mask_b.sum() == 0:
             continue
         ev_a = PayoutMatrix[mask_a].mean(axis=0)
@@ -738,12 +748,13 @@ def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, Counts
         "EV_B": "sum"}))
     PayoutCombined["EV_Diff"] = PayoutCombined["EV_B"] - PayoutCombined["EV_A"]
     #PayoutCombined["Bracket"] = np.tile(Picks["Bracket"].values, len(PayoutCombined) // len(Picks))
+    score_columns = ScoresTotal.columns[1:]  # skip the Sim column
     bracket_names = pd.DataFrame({
-    "Bracket": range(len(Picks)),
-    "BracketName": Picks["Bracket"].values})
+        "Bracket": range(len(score_columns)),
+        "BracketName": score_columns
+    })
     PayoutCombined = PayoutCombined.merge(bracket_names, on="Bracket", how="left")
     PayoutCombined = PayoutCombined.drop(columns="Bracket").rename(columns={"BracketName": "Bracket"})
-
     PayoutCombined = PayoutCombined.merge(Projections2[["GameID", "TeamA", "TeamB"]], on="GameID", how="left")
     PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamA", right_on="Team", how="left", suffixes=("", "_a")).drop(columns="Team")
     PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamB", right_on="Team", how="left", suffixes=("", "_b")).drop(columns="Team")
