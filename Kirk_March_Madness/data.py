@@ -645,12 +645,14 @@ def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     payout = np.array(payout)
     scores = ScoresFinal.values
     counts = ScoresCounts.values
+    n_sims, n_brackets = scores.shape
     order = np.argsort(-scores, axis=1)
-    row_idx = np.arange(scores.shape[0])[:, None]
+    row_idx = np.arange(n_sims)[:, None]
     tied_counts = counts[row_idx, order]
     count_order = np.argsort(-tied_counts, axis=1)
     final_order = order[row_idx, count_order]
-    payout_matrix = payout[final_order]
+    payout_matrix = np.zeros((n_sims, n_brackets))
+    payout_matrix[row_idx, final_order] = payout[:n_brackets]
     return payout_matrix
 
 def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, Type):
