@@ -19,6 +19,13 @@ def actual_results(Sims):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @st.cache_data
+def get_sims_pre():
+    file_path = os.path.join(BASE_DIR, "SimsPre.parquet")
+    #file_path = ("SimsPre.parquet")
+    SimsPre = pd.read_parquet(file_path)
+    return SimsPre
+
+@st.cache_data
 def get_picks(Projections):
     file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
     #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
@@ -117,12 +124,6 @@ def get_picks(Projections):
     cols = result.columns.difference(["Bracket"])
     result[cols] = result[cols].replace(team_map)
     return result
-
-@st.cache_data
-def get_sims_pre():
-    file_path = os.path.join(BASE_DIR, "SimsPre.parquet")
-    SimsPre = pd.read_parquet(file_path)
-    return SimsPre
 
 @st.cache_data
 def get_projections():
