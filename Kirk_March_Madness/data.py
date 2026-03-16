@@ -477,7 +477,7 @@ def calculate_expected_value(Scores, Counts, payout, Type):
         "Bracket": Scores.columns[1:],
         Type: expected_values
     })
-    
+
 @st.cache_data
 def run_analysis(sims_data, Projections, Projections2, Picks):
     Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, sims_data, Projections)
@@ -661,35 +661,47 @@ def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     return payout_matrix
 
 def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, Type):
+
     ScoresTotal = ScoresTotal.drop(columns=["Sim"], errors="ignore")
     CountsTotal = CountsTotal.drop(columns=["Sim"], errors="ignore")
+
     PayoutMatrix = build_payout_matrix(ScoresTotal, CountsTotal, payout)
+
+    brackets = ScoresTotal.columns
     results = []
-    brackets = range(PayoutMatrix.shape[1])
+
     for _, game in Projections2.iterrows():
+
         game_id = game["GameID"]
         team_a = game["TeamA"]
         team_b = game["TeamB"]
+
         sim_col = simulations[game_id].values
+
         mask_a = sim_col == team_a
         mask_b = sim_col == team_b
+
         if mask_a.sum() == 0 or mask_b.sum() == 0:
             continue
+
         ev_a = PayoutMatrix[mask_a].mean(axis=0)
         ev_b = PayoutMatrix[mask_b].mean(axis=0)
         ev_diff = ev_a - ev_b
-        for j in brackets:
+
+        for j, bracket in enumerate(brackets):
             results.append([
                 game_id,
-                PayoutMatrix.shape[1] and j,
+                bracket,
                 ev_a[j],
                 ev_b[j],
                 ev_diff[j],
-                Type])
+                Type
+            ])
+
     return pd.DataFrame(
         results,
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
-
+        
 def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections):
     payout = [958, 250, 125, 125, 75, 50] + [15] * 19 + [0] * 110 + [5]
     ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
