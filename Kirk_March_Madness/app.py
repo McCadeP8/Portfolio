@@ -18,7 +18,7 @@ with st.spinner("In Progress"):
     Projections["Team"] = Projections["ActualName"]
     Projections2 = get_projections2()
     RiskScore = calculate_risk_score(Projections, Picks)
-    Sims = run_simulations(Projections, n_simulations=1)
+    Sims = run_simulations(Projections, n_simulations=2)
     ActualResults = actual_results(Sims)
 #   Sims.to_parquet("SimsPre.parquet", index=False)
     SimsPre = get_sims_pre()
