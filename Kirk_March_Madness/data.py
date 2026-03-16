@@ -453,21 +453,31 @@ def count_simulations_by_region(picks, simulations, projections, region):
     return df
 
 def calculate_expected_value(Scores, Counts, payout, Type):
+
     payout = np.array(payout)
+
     score_vals = Scores.iloc[:, 1:].values
     count_vals = Counts.iloc[:, 1:].values
+
     n_sims, n_brackets = score_vals.shape
     total_returns = np.zeros(n_brackets)
+
     for s in range(n_sims):
-        final_order = np.lexsort((-count_vals[s], -score_vals[s]))
-        ranked_payout = payout[:n_brackets]
-        total_returns[final_order] += ranked_payout
+
+        order = np.lexsort((-count_vals[s], -score_vals[s]))
+
+        ranked_payout = np.zeros(n_brackets)
+        ranked_payout[order] = payout[:n_brackets]
+
+        total_returns += ranked_payout
+
     expected_values = total_returns / n_sims
+
     return pd.DataFrame({
         "Bracket": Scores.columns[1:],
         Type: expected_values
     })
-
+    
 @st.cache_data
 def run_analysis(sims_data, Projections, Projections2, Picks):
     Scores64, Scores32, Scores16, Scores8, Scores4, Scores2, ScoresTotal = score_simulations_by_round(Picks, sims_data, Projections)
@@ -644,20 +654,15 @@ def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     scores = ScoresFinal.values
     counts = ScoresCounts.values
     n_sims, n_brackets = scores.shape
-    order = np.argsort(-scores, axis=1)
-    row_idx = np.arange(n_sims)[:, None]
-    tied_counts = counts[row_idx, order]
-    count_order = np.argsort(-tied_counts, axis=1)
-    final_order = order[row_idx, count_order]
     payout_matrix = np.zeros((n_sims, n_brackets))
-    payout_matrix[row_idx, final_order] = payout[:n_brackets]
+    for s in range(n_sims):
+        order = np.lexsort((-counts[s], -scores[s]))
+        payout_matrix[s, order] = payout[:n_brackets]
     return payout_matrix
 
 def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, Type):
-
     ScoresTotal = ScoresTotal.drop(columns=["Sim"], errors="ignore")
     CountsTotal = CountsTotal.drop(columns=["Sim"], errors="ignore")
-
     PayoutMatrix = build_payout_matrix(ScoresTotal, CountsTotal, payout)
     results = []
     brackets = range(PayoutMatrix.shape[1])
