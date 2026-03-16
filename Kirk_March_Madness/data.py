@@ -724,6 +724,12 @@ def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, Counts
         WestPayoutOutput, EastPayoutOutput, SouthPayoutOutput,
         MidwestPayoutOutput, S16PayoutOutput]
     PayoutCombined = pd.concat(payout_tables, axis=0, ignore_index=True)
+    print(PayoutCombined.groupby("GameID").size().value_counts())
+    test = PayoutCombined[
+        (PayoutCombined["GameID"] == "R64_6") & 
+        (PayoutCombined["Bracket"] == 42)
+    ]
+    print(test[["Type", "EV_A", "EV_B"]])
     PayoutCombined = (
     PayoutCombined
     .groupby(["GameID", "Bracket"], as_index=False)
@@ -731,7 +737,13 @@ def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, Counts
         "EV_A": "sum",
         "EV_B": "sum"}))
     PayoutCombined["EV_Diff"] = PayoutCombined["EV_B"] - PayoutCombined["EV_A"]
-    PayoutCombined["Bracket"] = np.tile(Picks["Bracket"].values, len(PayoutCombined) // len(Picks))
+    #PayoutCombined["Bracket"] = np.tile(Picks["Bracket"].values, len(PayoutCombined) // len(Picks))
+    bracket_names = pd.DataFrame({
+    "Bracket": range(len(Picks)),
+    "BracketName": Picks["Bracket"].values})
+    PayoutCombined = PayoutCombined.merge(bracket_names, on="Bracket", how="left")
+    PayoutCombined = PayoutCombined.drop(columns="Bracket").rename(columns={"BracketName": "Bracket"})
+
     PayoutCombined = PayoutCombined.merge(Projections2[["GameID", "TeamA", "TeamB"]], on="GameID", how="left")
     PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamA", right_on="Team", how="left", suffixes=("", "_a")).drop(columns="Team")
     PayoutCombined = PayoutCombined.merge(Projections[["Team", "Seed", "ActualName", "Logo", "Record", "Color"]], left_on="TeamB", right_on="Team", how="left", suffixes=("", "_b")).drop(columns="Team")
