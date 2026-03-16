@@ -453,26 +453,16 @@ def count_simulations_by_region(picks, simulations, projections, region):
     return df
 
 def calculate_expected_value(Scores, Counts, payout, Type):
-
     payout = np.array(payout)
-
     score_vals = Scores.iloc[:, 1:].values
     count_vals = Counts.iloc[:, 1:].values
-
     n_sims, n_brackets = score_vals.shape
     total_returns = np.zeros(n_brackets)
-
     for s in range(n_sims):
-
-        order = np.lexsort((-count_vals[s], -score_vals[s]))
-
-        ranked_payout = np.zeros(n_brackets)
-        ranked_payout[order] = payout[:n_brackets]
-
-        total_returns += ranked_payout
-
+        final_order = np.lexsort((-count_vals[s], -score_vals[s]))
+        ranked_payout = payout[:n_brackets]
+        total_returns[final_order] += ranked_payout
     expected_values = total_returns / n_sims
-
     return pd.DataFrame({
         "Bracket": Scores.columns[1:],
         Type: expected_values
@@ -661,47 +651,35 @@ def build_payout_matrix(ScoresFinal, ScoresCounts, payout):
     return payout_matrix
 
 def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, Type):
-
     ScoresTotal = ScoresTotal.drop(columns=["Sim"], errors="ignore")
     CountsTotal = CountsTotal.drop(columns=["Sim"], errors="ignore")
-
     PayoutMatrix = build_payout_matrix(ScoresTotal, CountsTotal, payout)
-
-    brackets = ScoresTotal.columns
     results = []
-
+    brackets = range(PayoutMatrix.shape[1])
     for _, game in Projections2.iterrows():
-
         game_id = game["GameID"]
         team_a = game["TeamA"]
         team_b = game["TeamB"]
-
         sim_col = simulations[game_id].values
-
         mask_a = sim_col == team_a
         mask_b = sim_col == team_b
-
         if mask_a.sum() == 0 or mask_b.sum() == 0:
             continue
-
         ev_a = PayoutMatrix[mask_a].mean(axis=0)
         ev_b = PayoutMatrix[mask_b].mean(axis=0)
         ev_diff = ev_a - ev_b
-
-        for j, bracket in enumerate(brackets):
+        for j in brackets:
             results.append([
                 game_id,
-                bracket,
+                PayoutMatrix.shape[1] and j,
                 ev_a[j],
                 ev_b[j],
                 ev_diff[j],
-                Type
-            ])
-
+                Type])
     return pd.DataFrame(
         results,
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
-        
+
 def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections):
     payout = [958, 250, 125, 125, 75, 50] + [15] * 19 + [0] * 110 + [5]
     ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
