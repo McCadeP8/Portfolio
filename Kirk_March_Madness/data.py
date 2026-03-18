@@ -792,7 +792,7 @@ def render_ev_matchup(df, RowNumber):
 
     # Which side has the edge?
     edge_side = "A" if ev_diff > 0 else "B" if ev_diff < 0 else None
-    edge_color = color_a if edge_side == "A" else color_b if edge_side == "B" else "#ffffff"
+    edge_color = color_b if edge_side == "A" else color_a if edge_side == "B" else "#ffffff"
 
     html = f"""
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
