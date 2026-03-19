@@ -16,19 +16,19 @@ def actual_results(Sims):
         actual[col] = unique[0] if len(unique) == 1 else np.nan
     return pd.DataFrame([actual])
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @st.cache_data
 def get_sims_pre():
-    file_path = os.path.join(BASE_DIR, "SimsPre.parquet")
-    #file_path = ("SimsPre.parquet")
+    #file_path = os.path.join(BASE_DIR, "SimsPre.parquet")
+    file_path = ("SimsPre.parquet")
     SimsPre = pd.read_parquet(file_path)
     return SimsPre
 
 @st.cache_data()
 def get_picks(Projections):
-    file_path = os.path.join(BASE_DIR, "mm 2026 name.xlsm")
-    #file_path = ("mm 2026 name.xlsm")
+    #file_path = os.path.join(BASE_DIR, "mm 2026 name.xlsm")
+    file_path = ("mm 2026 name.xlsm")
     wb = openpyxl.load_workbook(file_path, data_only=True)
     cells = []
     for r in [4,8,12,16,20,24,28,32,38,42,46,50,54,58,62,66]:
@@ -123,6 +123,10 @@ def get_picks(Projections):
     team_map = dict(zip(Projections["Team"], Projections["ActualName"]))
     cols = result.columns.difference(["Bracket"])
     result[cols] = result[cols].replace(team_map)
+    result["Bracket"] = (
+    result["Bracket"]
+    + " "
+    + (result.groupby("Bracket").cumcount() + 1).astype(str))
     return result
 
 @st.cache_data
@@ -682,28 +686,28 @@ def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, 
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
 
 def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections):
-    payout = [958, 250, 125, 125, 75, 50] + [15] * 19 + [0] * 110 + [5]
+    payout = [1400, 250, 175, 100, 50] + [20] * 35 + [0] * 110 + [5]
     ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
     TotalPayoutOutput = build_ev_table(Projections2, ScoresTotal, CountsTotal, Sims, payout, "Total")
-    payout = [15] * 1 + [0] * 135
+    payout = [15] * 1 + [0] * 199
     ExpThurs = calculate_expected_value(ScoresThurs, CountsThurs, payout, "Thurs")
     ThursPayoutOutput = build_ev_table(Projections2, ScoresThurs, CountsThurs, Sims, payout, "Thurs")
-    payout = [15] * 1 + [0] * 135
+    payout = [15] * 1 + [0] * 199
     ExpFri = calculate_expected_value(ScoresFri, CountsFri, payout, "Fri")
     FriPayoutOutput = build_ev_table(Projections2, ScoresFri, CountsFri, Sims, payout, "Fri")
-    payout = [25] * 1 + [0] * 135
+    payout = [50] * 1 + [0] * 199
     ExpWest = calculate_expected_value(ScoresWest, CountsWest, payout, "West")
     WestPayoutOutput = build_ev_table(Projections2, ScoresWest, CountsWest, Sims, payout, "West")
-    payout = [25] * 1 + [0] * 135
+    payout = [50] * 1 + [0] * 199
     ExpEast = calculate_expected_value(ScoresEast, CountsEast, payout, "East")
     EastPayoutOutput = build_ev_table(Projections2, ScoresEast, CountsEast, Sims, payout, "East")
-    payout = [25] * 1 + [0] * 135
+    payout = [50] * 1 + [0] * 199
     ExpSouth = calculate_expected_value(ScoresSouth, CountsSouth, payout, "South")
     SouthPayoutOutput = build_ev_table(Projections2, ScoresSouth, CountsSouth, Sims, payout, "South")
-    payout = [25] * 1 + [0] * 135
+    payout = [50] * 1 + [0] * 199
     ExpMidwest = calculate_expected_value(ScoresMidwest, CountsMidwest, payout, "Midwest")
     MidwestPayoutOutput = build_ev_table(Projections2, ScoresMidwest, CountsMidwest, Sims, payout, "Midwest")
-    payout = [25] * 1 + [0] * 135
+    payout = [25] * 1 + [0] * 199
     ExpS16 = calculate_expected_value(Scores32, Counts32, payout, "S16")
     S16PayoutOutput = build_ev_table(Projections2, Scores32, Counts32, Sims, payout, "S16")
     exp_tables = [
