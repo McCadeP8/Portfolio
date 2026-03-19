@@ -2,7 +2,7 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-imoprt pandas as pd
+import pandas as pd
 from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, get_projections2, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre, actual_results, get_scores_dataframe
 
 
