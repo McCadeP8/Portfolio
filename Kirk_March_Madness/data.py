@@ -149,6 +149,7 @@ def calculate_risk_score(projections, picks):
         champ_exp     = 0.0
         upset_num     = 0.0
         upset_denom   = 0.0
+        champ_team = row.get('Champ')
         for round_name, cols in round_cols.items():
             base_pts = round_points[round_name]
             prob_col = round_prob_col[round_name]
@@ -162,8 +163,8 @@ def calculate_risk_score(projections, picks):
                 exp_pts  = prob * pts
                 downside += (1 - prob) * pts
                 total_exp += exp_pts
-                if round_name == 'Champ':
-                    champ_exp = exp_pts
+                if pd.notna(champ_team) and team == champ_team:
+                    champ_exp += exp_pts                
                 upset_num   += seed * base_pts
                 upset_denom += base_pts
         champ_concentration = (champ_exp / total_exp * 100) if total_exp > 0 else 0
