@@ -20,7 +20,7 @@ with st.spinner("In Progress"):
     RiskScore = calculate_risk_score(Projections, Picks)
     #RiskScore = get_risk()
     #RiskScore = RiskScore.to_parquet("RiskScore.parquet", index = False)
-    Sims = run_simulations(Projections, n_simulations=1)
+    Sims = run_simulations(Projections, n_simulations=10000)
     ActualResults = actual_results(Sims)
     #Sims.to_parquet("SimsPre.parquet", index=False)
     SimsPre = get_sims_pre()
