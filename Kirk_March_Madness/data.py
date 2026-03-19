@@ -25,6 +25,12 @@ def get_sims_pre():
     SimsPre = pd.read_parquet(file_path)
     return SimsPre
 
+@st.cache_data
+def get_risk():
+    file_path = ("RiskScore.parquet")
+    Risk = pd.read_parquet(file_path)
+    return Risk
+
 @st.cache_data()
 def get_picks(Projections):
     #file_path = os.path.join(BASE_DIR, "mm 2026 name.xlsm")
