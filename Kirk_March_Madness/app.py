@@ -2,6 +2,7 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
+imoprt pandas as pd
 from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, get_projections2, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre, actual_results, get_scores_dataframe
 
 
@@ -17,7 +18,9 @@ with st.spinner("In Progress"):
     Picks = get_picks(Projections)
     Projections["Team"] = Projections["ActualName"]
     Projections2 = get_projections2()
-    RiskScore = calculate_risk_score(Projections, Picks)
+    #RiskScore = calculate_risk_score(Projections, Picks)
+    RiskScore = pd.read_parquet("RiskScore.parquet")
+    #RiskScore = RiskScore.to_parquet("RiskScore.parquet", index = False)
     Sims = run_simulations(Projections, n_simulations=10000)
     ActualResults = actual_results(Sims)
     #Sims.to_parquet("SimsPre.parquet", index=False)
