@@ -74,14 +74,14 @@ with tab1:
                     border=True)
 
         with col2:
-            downside_value = round(float(get_risk_value(RiskScore, selected_bracket, "downside")), 1)
+            downside_value = round(float(get_risk_value(RiskScore, selected_bracket, "downside")),2)
             downside_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'downside_rank'))} Overall"
             st.metric(label="Downside Risk", value=downside_value, delta=downside_rank,
                     help="Total points at risk across all picks, weighted by loss probability. Higher = more points riding on unlikely outcomes.",
                     border=True)
 
         with col3:
-            concentration_value = round(float(get_risk_value(RiskScore, selected_bracket, "champ_concentration")), 1)
+            concentration_value = round(float(get_risk_value(RiskScore, selected_bracket, "champ_concentration")), 2)
             concentration_rank  = f"#{int(get_risk_value(RiskScore, selected_bracket, 'concentration_rank'))} Overall"
             st.metric(label="Champion Risk", value=concentration_value, delta=concentration_rank,
                     help="Percentage of expected points coming from your champion pick. Higher = bracket lives and dies with one team.",
