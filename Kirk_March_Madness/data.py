@@ -25,7 +25,7 @@ def get_sims_pre():
     SimsPre = pd.read_parquet(file_path)
     return SimsPre
 
-@st.cache_data(ttl=0)
+@st.cache_data()
 def get_picks(Projections):
     file_path = os.path.join(BASE_DIR, "mm 2026 name.xlsm")
     #file_path = ("mm 2026 name.xlsm")
