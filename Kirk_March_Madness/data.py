@@ -27,7 +27,7 @@ def get_sims_pre():
 
 @st.cache_data
 def get_picks(Projections):
-    file_path = os.path.join(BASE_DIR, "MARCH MADNESS 2021 brackets.xlsm")
+    file_path = os.path.join(BASE_DIR, "mm 2026 name.xlsm")
     #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
     wb = openpyxl.load_workbook(file_path, data_only=True)
     cells = []
@@ -132,7 +132,7 @@ def get_projections():
     return df
 
 def calculate_risk_score(projections, picks):
-    round_points = {'R64': 1, 'R32': 4, 'S16': 9, 'E8': 15, 'F4': 22, 'Champ': 30}
+    round_points = {'R64': 1, 'R32': 4, 'S16': 8, 'E8': 16, 'F4': 28, 'Champ': 40}
     round_prob_col = {'R64': 'R32', 'R32': 'S16', 'S16': 'E8', 'E8': 'F4', 'F4': 'Champ', 'Champ': 'Champ'}
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
@@ -249,7 +249,7 @@ def run_simulations(projections, n_simulations=100000):
     return results
 
 def score_simulations_by_round(picks, simulations, projections):
-    round_points = {'R64': 1, 'R32': 4, 'S16': 9, 'E8': 15, 'F4': 22, 'Champ': 30}
+    round_points = {'R64': 1, 'R32': 4, 'S16': 8, 'E8': 16, 'F4': 28, 'Champ': 40}
     round_cols = {
         'R64':   [f'R64_{i}' for i in range(1, 33)],
         'R32':   [f'R32_{i}' for i in range(1, 17)],
@@ -403,7 +403,7 @@ def count_opening_round_simulations(picks, simulations, projections, day="Thu"):
     return df
 
 def score_simulations_by_region(picks, simulations, projections, region):
-    round_points = {'R64': 1, 'R32': 4, 'S16': 9, 'E8': 15}
+    round_points = {'R64': 1, 'R32': 4, 'S16': 8, 'E8': 16}
     round_cols = {
         'R64': [f'R64_{i}' for i in range(1, 33)],
         'R32': [f'R32_{i}' for i in range(1, 17)],
