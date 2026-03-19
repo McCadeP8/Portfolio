@@ -274,7 +274,7 @@ with tab4:
         st.metric(label="Total Miles", value=f"{int(total_miles):,} mi", help="Total miles traveled this season including road trips and returns home.", border=True)
     with col2:
         st.metric(label="Total Flights", value=num_flights, help="Number of flights taken this season (legs with distance > 0).", border=True)
-    st_folium(plot_team_flights(SelectedTeam, current_year, all_time_schedule), width="100%", height=480, returned_objects=[])
+    #st_folium(plot_team_flights(SelectedTeam, current_year, all_time_schedule), width="100%", height=480, returned_objects=[])
 
 with tab5:
     st.subheader("League Scoreboard")

@@ -16,19 +16,19 @@ def actual_results(Sims):
         actual[col] = unique[0] if len(unique) == 1 else np.nan
     return pd.DataFrame([actual])
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @st.cache_data
 def get_sims_pre():
-    file_path = os.path.join(BASE_DIR, "SimsPre.parquet")
-    #file_path = ("SimsPre.parquet")
+    #file_path = os.path.join(BASE_DIR, "SimsPre.parquet")
+    file_path = ("SimsPre.parquet")
     SimsPre = pd.read_parquet(file_path)
     return SimsPre
 
-@st.cache_data
+@st.cache_data(ttl=0)
 def get_picks(Projections):
-    file_path = os.path.join(BASE_DIR, "mm 2026 name.xlsm")
-    #file_path = ("MARCH MADNESS 2021 brackets.xlsm")
+    #file_path = os.path.join(BASE_DIR, "mm 2026 name.xlsm")
+    file_path = ("mm 2026 name.xlsm")
     wb = openpyxl.load_workbook(file_path, data_only=True)
     cells = []
     for r in [4,8,12,16,20,24,28,32,38,42,46,50,54,58,62,66]:
