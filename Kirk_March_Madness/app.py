@@ -42,7 +42,7 @@ with st.spinner("In Progress"):
 
     ActualResultsExp = get_scores_dataframe(ActualResults, Projections, Projections2, Picks)
 
-tab1, tab2 = st.tabs(["Bracket Outlook", "Overall Standings"])
+tab1, tab2, tabFAQ = st.tabs(["Bracket Outlook", "Overall Standings", "FAQ"])
 
 with tab1:
     selected_bracket = st.selectbox('Select Bracket', Picks['Bracket'].unique())
@@ -155,3 +155,50 @@ with tab2:
             "Downside": st.column_config.NumberColumn(format="%.2f"),
             "Champ Risk": st.column_config.NumberColumn(format="%.2f"),
             "Avg. Upset": st.column_config.NumberColumn(format="%.2f")})
+
+with tabFAQ:
+    st.markdown(
+        """
+        ## 📖 How This Works
+
+        ---
+
+        ### 🎉 Cheering Guide
+        Shows the **expected value** of each outcome across 10,000 simulated tournaments.
+        Simulations are updated frequently and sourced from ESPN — I'm actively working on
+        integrating a more real-time data feed.
+
+        ---
+
+        ### 📊 Bracket Performance
+        Compares your **actual results** against your pre-tournament expected values for each
+        payout type. *(Note: the first weekend is not yet included — coming soon.)*
+
+        ---
+
+        ### ⚠️ Risk Metrics
+
+        | Metric | What It Measures |
+        |---|---|
+        | **Downside Risk** | Points you could leave on the table if key picks go wrong |
+        | **Champion Risk** | How heavily your bracket depends on your champion going all the way |
+        | **Upset Risk** | How bold your upset picks are relative to the field |
+        | **Overall Risk** | A composite score of all three metrics above |
+
+        ---
+
+        ### 🗂️ Other Features
+        - **Individual Brackets** — Browse any entrant's full bracket
+        - **Live Standings** — Updates automatically as simulations are rerun
+        - **Live Scores** — Refreshed alongside each simulation update
+
+        ---
+
+        ### ⚠️ A Few Important Notes
+        - Mistakes are possible. **Kirk runs the official pool** — his word is final. This tool
+          is meant to complement his work, not replace it. He is, truly, the best.
+        - Questions, bugs, or feedback? Reach out anytime:
+            - [mccade.pearson@gmail.com](mailto:mccade.pearson@gmail.com)
+            - Twitter DMs open @McCadeP8
+        """
+    )
