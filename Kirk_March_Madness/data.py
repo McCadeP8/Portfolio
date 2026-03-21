@@ -693,13 +693,13 @@ def build_ev_table(Projections2, ScoresTotal, CountsTotal, simulations, payout, 
         columns=["GameID", "Bracket", "EV_A", "EV_B", "EV_Diff", "Type"])
 
 def get_total_payout(ScoresTotal, CountsTotal, Projections2, ScoresThurs, CountsThurs, Sims, ScoresFri, CountsFri, ScoresWest, CountsWest, ScoresEast, CountsEast, ScoresSouth, CountsSouth, ScoresMidwest, CountsMidwest, Scores32, Counts32, Picks, Projections):
-    payout = [1400, 250, 175, 100, 50] + [20] * 35 + [0] * 159 + [5]
+    payout = [1400, 250, 175, 100, 50] + [20] * 33 + [0] * 159 + [5]
     ExpTotal = calculate_expected_value(ScoresTotal, CountsTotal, payout, "Total")
     TotalPayoutOutput = build_ev_table(Projections2, ScoresTotal, CountsTotal, Sims, payout, "Total")
     payout = [15] * 1 + [0] * 199
     ExpThurs = calculate_expected_value(ScoresThurs, CountsThurs, payout, "Thurs")
     ThursPayoutOutput = build_ev_table(Projections2, ScoresThurs, CountsThurs, Sims, payout, "Thurs")
-    payout = [15] * 1 + [0] * 199
+    payout = [15] * 5 + [0] * 195
     ExpFri = calculate_expected_value(ScoresFri, CountsFri, payout, "Fri")
     FriPayoutOutput = build_ev_table(Projections2, ScoresFri, CountsFri, Sims, payout, "Fri")
     payout = [50] * 1 + [0] * 199
