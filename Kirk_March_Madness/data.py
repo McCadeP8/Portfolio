@@ -1164,7 +1164,7 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
         df[col] = df[col] * 100 / 15
     scale_cols = ["West", "East", "South", "Midwest", "S16"]
     for col in scale_cols:
-        df[col] = df[col] * 100 / 25
+        df[col] = df[col] * 100 / 50
     pred_correct = ScoresTotal.mean(axis=0).reset_index()
     pred_correct.columns = ["Bracket", "Predicted_Correct_Picks"]
     pred_points = CountTotal.mean(axis=0).reset_index()
@@ -1180,7 +1180,7 @@ def update_total_expected(TotalExpected, ScoresTotal, CountTotal, RiskScore, Pic
     n_sims = finish.shape[0]
     win_pct = ((finish == 1).sum(axis=0).div(n_sims).mul(100).reset_index())
     win_pct.columns = ["Bracket", "Win %"]
-    money_pct = ((finish <= 25).sum(axis=0).div(n_sims).mul(100).reset_index())
+    money_pct = ((finish <= 40).sum(axis=0).div(n_sims).mul(100).reset_index())
     money_pct.columns = ["Bracket", "In The Money %"]
     df = df.merge(win_pct, on="Bracket", how="left")
     df = df.merge(money_pct, on="Bracket", how="left")
