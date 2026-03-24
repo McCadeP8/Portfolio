@@ -632,8 +632,59 @@ with tab10:
             st.dataframe(draft_2R_2021, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
     
     with tablottery:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            ball1 = st.number_input("Ball 1", min_value=1, max_value=14, step=1)
+        with col2:
+            ball2 = st.number_input("Ball 2", min_value=1, max_value=14, step=1)
+        with col3:
+            ball3 = st.number_input("Ball 3", min_value=1, max_value=14, step=1)
+        with col4:
+            ball4 = st.number_input("Ball 4", min_value=1, max_value=14, step=1)
         base_table = lottery_table(standings)
-        st.dataframe(base_table, width = "stretch", row_height = 50, hide_index=True, placeholder="—")
+
+        ball_cols = ["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball"]
+
+        filtered_table = base_table.copy()
+
+        selected_balls = [ball1, ball2, ball3, ball4]
+
+        for ball in selected_balls:
+            if ball:
+                filtered_table = filtered_table[
+                    filtered_table[ball_cols].isin([ball]).any(axis=1)]
+        st.dataframe(filtered_table, width="stretch", height="content", row_height=50, hide_index=True)
+        counts = (
+            filtered_table["Ownership"]
+            .value_counts()
+            .rename_axis("Team")
+            .reset_index(name="Count")
+        )
+
+        # Get all teams from original table
+        all_teams = base_table["Ownership"].unique()
+        import pandas as pd
+        summary = (
+            pd.DataFrame({"Team": all_teams})
+            .merge(counts, on="Team", how="left")
+            .fillna(0)
+        )
+
+        summary["Count"] = summary["Count"].astype(int)
+
+        # Sort by count descending
+        summary = summary.sort_values("Count", ascending=False)
+        st.dataframe(
+        summary,
+        width="stretch",
+        hide_index=True)
+        col5, col6 = st.columns([4, 1])        
+        with col5:
+            st.dataframe(filtered_table, width="stretch", height="content", row_height=50, hide_index=True)
+        with col6:
+            st.dataframe(summary, width="stretch", hide_index=True)
+
+
 
 with tab11:
     AwardYears = st.selectbox("Select Award Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
