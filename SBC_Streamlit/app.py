@@ -676,10 +676,6 @@ with tab10:
 
         # Sort by count descending
         summary = summary.sort_values("Count", ascending=False)
-        st.dataframe(
-        summary,
-        width="stretch",
-        hide_index=True)
         col5, col6 = st.columns([4, 1])        
         with col5:
             st.dataframe(filtered_table, width="stretch", height="content", row_height=50, hide_index=True)
