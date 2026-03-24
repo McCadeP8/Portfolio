@@ -633,14 +633,17 @@ with tab10:
     
     with tablottery:
         col1, col2, col3, col4 = st.columns(4)
+
+        options = [None] + list(range(1, 15))
+
         with col1:
-            ball1 = st.number_input("Ball 1", min_value=1, max_value=14, step=1)
+            ball1 = st.selectbox("Ball 1", options)
         with col2:
-            ball2 = st.number_input("Ball 2", min_value=1, max_value=14, step=1)
+            ball2 = st.selectbox("Ball 2", options)
         with col3:
-            ball3 = st.number_input("Ball 3", min_value=1, max_value=14, step=1)
+            ball3 = st.selectbox("Ball 3", options)
         with col4:
-            ball4 = st.number_input("Ball 4", min_value=1, max_value=14, step=1)
+            ball4 = st.selectbox("Ball 4", options)        
         base_table = lottery_table(standings)
 
         ball_cols = ["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball"]
@@ -653,7 +656,6 @@ with tab10:
             if ball:
                 filtered_table = filtered_table[
                     filtered_table[ball_cols].isin([ball]).any(axis=1)]
-        st.dataframe(filtered_table, width="stretch", height="content", row_height=50, hide_index=True)
         counts = (
             filtered_table["Ownership"]
             .value_counts()
