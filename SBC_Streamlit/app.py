@@ -675,7 +675,7 @@ with tab10:
         summary["Count"] = summary["Count"].astype(int)
         
         if all(ball is not None for ball in [ball1, ball2, ball3, ball4]):
-        st.balloons()
+            st.balloons()
         # Sort by count descending
         summary = summary.sort_values("Count", ascending=False)
         col5, col6 = st.columns([4, 1])        
