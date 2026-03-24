@@ -2,7 +2,7 @@
 #os.chdir("Kirk_March_Madness")
 
 import streamlit as st
-from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, get_projections2, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre, actual_results, get_scores_dataframe, get_risk
+from data import get_projections, get_picks, calculate_risk_score, run_simulations, plot_correct_picks, get_projections2, render_ev_matchup, get_risk_value, update_total_expected, render_bracket, run_analysis, get_sims_pre, actual_results, get_scores_dataframe
 
 
 st.set_page_config(
