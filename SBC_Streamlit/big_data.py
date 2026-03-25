@@ -166,11 +166,11 @@ def add_game_to_schedule(game_dict):
     return df
 
 # add_game_to_schedule({
-#     "Round": "Conference Semifinals",
+#     "Round": "Conference Finals",
 #     "Type": "Playoffs",
 #     "Year": 2026,
-#     "Period": 40,
-#     "TeamA": "Tampa Bay",
+#     "Period": 41,
+#     "TeamA": "Kentucky",
 #     "TeamB": "Pittsburgh",
 #     "TeamAScore": np.nan,
 #     "TeamBScore": np.nan,

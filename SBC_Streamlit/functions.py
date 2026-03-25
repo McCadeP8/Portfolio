@@ -1189,7 +1189,7 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
         #np.repeat(standings["Team"].iloc[0], 140),
         np.repeat("El Paso", 140),
         np.repeat("Little Rock", 140),
-        np.repeat("Tulsa (Top 3) Else El Paso", 140),
+        np.repeat("Tulsa (Top 3), Else El Paso", 140),
         np.repeat("Tulsa 2", 115),
         np.repeat("Austin", 115),
         np.repeat("Nashville", 83),
