@@ -1186,20 +1186,21 @@ def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
     combos = list(combinations(items, 4))
     df = pd.DataFrame(combos, columns=["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball"])
     df["Ownership"] = np.concatenate([
-        np.repeat(standings["Team"].iloc[0], 140),
-        np.repeat(standings["Team"].iloc[1], 140),
-        np.repeat(standings["Team"].iloc[2], 140),
-        np.repeat(standings["Team"].iloc[3], 125),
-        np.repeat(standings["Team"].iloc[4], 105),
-        np.repeat(standings["Team"].iloc[5], 90),
-        np.repeat(standings["Team"].iloc[6], 75),
-        np.repeat(standings["Team"].iloc[7], 60),
-        np.repeat(standings["Team"].iloc[8], 45),
-        np.repeat(standings["Team"].iloc[9], 30),
-        np.repeat(standings["Team"].iloc[10], 20),
-        np.repeat(standings["Team"].iloc[11], 15),
-        np.repeat(standings["Team"].iloc[12], 10),
-        np.repeat(standings["Team"].iloc[13], 5),
+        #np.repeat(standings["Team"].iloc[0], 140),
+        np.repeat("El Paso", 140),
+        np.repeat("Little Rock", 140),
+        np.repeat("Tulsa (Top 3) Else El Paso", 140),
+        np.repeat("Tulsa 2", 115),
+        np.repeat("Austin", 115),
+        np.repeat("Nashville", 83),
+        np.repeat("Manchester", 82),
+        np.repeat("San Jose", 60),
+        np.repeat("Jacksonville", 45),
+        np.repeat("Vegas", 30),
+        np.repeat("Birmingham", 20),
+        np.repeat("Buffalo", 15),
+        np.repeat("Albuquerque", 10),
+        np.repeat("Des Moines", 5),
         np.repeat("Redraw", 1)])
     return df
 
