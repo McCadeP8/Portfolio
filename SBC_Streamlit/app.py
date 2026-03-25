@@ -558,7 +558,7 @@ with tab10:
 
         with col2:
             st.subheader("Round 2: Sunday, June 28th")
-            draft_2R = past_draft(df, pics, dh, 2026, "1st Round")
+            draft_2R = past_draft(df, pics, dh, 2026, "2nd Round")
             st.dataframe(draft_2R, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Drafted Team": st.column_config.ImageColumn(width="small"), "Current Team": st.column_config.ImageColumn(width="small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     with tab2025:
