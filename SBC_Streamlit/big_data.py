@@ -166,11 +166,11 @@ def add_game_to_schedule(game_dict):
     return df
 
 # add_game_to_schedule({
-#     "Round": "Conference Finals",
+#     "Round": "SBCFBL Finals",
 #     "Type": "Playoffs",
 #     "Year": 2026,
-#     "Period": 41,
-#     "TeamA": "Kentucky",
+#     "Period": 42,
+#     "TeamA": "Honolulu",
 #     "TeamB": "Pittsburgh",
 #     "TeamAScore": np.nan,
 #     "TeamBScore": np.nan,
