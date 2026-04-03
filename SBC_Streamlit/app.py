@@ -81,6 +81,9 @@ with col1:
     st.title(":basketball::trophy: SBC Fantasy Basketball League:trophy::basketball:")
     if SelectedTeam == "Honolulu":
         st.balloons()
+    if SelectedTeam == "Manchester":
+        st.snow()
+
 
 st.divider()
 
