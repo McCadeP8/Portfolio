@@ -79,7 +79,7 @@ st.set_page_config(
 col1, col2 = st.columns([4, 1])
 with col1:
     st.title(":basketball::trophy: SBC Fantasy Basketball League:trophy::basketball:")
-    if SelectedTeam == "Cincinnati":
+    if SelectedTeam == "Honolulu":
         st.balloons()
 
 st.divider()
