@@ -1072,11 +1072,6 @@ def stepien_check(dp: pd.DataFrame, DraftPicksIn: list[str], DraftPicksOut: list
     return "A"
 
 def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
-
-    df = get_data()
-    ft_players = get_fantrax_players()
-    ft_roster = get_fantrax_roster(2026, 130)
-
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
