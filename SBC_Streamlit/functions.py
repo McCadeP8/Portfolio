@@ -1218,26 +1218,54 @@ def format_live_stats_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def team_with_ranks(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, SelectedPeriod: int) -> pd.DataFrame:
+    # --- Select numeric stat columns ---
     stat_cols = df.select_dtypes("number").columns.tolist()
-    if SelectedYear <= 2025:
+    if SelectedYear <= 2025 and 'GP' in stat_cols:
         stat_cols.remove('GP')
+
+    # --- Get team row safely ---
     team_row = df[df["Team"] == SelectedTeam]
+    if team_row.empty:
+        raise ValueError(f"Team '{SelectedTeam}' not found in dataframe.")
+
+    team_idx = team_row.index[0]
+
+    # --- Compute ranks (numeric) ---
     ranks = df[stat_cols].rank(ascending=False, method="min")
-    team_ranks = ranks.loc[team_row.index[0]]
+
+    # Keep numeric ranks for logic
+    team_ranks = ranks.loc[team_idx].copy()
+
+    # Create separate display version (strings)
+    team_ranks_display = pd.Series(index=team_ranks.index, dtype="object")
+
+    # --- Build rank strings ---
     for col in team_ranks.index:
         rank_val = int(team_ranks[col])
         is_tied = (ranks[col] == rank_val).sum() > 1
+
+        # ordinal suffix
         if 11 <= rank_val % 100 <= 13:
             suffix = 'th'
         else:
             suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(rank_val % 10, 'th')
-        rank_str = f"{rank_val}{suffix}"
-        team_ranks[col] = f"T-{rank_str}" if is_tied else rank_str
-    out = pd.concat([team_row[stat_cols], team_ranks.to_frame().T], ignore_index=True)
-    out.insert(0, "Team", [SelectedTeam, None])
-    out["Team"] = out["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
-    return out
 
+        rank_str = f"{rank_val}{suffix}"
+        team_ranks_display[col] = f"T-{rank_str}" if is_tied else rank_str
+
+    # --- Combine stats + ranks ---
+    out = pd.concat(
+        [team_row[stat_cols].reset_index(drop=True),
+         team_ranks_display.to_frame().T],
+        ignore_index=True
+    )
+
+    # --- Add team column (logos) ---
+    out.insert(0, "Team", [SelectedTeam, None])
+    out["Team"] = out["Team"].map(lambda t: team_info.get(t, {}).get("logo", "") if t else "")
+
+    return out
+    
 current_matchup = current_matchup_period()
 def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str, SelectedCategory: str, SelectedYear: int, SelectedMatchup: int) -> alt.Chart:
     df_year = df[df["Year"] == SelectedYear]
