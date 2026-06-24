@@ -8,6 +8,7 @@ import pandas as pd
 import altair as alt
 import re as re
 import json
+import math
 from html import escape
 from textwrap import dedent
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
@@ -816,6 +817,16 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
         "lat": home_info.get("lat"),
         "lon": home_info.get("lon"),
     }
+    if is_blank_value(current.get("lat")) or is_blank_value(current.get("lon")):
+        render_html('<div class="sbc-empty-state">No travel route data is available for this team.</div>')
+        return
+    route_stops = [{
+        "team": selected_team,
+        "lat": float(current["lat"]),
+        "lon": float(current["lon"]),
+        "home": True,
+        "pause": 18,
+    }]
     arcs = []
     nodes = [{
         "team": selected_team,
@@ -826,10 +837,11 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
     }]
 
     for _, row in travel_df.iterrows():
-        destination_team = row.get("TeamB") if row.get("TeamA") == selected_team else selected_team
+        destination_team = selected_team if row.get("TeamA") == selected_team else row.get("TeamA")
         dest_info = team_info.get(destination_team, {})
         dest = {"team": destination_team, "lat": dest_info.get("lat"), "lon": dest_info.get("lon")}
         if not is_blank_value(current.get("lat")) and not is_blank_value(current.get("lon")) and not is_blank_value(dest.get("lat")) and not is_blank_value(dest.get("lon")):
+            same_location = float(current["lat"]) == float(dest["lat"]) and float(current["lon"]) == float(dest["lon"])
             if float(current["lat"]) != float(dest["lat"]) or float(current["lon"]) != float(dest["lon"]):
                 arcs.append({
                     "src_lat": float(current["lat"]),
@@ -839,6 +851,13 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
                     "color_hex": home_info.get("bg", bg_color),
                     "note": f"P{row.get('Period')}: {selected_team} to {destination_team}",
                 })
+            route_stops.append({
+                "team": destination_team,
+                "lat": float(dest["lat"]),
+                "lon": float(dest["lon"]),
+                "home": destination_team == selected_team,
+                "pause": 42 if same_location and destination_team == selected_team else 12,
+            })
             nodes.append({
                 "team": destination_team,
                 "lat": float(dest["lat"]),
@@ -856,6 +875,7 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
     map_id = f"sbc-travel-map-{selected_team}-{selected_year}".replace(" ", "-").replace(".", "").lower()
     arcs_json = json.dumps(arcs)
     nodes_json = json.dumps(node_df)
+    stops_json = json.dumps(route_stops)
     components.html(f"""
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -877,6 +897,7 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
 (function() {{
   const arcs = {arcs_json};
   const nodes = {nodes_json};
+  const stops = {stops_json};
   const mapEl = document.getElementById("{map_id}");
   function boot() {{
     if (!window.L || !mapEl) {{ setTimeout(boot, 60); return; }}
@@ -913,16 +934,40 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
       }}
       return pts;
     }}
+    function stopPoint(stop) {{
+      return map.latLngToLayerPoint([stop.lat, stop.lon]);
+    }}
+    function repeatPoint(route, point, count) {{
+      const repeats = Math.max(0, Number(count) || 0);
+      for (let i = 0; i < repeats; i++) {{
+        route.push([point.x, point.y]);
+      }}
+    }}
     let traveler = null;
     let travelerRoute = [];
     function redraw() {{
       g.innerHTML = "";
       traveler = null;
       travelerRoute = [];
+      if (stops.length) {{
+        repeatPoint(travelerRoute, stopPoint(stops[0]), stops[0].pause || 10);
+      }}
+      for (let i = 1; i < stops.length; i++) {{
+        const prior = stops[i - 1];
+        const next = stops[i];
+        const priorPoint = stopPoint(prior);
+        const nextPoint = stopPoint(next);
+        if (Math.abs(priorPoint.x - nextPoint.x) < 0.2 && Math.abs(priorPoint.y - nextPoint.y) < 0.2) {{
+          repeatPoint(travelerRoute, nextPoint, next.pause || 28);
+        }} else {{
+          const pts = curvePoints({{ src_lat: prior.lat, src_lon: prior.lon, dst_lat: next.lat, dst_lon: next.lon }}, 42);
+          travelerRoute = travelerRoute.concat(travelerRoute.length ? pts.slice(1) : pts);
+          repeatPoint(travelerRoute, nextPoint, next.pause || 10);
+        }}
+      }}
       arcs.forEach((a, i) => {{
         const color = a.color_hex || "#2563eb";
         const pts = curvePoints(a, 36);
-        travelerRoute = travelerRoute.concat(i === 0 ? pts : pts.slice(1));
         const d = pts.map((p, idx) => `${{idx ? "L" : "M"}} ${{p[0].toFixed(1)}} ${{p[1].toFixed(1)}}`).join(" ");
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", d);
@@ -974,6 +1019,213 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
 }})();
 </script>
 """, height=height + 12)
+
+
+def calculate_team_travel_summary(selected_team, selected_year, schedule_df):
+    team_df = schedule_df[
+        (schedule_df["Year"] == selected_year)
+        & (schedule_df["Type"].isin(["Regular Season", "In-Season Tournament"]))
+        & ((schedule_df["TeamA"] == selected_team) | (schedule_df["TeamB"] == selected_team))
+    ].copy()
+    if team_df.empty:
+        return 0, 0
+
+    type_order = {"Regular Season": 0, "In-Season Tournament": 1}
+    team_df["TypeOrder"] = team_df["Type"].map(type_order).fillna(9)
+    team_df = team_df.sort_values(["Period", "TypeOrder", "Game_ID"]).reset_index(drop=True)
+    current = team_info.get(selected_team, {})
+    current_lat = current.get("lat")
+    current_lon = current.get("lon")
+    total_miles = 0
+    num_flights = 0
+
+    for _, row in team_df.iterrows():
+        destination_team = selected_team if row.get("TeamA") == selected_team else row.get("TeamA")
+        dest_info = team_info.get(destination_team, {})
+        dest_lat = dest_info.get("lat")
+        dest_lon = dest_info.get("lon")
+        if any(is_blank_value(v) for v in [current_lat, current_lon, dest_lat, dest_lon]):
+            continue
+        phi1, phi2 = math.radians(float(current_lat)), math.radians(float(dest_lat))
+        d_phi = math.radians(float(dest_lat) - float(current_lat))
+        d_lam = math.radians(float(dest_lon) - float(current_lon))
+        a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lam / 2) ** 2
+        miles = 3958.8 * 2 * math.asin(math.sqrt(a))
+        total_miles += miles
+        if miles > 0:
+            num_flights += 1
+        current_lat, current_lon = dest_lat, dest_lon
+
+    return total_miles, num_flights
+
+
+def format_score_value(value):
+    if is_blank_value(value):
+        return "-"
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if numeric.is_integer():
+        return f"{int(numeric)}"
+    return f"{numeric:.1f}"
+
+
+def score_numeric(value):
+    if is_blank_value(value):
+        return 0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def standings_snapshot(standings_df, selected_year, selected_period, conference):
+    team_to_conf = {team: info["conf"] for team, info in team_info.items()}
+    snapshot_period = selected_period
+    if not ((standings_df["Year"] == selected_year) & (standings_df["Period"] == snapshot_period)).any():
+        snapshot_period = 99
+    table = standings_df[
+        (standings_df["Year"] == selected_year)
+        & (standings_df["Period"] == snapshot_period)
+    ].copy()
+    table["Conference"] = table["Team"].map(team_to_conf)
+    table = table[table["Conference"] == conference].copy()
+    if table.empty:
+        return table
+    table[["wins", "losses"]] = table["Record"].str.split("-", expand=True).astype(int)
+    table["WinPctRaw"] = table["wins"] / (table["wins"] + table["losses"]).replace(0, pd.NA)
+    table["WinPctRaw"] = table["WinPctRaw"].fillna(0)
+    max_wins = table["wins"].max()
+    table["GB"] = (max_wins - table["wins"]).astype(float).round(1).astype(str)
+    table.loc[table["GB"] == "0.0", "GB"] = "-"
+    table["Logo"] = table["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    table["FullTeam"] = table["Team"].map(live_team_full_name)
+    table["WinPct"] = (table["WinPctRaw"] * 100).round(1).astype(str) + "%"
+    return table.sort_values(["WinPctRaw", "wins", "Team"], ascending=[False, False, True]).reset_index(drop=True)
+
+
+def render_scoreboard_cards(scores_df):
+    if scores_df.empty:
+        render_html('<div class="sbc-empty-state">No scoreboards are available for this period.</div>')
+        return
+
+    type_labels = {
+        "Regular Season": "Regular Season",
+        "In-Season Tournament": "In-Season Tournament",
+        "Play-In": "Play-In",
+        "Playoffs": "Playoffs",
+    }
+    groups = []
+    for type_name in ["Regular Season", "In-Season Tournament", "Play-In", "Playoffs"]:
+        group_df = scores_df[scores_df["Type"].astype(str) == type_name].copy()
+        if group_df.empty:
+            continue
+        group_df = group_df.sort_values(["Round", "TeamB_Nickname", "TeamA_Nickname"], na_position="last")
+        cards = []
+        for _, row in group_df.iterrows():
+            team_a = str(row.get("TeamA", ""))
+            team_b = str(row.get("TeamB", ""))
+            score_a = row.get("TeamA_Score", row.get("TeamAScore", ""))
+            score_b = row.get("TeamB_Score", row.get("TeamBScore", ""))
+            score_a_num = score_numeric(score_a)
+            score_b_num = score_numeric(score_b)
+            a_winner = score_a_num >= score_b_num
+            b_winner = score_b_num > score_a_num
+            info_a = team_info.get(team_a, {})
+            info_b = team_info.get(team_b, {})
+            logo_a = row.get("TeamA_logo", info_a.get("logo", ""))
+            logo_b = row.get("TeamB_logo", info_b.get("logo", ""))
+            color_a = row.get("TeamA_color", info_a.get("bg", "#64748b"))
+            color_b = row.get("TeamB_color", info_b.get("bg", "#64748b"))
+            record_a = row.get("TeamA_record", "")
+            record_b = row.get("TeamB_record", "")
+            round_label = row.get("Round", type_name)
+            cards.append(f"""
+                <article class="sbc-score-card">
+                    <div class="sbc-score-card-top">
+                        <span>{escape(str(round_label))}</span>
+                        <em>P{escape(str(row.get("Period", "")))}</em>
+                    </div>
+                    <div class="sbc-score-team {'sbc-score-winner' if a_winner else ''}" style="--score-color:{escape(str(color_a), quote=True)};">
+                        <img src="{escape(str(logo_a), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
+                        <div>
+                            <strong>{escape(live_team_full_name(team_a))}</strong>
+                            <em>{escape(str(record_a))}</em>
+                        </div>
+                        <b>{escape(format_score_value(score_a))}</b>
+                    </div>
+                    <div class="sbc-score-team {'sbc-score-winner' if b_winner else ''}" style="--score-color:{escape(str(color_b), quote=True)};">
+                        <img src="{escape(str(logo_b), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
+                        <div>
+                            <strong>{escape(live_team_full_name(team_b))}</strong>
+                            <em>{escape(str(record_b))}</em>
+                        </div>
+                        <b>{escape(format_score_value(score_b))}</b>
+                    </div>
+                </article>
+            """)
+        groups.append(f"""
+            <section class="sbc-score-group">
+                <div class="sbc-score-group-head">
+                    <span>{escape(type_labels.get(type_name, type_name))}</span>
+                    <em>{group_df.shape[0]} matchup{'s' if group_df.shape[0] != 1 else ''}</em>
+                </div>
+                <div class="sbc-score-grid">{''.join(cards)}</div>
+            </section>
+        """)
+
+    render_html(f'<div class="sbc-scoreboard-wrap">{"".join(groups)}</div>')
+
+
+def render_conference_standings(standings_df, selected_year, selected_period, conference):
+    table = standings_snapshot(standings_df, selected_year, selected_period, conference)
+    if table.empty:
+        render_html(f'<div class="sbc-empty-state">No {escape(conference)} standings are available for this period.</div>')
+        return
+
+    rows = []
+    for idx, row in table.iterrows():
+        tier = "playoff" if idx <= 5 else "playin" if idx <= 9 else "lottery"
+        rows.append(f"""
+            <tr class="sbc-standings-{tier}">
+                <td class="sbc-standings-rank">{idx + 1}</td>
+                <td class="sbc-standings-team">
+                    <img src="{escape(str(row.get("Logo", "")), quote=True)}" alt="{escape(str(row.get("FullTeam", "")), quote=True)} logo">
+                    <strong>{escape(str(row.get("FullTeam", "")))}</strong>
+                </td>
+                <td>{escape(str(row.get("Record", "")))}</td>
+                <td>{escape(str(row.get("WinPct", "")))}</td>
+                <td>{escape(str(row.get("GB", "")))}</td>
+                <td>{escape(str(row.get("ConfRecord", "")))}</td>
+                <td>{escape(str(row.get("DivRecord", "")))}</td>
+            </tr>
+        """)
+
+    render_html(f"""
+        <section class="sbc-standings-panel">
+            <div class="sbc-standings-head">
+                <span>{escape(conference)} Conference</span>
+                <em>Through Period {escape(str(selected_period))}</em>
+            </div>
+            <div class="sbc-standings-table-wrap">
+                <table class="sbc-standings-table">
+                    <thead>
+                        <tr>
+                            <th>Seed</th>
+                            <th>Team</th>
+                            <th>Record</th>
+                            <th>Win %</th>
+                            <th>GB</th>
+                            <th>Conf.</th>
+                            <th>Div.</th>
+                        </tr>
+                    </thead>
+                    <tbody>{''.join(rows)}</tbody>
+                </table>
+            </div>
+        </section>
+    """)
 
 st.markdown(
     f"""
@@ -2271,6 +2523,290 @@ st.markdown(
         color: #4d3a00;
     }}
 
+    .sbc-scoreboard-wrap {{
+        display: grid;
+        gap: 1rem;
+        margin: 0.45rem 0 1.2rem;
+    }}
+
+    .sbc-score-group {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.12));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 16px 38px rgba(18, 25, 38, 0.09);
+    }}
+
+    .sbc-score-group-head {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--sbc-team-primary) 16%, #ffffff) 0%, #ffffff 100%);
+        padding: 0.78rem 0.9rem;
+    }}
+
+    .sbc-score-group-head span {{
+        color: var(--sbc-ink);
+        font-size: 0.96rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-score-group-head em {{
+        border-radius: 999px;
+        background: var(--sbc-team-primary);
+        color: var(--sbc-team-text);
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        padding: 0.32rem 0.58rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-score-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.72rem;
+        padding: 0.82rem;
+    }}
+
+    .sbc-score-card {{
+        overflow: hidden;
+        border: 1px solid rgba(23, 32, 42, 0.10);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 10px 24px rgba(18, 25, 38, 0.06);
+    }}
+
+    .sbc-score-card-top {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        min-height: 2.25rem;
+        background: #111827;
+        color: #ffffff;
+        padding: 0.45rem 0.58rem;
+    }}
+
+    .sbc-score-card-top span,
+    .sbc-score-card-top em {{
+        overflow: hidden;
+        font-size: 0.66rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-score-card-top em {{
+        color: rgba(255, 255, 255, 0.72);
+    }}
+
+    .sbc-score-team {{
+        display: grid;
+        grid-template-columns: 2.45rem minmax(0, 1fr) auto;
+        gap: 0.58rem;
+        align-items: center;
+        min-height: 4.25rem;
+        border-left: 0.34rem solid var(--score-color);
+        border-bottom: 1px solid rgba(23, 32, 42, 0.075);
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--score-color) 9%, #ffffff) 0%, #ffffff 52%);
+        padding: 0.58rem 0.68rem 0.58rem 0.54rem;
+    }}
+
+    .sbc-score-team:last-child {{
+        border-bottom: none;
+    }}
+
+    .sbc-score-team img {{
+        width: 2.35rem;
+        height: 2.35rem;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 8px rgba(18, 25, 38, 0.13));
+    }}
+
+    .sbc-score-team strong {{
+        display: block;
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.86rem;
+        font-weight: 950;
+        line-height: 1.08;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-score-team em {{
+        display: block;
+        margin-top: 0.2rem;
+        overflow: hidden;
+        color: var(--sbc-muted);
+        font-size: 0.66rem;
+        font-style: normal;
+        font-weight: 850;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-score-team b {{
+        color: var(--sbc-ink);
+        font-size: 1.4rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+        text-align: right;
+    }}
+
+    .sbc-score-winner {{
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--score-color) 22%, #ffffff) 0%, #ffffff 58%);
+    }}
+
+    .sbc-score-winner b {{
+        color: var(--score-color);
+    }}
+
+    .sbc-standings-layout {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+        margin: 0.45rem 0 1.1rem;
+    }}
+
+    .sbc-standings-panel {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.12));
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.075);
+    }}
+
+    .sbc-standings-head {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background: #111827;
+        color: #ffffff;
+        padding: 0.72rem 0.85rem;
+    }}
+
+    .sbc-standings-head span {{
+        font-size: 0.9rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-standings-head em {{
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.66rem;
+        font-style: normal;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-standings-table-wrap {{
+        overflow-x: auto;
+    }}
+
+    .sbc-standings-table {{
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }}
+
+    .sbc-standings-table th {{
+        background: #f7f9fc;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.1);
+        color: var(--sbc-ink);
+        font-size: 0.66rem;
+        font-weight: 950;
+        letter-spacing: 0.07em;
+        padding: 0.58rem 0.6rem;
+        text-align: center;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-standings-table th:nth-child(1) {{ width: 3.4rem; }}
+    .sbc-standings-table th:nth-child(2) {{ width: 14rem; text-align: left; }}
+
+    .sbc-standings-table td {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.065);
+        color: var(--sbc-ink);
+        font-size: 0.78rem;
+        font-weight: 800;
+        height: 3.25rem;
+        padding: 0.48rem 0.6rem;
+        text-align: center;
+        vertical-align: middle;
+        white-space: nowrap;
+    }}
+
+    .sbc-standings-table tr:last-child td {{
+        border-bottom: none;
+    }}
+
+    .sbc-standings-playoff td {{
+        background: color-mix(in srgb, #58a76b 12%, #ffffff);
+    }}
+
+    .sbc-standings-playin td {{
+        background: color-mix(in srgb, #e6c85c 15%, #ffffff);
+    }}
+
+    .sbc-standings-lottery td {{
+        background: color-mix(in srgb, #d96b6b 9%, #ffffff);
+    }}
+
+    .sbc-standings-rank {{
+        color: var(--sbc-ink);
+        font-weight: 950 !important;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-standings-team {{
+        display: flex;
+        align-items: center;
+        gap: 0.52rem;
+        min-width: 0;
+        text-align: left !important;
+    }}
+
+    .sbc-standings-team img {{
+        width: 2rem;
+        height: 2rem;
+        flex: 0 0 2rem;
+        object-fit: contain;
+        filter: drop-shadow(0 3px 7px rgba(18, 25, 38, 0.12));
+    }}
+
+    .sbc-standings-team strong {{
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.78rem;
+        font-weight: 950;
+        line-height: 1.05;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
     [data-testid="stMetricDelta"],
     [data-testid="stMetricDelta"] * {{
         color: #4b5563 !important;
@@ -2453,6 +2989,11 @@ st.markdown(
             grid-column: 1 / -1;
             justify-self: start;
         }}
+
+        .sbc-score-grid,
+        .sbc-standings-layout {{
+            grid-template-columns: 1fr;
+        }}
     }}
 
     @media (max-width: 560px) {{
@@ -2481,11 +3022,8 @@ if SelectedTeam == "Honolulu":
 if SelectedTeam == "Manchester":
     st.snow()
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
-    f"💰 {SelectedTeam} Cap",
-    f"🏀 {SelectedTeam} Picks",
-    f"📊 {SelectedTeam} Live",
-    f"🗓️ {SelectedTeam} Schedule",
+team_hub_tab, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
+    f"🏢 {SelectedTeam} Hub",
     "🏟️ Scoreboard",
     "👥 Players",
     "🎯 Draft Picks",
@@ -2495,6 +3033,13 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13
     "⭐ Awards",
     "📖 About",
     "✅ Data Checks"])
+
+with team_hub_tab:
+    tab1, tab2, tab3, tab4 = st.tabs([
+        f"💰 {SelectedTeam} Cap",
+        f"🏀 {SelectedTeam} Picks",
+        f"📊 {SelectedTeam} Live",
+        f"🗓️ {SelectedTeam} Schedule"])
 
 with tab1:
     _legacy_tab1 = r'''
@@ -2975,7 +3520,7 @@ with tab4:
         """)
     render_html('<div class="sbc-section-label">Schedule</div>')
     render_schedule_table(schedule_raw, SelectedTeam)
-    total_miles, num_flights = get_team_mileage(SelectedTeam, SelectedScheduleYear, all_time_schedule)
+    total_miles, num_flights = calculate_team_travel_summary(SelectedTeam, SelectedScheduleYear, all_time_schedule)
     col1, col2 = st.columns(2)
     with col1:
         st.metric(label="Total Miles", value=f"{int(total_miles):,} mi", help="Total miles traveled this season including road trips and returns home.", border=True)
@@ -2984,43 +3529,36 @@ with tab4:
     render_team_travel_map(schedule_raw, SelectedTeam, SelectedScheduleYear)
 
 with tab5:
-    st.subheader("League Scoreboard")
-
     SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
     max_period2 = all_time_schedule[all_time_schedule["Year"] == SelectedYear2]["Period"].max()
     SelectedPeriod2 = st.selectbox("Select Period", options=list(range(1, max_period2+1)), index=list(range(1, max_period2+1)).index(min(current_matchup, max_period2)))
+    render_html(f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{SelectedYear2} League Scoreboard / Period {SelectedPeriod2}</div>
+                    <div class="sbc-draft-heading">SBC Scoreboard</div>
+                    <div class="sbc-draft-subcopy">Every matchup in the selected window, paired with standings through that point in the season.</div>
+                </div>
+            </div>
+        </div>
+        """)
 
     with st.spinner("Updating matchups..."):
         live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
         live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
 
-    def render_section(title, type_filter, n_cols):
-        filtered = live_stats_total_scores[live_stats_total_scores["Type"] == type_filter]
-        if filtered.empty:
-            return
-        st.subheader(title)
-        cols = st.columns(n_cols)
-        for i, (_, row) in enumerate(filtered.iterrows()):
-            with cols[i % n_cols]:
-                render_scorebug(row)
+    render_html('<div class="sbc-section-label">All Scores</div>')
+    render_scoreboard_cards(live_stats_total_scores)
 
-    render_section("Regular Season Matchups", "Regular Season", 6)
-    render_section("In-Season Tournament Matchups", "In-Season Tournament", 6)
-    render_section("Play-In Tournament Matchups", "Play-In", 4)
-    render_section("Playoff Matchups", "Playoffs", 4)
-
-    col1, col2 = st.columns([1,1])
-    with col1:
-        st.subheader("Western Conference Standings")
-        WestStandings = get_standings_table(standings, SelectedPeriod2, SelectedYear2, "West")
-        st.dataframe(WestStandings, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
-
-    with col2:
-        st.subheader("Easten Conference Standings")
-        EastStandings = get_standings_table(standings, SelectedPeriod2, SelectedYear2, "East")
-        st.dataframe(EastStandings, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
-    
-    st.write("Tiebreakers not currently implemented, so teams with identical records are sorted alphabetically within the standings.")
+    render_html('<div class="sbc-section-label">Standings Snapshot</div>')
+    west_col, east_col = st.columns(2)
+    with west_col:
+        render_conference_standings(standings, SelectedYear2, SelectedPeriod2, "West")
+    with east_col:
+        render_conference_standings(standings, SelectedYear2, SelectedPeriod2, "East")
+    render_html('<div class="sbc-empty-state">Tiebreakers are not currently implemented, so teams with identical records are sorted alphabetically inside the standings tier.</div>')
 
 with tab6:
 
