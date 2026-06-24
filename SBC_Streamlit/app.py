@@ -12,6 +12,13 @@ from functions import get_data, get_pictures, active_players, style_salaries, ov
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, period, stat_to_scipId
 
+def render_html(markup):
+    markup = dedent(str(markup)).strip()
+    if hasattr(st, "html"):
+        st.html(markup)
+    else:
+        st.markdown(markup, unsafe_allow_html=True)
+
 TEAM_FONTS = {
     "Albuquerque": "Amatic SC",
     "Anaheim": "Baloo 2",
@@ -86,7 +93,7 @@ Teams = sorted(team_info.keys())
 
 _, top_col2 = st.columns([5, 2], vertical_alignment="bottom")
 with top_col2:
-    st.markdown('<div class="sbc-picker-eyebrow">Team View</div>', unsafe_allow_html=True)
+    render_html('<div class="sbc-picker-eyebrow">Team View</div>')
     SelectedTeam = st.selectbox("Choose your team", Teams, index=Teams.index("Vegas"))
 
 bg_color = team_info[SelectedTeam]["bg"]
@@ -121,7 +128,7 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
     image_columns = set(image_columns or [])
     money_columns = set(money_columns or [])
     if data is None or data.shape[0] == 0:
-        st.markdown('<div class="sbc-empty-state">No records to display.</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-empty-state">No records to display.</div>')
         return
 
     table_df = data.copy()
@@ -164,16 +171,14 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
             cells.append(f"<td{class_attr}{style}>{value_html}</td>")
         body_rows.append(f"<tr>{''.join(cells)}</tr>")
 
-    st.markdown(
-        dedent(f"""
+    render_html(f"""
         <div class="sbc-table-wrap">
             <table class="sbc-cap-table">
                 <thead><tr>{header_cells}</tr></thead>
                 <tbody>{''.join(body_rows)}</tbody>
             </table>
         </div>
-        """),
-        unsafe_allow_html=True)
+        """)
 
 def is_blank_value(value):
     if value is None or value == "":
@@ -195,7 +200,7 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
     image_columns = set(image_columns or [])
     money_columns = set(money_columns or [])
     if data is None or data.shape[0] == 0:
-        st.markdown('<div class="sbc-empty-state">No records to display.</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-empty-state">No records to display.</div>')
         return
 
     table_df = data.copy()
@@ -252,16 +257,14 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
             cells.append(f"<td{class_attr}{style}>{value_html}</td>")
         body_rows.append(f"<tr>{''.join(cells)}</tr>")
 
-    st.markdown(
-        dedent(f"""
+    render_html(f"""
         <div class="sbc-table-wrap">
             <table class="sbc-cap-table">
                 <thead><tr>{''.join(header_cells)}</tr></thead>
                 <tbody>{''.join(body_rows)}</tbody>
             </table>
         </div>
-        """),
-        unsafe_allow_html=True)
+        """)
 
 def clean_pick_display(value):
     if is_blank_value(value):
@@ -285,13 +288,14 @@ def pick_round_rank(value):
 
 
 LIVE_STATS = [
+    ("GP", "Games Played", "0 pts"),
     ("MP", "Minutes", "11 pts"),
-    ("TS%", "True Shooting", "41 pts"),
-    ("2PT%", "2PT Accuracy", "31 pts"),
-    ("2PM/2PA", "2PM / 2PA", "0 pts"),
-    ("3PT%", "3PT Accuracy", "31 pts"),
-    ("3PM/3PA", "3PM / 3PA", "0 pts"),
-    ("FT%", "Free Throws", "21 pts"),
+    ("TS%", "TS %", "41 pts"),
+    ("2PT%", "2PT Percentage", "31 pts"),
+    ("2PTM/2PTA", "2PM / 2PA", "0 pts"),
+    ("3PT%", "3PT Percentage", "31 pts"),
+    ("3PTM/3PTA", "3PM / 3PA", "0 pts"),
+    ("FT%", "Free Throw Percentage", "21 pts"),
     ("FTM/FTA", "FTM / FTA", "0 pts"),
     ("PTS", "Points", "61 pts"),
     ("OREB", "Off. Rebounds", "31 pts"),
@@ -302,6 +306,12 @@ LIVE_STATS = [
     ("+/-", "Plus / Minus", "31 pts"),
     ("TO", "Turnovers", "21 pts, lower wins"),
 ]
+
+LIVE_PAIRED_STATS = {
+    "2PTM/2PTA": ("2PTM", "2PTA"),
+    "3PTM/3PTA": ("3PTM", "3PTA"),
+    "FTM/FTA": ("FTM", "FTA"),
+}
 
 
 def live_stat_points(points_text):
@@ -322,8 +332,7 @@ def live_chart_color(team, fallback):
 def render_pick_table(data, title, icon, description, empty_text, columns=None, image_columns=None, status="hold"):
     image_columns = set(image_columns or [])
     if data is None or data.shape[0] == 0:
-        st.markdown(
-            dedent(f"""
+        render_html(f"""
             <section class="sbc-pick-panel sbc-pick-panel-{status}">
                 <div class="sbc-pick-panel-head">
                     <div class="sbc-pick-icon">{icon}</div>
@@ -335,8 +344,7 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
                 </div>
                 <div class="sbc-pick-empty">{escape(empty_text)}</div>
             </section>
-            """),
-            unsafe_allow_html=True)
+            """)
         return
 
     table_df = data.copy()
@@ -402,8 +410,7 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
             cells.append(f"<td{class_attr}>{value_html}</td>")
         body_rows.append(f"<tr>{''.join(cells)}</tr>")
 
-    st.markdown(
-        dedent(f"""
+    render_html(f"""
         <section class="sbc-pick-panel sbc-pick-panel-{status}">
             <div class="sbc-pick-panel-head">
                 <div class="sbc-pick-icon">{icon}</div>
@@ -420,12 +427,11 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
                 </table>
             </div>
         </section>
-        """),
-        unsafe_allow_html=True)
+        """)
 
 def live_stat_value(row, stat):
-    if "/" in stat and "%" not in stat:
-        made_col, attempt_col = stat.split("/", 1)
+    if stat in LIVE_PAIRED_STATS:
+        made_col, attempt_col = LIVE_PAIRED_STATS[stat]
         made_value = row.get(made_col, "")
         attempt_value = row.get(attempt_col, "")
         if is_blank_value(made_value) and is_blank_value(attempt_value):
@@ -442,7 +448,7 @@ def live_stat_value(row, stat):
         return "—"
     try:
         if stat in ["TS%", "2PT%", "3PT%", "FT%"]:
-            return f"{float(value) * 100:.2f}"
+            return f"{float(value) * 100:.2f}%"
         if stat == "MP":
             minutes = float(value)
             mins = int(minutes)
@@ -464,7 +470,7 @@ def live_stat_score(values, stat):
             mins, secs = value.split(":", 1)
             parsed.append(float(mins) + float(secs) / 60)
         else:
-            parsed.append(float(value))
+            parsed.append(float(str(value).replace("%", "")))
     if stat == "TO":
         best = min(parsed)
     else:
@@ -507,7 +513,7 @@ def live_row_payload(live_df, team):
 
 def render_live_stat_board(title, kicker, rows, selected_team):
     if not rows:
-        st.markdown('<div class="sbc-empty-state">No live stats are available for this selection.</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-empty-state">No live stats are available for this selection.</div>')
         return
 
     team_headers = []
@@ -582,8 +588,7 @@ def render_live_stat_board(title, kicker, rows, selected_team):
         </div>
         """)
 
-    st.markdown(
-        dedent(f"""
+    render_html(f"""
         <section class="sbc-live-board">
             <div class="sbc-live-board-head">
                 <div>
@@ -598,8 +603,7 @@ def render_live_stat_board(title, kicker, rows, selected_team):
                 {total_row}
             </div>
         </section>
-        """),
-        unsafe_allow_html=True)
+        """)
 
 
 def build_live_line_chart(data, selected_team, selected_category, selected_year, selected_period, opponents, team_color, accent_color):
@@ -2107,8 +2111,7 @@ with tab1:
     active_count = active_player_n(df, SelectedTeam)
     inactive_count = inactive_player_n(df, SelectedTeam)
 
-    st.markdown(
-        dedent(f"""
+    render_html(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
@@ -2119,10 +2122,9 @@ with tab1:
                 </div>
             </div>
         </div>
-        """),
-        unsafe_allow_html=True)
+        """)
 
-    st.markdown('<div class="sbc-section-label">League Thresholds</div>', unsafe_allow_html=True)
+    render_html('<div class="sbc-section-label">League Thresholds</div>')
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric(label="Salary Cap", value=current_salary_cap, delta="10.0%", delta_color="normal", help="Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border=True, format="dollar")
@@ -2133,7 +2135,7 @@ with tab1:
     with col4:
         st.metric(label="Apron #2", value=current_apron_2, delta="10.0%", delta_color="normal", help="Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade-related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border=True, format="dollar")
 
-    st.markdown('<div class="sbc-section-label">Team Snapshot</div>', unsafe_allow_html=True)
+    render_html('<div class="sbc-section-label">Team Snapshot</div>')
     snap1, snap2, snap3 = st.columns([1, 1, 2])
     with snap1:
         st.metric(label="Cap Total", value=cap_total, delta=cap_total-current_salary_cap, delta_color="inverse", help="The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap.", border=True, format="dollar")
@@ -2150,8 +2152,8 @@ with tab1:
     with snap6:
         st.metric(label="Balance", value=net_fee(df, SelectedTeam, base_cap), delta=amount_paid(base_cap, SelectedTeam), delta_color="normal", help="The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border=True, format="dollar")
 
-    st.markdown('<div class="sbc-section-label">Team Rosters</div>', unsafe_allow_html=True)
-    st.markdown(dedent("""
+    render_html('<div class="sbc-section-label">Team Rosters</div>')
+    render_html("""
         <div class="sbc-legend">
             <div class="sbc-legend-title">Contract Status</div>
             <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#FCE5CD;"></span>Guaranteed</div>
@@ -2161,71 +2163,69 @@ with tab1:
             <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#CFFFFF;"></span>Restricted</div>
             <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#D9D9D9;"></span>Dead</div>
         </div>
-        """), unsafe_allow_html=True)
-    st.markdown('<div class="sbc-cap-eyebrow">Active Players</div>', unsafe_allow_html=True)
+        """)
+    render_html('<div class="sbc-cap-eyebrow">Active Players</div>')
     active_player_df = active_players(df, pics, SelectedTeam)
     render_cap_table(active_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
 
     overseas_player_df = overseas_players(df, pics, SelectedTeam)
-    st.markdown('<div class="sbc-cap-eyebrow">Overseas Players</div>', unsafe_allow_html=True)
+    render_html('<div class="sbc-cap-eyebrow">Overseas Players</div>')
     if overseas_player_df.shape[0] > 0:
         render_cap_table(overseas_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
     else:
-        st.markdown('<div class="sbc-empty-state">No overseas players are currently listed for this team.</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-empty-state">No overseas players are currently listed for this team.</div>')
 
     dead_player_df = dead_players(df, pics, SelectedTeam)
-    st.markdown('<div class="sbc-cap-eyebrow">Dead Players</div>', unsafe_allow_html=True)
+    render_html('<div class="sbc-cap-eyebrow">Dead Players</div>')
     if dead_player_df.shape[0] > 0:
         dead_player_df["Bird Rights"] = ""
         render_cap_table(dead_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
     else:
-        st.markdown('<div class="sbc-empty-state">No dead salary is currently listed for this team.</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-empty-state">No dead salary is currently listed for this team.</div>')
 
-    st.markdown('<div class="sbc-section-label">Contract And Asset Details</div>', unsafe_allow_html=True)
+    render_html('<div class="sbc-section-label">Contract And Asset Details</div>')
     exception_col, context_col = st.columns([1.7, 1])
     with exception_col:
-        st.markdown('<div class="sbc-cap-eyebrow">Exceptions</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-cap-eyebrow">Exceptions</div>')
         exception_df = exception_table(exceptions, SelectedTeam)
         render_cap_table(exception_df, columns=["Exception", "Amount", "Expiration Date"], money_columns=["Amount"], contract_colors=False)
     with context_col:
-        st.markdown('<div class="sbc-cap-eyebrow">Asset Summary</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-cap-eyebrow">Asset Summary</div>')
         free_agent_count = free_agent_players(df, pics, SelectedTeam).shape[0]
         restricted_count = trade_restrictions(df, pics, SelectedTeam).shape[0]
         rights_count = draft_retired_players(df, pics, SelectedTeam).shape[0]
-        st.markdown(
-            dedent(f"""
+        render_html(f"""
             <div class="sbc-mini-note">
                 <strong>{free_agent_count}</strong> upcoming free agents<br>
                 <strong>{restricted_count}</strong> current trade restrictions<br>
                 <strong>{rights_count}</strong> draft-rights or retired assets
             </div>
-            """),
-            unsafe_allow_html=True)
+            """)
 
     asset1, asset2, asset3 = st.columns([1.05, 1.15, 0.9])
     with asset1:
-        st.markdown('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>')
         free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
         if free_agent_player_df.shape[0] > 0:
             render_cap_table(free_agent_player_df, columns=[" ", "Player"] + [str(current_year+ year_offset)], image_columns=[" "])
         else:
-            st.markdown('<div class="sbc-empty-state">No upcoming free agents are currently listed for this team.</div>', unsafe_allow_html=True)
+            render_html('<div class="sbc-empty-state">No upcoming free agents are currently listed for this team.</div>')
 
     with asset2:
-        st.markdown('<div class="sbc-cap-eyebrow">Trade Restrictions</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-cap-eyebrow">Trade Restrictions</div>')
         restricted_df = trade_restrictions(df, pics, SelectedTeam)
         if restricted_df.shape[0] > 0:
             render_cap_table(restricted_df, columns=[" ", "Player", "Trade Restriction"], image_columns=[" "], contract_colors=False)
         else:
-            st.markdown('<div class="sbc-empty-state">No trade restrictions are currently listed for this team.</div>', unsafe_allow_html=True)
+            render_html('<div class="sbc-empty-state">No trade restrictions are currently listed for this team.</div>')
 
     with asset3:
-        st.markdown('<div class="sbc-cap-eyebrow">Draft Rights & Retired</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-cap-eyebrow">Draft Rights & Retired</div>')
         draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
         if draft_retired_player_df.shape[0] > 0:
             render_cap_table(draft_retired_player_df, columns=[" ", "Player"], image_columns=[" "])
         else:
-            st.markdown('<div class="sbc-empty-state">No draft-rights or retired players are currently listed for this team.</div>', unsafe_allow_html=True)
+            render_html('<div class="sbc-empty-state">No draft-rights or retired players are currently listed for this team.</div>')
 
 with tab2:
     # Custom draft-room layout replaces the legacy dataframe stack below.
@@ -2275,8 +2275,7 @@ with tab2:
         if "Round" in pick_df.columns
     )
 
-    st.markdown(
-        dedent(f"""
+    render_html(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
@@ -2310,8 +2309,7 @@ with tab2:
             </div>
         </div>
         <div class="sbc-mini-note"><strong>{total_pick_count}</strong> total pick records shown here, including <strong>{first_round_count}</strong> controlled or restricted first-round records.</div>
-        """),
-        unsafe_allow_html=True)
+        """)
 
     render_pick_table(
         full_team_picks,
@@ -2358,8 +2356,7 @@ with tab2:
 
 
 with tab3:
-    st.markdown(
-        dedent(f"""
+    render_html(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
@@ -2370,17 +2367,14 @@ with tab3:
                 </div>
             </div>
         </div>
-        """),
-        unsafe_allow_html=True)
+        """)
 
-    st.markdown(
-        dedent("""
+    render_html("""
         <div class="sbc-live-controls">
             <div class="sbc-live-control-title">Matchup Window</div>
             <div class="sbc-live-control-copy">Choose the season and matchup period to refresh the scoreboards and trend chart.</div>
         </div>
-        """),
-        unsafe_allow_html=True)
+        """)
 
     control1, control2 = st.columns([1, 1])
     with control1:
@@ -2406,7 +2400,7 @@ with tab3:
     with st.spinner("Updating live center..."):
         live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
 
-    st.markdown('<div class="sbc-section-label">Matchup Scoreboards</div>', unsafe_allow_html=True)
+    render_html('<div class="sbc-section-label">Matchup Scoreboards</div>')
     if matchup_count == 0:
         selected_payload = live_row_payload(live_stats_df, SelectedTeam)
         render_live_stat_board(
@@ -2427,10 +2421,9 @@ with tab3:
                     matchup_rows,
                     SelectedTeam)
 
-    st.markdown('<div class="sbc-section-label">Season Trend</div>', unsafe_allow_html=True)
+    render_html('<div class="sbc-section-label">Season Trend</div>')
     SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
-    st.markdown(
-        dedent(f"""
+    render_html(f"""
         <div class="sbc-chart-head">
             <div>
                 <div class="sbc-chart-title">{escape(str(SelectedCategory))} by Matchup Period</div>
@@ -2438,12 +2431,11 @@ with tab3:
             </div>
             <div class="sbc-live-badge">{SelectedYear}</div>
         </div>
-        """),
-        unsafe_allow_html=True)
+        """)
     chart_opponents = [opponent for _, opponent in matchup_sections]
     season_line_chart_data = build_live_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod, chart_opponents, bg_color, text_color2)
     if season_line_chart_data is None:
-        st.markdown('<div class="sbc-empty-state">No season trend data is available for this selection.</div>', unsafe_allow_html=True)
+        render_html('<div class="sbc-empty-state">No season trend data is available for this selection.</div>')
     else:
         st.altair_chart(season_line_chart_data, use_container_width=True)
 
