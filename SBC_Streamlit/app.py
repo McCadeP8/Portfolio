@@ -76,6 +76,35 @@ def load_optional_data(label, loader):
         return pd.DataFrame()
 
 
+def ensure_columns(data, columns):
+    table = data.copy() if isinstance(data, pd.DataFrame) else pd.DataFrame()
+    for col in columns:
+        if col not in table.columns:
+            table[col] = pd.Series(dtype="object")
+    return table
+
+
+def has_columns(data, columns):
+    return isinstance(data, pd.DataFrame) and all(col in data.columns for col in columns)
+
+
+def schedule_period_options(schedule_df, selected_year):
+    if not has_columns(schedule_df, ["Year", "Period"]):
+        return [1]
+    period_raw = schedule_df[schedule_df["Year"] == selected_year]["Period"].max()
+    if pd.isna(period_raw):
+        return [1]
+    return list(range(1, int(period_raw) + 1))
+
+
+def current_period_index(options):
+    try:
+        current_value = int(current_matchup)
+    except (TypeError, ValueError):
+        current_value = options[-1]
+    return options.index(min(current_value, options[-1]))
+
+
 df = load_required_data("Cap sheet data", get_data)
 pics = load_required_data("Player pictures", get_pictures)
 exceptions = load_required_data("Exceptions", get_exceptions)
@@ -91,6 +120,13 @@ all_time_schedule = load_optional_data("All-time schedule", get_all_time_schedul
 current_matchup = load_optional_data("Current matchup period", current_matchup_period)
 award_history = load_optional_data("Award history", get_award_history)
 team_award_history = load_optional_data("Team award history", get_team_award_history)
+
+all_time_schedule = ensure_columns(all_time_schedule, ["Year", "Period", "Type", "Round", "TeamA", "TeamB", "TeamAScore", "TeamBScore", "Game_ID"])
+standings = ensure_columns(standings, ["Year", "Period", "Team", "Record", "ConfRecord", "DivRecord", "GSRecord", "Playoff Seed", "IST Seed"])
+ft_players = ensure_columns(ft_players, ["name", "fantraxId"])
+all_time_rosters = ensure_columns(all_time_rosters, ["Year", "period", "id", "team_name"])
+award_history = ensure_columns(award_history, ["Award", "Year", "Winner"])
+team_award_history = ensure_columns(team_award_history, ["Award", "Year", "Winner"])
 
 Teams = sorted(team_info.keys())
 
@@ -269,6 +305,13 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
             </table>
         </div>
         """)
+
+def safe_table_call(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except KeyError:
+        return pd.DataFrame()
+
 
 def clean_pick_display(value):
     if is_blank_value(value):
@@ -3449,11 +3492,8 @@ with tab3:
         year_options = list(range(2021, current_year+1))
         SelectedYear = st.selectbox("Year", options=year_options, index=year_options.index(current_year))
     with control2:
-        max_period_raw = all_time_schedule[all_time_schedule["Year"] == SelectedYear]["Period"].max()
-        max_period = int(max_period_raw) if not pd.isna(max_period_raw) else 1
-        current_period_value = current_matchup if isinstance(current_matchup, int) else max_period
-        period_options = list(range(1, max_period+1))
-        SelectedPeriod = st.selectbox("Period", options=period_options, index=period_options.index(min(current_period_value, max_period)))
+        period_options = schedule_period_options(all_time_schedule, SelectedYear)
+        SelectedPeriod = st.selectbox("Period", options=period_options, index=current_period_index(period_options))
     RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
     PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
     PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
@@ -3523,6 +3563,8 @@ with tab3:
 
 with tab4:
     schedule_years = sorted(all_time_schedule["Year"].dropna().astype(int).unique().tolist())
+    if not schedule_years:
+        schedule_years = [current_year]
     default_schedule_year = current_year if current_year in schedule_years else schedule_years[-1]
     SelectedScheduleYear = st.selectbox(
         "Schedule Year",
@@ -3557,8 +3599,8 @@ with tab4:
 
 with tab5:
     SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
-    max_period2 = all_time_schedule[all_time_schedule["Year"] == SelectedYear2]["Period"].max()
-    SelectedPeriod2 = st.selectbox("Select Period", options=list(range(1, max_period2+1)), index=list(range(1, max_period2+1)).index(min(current_matchup, max_period2)))
+    period_options2 = schedule_period_options(all_time_schedule, SelectedYear2)
+    SelectedPeriod2 = st.selectbox("Select Period", options=period_options2, index=current_period_index(period_options2))
     render_html(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
@@ -3572,9 +3614,16 @@ with tab5:
         </div>
         """)
 
-    with st.spinner("Updating matchups..."):
-        live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
-        live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
+    scoreboard_schedule = all_time_schedule[
+        (all_time_schedule["Year"] == SelectedYear2)
+        & (all_time_schedule["Period"] == SelectedPeriod2)
+    ]
+    if scoreboard_schedule.empty:
+        live_stats_total_scores = pd.DataFrame()
+    else:
+        with st.spinner("Updating matchups..."):
+            live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
+            live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
 
     render_html('<div class="sbc-section-label">All Scores</div>')
     render_scoreboard_cards(live_stats_total_scores)
@@ -3589,13 +3638,13 @@ with tab5:
 
 with tab6:
 
-    active_all_df = active_players_all(df, pics)
-    inactive_all_df = inactive_players_all(df, pics)
-    dead_players_df = dead_players_all(df, pics)
-    all_free_agents_df = all_free_agents(df, pics)
-    draft_all_df = draft_rights_all(df, pics)
-    retired_all_df = retired_all(df, pics)
-    trade_restrictins_all_df = trade_restrictions_all(df, pics)
+    active_all_df = safe_table_call(active_players_all, df, pics)
+    inactive_all_df = safe_table_call(inactive_players_all, df, pics)
+    dead_players_df = safe_table_call(dead_players_all, df, pics)
+    all_free_agents_df = safe_table_call(all_free_agents, df, pics)
+    draft_all_df = safe_table_call(draft_rights_all, df, pics)
+    retired_all_df = safe_table_call(retired_all, df, pics)
+    trade_restrictins_all_df = safe_table_call(trade_restrictions_all, df, pics)
 
     render_html(f"""
         <div class="sbc-draft-hero">
@@ -3751,10 +3800,10 @@ with tab6:
 
     '''
 with tab7:
-    all_full_team_picks = all_full_draft_picks(dp)
-    all_swap_team_picks = all_swap_draft_picks(dp)
-    all_split_team_picks = all_split_draft_picks(dp)
-    all_locked_team_picks = all_locked_draft_picks(dp)
+    all_full_team_picks = safe_table_call(all_full_draft_picks, dp)
+    all_swap_team_picks = safe_table_call(all_swap_draft_picks, dp)
+    all_split_team_picks = safe_table_call(all_split_draft_picks, dp)
+    all_locked_team_picks = safe_table_call(all_locked_draft_picks, dp)
     all_shared_pick_count = all_swap_team_picks.shape[0] + all_split_team_picks.shape[0]
     all_pick_count = all_full_team_picks.shape[0] + all_shared_pick_count + all_locked_team_picks.shape[0]
     all_first_round_count = sum(
@@ -4094,7 +4143,11 @@ with tab10:
             ball3 = st.selectbox("Ball 3", options)
         with col4:
             ball4 = st.selectbox("Ball 4", options)        
-        base_table = lottery_table(standings)
+        try:
+            base_table = lottery_table(standings)
+        except Exception:
+            render_html('<div class="sbc-empty-state">Lottery data is not available right now.</div>')
+            base_table = pd.DataFrame(columns=["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball", "Ownership"])
 
         ball_cols = ["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball"]
 
