@@ -504,10 +504,13 @@ def live_row_payload(live_df, team):
     row = live_df[live_df["Team"] == team]
     if row.shape[0] == 0:
         return None
+    rank_stats = [stat for stat, _, _ in LIVE_STATS]
+    for made_col, attempt_col in LIVE_PAIRED_STATS.values():
+        rank_stats.extend([made_col, attempt_col])
     return {
         "team": team,
         "data": row.iloc[0],
-        "ranks": {stat: live_rank_label(live_df, team, stat) for stat, _, _ in LIVE_STATS},
+        "ranks": {stat: live_rank_label(live_df, team, stat) for stat in dict.fromkeys(rank_stats)},
     }
 
 
@@ -526,6 +529,15 @@ def render_live_stat_board(title, kicker, rows, selected_team):
     totals = [0] * len(rows)
     for stat, label, points in LIVE_STATS:
         displays = [live_stat_value(row["data"], stat) for row in rows]
+        subtexts = []
+        for row in rows:
+            if stat in LIVE_PAIRED_STATS:
+                made_col, attempt_col = LIVE_PAIRED_STATS[stat]
+                made_rank = row.get("ranks", {}).get(made_col, "")
+                attempt_rank = row.get("ranks", {}).get(attempt_col, "")
+                subtexts.append(f"{made_rank} / {attempt_rank}".strip(" /"))
+            else:
+                subtexts.append(row.get("ranks", {}).get(stat, ""))
         try:
             states = live_stat_score(displays, stat)
         except (TypeError, ValueError):
@@ -539,8 +551,8 @@ def render_live_stat_board(title, kicker, rows, selected_team):
             if len(rows) > 1:
                 totals[idx] += split_value
         value_cells = "".join(
-            f'<div class="sbc-live-stat-value sbc-live-stat-{state}"><span>{escape(str(display))}</span><em>{escape(str(row.get("ranks", {}).get(stat, "")))}</em></div>'
-            for display, state, row in zip(displays, states, rows))
+            f'<div class="sbc-live-stat-value sbc-live-stat-{state}"><span>{escape(str(display))}</span><em>{escape(str(subtext))}</em></div>'
+            for display, state, subtext in zip(displays, states, subtexts))
         stat_rows.append(
             dedent(f"""
             <div class="sbc-live-stat-row">
@@ -1588,6 +1600,7 @@ st.markdown(
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
+        min-height: 4.55rem;
         border-bottom: 1px solid rgba(23, 32, 42, 0.08);
         background:
             linear-gradient(90deg, color-mix(in srgb, var(--sbc-team-primary) 12%, #ffffff) 0%, rgba(255, 255, 255, 0.92) 100%);
@@ -1604,20 +1617,22 @@ st.markdown(
     .sbc-live-team-head {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.08);
         background: #f7f9fc;
-        min-height: 4rem;
+        height: 5.65rem;
+        min-height: 5.65rem;
     }}
 
     .sbc-live-team-head {{
         display: grid;
         justify-items: center;
-        align-content: center;
-        gap: 0.28rem;
+        grid-template-rows: 2.35rem 2.1rem;
+        align-items: center;
+        gap: 0.32rem;
         border-left: 1px solid rgba(23, 32, 42, 0.07);
         color: var(--sbc-ink);
         font-size: 0.78rem;
         font-weight: 950;
         line-height: 1.05;
-        padding: 0.5rem;
+        padding: 0.56rem 0.5rem;
         text-align: center;
     }}
 
@@ -1628,6 +1643,16 @@ st.markdown(
         filter: drop-shadow(0 4px 8px rgba(18, 25, 38, 0.14));
     }}
 
+    .sbc-live-team-head span {{
+        display: -webkit-box;
+        max-width: 100%;
+        min-height: 2.1em;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        word-break: normal;
+    }}
+
     .sbc-live-stat-row {{
         display: contents;
     }}
@@ -1636,9 +1661,12 @@ st.markdown(
     .sbc-live-stat-value,
     .sbc-live-total-name,
     .sbc-live-total-value {{
+        box-sizing: border-box;
         border-bottom: 1px solid rgba(23, 32, 42, 0.065);
-        min-height: 3.2rem;
-        padding: 0.52rem 0.72rem;
+        height: 3.55rem;
+        min-height: 3.55rem;
+        overflow: hidden;
+        padding: 0.48rem 0.68rem;
     }}
 
     .sbc-live-stat-name,
@@ -1651,6 +1679,10 @@ st.markdown(
 
     .sbc-live-stat-name span,
     .sbc-live-total-name span {{
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
         font-size: 0.88rem;
         font-weight: 950;
         line-height: 1.05;
@@ -1664,7 +1696,11 @@ st.markdown(
         font-style: normal;
         font-weight: 850;
         letter-spacing: 0.04em;
+        line-height: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
         text-transform: uppercase;
+        white-space: nowrap;
     }}
 
     .sbc-live-stat-value {{
@@ -1680,7 +1716,12 @@ st.markdown(
     }}
 
     .sbc-live-stat-value span {{
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
         line-height: 1;
+        white-space: nowrap;
     }}
 
     .sbc-live-stat-value em {{
@@ -1690,7 +1731,12 @@ st.markdown(
         font-style: normal;
         font-weight: 900;
         letter-spacing: 0.04em;
+        line-height: 1;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
         text-transform: uppercase;
+        white-space: nowrap;
     }}
 
     .sbc-live-total-name,
@@ -1698,6 +1744,8 @@ st.markdown(
         background: #111827;
         color: #ffffff;
         border-bottom: none;
+        height: 3.75rem;
+        min-height: 3.75rem;
     }}
 
     .sbc-live-total-name em {{
