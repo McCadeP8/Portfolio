@@ -82,17 +82,7 @@ team_award_history = load_optional_data("Team award history", get_team_award_his
 
 Teams = sorted(team_info.keys())
 
-top_col1, top_col2 = st.columns([5, 2], vertical_alignment="bottom")
-with top_col1:
-    st.markdown(
-        """
-        <div class="sbc-app-masthead">
-            <div class="sbc-app-eyebrow">Welcome to the league office</div>
-            <div class="sbc-app-title">SBC Fantasy Basketball League</div>
-            <div class="sbc-app-subtitle">Cap sheets, live scores, draft assets, awards, and league history in one place.</div>
-        </div>
-        """,
-        unsafe_allow_html=True)
+_, top_col2 = st.columns([5, 2], vertical_alignment="bottom")
 with top_col2:
     st.markdown('<div class="sbc-picker-eyebrow">Team View</div>', unsafe_allow_html=True)
     SelectedTeam = st.selectbox("Choose your team", Teams, index=Teams.index("Vegas"))
@@ -278,6 +268,20 @@ def clean_pick_display(value):
     return "—" if text.lower() in ["false", "nan", "none", "nat"] else text
 
 
+def clean_pick_round(value):
+    text = clean_pick_display(value)
+    match = re.search(r"\d+", str(text))
+    return match.group(0) if match else text
+
+
+def pick_round_rank(value):
+    text = clean_pick_round(value)
+    try:
+        return int(text)
+    except (TypeError, ValueError):
+        return 99
+
+
 def render_pick_table(data, title, icon, description, empty_text, columns=None, image_columns=None, status="hold"):
     image_columns = set(image_columns or [])
     if data is None or data.shape[0] == 0:
@@ -303,9 +307,15 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
         visible_columns = list(table_df.columns)
     else:
         visible_columns = [c for c in columns if c in table_df.columns]
+    group_by_year = "Year" in visible_columns
+    table_columns = [c for c in visible_columns if c != "Year"]
+
+    if group_by_year:
+        table_df["_sbc_round_rank"] = table_df["Round"].apply(pick_round_rank) if "Round" in table_df.columns else 99
+        table_df = table_df.sort_values(["Year", "_sbc_round_rank"]).drop(columns=["_sbc_round_rank"])
 
     header_cells = []
-    for col in visible_columns:
+    for col in table_columns:
         label = {
             "OGTeam": "Slot",
             "CurrentTeam": "Owner",
@@ -321,9 +331,15 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
         header_cells.append(f"<th{class_attr}>{escape(str(label))}</th>")
 
     body_rows = []
+    current_group_year = None
     for _, row in table_df.iterrows():
+        if group_by_year:
+            row_year = clean_pick_display(row.get("Year", ""))
+            if row_year != current_group_year:
+                current_group_year = row_year
+                body_rows.append(f'<tr class="sbc-pick-year-row"><td colspan="{len(table_columns)}"><span>{escape(str(row_year))}</span></td></tr>')
         cells = []
-        for col in visible_columns:
+        for col in table_columns:
             raw_value = row.get(col, "")
             value = "" if is_blank_value(raw_value) else raw_value
             cell_classes = []
@@ -339,6 +355,7 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
                 if col == "Year":
                     cell_classes.append("sbc-pick-year-cell")
                 if col == "Round":
+                    value_html = f'<span class="sbc-round-badge">{escape(str(clean_pick_round(value)))}</span>'
                     cell_classes.append("sbc-pick-round-cell")
             class_attr = f' class="{" ".join(cell_classes)}"' if cell_classes else ""
             cells.append(f"<td{class_attr}>{value_html}</td>")
@@ -1057,6 +1074,26 @@ st.markdown(
         border-bottom: none;
     }}
 
+    .sbc-pick-year-row td {{
+        background: color-mix(in srgb, var(--sbc-team-primary) 14%, #ffffff) !important;
+        border-bottom: 1px solid color-mix(in srgb, var(--sbc-team-primary) 20%, rgba(23, 32, 42, 0.08)) !important;
+        padding: 0.52rem 0.72rem !important;
+        text-align: left !important;
+    }}
+
+    .sbc-pick-year-row span {{
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.65rem;
+        border-radius: 999px;
+        background: var(--sbc-team-primary);
+        color: var(--sbc-team-text);
+        font-size: 0.78rem;
+        font-weight: 950;
+        letter-spacing: 0.04em;
+        padding: 0.18rem 0.75rem;
+    }}
+
     .sbc-pick-logo-col {{
         width: 4.3rem;
         min-width: 4.3rem;
@@ -1078,8 +1115,22 @@ st.markdown(
     }}
 
     .sbc-pick-round-cell {{
-        min-width: 6.75rem;
+        min-width: 4rem;
         font-weight: 850 !important;
+    }}
+
+    .sbc-round-badge {{
+        display: inline-grid;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--sbc-team-primary) 16%, #ffffff);
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 32%, rgba(23, 32, 42, 0.10));
+        color: var(--sbc-ink);
+        font-size: 0.86rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
     }}
 
     .sbc-pick-detail-col,
@@ -1271,22 +1322,6 @@ st.markdown(
     </style>""",
     unsafe_allow_html=True)
 
-st.markdown(
-    f"""
-    <section class="sbc-team-hero">
-        <div class="sbc-team-hero-inner">
-            <div class="sbc-logo-frame">
-                <img src="{team_logo_html}" alt="{team_name_html} logo" referrerpolicy="no-referrer">
-            </div>
-            <div>
-                <div class="sbc-team-typeface">{team_name_html} {nickname_html}</div>
-                <div class="sbc-team-subtitle">Cap Sheet and League Hub</div>
-            </div>
-        </div>
-    </section>
-    """,
-    unsafe_allow_html=True)
-
 if SelectedTeam == "Honolulu":
     st.balloons()
 if SelectedTeam == "Manchester":
@@ -1420,10 +1455,15 @@ with tab1:
 
     st.markdown(
         f"""
-        <div class="sbc-cap-page-title">
-            <div class="sbc-cap-eyebrow">{season_label} Season</div>
-            <div class="sbc-cap-heading">{team_name_html} {nickname_html} Cap Sheet</div>
-            <div class="sbc-cap-subcopy">Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{season_label} Season Cap Office</div>
+                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Cap</div>
+                    <div class="sbc-draft-subcopy">Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
+                </div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True)
@@ -1635,7 +1675,7 @@ with tab2:
         "⇄",
         "Picks with swap language, shared ownership, or split-control terms.",
         "No swapped or shared-control picks are currently listed.",
-        columns=["Type", "Year", "Round", "OGTeam", "Contacted", "Explanation"],
+        columns=["Year", "Round", "OGTeam", "Contacted", "Explanation"],
         image_columns=["OGTeam"],
         status="swap")
 
