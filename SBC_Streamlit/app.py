@@ -2,10 +2,12 @@
 #os.chdir("SBC_Streamlit")
 
 import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_folium import st_folium
 import pandas as pd
 import altair as alt
 import re as re
+import json
 from html import escape
 from textwrap import dedent
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
@@ -516,7 +518,7 @@ def live_row_payload(live_df, team):
     }
 
 
-def render_live_stat_board(title, kicker, rows, selected_team):
+def render_live_stat_board(title, kicker, rows, selected_team, tie_winner_team=None):
     if not rows:
         render_html('<div class="sbc-empty-state">No live stats are available for this selection.</div>')
         return
@@ -547,6 +549,11 @@ def render_live_stat_board(title, kicker, rows, selected_team):
         point_value = live_stat_points(points)
         if point_value == 0:
             states = ["neutral"] * len(displays)
+        elif tie_winner_team and "tie" in states:
+            states = [
+                "win" if state == "tie" and row.get("team") == tie_winner_team else "trail" if state == "tie" else state
+                for state, row in zip(states, rows)
+            ]
         point_winners = [idx for idx, state in enumerate(states) if state in ["win", "tie"]]
         split_value = point_value / len(point_winners) if point_winners else 0
         for idx in point_winners:
@@ -570,6 +577,8 @@ def render_live_stat_board(title, kicker, rows, selected_team):
     if len(rows) > 1:
         max_total = max(totals)
         total_leaders = [total == max_total for total in totals]
+        if tie_winner_team and sum(total_leaders) > 1:
+            total_leaders = [row.get("team") == tie_winner_team for row in rows]
         has_single_winner = sum(total_leaders) == 1
         total_cells = []
         for total, is_leader, row in zip(totals, total_leaders, rows):
@@ -706,14 +715,32 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         .configure_legend(labelColor="#17202a"))
 
 
-def schedule_result(team_score, opponent_score):
+def schedule_result(team_score, opponent_score, selected_is_home):
     if is_blank_value(team_score) or is_blank_value(opponent_score):
         return "TBD"
     if float(team_score) > float(opponent_score):
         return "W"
     if float(team_score) < float(opponent_score):
         return "L"
-    return "T"
+    return "W" if selected_is_home else "L"
+
+
+def schedule_regular_record(schedule_df, selected_team):
+    if schedule_df is None or schedule_df.shape[0] == 0:
+        return "0-0"
+    regular_df = schedule_df[schedule_df["Type"] == "Regular Season"].copy()
+    wins = 0
+    losses = 0
+    for _, row in regular_df.iterrows():
+        is_home = row.get("TeamA") == selected_team
+        team_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
+        opponent_score = row.get("TeamBScore") if is_home else row.get("TeamAScore")
+        result = schedule_result(team_score, opponent_score, is_home)
+        if result == "W":
+            wins += 1
+        elif result == "L":
+            losses += 1
+    return f"{wins}-{losses}"
 
 
 def render_schedule_table(schedule_df, selected_team):
@@ -727,34 +754,37 @@ def render_schedule_table(schedule_df, selected_team):
     table_df = table_df.sort_values(["Period", "TypeOrder", "Game_ID"])
 
     body_rows = []
+    current_type = None
     for _, row in table_df.iterrows():
         is_home = row.get("TeamA") == selected_team
         opponent = row.get("TeamB") if is_home else row.get("TeamA")
         opponent_info = team_info.get(opponent, {})
+        opponent_color = opponent_info.get("bg", "#94a3b8")
+        opponent_font = TEAM_FONTS.get(opponent, "Poppins")
         logo = opponent_info.get("logo", "")
         logo_html = f'<img class="sbc-schedule-logo" src="{escape(str(logo), quote=True)}" alt="{escape(str(opponent), quote=True)} logo">' if logo else ""
-        location_text = "Home" if is_home else "Away"
         venue_mark = "vs" if is_home else "@"
         team_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
         opponent_score = row.get("TeamBScore") if is_home else row.get("TeamAScore")
-        result = schedule_result(team_score, opponent_score)
-        result_class = {"W": "win", "L": "loss", "T": "tie"}.get(result, "tbd")
+        result = schedule_result(team_score, opponent_score, is_home)
+        result_class = {"W": "win", "L": "loss"}.get(result, "tbd")
         score_text = "TBD" if result == "TBD" else f"{float(team_score):g}-{float(opponent_score):g}"
         type_text = clean_pick_display(row.get("Type", ""))
         round_text = clean_pick_display(row.get("Round", ""))
-        context_bits = [bit for bit in [type_text, round_text if round_text != type_text else ""] if bit and bit != "-"]
-        context_text = " / ".join(context_bits)
+        if type_text != current_type:
+            current_type = type_text
+            body_rows.append(f'<tr class="sbc-schedule-group-row"><td colspan="3"><span>{escape(type_text)}</span></td></tr>')
+        round_subtext = "" if round_text in ["-", type_text] else f"<em>{escape(round_text)}</em>"
         body_rows.append(dedent(f"""
-        <tr class="sbc-schedule-row sbc-schedule-{result_class}">
+        <tr class="sbc-schedule-row sbc-schedule-{result_class}" style="--sbc-opponent-color:{escape(str(opponent_color), quote=True)}; --sbc-opponent-font:'{escape(str(opponent_font), quote=True)}', 'Poppins', sans-serif;">
             <td class="sbc-schedule-period"><span>P{escape(str(row.get("Period", "")))}</span></td>
             <td class="sbc-schedule-opponent">
                 {logo_html}
                 <div>
                     <strong>{escape(str(venue_mark))} {escape(str(opponent))}</strong>
-                    <em>{escape(location_text)} / {escape(context_text)}</em>
+                    {round_subtext}
                 </div>
             </td>
-            <td class="sbc-schedule-type"><span>{escape(type_text)}</span></td>
             <td class="sbc-schedule-score"><strong>{escape(score_text)}</strong><em>{escape(result)}</em></td>
         </tr>
         """))
@@ -766,7 +796,6 @@ def render_schedule_table(schedule_df, selected_team):
                 <tr>
                     <th>Period</th>
                     <th>Opponent</th>
-                    <th>Type</th>
                     <th>Score</th>
                 </tr>
             </thead>
@@ -774,6 +803,178 @@ def render_schedule_table(schedule_df, selected_team):
         </table>
     </div>
     """)
+
+
+def render_team_travel_map(schedule_df, selected_team, selected_year, height=500):
+    travel_df = schedule_df[schedule_df["Type"].isin(["Regular Season", "In-Season Tournament"])].copy()
+    if travel_df.shape[0] == 0:
+        render_html('<div class="sbc-empty-state">No travel route data is available for this selection.</div>')
+        return
+
+    type_order = {"Regular Season": 0, "In-Season Tournament": 1}
+    travel_df["TypeOrder"] = travel_df["Type"].map(type_order).fillna(9)
+    travel_df = travel_df.sort_values(["Period", "TypeOrder", "Game_ID"]).reset_index(drop=True)
+    home_info = team_info.get(selected_team, {})
+    current = {
+        "team": selected_team,
+        "lat": home_info.get("lat"),
+        "lon": home_info.get("lon"),
+    }
+    arcs = []
+    nodes = [{
+        "team": selected_team,
+        "lat": current["lat"],
+        "lon": current["lon"],
+        "home": True,
+        "color": home_info.get("bg", bg_color),
+    }]
+
+    for _, row in travel_df.iterrows():
+        destination_team = row.get("TeamB") if row.get("TeamA") == selected_team else selected_team
+        dest_info = team_info.get(destination_team, {})
+        dest = {"team": destination_team, "lat": dest_info.get("lat"), "lon": dest_info.get("lon")}
+        if not is_blank_value(current.get("lat")) and not is_blank_value(current.get("lon")) and not is_blank_value(dest.get("lat")) and not is_blank_value(dest.get("lon")):
+            if float(current["lat"]) != float(dest["lat"]) or float(current["lon"]) != float(dest["lon"]):
+                arcs.append({
+                    "src_lat": float(current["lat"]),
+                    "src_lon": float(current["lon"]),
+                    "dst_lat": float(dest["lat"]),
+                    "dst_lon": float(dest["lon"]),
+                    "color_hex": home_info.get("bg", bg_color),
+                    "note": f"P{row.get('Period')}: {selected_team} to {destination_team}",
+                })
+            nodes.append({
+                "team": destination_team,
+                "lat": float(dest["lat"]),
+                "lon": float(dest["lon"]),
+                "home": destination_team == selected_team,
+                "color": dest_info.get("bg", "#64748b"),
+            })
+        current = dest
+
+    if not arcs:
+        render_html('<div class="sbc-empty-state">No away travel routes are available for this season.</div>')
+        return
+
+    node_df = pd.DataFrame(nodes).drop_duplicates(subset=["lat", "lon"]).to_dict("records")
+    map_id = f"sbc-travel-map-{selected_team}-{selected_year}".replace(" ", "-").replace(".", "").lower()
+    arcs_json = json.dumps(arcs)
+    nodes_json = json.dumps(node_df)
+    components.html(f"""
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  #{map_id} {{
+    height: {height}px;
+    width: 100%;
+    border: 1px solid #d9e0ec;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #dbeafe;
+  }}
+  #{map_id} .leaflet-tile-pane {{
+    filter: saturate(0.78) contrast(0.96) brightness(1.04);
+  }}
+</style>
+<div id="{map_id}"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function() {{
+  const arcs = {arcs_json};
+  const nodes = {nodes_json};
+  const mapEl = document.getElementById("{map_id}");
+  function boot() {{
+    if (!window.L || !mapEl) {{ setTimeout(boot, 60); return; }}
+    const map = L.map(mapEl, {{ zoomControl: true, scrollWheelZoom: false, attributionControl: true, preferCanvas: true }});
+    L.tileLayer("https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png", {{
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+      subdomains: "abcd",
+      maxZoom: 18
+    }}).addTo(map);
+    const bounds = [];
+    arcs.forEach(a => bounds.push([a.src_lat, a.src_lon], [a.dst_lat, a.dst_lon]));
+    nodes.forEach(n => bounds.push([n.lat, n.lon]));
+    if (bounds.length) map.fitBounds(bounds, {{ padding: [30, 30], maxZoom: 5 }});
+    else map.setView([39.5, -98.35], 4);
+
+    const routeLayer = L.svg({{ padding: 0.35 }}).addTo(map);
+    const svg = routeLayer.getPane().querySelector("svg");
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    svg.appendChild(g);
+    function curvePoints(a, steps) {{
+      const p0 = map.latLngToLayerPoint([a.src_lat, a.src_lon]);
+      const p2 = map.latLngToLayerPoint([a.dst_lat, a.dst_lon]);
+      const dx = p2.x - p0.x, dy = p2.y - p0.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const lift = Math.min(Math.max(dist * 0.18, 34), 120);
+      const p1 = L.point((p0.x + p2.x) / 2 - (dy / dist) * lift, (p0.y + p2.y) / 2 + (dx / dist) * lift);
+      const pts = [];
+      for (let i = 0; i <= steps; i++) {{
+        const t = i / steps;
+        pts.push([
+          (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x,
+          (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y
+        ]);
+      }}
+      return pts;
+    }}
+    const movers = [];
+    function redraw() {{
+      g.innerHTML = "";
+      movers.length = 0;
+      arcs.forEach((a, i) => {{
+        const color = a.color_hex || "#2563eb";
+        const pts = curvePoints(a, 36);
+        const d = pts.map((p, idx) => `${{idx ? "L" : "M"}} ${{p[0].toFixed(1)}} ${{p[1].toFixed(1)}}`).join(" ");
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", d);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", color);
+        path.setAttribute("stroke-width", "2.5");
+        path.setAttribute("stroke-opacity", "0.42");
+        path.setAttribute("stroke-linecap", "round");
+        g.appendChild(path);
+        const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        dot.setAttribute("r", "5.2");
+        dot.setAttribute("fill", color);
+        dot.setAttribute("stroke", "#ffffff");
+        dot.setAttribute("stroke-width", "1.5");
+        dot.setAttribute("opacity", "0.94");
+        g.appendChild(dot);
+        movers.push({{ dot, pts, offset: (i % 14) * 0.075 }});
+      }});
+      nodes.forEach(n => {{
+        const p = map.latLngToLayerPoint([n.lat, n.lon]);
+        const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        ring.setAttribute("cx", p.x);
+        ring.setAttribute("cy", p.y);
+        ring.setAttribute("r", n.home ? "6.8" : "5.5");
+        ring.setAttribute("fill", "#ffffff");
+        ring.setAttribute("stroke", n.home ? "{bg_color}" : (n.color || "#1a2030"));
+        ring.setAttribute("stroke-width", n.home ? "2.8" : "2.1");
+        ring.setAttribute("opacity", "0.96");
+        g.appendChild(ring);
+      }});
+    }}
+    function animate(now) {{
+      const cycle = 7600;
+      movers.forEach(m => {{
+        const raw = ((now % cycle) / cycle + m.offset) % 1;
+        const t = raw <= 0.5 ? raw * 2 : (1 - raw) * 2;
+        const idx = Math.min(Math.floor(t * (m.pts.length - 1)), m.pts.length - 1);
+        const p = m.pts[idx];
+        m.dot.setAttribute("cx", p[0]);
+        m.dot.setAttribute("cy", p[1]);
+      }});
+      requestAnimationFrame(animate);
+    }}
+    redraw();
+    map.on("zoomend moveend resize", redraw);
+    requestAnimationFrame(animate);
+  }}
+  boot();
+}})();
+</script>
+""", height=height + 12)
 
 st.markdown(
     f"""
@@ -1939,24 +2140,42 @@ st.markdown(
     }}
 
     .sbc-schedule-table th:nth-child(1) {{ width: 5.5rem; }}
-    .sbc-schedule-table th:nth-child(3) {{ width: 10rem; }}
-    .sbc-schedule-table th:nth-child(4) {{ width: 8.5rem; text-align: center; }}
+    .sbc-schedule-table th:nth-child(3) {{ width: 8.5rem; text-align: center; }}
 
     .sbc-schedule-row {{
-        border-left: 0.42rem solid color-mix(in srgb, var(--sbc-team-primary) 60%, #ffffff);
+        border-left: 0.42rem solid var(--sbc-opponent-color);
     }}
 
     .sbc-schedule-row td {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.075);
         color: var(--sbc-ink);
+        height: 4.25rem;
         padding: 0.68rem 0.85rem;
         vertical-align: middle;
     }}
 
     .sbc-schedule-row:last-child td {{ border-bottom: none; }}
-    .sbc-schedule-win {{ border-left-color: #58a76b; }}
-    .sbc-schedule-loss {{ border-left-color: #d96b6b; }}
-    .sbc-schedule-tie {{ border-left-color: #e6c85c; }}
+
+    .sbc-schedule-group-row td {{
+        background: color-mix(in srgb, var(--sbc-team-primary) 14%, #ffffff);
+        border-bottom: 1px solid color-mix(in srgb, var(--sbc-team-primary) 20%, rgba(23, 32, 42, 0.08));
+        color: var(--sbc-ink);
+        padding: 0.52rem 0.72rem;
+    }}
+
+    .sbc-schedule-group-row span {{
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.65rem;
+        border-radius: 999px;
+        background: var(--sbc-team-primary);
+        color: var(--sbc-team-text);
+        font-size: 0.78rem;
+        font-weight: 950;
+        letter-spacing: 0.04em;
+        padding: 0.18rem 0.75rem;
+        text-transform: uppercase;
+    }}
 
     .sbc-schedule-period span {{
         display: inline-grid;
@@ -1989,10 +2208,12 @@ st.markdown(
     .sbc-schedule-opponent strong {{
         display: block;
         overflow: hidden;
-        color: var(--sbc-ink);
-        font-size: 0.94rem;
+        color: #111827;
+        font-family: var(--sbc-opponent-font);
+        font-size: 1.12rem;
         font-weight: 950;
-        line-height: 1.05;
+        line-height: 1.08;
+        padding-bottom: 0.04em;
         text-overflow: ellipsis;
         white-space: nowrap;
     }}
@@ -2008,22 +2229,6 @@ st.markdown(
         letter-spacing: 0.04em;
         text-overflow: ellipsis;
         text-transform: uppercase;
-        white-space: nowrap;
-    }}
-
-    .sbc-schedule-type span {{
-        display: inline-flex;
-        max-width: 100%;
-        border-radius: 999px;
-        background: #f3f6f9;
-        border: 1px solid rgba(23, 32, 42, 0.09);
-        color: #344054;
-        font-size: 0.72rem;
-        font-weight: 900;
-        line-height: 1;
-        overflow: hidden;
-        padding: 0.42rem 0.58rem;
-        text-overflow: ellipsis;
         white-space: nowrap;
     }}
 
@@ -2700,6 +2905,7 @@ with tab3:
             f"{SelectedTeam} Period {SelectedPeriod} Stat Profile",
             "No scheduled matchup",
             [selected_payload] if selected_payload else [],
+            SelectedTeam,
             SelectedTeam)
     else:
         matchup_cols = st.columns(min(3, matchup_count))
@@ -2708,11 +2914,24 @@ with tab3:
                 selected_payload = live_row_payload(live_stats_df, SelectedTeam)
                 opponent_payload = live_row_payload(live_stats_df, opponent)
                 matchup_rows = [payload for payload in [selected_payload, opponent_payload] if payload]
+                matchup_home = SelectedTeam
+                schedule_match = all_time_schedule[
+                    (all_time_schedule["Year"] == SelectedYear)
+                    & (all_time_schedule["Period"] == SelectedPeriod)
+                    & (all_time_schedule["Type"] == matchup_type)
+                    & (
+                        ((all_time_schedule["TeamA"] == SelectedTeam) & (all_time_schedule["TeamB"] == opponent))
+                        | ((all_time_schedule["TeamA"] == opponent) & (all_time_schedule["TeamB"] == SelectedTeam))
+                    )
+                ]
+                if schedule_match.shape[0] > 0:
+                    matchup_home = schedule_match.iloc[0]["TeamA"]
                 render_live_stat_board(
                     f"{SelectedTeam} vs {opponent}",
                     f"{matchup_type} - Period {SelectedPeriod}",
                     matchup_rows,
-                    SelectedTeam)
+                    SelectedTeam,
+                    matchup_home)
 
     render_html('<div class="sbc-section-label">Season Trend</div>')
     SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
@@ -2735,18 +2954,6 @@ with tab3:
 with tab4:
     schedule_years = sorted(all_time_schedule["Year"].dropna().astype(int).unique().tolist())
     default_schedule_year = current_year if current_year in schedule_years else schedule_years[-1]
-    render_html(f"""
-        <div class="sbc-draft-hero">
-            <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
-                <div>
-                    <div class="sbc-draft-eyebrow">Travel Desk</div>
-                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Schedule</div>
-                    <div class="sbc-draft-subcopy">Opponent flow, home-road balance, matchup types, results, and travel load by season.</div>
-                </div>
-            </div>
-        </div>
-        """)
     SelectedScheduleYear = st.selectbox(
         "Schedule Year",
         options=schedule_years,
@@ -2755,6 +2962,19 @@ with tab4:
         (all_time_schedule["Year"] == SelectedScheduleYear)
         & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
     ].copy()
+    schedule_record = schedule_regular_record(schedule_raw, SelectedTeam)
+    render_html(f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{SelectedScheduleYear} Travel Desk / Regular Season {escape(schedule_record)}</div>
+                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Schedule</div>
+                    <div class="sbc-draft-subcopy">Opponent flow, home-road balance, matchup types, results, and travel load by season.</div>
+                </div>
+            </div>
+        </div>
+        """)
     render_html('<div class="sbc-section-label">Schedule</div>')
     render_schedule_table(schedule_raw, SelectedTeam)
     total_miles, num_flights = get_team_mileage(SelectedTeam, SelectedScheduleYear, all_time_schedule)
@@ -2763,7 +2983,7 @@ with tab4:
         st.metric(label="Total Miles", value=f"{int(total_miles):,} mi", help="Total miles traveled this season including road trips and returns home.", border=True)
     with col2:
         st.metric(label="Total Flights", value=num_flights, help="Number of flights taken this season (legs with distance > 0).", border=True)
-    st_folium(plot_team_flights(SelectedTeam, SelectedScheduleYear, all_time_schedule), width="100%", height=480, returned_objects=[])
+    render_team_travel_map(schedule_raw, SelectedTeam, SelectedScheduleYear)
 
 with tab5:
     st.subheader("League Scoreboard")
