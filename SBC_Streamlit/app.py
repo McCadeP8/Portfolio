@@ -110,7 +110,7 @@ st.markdown(
 
     .block-container {{
         max-width: 1500px;
-        padding-top: 3.75rem;
+        padding-top: 5.25rem;
         padding-bottom: 3rem;
     }}
 
@@ -125,19 +125,19 @@ st.markdown(
     }}
 
     .sbc-app-kicker {{
-        color: var(--sbc-muted);
-        font-size: 0.82rem;
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        margin: 0 0 0.35rem;
+        color: var(--sbc-ink);
+        font-size: clamp(2.25rem, 4.8vw, 4.4rem);
+        font-weight: 950;
+        letter-spacing: 0;
+        line-height: 0.94;
+        margin: 0 0 0.65rem;
     }}
 
     .sbc-team-hero {{
         position: relative;
         overflow: hidden;
         margin: 0.35rem 0 1.15rem;
-        padding: 1.15rem 1.25rem;
+        padding: 1.25rem 1.4rem;
         border: 1px solid rgba(255, 255, 255, 0.58);
         border-radius: 8px;
         background: var(--sbc-team-primary);
@@ -153,14 +153,14 @@ st.markdown(
         position: relative;
         z-index: 1;
         display: grid;
-        grid-template-columns: minmax(5.5rem, 7rem) 1fr;
-        gap: 1rem;
+        grid-template-columns: minmax(7rem, 9.25rem) 1fr;
+        gap: 1.35rem;
         align-items: center;
     }}
 
     .sbc-logo-frame {{
-        width: 6.5rem;
-        height: 6.5rem;
+        width: 8.75rem;
+        height: 8.75rem;
         display: grid;
         place-items: center;
         padding: 0;
@@ -180,7 +180,7 @@ st.markdown(
     .sbc-team-typeface {{
         color: var(--sbc-team-secondary);
         font-family: var(--sbc-team-font);
-        font-size: clamp(2.25rem, 4.6vw, 4.9rem);
+        font-size: clamp(2.4rem, 5.2vw, 5.35rem);
         font-weight: 900;
         line-height: 1;
         max-width: 100%;
@@ -191,18 +191,11 @@ st.markdown(
     }}
 
     .sbc-team-title {{
-        margin: 0;
-        color: inherit;
-        font-family: "Poppins", "Segoe UI", sans-serif;
-        font-size: 0.9rem;
-        line-height: 1;
-        font-weight: 900;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
+        display: none;
     }}
 
     .sbc-team-subtitle {{
-        margin-top: 0.35rem;
+        margin-top: 0.5rem;
         font-size: 1rem;
         font-weight: 800;
         opacity: 0.9;
@@ -222,11 +215,17 @@ st.markdown(
     }}
 
     div[data-baseweb="select"] > div {{
-        min-height: 3rem;
+        min-height: 3.15rem;
         border-radius: 8px !important;
-        border: 1px solid var(--sbc-border) !important;
+        border: 1px solid rgba(23, 32, 42, 0.16) !important;
         background: #ffffff !important;
-        box-shadow: 0 10px 28px rgba(18, 25, 38, 0.08);
+        box-shadow: 0 8px 22px rgba(18, 25, 38, 0.08);
+    }}
+
+    div[data-baseweb="select"] > div:hover,
+    div[data-baseweb="select"] > div:focus-within {{
+        border-color: var(--sbc-team-primary) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--sbc-team-primary) 18%, transparent), 0 10px 26px rgba(18, 25, 38, 0.10);
     }}
 
     div[data-baseweb="select"] *,
@@ -247,11 +246,51 @@ st.markdown(
     [data-testid="stDateInput"] input {{
         color: var(--sbc-ink) !important;
         background: #ffffff !important;
+        border-radius: 8px !important;
+        border: 1px solid rgba(23, 32, 42, 0.16) !important;
+        box-shadow: 0 8px 22px rgba(18, 25, 38, 0.08);
+        min-height: 3.15rem;
+    }}
+
+    [data-testid="stNumberInput"] input:focus,
+    [data-testid="stTextInput"] input:focus,
+    [data-testid="stDateInput"] input:focus {{
+        border-color: var(--sbc-team-primary) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--sbc-team-primary) 18%, transparent), 0 10px 26px rgba(18, 25, 38, 0.10);
     }}
 
     div[data-baseweb="popover"] {{
         border-radius: 8px !important;
         overflow: hidden;
+        box-shadow: 0 18px 42px rgba(18, 25, 38, 0.18) !important;
+    }}
+
+    div[data-baseweb="menu"] {{
+        background: #ffffff !important;
+        color: var(--sbc-ink) !important;
+    }}
+
+    div[data-baseweb="option"],
+    div[data-baseweb="option"] * {{
+        color: var(--sbc-ink) !important;
+        font-weight: 750 !important;
+    }}
+
+    div[data-baseweb="option"]:hover,
+    div[data-baseweb="option"][aria-selected="true"] {{
+        background: color-mix(in srgb, var(--sbc-team-primary) 12%, #ffffff) !important;
+    }}
+
+    [data-baseweb="tag"] {{
+        background: color-mix(in srgb, var(--sbc-team-primary) 14%, #ffffff) !important;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 26%, #ffffff) !important;
+        border-radius: 7px !important;
+        color: var(--sbc-ink) !important;
+    }}
+
+    [data-baseweb="tag"] span {{
+        color: var(--sbc-ink) !important;
+        font-weight: 800 !important;
     }}
 
     h1, h2, h3 {{
@@ -341,7 +380,7 @@ st.markdown(
 
     @media (max-width: 850px) {{
         .block-container {{
-            padding-top: 4.25rem;
+            padding-top: 5.6rem;
             padding-left: 1rem;
             padding-right: 1rem;
         }}
@@ -351,8 +390,8 @@ st.markdown(
         }}
 
         .sbc-logo-frame {{
-            width: 4.75rem;
-            height: 4.75rem;
+            width: 5.5rem;
+            height: 5.5rem;
         }}
 
         .sbc-team-title {{
@@ -360,7 +399,7 @@ st.markdown(
         }}
 
         .sbc-team-typeface {{
-            font-size: clamp(1.85rem, 8vw, 3rem);
+            font-size: clamp(1.85rem, 8vw, 3.15rem);
         }}
     }}
 
@@ -379,9 +418,8 @@ st.markdown(
                 <img src="{team_logo_html}" alt="{team_name_html} logo" referrerpolicy="no-referrer">
             </div>
             <div>
-                <h1 class="sbc-team-title">{team_name_html}</h1>
                 <div class="sbc-team-typeface">{team_name_html} {nickname_html}</div>
-                <div class="sbc-team-subtitle">{nickname_html} Cap Sheet and League Hub</div>
+                <div class="sbc-team-subtitle">Cap Sheet and League Hub</div>
             </div>
         </div>
     </section>
