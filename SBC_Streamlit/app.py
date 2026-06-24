@@ -100,6 +100,14 @@ def format_money(value):
     except (TypeError, ValueError):
         return value
 
+def clean_cap_display(col, value):
+    if is_blank_value(value):
+        return "—"
+    text = str(value)
+    if col == "Exception":
+        text = re.sub(r"(?i)(Traded-Player(?: Exception)?)(?:\s+#?\d+|\s+\d+)$", r"\1", text).strip()
+    return text
+
 def render_cap_table(data, columns=None, image_columns=None, money_columns=None, contract_colors=True):
     image_columns = set(image_columns or [])
     money_columns = set(money_columns or [])
@@ -108,6 +116,8 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
         return
 
     table_df = data.copy()
+    if "Exception" in table_df.columns:
+        table_df["Exception"] = table_df["Exception"].apply(lambda value: clean_cap_display("Exception", value))
     if columns is None:
         visible_columns = [c for c in table_df.columns if not str(c).startswith("Type")]
     else:
@@ -180,6 +190,8 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
         return
 
     table_df = data.copy()
+    if "Exception" in table_df.columns:
+        table_df["Exception"] = table_df["Exception"].apply(lambda value: clean_cap_display("Exception", value))
     if columns is None:
         visible_columns = [c for c in table_df.columns if not str(c).startswith("Type")]
     else:
@@ -263,6 +275,8 @@ st.markdown(
     .stApp {{
         font-family: "Poppins", "Segoe UI", sans-serif;
         background:
+            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--sbc-team-primary) 18%, transparent) 0, transparent 34rem),
+            radial-gradient(circle at 88% 5%, color-mix(in srgb, var(--sbc-team-secondary) 16%, transparent) 0, transparent 30rem),
             linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 246, 248, 0.97) 34%, #eef2f6 100%);
         color: var(--sbc-ink);
     }}
@@ -511,7 +525,7 @@ st.markdown(
     .sbc-cap-page-title {{
         margin: 0.45rem 0 1rem;
         padding-bottom: 0.65rem;
-        border-bottom: 1px solid rgba(23, 32, 42, 0.10);
+        border-bottom: 3px solid color-mix(in srgb, var(--sbc-team-primary) 56%, rgba(23, 32, 42, 0.10));
     }}
 
     .sbc-cap-eyebrow {{
@@ -574,7 +588,8 @@ st.markdown(
         border-radius: 8px;
         background: #ffffff;
         box-shadow: 0 12px 32px rgba(18, 25, 38, 0.07);
-        padding: 0.8rem 0.95rem;
+        padding: 0.72rem 0.95rem;
+        margin-bottom: 0.65rem;
     }}
 
     .sbc-legend-title {{
@@ -609,8 +624,8 @@ st.markdown(
         border: 1px solid rgba(23, 32, 42, 0.10);
         border-radius: 8px;
         background: #ffffff;
-        box-shadow: 0 12px 32px rgba(18, 25, 38, 0.07);
-        margin: 0.35rem 0 0.75rem;
+        box-shadow: 0 8px 20px rgba(18, 25, 38, 0.055);
+        margin: 0.25rem 0 0.38rem;
     }}
 
     .sbc-cap-table {{
@@ -640,7 +655,7 @@ st.markdown(
 
     .sbc-cap-table tbody td {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.07);
-        padding: 0.48rem 0.58rem;
+        padding: 0.42rem 0.54rem;
         vertical-align: middle;
         font-weight: 650;
         white-space: nowrap;
@@ -668,13 +683,13 @@ st.markdown(
     .sbc-player-col,
     .sbc-player-cell {{
         text-align: left !important;
-        min-width: 11rem;
+        min-width: 9.25rem;
     }}
 
     .sbc-year-col {{
-        width: 6.75rem;
-        min-width: 6.75rem;
-        max-width: 6.75rem;
+        width: 7.25rem;
+        min-width: 7.25rem;
+        max-width: 7.25rem;
     }}
 
     .sbc-image-cell {{
@@ -684,13 +699,15 @@ st.markdown(
     }}
 
     .sbc-table-img {{
-        width: 2.3rem;
-        height: 2.3rem;
+        width: 2.45rem;
+        height: 2.45rem;
         object-fit: cover;
         border-radius: 50%;
         display: block;
         margin: 0 auto;
         background: #eef2f6;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px rgba(23, 32, 42, 0.14), 0 4px 10px rgba(18, 25, 38, 0.12);
     }}
 
     [data-testid="stMetricDelta"],
@@ -729,10 +746,12 @@ st.markdown(
 
     [data-testid="stMetric"] {{
         background: var(--sbc-panel);
-        border: 1px solid var(--sbc-border);
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 20%, var(--sbc-border));
+        border-top: 4px solid var(--sbc-team-primary);
         border-radius: 8px;
         box-shadow: 0 10px 30px rgba(18, 25, 38, 0.06);
         padding: 0.65rem 0.75rem;
+        min-height: 6.75rem;
     }}
 
     [data-testid="stMetricLabel"] p {{
@@ -1043,11 +1062,27 @@ with tab1:
         st.markdown('<div class="sbc-empty-state">No dead salary is currently listed for this team.</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="sbc-section-label">Contract And Asset Details</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sbc-cap-eyebrow">Exceptions</div>', unsafe_allow_html=True)
-    exception_df = exception_table(exceptions, SelectedTeam)
-    render_cap_table(exception_df, money_columns=["Amount"], contract_colors=False)
+    exception_col, context_col = st.columns([1.7, 1])
+    with exception_col:
+        st.markdown('<div class="sbc-cap-eyebrow">Exceptions</div>', unsafe_allow_html=True)
+        exception_df = exception_table(exceptions, SelectedTeam)
+        render_cap_table(exception_df, columns=["Exception", "Amount", "Expiration Date"], money_columns=["Amount"], contract_colors=False)
+    with context_col:
+        st.markdown('<div class="sbc-cap-eyebrow">Asset Summary</div>', unsafe_allow_html=True)
+        free_agent_count = free_agent_players(df, pics, SelectedTeam).shape[0]
+        restricted_count = trade_restrictions(df, pics, SelectedTeam).shape[0]
+        rights_count = draft_retired_players(df, pics, SelectedTeam).shape[0]
+        st.markdown(
+            f"""
+            <div class="sbc-mini-note">
+                <strong>{free_agent_count}</strong> upcoming free agents<br>
+                <strong>{restricted_count}</strong> current trade restrictions<br>
+                <strong>{rights_count}</strong> draft-rights or retired assets
+            </div>
+            """,
+            unsafe_allow_html=True)
 
-    asset1, asset2, asset3 = st.columns(3)
+    asset1, asset2, asset3 = st.columns([1.05, 1.15, 0.9])
     with asset1:
         st.markdown('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>', unsafe_allow_html=True)
         free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
@@ -1060,7 +1095,7 @@ with tab1:
         st.markdown('<div class="sbc-cap-eyebrow">Trade Restrictions</div>', unsafe_allow_html=True)
         restricted_df = trade_restrictions(df, pics, SelectedTeam)
         if restricted_df.shape[0] > 0:
-            render_cap_table(restricted_df, image_columns=[" "], contract_colors=False)
+            render_cap_table(restricted_df, columns=[" ", "Player", "Trade Restriction"], image_columns=[" "], contract_colors=False)
         else:
             st.markdown('<div class="sbc-empty-state">No trade restrictions are currently listed for this team.</div>', unsafe_allow_html=True)
 
