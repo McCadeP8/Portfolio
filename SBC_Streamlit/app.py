@@ -597,7 +597,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13
     "✅ Data Checks"])
 
 with tab1:
-    r'''
+    _legacy_tab1 = r'''
     st.subheader(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
     
     col1, col2, col3, col4 = st.columns(4)
