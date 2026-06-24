@@ -283,6 +283,23 @@ def pick_round_rank(value):
         return 99
 
 
+LIVE_STATS = [
+    ("MP", "Minutes", "11 pts"),
+    ("TS%", "True Shooting", "41 pts"),
+    ("2PT%", "2PT Accuracy", "31 pts"),
+    ("3PT%", "3PT Accuracy", "31 pts"),
+    ("FT%", "Free Throws", "21 pts"),
+    ("PTS", "Points", "61 pts"),
+    ("OREB", "Off. Rebounds", "31 pts"),
+    ("DREB", "Def. Rebounds", "31 pts"),
+    ("AST", "Assists", "41 pts"),
+    ("ST", "Steals", "31 pts"),
+    ("BLK", "Blocks", "31 pts"),
+    ("+/-", "Plus / Minus", "31 pts"),
+    ("TO", "Turnovers", "21 pts, lower wins"),
+]
+
+
 def render_pick_table(data, title, icon, description, empty_text, columns=None, image_columns=None, status="hold"):
     image_columns = set(image_columns or [])
     if data is None or data.shape[0] == 0:
@@ -387,7 +404,95 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
         """,
         unsafe_allow_html=True)
 
-def build_live_line_chart(data, selected_team, selected_category, selected_year, selected_period, team_color, accent_color):
+def live_stat_value(row, stat):
+    value = row.get(stat, "")
+    if is_blank_value(value):
+        return "—"
+    try:
+        if stat in ["TS%", "2PT%", "3PT%", "FT%"]:
+            return f"{float(value) * 100:.2f}"
+        if stat == "MP":
+            minutes = float(value)
+            mins = int(minutes)
+            secs = int((minutes - mins) * 60)
+            return f"{mins}:{secs:02d}"
+        if stat == "+/-":
+            return f"{float(value):+.1f}"
+        return f"{float(value):.0f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def live_stat_score(values, stat):
+    if len(values) <= 1:
+        return ["neutral"] * len(values)
+    parsed = []
+    for value in values:
+        if stat == "MP" and isinstance(value, str) and ":" in value:
+            mins, secs = value.split(":", 1)
+            parsed.append(float(mins) + float(secs) / 60)
+        else:
+            parsed.append(float(value))
+    if stat == "TO":
+        best = min(parsed)
+    else:
+        best = max(parsed)
+    return ["win" if val == best else "trail" for val in parsed]
+
+
+def render_live_stat_board(title, kicker, rows, selected_team):
+    if not rows:
+        st.markdown('<div class="sbc-empty-state">No live stats are available for this selection.</div>', unsafe_allow_html=True)
+        return
+
+    team_headers = []
+    for row in rows:
+        logo = team_info.get(row["team"], {}).get("logo", "")
+        logo_html = f'<img class="sbc-live-logo" src="{escape(str(logo), quote=True)}" alt="{escape(str(row["team"]), quote=True)} logo">' if logo else ""
+        team_headers.append(f'<div class="sbc-live-team-head">{logo_html}<span>{escape(str(row["team"]))}</span></div>')
+
+    stat_rows = []
+    for stat, label, points in LIVE_STATS:
+        displays = [live_stat_value(row["data"], stat) for row in rows]
+        try:
+            states = live_stat_score(displays, stat)
+        except (TypeError, ValueError):
+            states = ["neutral"] * len(displays)
+        value_cells = "".join(
+            f'<div class="sbc-live-stat-value sbc-live-stat-{state}">{escape(str(display))}</div>'
+            for display, state in zip(displays, states))
+        stat_rows.append(
+            f"""
+            <div class="sbc-live-stat-row">
+                <div class="sbc-live-stat-name">
+                    <span>{escape(label)}</span>
+                    <em>{escape(points)}</em>
+                </div>
+                {value_cells}
+            </div>
+            """)
+
+    st.markdown(
+        f"""
+        <section class="sbc-live-board">
+            <div class="sbc-live-board-head">
+                <div>
+                    <div class="sbc-live-card-kicker">{escape(kicker)}</div>
+                    <div class="sbc-live-card-title">{escape(title)}</div>
+                </div>
+                <div class="sbc-live-badge">{len(rows)} team{'s' if len(rows) != 1 else ''}</div>
+            </div>
+            <div class="sbc-live-board-grid" style="--sbc-live-team-cols: {len(rows)};">
+                <div class="sbc-live-team-spacer"></div>
+                {''.join(team_headers)}
+                {''.join(stat_rows)}
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True)
+
+
+def build_live_line_chart(data, selected_team, selected_category, selected_year, selected_period, opponents, team_color, accent_color):
     if data is None or data.shape[0] == 0:
         return None
 
@@ -395,6 +500,7 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
     if df_year.shape[0] == 0 or selected_category not in df_year.columns:
         return None
 
+    opponents = [opponent for opponent in opponents if opponent != selected_team]
     league_median = (
         df_year.groupby("Period", as_index=False)[selected_category]
         .median()
@@ -403,7 +509,11 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         df_year[df_year["Team"] == selected_team]
         .loc[:, ["Period", selected_category]]
         .assign(Series=selected_team))
-    plot_df = pd.concat([league_median, team_series], ignore_index=True)
+    opponent_series = (
+        df_year[df_year["Team"].isin(opponents)]
+        .loc[:, ["Period", "Team", selected_category]]
+        .rename(columns={"Team": "Series"}))
+    plot_df = pd.concat([league_median, opponent_series, team_series], ignore_index=True)
 
     base = alt.Chart(plot_df).encode(
         x=alt.X(
@@ -415,19 +525,26 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
             title=selected_category,
             scale=alt.Scale(zero=False),
             axis=alt.Axis(labelFontSize=11, titleFontSize=12, titlePadding=10, gridOpacity=0.24)),
-        color=alt.Color(
-            "Series:N",
-            scale=alt.Scale(domain=["League Median", selected_team], range=["#8b95a1", team_color]),
-            legend=alt.Legend(title=None, orient="top", labelFontSize=12, symbolSize=120, symbolStrokeWidth=3)),
         tooltip=[
             alt.Tooltip("Series:N", title="Series"),
             alt.Tooltip("Period:O", title="Period"),
             alt.Tooltip(f"{selected_category}:Q", title=selected_category, format=".2f")])
 
-    lines = base.mark_line(strokeWidth=3, interpolate="monotone")
+    median_line = (
+        base.transform_filter(alt.datum.Series == "League Median")
+        .mark_line(strokeWidth=2.5, strokeDash=[5, 4], color="#7c8794", interpolate="monotone"))
+    opponent_lines = (
+        base.transform_filter((alt.datum.Series != "League Median") & (alt.datum.Series != selected_team))
+        .mark_line(strokeWidth=2.5, opacity=0.55, color=accent_color, interpolate="monotone"))
+    team_line = (
+        base.transform_filter(alt.datum.Series == selected_team)
+        .mark_line(strokeWidth=4, color=team_color, interpolate="monotone"))
+    all_points = (
+        base.mark_circle(size=58, stroke="#ffffff", strokeWidth=1.2, opacity=0.95)
+        .encode(color=alt.condition(alt.datum.Series == selected_team, alt.value(team_color), alt.value(accent_color))))
     points = (
         alt.Chart(team_series)
-        .mark_circle(size=85, stroke="#ffffff", strokeWidth=1.5)
+        .mark_circle(size=115, stroke="#ffffff", strokeWidth=1.8)
         .encode(
             x="Period:O",
             y=f"{selected_category}:Q",
@@ -437,15 +554,14 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
                 alt.Tooltip(f"{selected_category}:Q", title=selected_category, format=".2f")]))
     selected_rule = (
         alt.Chart(pd.DataFrame({"Period": [selected_period]}))
-        .mark_rule(strokeDash=[5, 4], strokeWidth=2, color=accent_color)
+        .mark_rule(strokeDash=[5, 4], strokeWidth=2, color=team_color, opacity=0.55)
         .encode(x="Period:O"))
 
     return (
-        (lines + points + selected_rule)
-        .properties(height=430)
+        (median_line + opponent_lines + team_line + all_points + points + selected_rule)
+        .properties(height=460)
         .configure_view(strokeWidth=0)
-        .configure_axis(domainColor="#e5e7eb", tickColor="#e5e7eb", labelColor="#17202a", titleColor="#17202a")
-        .configure_legend(labelColor="#17202a"))
+        .configure_axis(domainColor="#dbe2ea", tickColor="#dbe2ea", labelColor="#17202a", titleColor="#17202a", gridColor="#e7ecf2"))
 
 st.markdown(
     f"""
@@ -1161,14 +1277,14 @@ st.markdown(
     }}
 
     .sbc-pick-logo-col {{
-        width: 5.1rem;
-        min-width: 5.1rem;
-        max-width: 5.1rem;
+        width: 3.7rem;
+        min-width: 3.7rem;
+        max-width: 3.7rem;
     }}
 
     .sbc-pick-logo {{
-        width: 2.35rem;
-        height: 2.35rem;
+        width: 2rem;
+        height: 2rem;
         display: block;
         object-fit: contain;
         margin: 0 auto;
@@ -1182,17 +1298,19 @@ st.markdown(
     }}
 
     .sbc-pick-round-cell {{
-        width: 4.8rem;
-        min-width: 4.8rem;
-        max-width: 4.8rem;
+        width: 3.7rem;
+        min-width: 3.7rem;
+        max-width: 3.7rem;
         font-weight: 850 !important;
     }}
 
     .sbc-pick-contact-col,
     .sbc-pick-contact-cell {{
-        width: 7.8rem;
-        min-width: 7.8rem;
-        max-width: 7.8rem;
+        width: 13rem;
+        min-width: 13rem;
+        max-width: 13rem;
+        text-align: left !important;
+        white-space: normal !important;
     }}
 
     .sbc-round-badge {{
@@ -1211,8 +1329,8 @@ st.markdown(
 
     .sbc-pick-detail-col,
     .sbc-pick-detail-cell {{
-        width: auto;
-        min-width: 18rem;
+        width: 30rem;
+        min-width: 30rem;
         text-align: left !important;
         white-space: normal !important;
     }}
@@ -1325,6 +1443,119 @@ st.markdown(
         line-height: 1;
         padding: 0.38rem 0.65rem;
         white-space: nowrap;
+    }}
+
+    .sbc-live-board {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 24%, rgba(23, 32, 42, 0.11));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 16px 38px rgba(18, 25, 38, 0.09);
+        margin: 0 0 1rem;
+    }}
+
+    .sbc-live-board-head {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--sbc-team-primary) 12%, #ffffff) 0%, rgba(255, 255, 255, 0.92) 100%);
+        padding: 0.82rem 0.95rem;
+    }}
+
+    .sbc-live-board-grid {{
+        display: grid;
+        grid-template-columns: minmax(10rem, 1.2fr) repeat(var(--sbc-live-team-cols), minmax(6rem, 0.85fr));
+        width: 100%;
+    }}
+
+    .sbc-live-team-spacer,
+    .sbc-live-team-head {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background: #f7f9fc;
+        min-height: 4rem;
+    }}
+
+    .sbc-live-team-head {{
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        gap: 0.28rem;
+        border-left: 1px solid rgba(23, 32, 42, 0.07);
+        color: var(--sbc-ink);
+        font-size: 0.78rem;
+        font-weight: 950;
+        line-height: 1.05;
+        padding: 0.5rem;
+        text-align: center;
+    }}
+
+    .sbc-live-logo {{
+        width: 2.35rem;
+        height: 2.35rem;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 8px rgba(18, 25, 38, 0.14));
+    }}
+
+    .sbc-live-stat-row {{
+        display: contents;
+    }}
+
+    .sbc-live-stat-name,
+    .sbc-live-stat-value {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.065);
+        min-height: 3.2rem;
+        padding: 0.52rem 0.72rem;
+    }}
+
+    .sbc-live-stat-name {{
+        display: grid;
+        align-content: center;
+        background: rgba(247, 249, 252, 0.68);
+        color: var(--sbc-ink);
+    }}
+
+    .sbc-live-stat-name span {{
+        font-size: 0.88rem;
+        font-weight: 950;
+        line-height: 1.05;
+    }}
+
+    .sbc-live-stat-name em {{
+        margin-top: 0.18rem;
+        color: var(--sbc-muted);
+        font-size: 0.69rem;
+        font-style: normal;
+        font-weight: 850;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-live-stat-value {{
+        display: grid;
+        place-items: center;
+        border-left: 1px solid rgba(23, 32, 42, 0.06);
+        color: var(--sbc-ink);
+        font-size: 1rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+    }}
+
+    .sbc-live-stat-win {{
+        background: color-mix(in srgb, #58a76b 22%, #ffffff);
+        color: #163c21;
+    }}
+
+    .sbc-live-stat-trail {{
+        background: color-mix(in srgb, #d96b6b 15%, #ffffff);
+        color: #582020;
+    }}
+
+    .sbc-live-stat-neutral {{
+        background: #ffffff;
     }}
 
     .sbc-chart-shell {{
@@ -1508,6 +1739,14 @@ st.markdown(
         .sbc-chart-head {{
             align-items: start;
             flex-direction: column;
+        }}
+
+        .sbc-live-board {{
+            overflow-x: auto;
+        }}
+
+        .sbc-live-board-grid {{
+            min-width: 34rem;
         }}
 
         .sbc-pick-panel-head {{
@@ -1947,7 +2186,7 @@ with tab3:
         """,
         unsafe_allow_html=True)
 
-    control1, control2, control3 = st.columns([1, 1, 2.3])
+    control1, control2 = st.columns([1, 1])
     with control1:
         year_options = list(range(2021, current_year+1))
         SelectedYear = st.selectbox("Year", options=year_options, index=year_options.index(current_year))
@@ -1957,9 +2196,6 @@ with tab3:
         current_period_value = current_matchup if isinstance(current_matchup, int) else max_period
         period_options = list(range(1, max_period+1))
         SelectedPeriod = st.selectbox("Period", options=period_options, index=period_options.index(min(current_period_value, max_period)))
-    with control3:
-        SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
-
     RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
     PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
     PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
@@ -1971,28 +2207,59 @@ with tab3:
         + [("Playoffs", opponent) for opponent in PlayOpponents])
     matchup_count = len(matchup_sections)
 
+    with st.spinner("Updating live center..."):
+        live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
+
+    selected_live_row = live_stats_df[live_stats_df["Team"] == SelectedTeam]
+    render_live_stat_board(
+        f"{SelectedTeam} Period {SelectedPeriod} Stat Profile",
+        "Team Form",
+        [{"team": SelectedTeam, "data": selected_live_row.iloc[0]}] if selected_live_row.shape[0] > 0 else [],
+        SelectedTeam)
+
+    st.markdown('<div class="sbc-section-label">Matchup Scoreboards</div>', unsafe_allow_html=True)
+    if matchup_count == 0:
+        st.markdown('<div class="sbc-empty-state">No matchup is listed for this team in the selected period.</div>', unsafe_allow_html=True)
+    else:
+        for matchup_type, opponent in matchup_sections:
+            selected_row = live_stats_df[live_stats_df["Team"] == SelectedTeam]
+            opponent_row = live_stats_df[live_stats_df["Team"] == opponent]
+            matchup_rows = []
+            if selected_row.shape[0] > 0:
+                matchup_rows.append({"team": SelectedTeam, "data": selected_row.iloc[0]})
+            if opponent_row.shape[0] > 0:
+                matchup_rows.append({"team": opponent, "data": opponent_row.iloc[0]})
+            render_live_stat_board(
+                f"{SelectedTeam} vs {opponent}",
+                f"{matchup_type} - Period {SelectedPeriod}",
+                matchup_rows,
+                SelectedTeam)
+
+    st.markdown('<div class="sbc-section-label">Season Trend</div>', unsafe_allow_html=True)
+    trend_col1, trend_col2 = st.columns([1, 2.4])
+    with trend_col1:
+        SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
     st.markdown(
         f"""
-        <div class="sbc-live-summary">
-            <div class="sbc-live-pill">
-                <div class="sbc-live-pill-label">Season</div>
-                <div class="sbc-live-pill-value">{SelectedYear}</div>
-            </div>
-            <div class="sbc-live-pill">
-                <div class="sbc-live-pill-label">Period</div>
-                <div class="sbc-live-pill-value">{SelectedPeriod}</div>
-            </div>
-            <div class="sbc-live-pill">
-                <div class="sbc-live-pill-label">Matchups</div>
-                <div class="sbc-live-pill-value">{matchup_count}</div>
+        <div class="sbc-chart-shell">
+            <div class="sbc-chart-head">
+                <div>
+                    <div class="sbc-chart-title">{escape(str(SelectedCategory))} by Matchup Period</div>
+                    <div class="sbc-chart-copy">{team_name_html}, this period's opponents, and the league median. Every line has visible period dots.</div>
+                </div>
+                <div class="sbc-live-badge">{SelectedYear}</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True)
+    chart_opponents = [opponent for _, opponent in matchup_sections]
+    season_line_chart_data = build_live_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod, chart_opponents, bg_color, text_color2)
+    if season_line_chart_data is None:
+        st.markdown('<div class="sbc-empty-state">No season trend data is available for this selection.</div>', unsafe_allow_html=True)
+    else:
+        st.altair_chart(season_line_chart_data, use_container_width=True)
 
-    with st.spinner("Updating live center..."):
-        live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
-
+    _legacy_live_tab3 = r'''
     live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
     live_stats_df_formatted = format_live_stats_df(live_stats_df_team)
 
@@ -2053,6 +2320,8 @@ with tab3:
         st.markdown('<div class="sbc-empty-state">No season trend data is available for this selection.</div>', unsafe_allow_html=True)
     else:
         st.altair_chart(season_line_chart_data, use_container_width=True)
+
+    '''
 
     _legacy_tab3 = r'''
     col1, col2 = st.columns([1, 9])
