@@ -7,6 +7,7 @@ import pandas as pd
 import altair as alt
 import re as re
 from html import escape
+from textwrap import dedent
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, period, stat_to_scipId
@@ -164,14 +165,14 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
         body_rows.append(f"<tr>{''.join(cells)}</tr>")
 
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="sbc-table-wrap">
             <table class="sbc-cap-table">
                 <thead><tr>{header_cells}</tr></thead>
                 <tbody>{''.join(body_rows)}</tbody>
             </table>
         </div>
-        """,
+        """),
         unsafe_allow_html=True)
 
 def is_blank_value(value):
@@ -462,7 +463,7 @@ def render_live_stat_board(title, kicker, rows, selected_team):
             f'<div class="sbc-live-stat-value sbc-live-stat-{state}">{escape(str(display))}</div>'
             for display, state in zip(displays, states))
         stat_rows.append(
-            f"""
+            dedent(f"""
             <div class="sbc-live-stat-row">
                 <div class="sbc-live-stat-name">
                     <span>{escape(label)}</span>
@@ -470,10 +471,10 @@ def render_live_stat_board(title, kicker, rows, selected_team):
                 </div>
                 {value_cells}
             </div>
-            """)
+            """))
 
     st.markdown(
-        f"""
+        dedent(f"""
         <section class="sbc-live-board">
             <div class="sbc-live-board-head">
                 <div>
@@ -488,7 +489,7 @@ def render_live_stat_board(title, kicker, rows, selected_team):
                 {''.join(stat_rows)}
             </div>
         </section>
-        """,
+        """),
         unsafe_allow_html=True)
 
 
@@ -1912,18 +1913,18 @@ with tab1:
     inactive_count = inactive_player_n(df, SelectedTeam)
 
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
                 <div>
                     <div class="sbc-draft-eyebrow">{season_label} Season Cap Office</div>
                     <div class="sbc-draft-heading">{team_name_html} {nickname_html} Cap</div>
-                    <div class="sbc-draft-subcopy">Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
+            <div class="sbc-draft-subcopy">Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
                 </div>
             </div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True)
 
     st.markdown('<div class="sbc-section-label">League Thresholds</div>', unsafe_allow_html=True)
@@ -2163,7 +2164,7 @@ with tab2:
 
 with tab3:
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
@@ -2174,16 +2175,16 @@ with tab3:
                 </div>
             </div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True)
 
     st.markdown(
-        """
+        dedent("""
         <div class="sbc-live-controls">
             <div class="sbc-live-control-title">Matchup Window</div>
             <div class="sbc-live-control-copy">Choose the season and matchup period to refresh the scoreboards and trend chart.</div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True)
 
     control1, control2 = st.columns([1, 1])
@@ -2240,7 +2241,7 @@ with tab3:
     with trend_col1:
         SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="sbc-chart-shell">
             <div class="sbc-chart-head">
                 <div>
@@ -2250,7 +2251,7 @@ with tab3:
                 <div class="sbc-live-badge">{SelectedYear}</div>
             </div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True)
     chart_opponents = [opponent for _, opponent in matchup_sections]
     season_line_chart_data = build_live_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod, chart_opponents, bg_color, text_color2)
