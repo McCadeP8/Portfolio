@@ -4,6 +4,7 @@
 import streamlit as st
 from streamlit_folium import st_folium
 import pandas as pd
+import altair as alt
 import re as re
 from html import escape
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
@@ -325,6 +326,8 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
         classes = []
         if col in image_columns:
             classes.append("sbc-pick-logo-col")
+        if col == "Contacted":
+            classes.append("sbc-pick-contact-col")
         if col == "Explanation":
             classes.append("sbc-pick-detail-col")
         class_attr = f' class="{" ".join(classes)}"' if classes else ""
@@ -352,6 +355,8 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
                 value_html = escape(str(display))
                 if col == "Explanation":
                     cell_classes.append("sbc-pick-detail-cell")
+                if col == "Contacted":
+                    cell_classes.append("sbc-pick-contact-cell")
                 if col == "Year":
                     cell_classes.append("sbc-pick-year-cell")
                 if col == "Round":
@@ -381,6 +386,66 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
         </section>
         """,
         unsafe_allow_html=True)
+
+def build_live_line_chart(data, selected_team, selected_category, selected_year, selected_period, team_color, accent_color):
+    if data is None or data.shape[0] == 0:
+        return None
+
+    df_year = data[(data["Year"] == selected_year) & (data["MP"] != 0)].copy()
+    if df_year.shape[0] == 0 or selected_category not in df_year.columns:
+        return None
+
+    league_median = (
+        df_year.groupby("Period", as_index=False)[selected_category]
+        .median()
+        .assign(Series="League Median"))
+    team_series = (
+        df_year[df_year["Team"] == selected_team]
+        .loc[:, ["Period", selected_category]]
+        .assign(Series=selected_team))
+    plot_df = pd.concat([league_median, team_series], ignore_index=True)
+
+    base = alt.Chart(plot_df).encode(
+        x=alt.X(
+            "Period:O",
+            title="Matchup Period",
+            axis=alt.Axis(labelAngle=0, labelFontSize=11, titleFontSize=12, titlePadding=10, grid=False)),
+        y=alt.Y(
+            f"{selected_category}:Q",
+            title=selected_category,
+            scale=alt.Scale(zero=False),
+            axis=alt.Axis(labelFontSize=11, titleFontSize=12, titlePadding=10, gridOpacity=0.24)),
+        color=alt.Color(
+            "Series:N",
+            scale=alt.Scale(domain=["League Median", selected_team], range=["#8b95a1", team_color]),
+            legend=alt.Legend(title=None, orient="top", labelFontSize=12, symbolSize=120, symbolStrokeWidth=3)),
+        tooltip=[
+            alt.Tooltip("Series:N", title="Series"),
+            alt.Tooltip("Period:O", title="Period"),
+            alt.Tooltip(f"{selected_category}:Q", title=selected_category, format=".2f")])
+
+    lines = base.mark_line(strokeWidth=3, interpolate="monotone")
+    points = (
+        alt.Chart(team_series)
+        .mark_circle(size=85, stroke="#ffffff", strokeWidth=1.5)
+        .encode(
+            x="Period:O",
+            y=f"{selected_category}:Q",
+            color=alt.value(team_color),
+            tooltip=[
+                alt.Tooltip("Period:O", title="Period"),
+                alt.Tooltip(f"{selected_category}:Q", title=selected_category, format=".2f")]))
+    selected_rule = (
+        alt.Chart(pd.DataFrame({"Period": [selected_period]}))
+        .mark_rule(strokeDash=[5, 4], strokeWidth=2, color=accent_color)
+        .encode(x="Period:O"))
+
+    return (
+        (lines + points + selected_rule)
+        .properties(height=430)
+        .configure_view(strokeWidth=0)
+        .configure_axis(domainColor="#e5e7eb", tickColor="#e5e7eb", labelColor="#17202a", titleColor="#17202a")
+        .configure_legend(labelColor="#17202a"))
 
 st.markdown(
     f"""
@@ -1032,6 +1097,7 @@ st.markdown(
 
     .sbc-pick-table {{
         width: 100%;
+        table-layout: fixed;
         border-collapse: separate;
         border-spacing: 0;
         color: var(--sbc-ink);
@@ -1095,8 +1161,9 @@ st.markdown(
     }}
 
     .sbc-pick-logo-col {{
-        width: 4.3rem;
-        min-width: 4.3rem;
+        width: 5.1rem;
+        min-width: 5.1rem;
+        max-width: 5.1rem;
     }}
 
     .sbc-pick-logo {{
@@ -1115,8 +1182,17 @@ st.markdown(
     }}
 
     .sbc-pick-round-cell {{
-        min-width: 4rem;
+        width: 4.8rem;
+        min-width: 4.8rem;
+        max-width: 4.8rem;
         font-weight: 850 !important;
+    }}
+
+    .sbc-pick-contact-col,
+    .sbc-pick-contact-cell {{
+        width: 7.8rem;
+        min-width: 7.8rem;
+        max-width: 7.8rem;
     }}
 
     .sbc-round-badge {{
@@ -1135,7 +1211,8 @@ st.markdown(
 
     .sbc-pick-detail-col,
     .sbc-pick-detail-cell {{
-        min-width: 14rem;
+        width: auto;
+        min-width: 18rem;
         text-align: left !important;
         white-space: normal !important;
     }}
@@ -1147,6 +1224,139 @@ st.markdown(
         font-weight: 750;
         line-height: 1.35;
         background: #ffffff;
+    }}
+
+    .sbc-live-controls {{
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 24%, rgba(23, 32, 42, 0.11));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.08);
+        padding: 0.9rem 1rem 1rem;
+        margin-bottom: 0.9rem;
+    }}
+
+    .sbc-live-control-title {{
+        color: var(--sbc-ink);
+        font-size: 0.95rem;
+        font-weight: 950;
+        line-height: 1.1;
+        margin-bottom: 0.2rem;
+    }}
+
+    .sbc-live-control-copy {{
+        color: var(--sbc-muted);
+        font-size: 0.78rem;
+        font-weight: 750;
+        line-height: 1.3;
+        margin-bottom: 0.75rem;
+    }}
+
+    .sbc-live-summary {{
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin: 0 0 1rem;
+    }}
+
+    .sbc-live-pill {{
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 24%, rgba(23, 32, 42, 0.10));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 10px 24px rgba(18, 25, 38, 0.06);
+        padding: 0.78rem 0.85rem;
+    }}
+
+    .sbc-live-pill-label {{
+        color: var(--sbc-muted);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-live-pill-value {{
+        color: var(--sbc-ink);
+        font-size: 1.45rem;
+        font-weight: 950;
+        line-height: 1;
+        margin-top: 0.28rem;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-live-card {{
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.11));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.93);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.08);
+        padding: 0.85rem 0.9rem 0.95rem;
+        margin-bottom: 0.95rem;
+    }}
+
+    .sbc-live-card-head {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        margin-bottom: 0.65rem;
+    }}
+
+    .sbc-live-card-title {{
+        color: var(--sbc-ink);
+        font-size: 1rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-live-card-kicker {{
+        color: var(--sbc-team-primary);
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-live-badge {{
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--sbc-team-primary) 14%, #ffffff);
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 28%, rgba(23, 32, 42, 0.10));
+        color: var(--sbc-ink);
+        font-size: 0.76rem;
+        font-weight: 900;
+        line-height: 1;
+        padding: 0.38rem 0.65rem;
+        white-space: nowrap;
+    }}
+
+    .sbc-chart-shell {{
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.11));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.08);
+        padding: 0.9rem 1rem 1rem;
+        margin-top: 0.1rem;
+    }}
+
+    .sbc-chart-head {{
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }}
+
+    .sbc-chart-title {{
+        color: var(--sbc-ink);
+        font-size: 1.05rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-chart-copy {{
+        color: var(--sbc-muted);
+        font-size: 0.78rem;
+        font-weight: 750;
+        line-height: 1.3;
+        margin-top: 0.24rem;
     }}
 
     [data-testid="stMetricDelta"],
@@ -1289,6 +1499,15 @@ st.markdown(
 
         .sbc-draft-grid {{
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }}
+
+        .sbc-live-summary {{
+            grid-template-columns: 1fr;
+        }}
+
+        .sbc-chart-head {{
+            align-items: start;
+            flex-direction: column;
         }}
 
         .sbc-pick-panel-head {{
@@ -1704,6 +1923,138 @@ with tab2:
 
 
 with tab3:
+    st.markdown(
+        f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">Live Matchup Center</div>
+                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Live</div>
+                    <div class="sbc-draft-subcopy">Period scoreboards, matchup category battles, and the team trend line for the selected season.</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True)
+
+    st.markdown(
+        """
+        <div class="sbc-live-controls">
+            <div class="sbc-live-control-title">Matchup Window</div>
+            <div class="sbc-live-control-copy">Choose the season and matchup period to refresh the scoreboards and trend chart.</div>
+        </div>
+        """,
+        unsafe_allow_html=True)
+
+    control1, control2, control3 = st.columns([1, 1, 2.3])
+    with control1:
+        year_options = list(range(2021, current_year+1))
+        SelectedYear = st.selectbox("Year", options=year_options, index=year_options.index(current_year))
+    with control2:
+        max_period_raw = all_time_schedule[all_time_schedule["Year"] == SelectedYear]["Period"].max()
+        max_period = int(max_period_raw) if not pd.isna(max_period_raw) else 1
+        current_period_value = current_matchup if isinstance(current_matchup, int) else max_period
+        period_options = list(range(1, max_period+1))
+        SelectedPeriod = st.selectbox("Period", options=period_options, index=period_options.index(min(current_period_value, max_period)))
+    with control3:
+        SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
+
+    RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
+    PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
+    PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
+    ISTOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "In-Season Tournament")
+    matchup_sections = (
+        [("Regular Season", opponent) for opponent in RegOpponents]
+        + [("In-Season Tournament", opponent) for opponent in ISTOpponents]
+        + [("Play-In", opponent) for opponent in PIOpponents]
+        + [("Playoffs", opponent) for opponent in PlayOpponents])
+    matchup_count = len(matchup_sections)
+
+    st.markdown(
+        f"""
+        <div class="sbc-live-summary">
+            <div class="sbc-live-pill">
+                <div class="sbc-live-pill-label">Season</div>
+                <div class="sbc-live-pill-value">{SelectedYear}</div>
+            </div>
+            <div class="sbc-live-pill">
+                <div class="sbc-live-pill-label">Period</div>
+                <div class="sbc-live-pill-value">{SelectedPeriod}</div>
+            </div>
+            <div class="sbc-live-pill">
+                <div class="sbc-live-pill-label">Matchups</div>
+                <div class="sbc-live-pill-value">{matchup_count}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True)
+
+    with st.spinner("Updating live center..."):
+        live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
+
+    live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
+    live_stats_df_formatted = format_live_stats_df(live_stats_df_team)
+
+    st.markdown(
+        f"""
+        <div class="sbc-live-card">
+            <div class="sbc-live-card-head">
+                <div>
+                    <div class="sbc-live-card-kicker">Team Form</div>
+                    <div class="sbc-live-card-title">{team_name_html} Period {SelectedPeriod} Stat Profile</div>
+                </div>
+                <div class="sbc-live-badge">Stats + ranks</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True)
+    st.dataframe(live_stats_df_formatted, width="stretch", height="content", row_height=50, hide_index=True, placeholder="â€”", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+
+    st.markdown('<div class="sbc-section-label">Matchup Scoreboards</div>', unsafe_allow_html=True)
+    if matchup_count == 0:
+        st.markdown('<div class="sbc-empty-state">No matchup is listed for this team in the selected period.</div>', unsafe_allow_html=True)
+    else:
+        matchup_cols = st.columns(min(3, matchup_count))
+        for idx, (matchup_type, opponent) in enumerate(matchup_sections):
+            with matchup_cols[idx % len(matchup_cols)]:
+                st.markdown(
+                    f"""
+                    <div class="sbc-live-card">
+                        <div class="sbc-live-card-head">
+                            <div>
+                                <div class="sbc-live-card-kicker">{escape(matchup_type)}</div>
+                                <div class="sbc-live-card-title">vs {escape(str(opponent))}</div>
+                            </div>
+                            <div class="sbc-live-badge">P{SelectedPeriod}</div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True)
+                scoreboard = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, opponent)
+                st.dataframe(scoreboard, width="stretch", height="content", row_height=50, hide_index=True, placeholder="â€”", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+
+    st.markdown('<div class="sbc-section-label">Season Trend</div>', unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="sbc-chart-shell">
+            <div class="sbc-chart-head">
+                <div>
+                    <div class="sbc-chart-title">{escape(str(SelectedCategory))} by Matchup Period</div>
+                    <div class="sbc-chart-copy">{team_name_html} against the league median, with the selected period marked.</div>
+                </div>
+                <div class="sbc-live-badge">{SelectedYear}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True)
+    season_line_chart_data = build_live_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod, bg_color, text_color2)
+    if season_line_chart_data is None:
+        st.markdown('<div class="sbc-empty-state">No season trend data is available for this selection.</div>', unsafe_allow_html=True)
+    else:
+        st.altair_chart(season_line_chart_data, use_container_width=True)
+
+    _legacy_tab3 = r'''
     col1, col2 = st.columns([1, 9])
 
     with col1:
@@ -1744,6 +2095,8 @@ with tab3:
         SelectedCategory = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
         season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod)
         st.altair_chart(season_line_chart_data, use_container_width=True)
+
+    '''
 
 with tab4:
     st.subheader(f"{SelectedTeam} {current_year-1}-{str(current_year)[-2:]} Schedule")
