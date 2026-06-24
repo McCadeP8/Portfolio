@@ -9,6 +9,39 @@ from functions import get_data, get_pictures, active_players, style_salaries, ov
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, period, stat_to_scipId
 
+TEAM_FONTS = {
+    "Albuquerque": "Amatic SC",
+    "Anaheim": "Baloo 2",
+    "Anchorage": "Fjalla One",
+    "Austin": "Creepster",
+    "Baltimore": "Lobster",
+    "Birmingham": "Rye",
+    "Boise": "Neucha",
+    "Buffalo": "Teko",
+    "Cincinnati": "Satisfy",
+    "Columbus": "Arvo",
+    "Des Moines": "Cabin Sketch",
+    "El Paso": "Pathway Gothic One",
+    "Honolulu": "Dancing Script",
+    "Jacksonville": "Pacifico",
+    "Kentucky": "Playfair Display",
+    "Lansing": "Ubuntu",
+    "Lincoln": "Bebas Neue",
+    "Little Rock": "Alfa Slab One",
+    "Manchester": "Quicksand",
+    "Nashville": "Tangerine",
+    "Pittsburgh": "Roboto Slab",
+    "Providence": "IM Fell English",
+    "San Diego": "Comfortaa",
+    "San Jose": "Indie Flower",
+    "Seattle": "Poppins",
+    "St. Louis": "Oswald",
+    "Tampa Bay": "Parisienne",
+    "Tulsa": "Permanent Marker",
+    "Vancouver": "Shadows Into Light",
+    "Vegas": "Audiowide",
+}
+
 st.set_page_config(
     page_title="SBC Cap Sheets",
     page_icon=":basketball:",
@@ -43,20 +76,24 @@ text_color = team_info[SelectedTeam]["text"]
 text_color2 = team_info[SelectedTeam]["bg2"]
 team_logo = team_info[SelectedTeam]["logo"]
 nickname = team_info[SelectedTeam]["nickname"]
-wordmark = team_info[SelectedTeam]['wordmark']
+team_font = TEAM_FONTS.get(SelectedTeam, "Poppins")
 
 team_logo_html = escape(str(team_logo), quote=True)
-wordmark_html = escape(str(wordmark), quote=True)
 team_name_html = escape(str(SelectedTeam), quote=True)
 nickname_html = escape(str(nickname), quote=True)
+team_font_css = escape(str(team_font), quote=True)
+team_full_name_html = escape(f"{SelectedTeam} {nickname}", quote=True)
 
 st.markdown(
     f"""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Amatic+SC:wght@700&family=Arvo:wght@400;700&family=Audiowide&family=Baloo+2:wght@700;800&family=Bebas+Neue&family=Cabin+Sketch:wght@700&family=Comfortaa:wght@700&family=Creepster&family=Dancing+Script:wght@700&family=Fjalla+One&family=IM+Fell+English&family=Indie+Flower&family=Lobster&family=Neucha&family=Oswald:wght@700&family=Pacifico&family=Parisienne&family=Pathway+Gothic+One&family=Permanent+Marker&family=Playfair+Display:wght@800&family=Poppins:wght@400;600;700;800;900&family=Quicksand:wght@700&family=Roboto+Slab:wght@800&family=Rye&family=Satisfy&family=Shadows+Into+Light&family=Tangerine:wght@700&family=Teko:wght@700&family=Ubuntu:wght@700&display=swap');
+
     :root {{
         --sbc-team-primary: {bg_color};
         --sbc-team-secondary: {text_color2};
         --sbc-team-text: {text_color};
+        --sbc-team-font: "{team_font_css}", "Poppins", sans-serif;
         --sbc-bg: #f4f6f8;
         --sbc-panel: #ffffff;
         --sbc-ink: #17202a;
@@ -66,6 +103,7 @@ st.markdown(
     }}
 
     .stApp {{
+        font-family: "Poppins", "Segoe UI", sans-serif;
         background:
             linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 246, 248, 0.97) 34%, #eef2f6 100%);
         color: var(--sbc-ink);
@@ -103,10 +141,9 @@ st.markdown(
         padding: 1.15rem 1.25rem;
         border: 1px solid rgba(255, 255, 255, 0.58);
         border-radius: 8px;
-        background:
-            linear-gradient(120deg, color-mix(in srgb, var(--sbc-team-primary) 88%, #000 12%), color-mix(in srgb, var(--sbc-team-secondary) 78%, #fff 22%));
+        background: var(--sbc-team-primary);
         box-shadow: var(--sbc-shadow);
-        color: var(--sbc-team-text);
+        color: var(--sbc-team-secondary);
     }}
 
     .sbc-team-hero::after {{
@@ -152,8 +189,9 @@ st.markdown(
         place-items: center;
         padding: 0.55rem 0.75rem;
         border-radius: 8px;
-        background: rgba(255, 255, 255, 0.88);
-        box-shadow: inset 0 0 0 1px rgba(23, 32, 42, 0.08);
+        background: color-mix(in srgb, var(--sbc-team-secondary) 18%, transparent);
+        border: 1px solid color-mix(in srgb, var(--sbc-team-secondary) 52%, transparent);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
     }}
 
     .sbc-wordmark-frame img {{
@@ -163,12 +201,25 @@ st.markdown(
         display: block;
     }}
 
+    .sbc-team-typeface {{
+        color: var(--sbc-team-secondary);
+        font-family: var(--sbc-team-font);
+        font-size: clamp(1.7rem, 3.4vw, 3.5rem);
+        font-weight: 800;
+        line-height: 0.95;
+        text-align: center;
+        text-wrap: balance;
+        filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.18));
+    }}
+
     .sbc-team-title {{
         margin: 0;
         color: inherit;
+        font-family: var(--sbc-team-font);
         font-size: clamp(2.25rem, 5vw, 4.7rem);
         line-height: 0.95;
-        font-weight: 950;
+        font-weight: 900;
+        text-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
     }}
 
     .sbc-team-subtitle {{
@@ -327,7 +378,7 @@ st.markdown(
                 <div class="sbc-team-subtitle">{nickname_html} Cap Sheet and League Hub</div>
             </div>
             <div class="sbc-wordmark-frame">
-                <img src="{wordmark_html}" alt="{team_name_html} wordmark" referrerpolicy="no-referrer">
+                <div class="sbc-team-typeface">{team_full_name_html}</div>
             </div>
         </div>
     </section>
