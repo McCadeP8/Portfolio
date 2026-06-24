@@ -146,27 +146,21 @@ st.markdown(
     }}
 
     .sbc-team-hero::after {{
-        content: "";
-        position: absolute;
-        inset: auto -4rem -5rem auto;
-        width: 18rem;
-        height: 18rem;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 50%;
+        content: none;
     }}
 
     .sbc-team-hero-inner {{
         position: relative;
         z-index: 1;
         display: grid;
-        grid-template-columns: minmax(6rem, 8.25rem) 1fr;
-        gap: 1.35rem;
+        grid-template-columns: minmax(5.5rem, 7rem) 1fr;
+        gap: 1rem;
         align-items: center;
     }}
 
     .sbc-logo-frame {{
-        width: 7.75rem;
-        height: 7.75rem;
+        width: 6.5rem;
+        height: 6.5rem;
         display: grid;
         place-items: center;
         padding: 0;
@@ -186,11 +180,13 @@ st.markdown(
     .sbc-team-typeface {{
         color: var(--sbc-team-secondary);
         font-family: var(--sbc-team-font);
-        font-size: clamp(3.1rem, 8vw, 7.2rem);
+        font-size: clamp(2.25rem, 4.6vw, 4.9rem);
         font-weight: 900;
-        line-height: 0.86;
+        line-height: 1;
         max-width: 100%;
-        overflow-wrap: anywhere;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         text-shadow: 0 2px 14px rgba(0, 0, 0, 0.20);
     }}
 
@@ -214,6 +210,17 @@ st.markdown(
         letter-spacing: 0.08em;
     }}
 
+    label,
+    [data-testid="stWidgetLabel"],
+    [data-testid="stWidgetLabel"] p,
+    [data-testid="stWidgetLabel"] label,
+    [data-testid="stSelectbox"] label,
+    [data-testid="stMultiSelect"] label,
+    [data-testid="stNumberInput"] label {{
+        color: var(--sbc-ink) !important;
+        font-weight: 800 !important;
+    }}
+
     div[data-baseweb="select"] > div {{
         min-height: 3rem;
         border-radius: 8px !important;
@@ -222,9 +229,24 @@ st.markdown(
         box-shadow: 0 10px 28px rgba(18, 25, 38, 0.08);
     }}
 
-    div[data-baseweb="select"] span {{
+    div[data-baseweb="select"] *,
+    div[data-baseweb="select"] span,
+    div[data-baseweb="select"] input,
+    div[data-baseweb="select"] div {{
         font-weight: 800;
         color: var(--sbc-ink) !important;
+    }}
+
+    div[data-baseweb="select"] svg {{
+        fill: var(--sbc-ink) !important;
+        color: var(--sbc-ink) !important;
+    }}
+
+    [data-testid="stNumberInput"] input,
+    [data-testid="stTextInput"] input,
+    [data-testid="stDateInput"] input {{
+        color: var(--sbc-ink) !important;
+        background: #ffffff !important;
     }}
 
     div[data-baseweb="popover"] {{
@@ -329,8 +351,8 @@ st.markdown(
         }}
 
         .sbc-logo-frame {{
-            width: 5rem;
-            height: 5rem;
+            width: 4.75rem;
+            height: 4.75rem;
         }}
 
         .sbc-team-title {{
@@ -338,7 +360,7 @@ st.markdown(
         }}
 
         .sbc-team-typeface {{
-            font-size: clamp(2.25rem, 13vw, 4rem);
+            font-size: clamp(1.85rem, 8vw, 3rem);
         }}
     }}
 
@@ -358,7 +380,7 @@ st.markdown(
             </div>
             <div>
                 <h1 class="sbc-team-title">{team_name_html}</h1>
-                <div class="sbc-team-typeface">{nickname_html}</div>
+                <div class="sbc-team-typeface">{team_name_html} {nickname_html}</div>
                 <div class="sbc-team-subtitle">{nickname_html} Cap Sheet and League Hub</div>
             </div>
         </div>
