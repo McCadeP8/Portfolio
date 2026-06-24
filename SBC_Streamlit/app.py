@@ -105,7 +105,7 @@ def clean_cap_display(col, value):
         return "—"
     text = str(value)
     if col == "Exception":
-        text = re.sub(r"(?i)(Traded-Player(?: Exception)?)(?:\s+#?\d+|\s+\d+)$", r"\1", text).strip()
+        text = re.sub(r"(?i)(Traded-Player(?: Exception)?)(?:\s*#?\d+)$", r"\1", text).strip()
     return text
 
 def render_cap_table(data, columns=None, image_columns=None, money_columns=None, contract_colors=True):
@@ -275,8 +275,8 @@ st.markdown(
     .stApp {{
         font-family: "Poppins", "Segoe UI", sans-serif;
         background:
-            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--sbc-team-primary) 18%, transparent) 0, transparent 34rem),
-            radial-gradient(circle at 88% 5%, color-mix(in srgb, var(--sbc-team-secondary) 16%, transparent) 0, transparent 30rem),
+            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--sbc-team-primary) 28%, transparent) 0, transparent 34rem),
+            radial-gradient(circle at 88% 5%, color-mix(in srgb, var(--sbc-team-secondary) 24%, transparent) 0, transparent 30rem),
             linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 246, 248, 0.97) 34%, #eef2f6 100%);
         color: var(--sbc-ink);
     }}
@@ -1057,7 +1057,8 @@ with tab1:
     dead_player_df = dead_players(df, pics, SelectedTeam)
     st.markdown('<div class="sbc-cap-eyebrow">Dead Players</div>', unsafe_allow_html=True)
     if dead_player_df.shape[0] > 0:
-        render_cap_table(dead_player_df, columns=[" ", "Player"] + columns_order, image_columns=[" "])
+        dead_player_df["Bird Rights"] = ""
+        render_cap_table(dead_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
     else:
         st.markdown('<div class="sbc-empty-state">No dead salary is currently listed for this team.</div>', unsafe_allow_html=True)
 
