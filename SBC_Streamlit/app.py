@@ -4,9 +4,15 @@
 import streamlit as st
 from streamlit_folium import st_folium
 import re as re
+from html import escape
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, period, stat_to_scipId
+
+st.set_page_config(
+    page_title="SBC Cap Sheets",
+    page_icon=":basketball:",
+    layout="wide")
 
 df = get_data()
 pics = get_pictures()
@@ -24,70 +30,329 @@ current_matchup = current_matchup_period()
 award_history = get_award_history()
 team_award_history = get_team_award_history()
 
-with st.sidebar:
-    Teams = sorted(team_info.keys())
-    SelectedTeam = st.selectbox("Select Your Team:", Teams, index=Teams.index("Vegas"))
-    bg_color = team_info[SelectedTeam]["bg"]
-    text_color = team_info[SelectedTeam]["text"]
-    text_color2 = team_info[SelectedTeam]["bg2"]
-    team_logo = team_info[SelectedTeam]["logo"]
-    nickname = team_info[SelectedTeam]["nickname"]
-    wordmark = team_info[SelectedTeam]['wordmark']
-    st.image(team_logo, width=250)
-    st.logo(wordmark)
+Teams = sorted(team_info.keys())
+
+top_col1, top_col2 = st.columns([5, 2], vertical_alignment="bottom")
+with top_col1:
+    st.markdown('<div class="sbc-app-kicker">SBC Fantasy Basketball League</div>', unsafe_allow_html=True)
+with top_col2:
+    SelectedTeam = st.selectbox("Select Team", Teams, index=Teams.index("Vegas"), label_visibility="collapsed")
+
+bg_color = team_info[SelectedTeam]["bg"]
+text_color = team_info[SelectedTeam]["text"]
+text_color2 = team_info[SelectedTeam]["bg2"]
+team_logo = team_info[SelectedTeam]["logo"]
+nickname = team_info[SelectedTeam]["nickname"]
+wordmark = team_info[SelectedTeam]['wordmark']
+
+team_logo_html = escape(str(team_logo), quote=True)
+wordmark_html = escape(str(wordmark), quote=True)
+team_name_html = escape(str(SelectedTeam), quote=True)
+nickname_html = escape(str(nickname), quote=True)
 
 st.markdown(
     f"""
     <style>
-    /* Sidebar background */
-    section[data-testid="stSidebar"] {{
-        background-color: {bg_color};}}
+    :root {{
+        --sbc-team-primary: {bg_color};
+        --sbc-team-secondary: {text_color2};
+        --sbc-team-text: {text_color};
+        --sbc-bg: #f4f6f8;
+        --sbc-panel: #ffffff;
+        --sbc-ink: #17202a;
+        --sbc-muted: #697586;
+        --sbc-border: rgba(23, 32, 42, 0.11);
+        --sbc-shadow: 0 18px 45px rgba(18, 25, 38, 0.10);
+    }}
 
-    /* Sidebar text */
-    section[data-testid="stSidebar"] * {{
-        color: {text_color2} !important;}}
+    .stApp {{
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 246, 248, 0.97) 34%, #eef2f6 100%);
+        color: var(--sbc-ink);
+    }}
 
-    /* Selectbox container */
-    section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
-        background-color: {bg_color} !important;
-        border: 1px solid "{bg_color}" !important;}}
+    .block-container {{
+        max-width: 1500px;
+        padding-top: 1.25rem;
+        padding-bottom: 3rem;
+    }}
 
-    /* Selected value text */
-    section[data-testid="stSidebar"] span {{
-        color: {text_color2} !important;}}
+    header[data-testid="stHeader"] {{
+        background: rgba(244, 246, 248, 0.82);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid rgba(23, 32, 42, 0.06);
+    }}
 
-    /* Dropdown menu */
+    [data-testid="stSidebar"] {{
+        display: none;
+    }}
+
+    .sbc-app-kicker {{
+        color: var(--sbc-muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin: 0 0 0.35rem;
+    }}
+
+    .sbc-team-hero {{
+        position: relative;
+        overflow: hidden;
+        margin: 0.35rem 0 1.15rem;
+        padding: 1.15rem 1.25rem;
+        border: 1px solid rgba(255, 255, 255, 0.58);
+        border-radius: 8px;
+        background:
+            linear-gradient(120deg, color-mix(in srgb, var(--sbc-team-primary) 88%, #000 12%), color-mix(in srgb, var(--sbc-team-secondary) 78%, #fff 22%));
+        box-shadow: var(--sbc-shadow);
+        color: var(--sbc-team-text);
+    }}
+
+    .sbc-team-hero::after {{
+        content: "";
+        position: absolute;
+        inset: auto -4rem -5rem auto;
+        width: 18rem;
+        height: 18rem;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 50%;
+    }}
+
+    .sbc-team-hero-inner {{
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(5.5rem, 7rem) 1fr minmax(10rem, 18rem);
+        gap: 1.1rem;
+        align-items: center;
+    }}
+
+    .sbc-logo-frame {{
+        width: 6.5rem;
+        height: 6.5rem;
+        display: grid;
+        place-items: center;
+        padding: 0.55rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: inset 0 0 0 1px rgba(23, 32, 42, 0.08), 0 12px 28px rgba(0, 0, 0, 0.18);
+    }}
+
+    .sbc-logo-frame img {{
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        display: block;
+    }}
+
+    .sbc-wordmark-frame {{
+        min-height: 4.5rem;
+        display: grid;
+        place-items: center;
+        padding: 0.55rem 0.75rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: inset 0 0 0 1px rgba(23, 32, 42, 0.08);
+    }}
+
+    .sbc-wordmark-frame img {{
+        width: 100%;
+        max-height: 4.2rem;
+        object-fit: contain;
+        display: block;
+    }}
+
+    .sbc-team-title {{
+        margin: 0;
+        color: inherit;
+        font-size: clamp(2.25rem, 5vw, 4.7rem);
+        line-height: 0.95;
+        font-weight: 950;
+    }}
+
+    .sbc-team-subtitle {{
+        margin-top: 0.35rem;
+        font-size: 1rem;
+        font-weight: 800;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }}
+
+    div[data-baseweb="select"] > div {{
+        min-height: 3rem;
+        border-radius: 8px !important;
+        border: 1px solid var(--sbc-border) !important;
+        background: #ffffff !important;
+        box-shadow: 0 10px 28px rgba(18, 25, 38, 0.08);
+    }}
+
+    div[data-baseweb="select"] span {{
+        font-weight: 800;
+        color: var(--sbc-ink) !important;
+    }}
+
     div[data-baseweb="popover"] {{
-        background-color: {text_color2} !important;}}
+        border-radius: 8px !important;
+        overflow: hidden;
+    }}
 
-    /* Dropdown options */
-    div[data-baseweb="menu"] {{
-        background-color: {text_color2} !important;}}
+    h1, h2, h3 {{
+        color: var(--sbc-ink);
+        letter-spacing: 0;
+    }}
 
-    /* Hovered option */
-    div[data-baseweb="option"]:hover {{
-        background-color: rgba(255,255,255,0.15) !important;}}
+    h2, h3 {{
+        font-weight: 850;
+    }}
+
+    hr {{
+        margin: 1.15rem 0;
+        border-color: rgba(23, 32, 42, 0.08);
+    }}
+
+    button[data-baseweb="tab"] {{
+        height: 3rem;
+        padding: 0 1rem;
+        border-radius: 8px 8px 0 0;
+        color: var(--sbc-muted);
+        font-weight: 800;
+        border-bottom: 2px solid transparent;
+    }}
+
+    button[data-baseweb="tab"][aria-selected="true"] {{
+        color: var(--sbc-ink);
+        background: #ffffff;
+        border-bottom-color: var(--sbc-team-primary);
+    }}
+
+    [data-testid="stMetric"] {{
+        background: var(--sbc-panel);
+        border: 1px solid var(--sbc-border);
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(18, 25, 38, 0.06);
+    }}
+
+    [data-testid="stMetricLabel"] p {{
+        color: var(--sbc-muted);
+        font-weight: 800;
+    }}
+
+    [data-testid="stMetricValue"] {{
+        color: var(--sbc-ink);
+        font-weight: 900;
+    }}
+
+    [data-testid="stDataFrame"] {{
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--sbc-border);
+        box-shadow: 0 12px 32px rgba(18, 25, 38, 0.07);
+    }}
+
+    div[data-testid="stForm"] {{
+        border: 1px solid var(--sbc-border);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 12px 32px rgba(18, 25, 38, 0.07);
+        padding: 1rem;
+    }}
+
+    .stButton > button,
+    [data-testid="stFormSubmitButton"] button {{
+        border-radius: 8px;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 82%, #000 18%);
+        background: var(--sbc-team-primary);
+        color: var(--sbc-team-text);
+        font-weight: 850;
+        box-shadow: 0 10px 26px rgba(18, 25, 38, 0.12);
+    }}
+
+    .stButton > button:hover,
+    [data-testid="stFormSubmitButton"] button:hover {{
+        border-color: var(--sbc-team-secondary);
+        filter: brightness(1.03);
+    }}
+
+    .stAlert {{
+        border-radius: 8px;
+    }}
+
+    img {{
+        image-rendering: auto;
+    }}
+
+    @media (max-width: 850px) {{
+        .block-container {{
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }}
+
+        .sbc-team-hero-inner {{
+            grid-template-columns: 4.8rem 1fr;
+        }}
+
+        .sbc-logo-frame {{
+            width: 4.8rem;
+            height: 4.8rem;
+        }}
+
+        .sbc-wordmark-frame {{
+            grid-column: 1 / -1;
+            min-height: 3.5rem;
+        }}
+
+        .sbc-team-title {{
+            font-size: 2.4rem;
+        }}
+    }}
+
+    /* Legacy sidebar selectors kept harmless in case Streamlit injects shell nodes. */
+    section[data-testid="stSidebar"] {{
+        background-color: var(--sbc-team-primary);
+    }}
     </style>""",
     unsafe_allow_html=True)
 
-st.set_page_config(
-    page_title = "SBC Cap Sheets",
-    page_icon = ":basketball:",
-    layout = "wide")
+st.markdown(
+    f"""
+    <section class="sbc-team-hero">
+        <div class="sbc-team-hero-inner">
+            <div class="sbc-logo-frame">
+                <img src="{team_logo_html}" alt="{team_name_html} logo" referrerpolicy="no-referrer">
+            </div>
+            <div>
+                <h1 class="sbc-team-title">{team_name_html}</h1>
+                <div class="sbc-team-subtitle">{nickname_html} Cap Sheet and League Hub</div>
+            </div>
+            <div class="sbc-wordmark-frame">
+                <img src="{wordmark_html}" alt="{team_name_html} wordmark" referrerpolicy="no-referrer">
+            </div>
+        </div>
+    </section>
+    """,
+    unsafe_allow_html=True)
 
+if SelectedTeam == "Honolulu":
+    st.balloons()
+if SelectedTeam == "Manchester":
+    st.snow()
 
-col1, col2 = st.columns([4, 1])
-with col1:
-    st.title(":basketball::trophy: SBC Fantasy Basketball League:trophy::basketball:")
-    if SelectedTeam == "Honolulu":
-        st.balloons()
-    if SelectedTeam == "Manchester":
-        st.snow()
-
-
-st.divider()
-
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([f"{SelectedTeam} Cap Sheet", f"{SelectedTeam} Draft Picks", f"{SelectedTeam} Live Score", f"{SelectedTeam} Schedule", "League Scoreboard", "All Players", "All Draft Picks", "SBCFBL Overview", "Trade Machine", "SBCFBL Drafts", "SBCFBL Awards", "About SBCFBL", "Data Checks"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
+    f"💰 {SelectedTeam} Cap",
+    f"🏀 {SelectedTeam} Picks",
+    f"📊 {SelectedTeam} Live",
+    f"🗓️ {SelectedTeam} Schedule",
+    "🏟️ Scoreboard",
+    "👥 Players",
+    "🎯 Draft Picks",
+    "🏆 Overview",
+    "🔁 Trade Machine",
+    "📚 Drafts",
+    "⭐ Awards",
+    "📖 About",
+    "✅ Data Checks"])
 
 with tab1:
     st.subheader(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
