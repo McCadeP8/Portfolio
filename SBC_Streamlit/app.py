@@ -253,14 +253,14 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
         body_rows.append(f"<tr>{''.join(cells)}</tr>")
 
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="sbc-table-wrap">
             <table class="sbc-cap-table">
                 <thead><tr>{''.join(header_cells)}</tr></thead>
                 <tbody>{''.join(body_rows)}</tbody>
             </table>
         </div>
-        """,
+        """),
         unsafe_allow_html=True)
 
 def clean_pick_display(value):
@@ -288,8 +288,11 @@ LIVE_STATS = [
     ("MP", "Minutes", "11 pts"),
     ("TS%", "True Shooting", "41 pts"),
     ("2PT%", "2PT Accuracy", "31 pts"),
+    ("2PM/2PA", "2PM / 2PA", "0 pts"),
     ("3PT%", "3PT Accuracy", "31 pts"),
+    ("3PM/3PA", "3PM / 3PA", "0 pts"),
     ("FT%", "Free Throws", "21 pts"),
+    ("FTM/FTA", "FTM / FTA", "0 pts"),
     ("PTS", "Points", "61 pts"),
     ("OREB", "Off. Rebounds", "31 pts"),
     ("DREB", "Def. Rebounds", "31 pts"),
@@ -320,7 +323,7 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
     image_columns = set(image_columns or [])
     if data is None or data.shape[0] == 0:
         st.markdown(
-            f"""
+            dedent(f"""
             <section class="sbc-pick-panel sbc-pick-panel-{status}">
                 <div class="sbc-pick-panel-head">
                     <div class="sbc-pick-icon">{icon}</div>
@@ -332,7 +335,7 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
                 </div>
                 <div class="sbc-pick-empty">{escape(empty_text)}</div>
             </section>
-            """,
+            """),
             unsafe_allow_html=True)
         return
 
@@ -400,7 +403,7 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
         body_rows.append(f"<tr>{''.join(cells)}</tr>")
 
     st.markdown(
-        f"""
+        dedent(f"""
         <section class="sbc-pick-panel sbc-pick-panel-{status}">
             <div class="sbc-pick-panel-head">
                 <div class="sbc-pick-icon">{icon}</div>
@@ -417,10 +420,23 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
                 </table>
             </div>
         </section>
-        """,
+        """),
         unsafe_allow_html=True)
 
 def live_stat_value(row, stat):
+    if "/" in stat and "%" not in stat:
+        made_col, attempt_col = stat.split("/", 1)
+        made_value = row.get(made_col, "")
+        attempt_value = row.get(attempt_col, "")
+        if is_blank_value(made_value) and is_blank_value(attempt_value):
+            return "-"
+        try:
+            made_text = "-" if is_blank_value(made_value) else f"{float(made_value):.0f}"
+            attempt_text = "-" if is_blank_value(attempt_value) else f"{float(attempt_value):.0f}"
+            return f"{made_text} / {attempt_text}"
+        except (TypeError, ValueError):
+            return f"{made_value} / {attempt_value}"
+
     value = row.get(stat, "")
     if is_blank_value(value):
         return "—"
@@ -509,6 +525,8 @@ def render_live_stat_board(title, kicker, rows, selected_team):
         except (TypeError, ValueError):
             states = ["neutral"] * len(displays)
         point_value = live_stat_points(points)
+        if point_value == 0:
+            states = ["neutral"] * len(displays)
         point_winners = [idx for idx, state in enumerate(states) if state in ["win", "tie"]]
         split_value = point_value / len(point_winners) if point_winners else 0
         for idx in point_winners:
@@ -533,9 +551,27 @@ def render_live_stat_board(title, kicker, rows, selected_team):
         max_total = max(totals)
         total_leaders = [total == max_total for total in totals]
         has_single_winner = sum(total_leaders) == 1
-        total_cells = "".join(
-            f'<div class="sbc-live-total-value {"sbc-live-total-leader" if is_leader and has_single_winner else "sbc-live-total-tie" if is_leader else ""}"><span>{total:g}</span><em>{"Winner" if is_leader and has_single_winner else "Tied" if is_leader else ""}</em></div>'
-            for total, is_leader in zip(totals, total_leaders))
+        total_cells = []
+        for total, is_leader, row in zip(totals, total_leaders, rows):
+            classes = "sbc-live-total-value"
+            style = ""
+            label = ""
+            if is_leader and has_single_winner:
+                classes += " sbc-live-total-leader"
+                winner_info = team_info.get(row["team"], {})
+                winner_bg = winner_info.get("bg", bg_color)
+                winner_text = winner_info.get("text", "#ffffff")
+                winner_secondary = winner_info.get("bg2", winner_text)
+                style = (
+                    f' style="background:{escape(str(winner_bg), quote=True)};'
+                    f' color:{escape(str(winner_text), quote=True)};'
+                    f' box-shadow:inset 0 0 0 2px {escape(str(winner_secondary), quote=True)};"')
+                label = "Winner"
+            elif is_leader:
+                classes += " sbc-live-total-tie"
+                label = "Tied"
+            total_cells.append(f'<div class="{classes}"{style}><span>{total:g}</span><em>{label}</em></div>')
+        total_cells = "".join(total_cells)
         total_row = dedent(f"""
         <div class="sbc-live-stat-row">
             <div class="sbc-live-total-name">
@@ -588,6 +624,13 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         .loc[:, ["Period", "Team", selected_category]]
         .rename(columns={"Team": "Series"}))
     plot_df = pd.concat([league_median, opponent_series, team_series], ignore_index=True)
+    if selected_category in ["TS%", "2PT%", "3PT%", "FT%"]:
+        plot_df["PlotValue"] = plot_df[selected_category] * 100
+        value_format = ".1f"
+    else:
+        plot_df["PlotValue"] = plot_df[selected_category]
+        value_format = ".2f"
+    team_points = plot_df[plot_df["Series"] == selected_team].copy()
     selected_period_df = pd.DataFrame({"Period": [selected_period]})
     color_domain = ["League Median"] + opponents + [selected_team]
     color_range = ["#9ca3af"] + [live_chart_color(opponent, "#a3aab5") for opponent in opponents] + [team_color]
@@ -598,14 +641,14 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
             title="Matchup Period",
             axis=alt.Axis(labelAngle=0, labelFontSize=11, titleFontSize=12, titlePadding=10, grid=False)),
         y=alt.Y(
-            f"{selected_category}:Q",
+            "PlotValue:Q",
             title=selected_category,
             scale=alt.Scale(zero=False),
             axis=alt.Axis(labelFontSize=11, titleFontSize=12, titlePadding=10, gridOpacity=0.24)),
         tooltip=[
             alt.Tooltip("Series:N", title="Series"),
             alt.Tooltip("Period:O", title="Period"),
-            alt.Tooltip(f"{selected_category}:Q", title=selected_category, format=".2f")])
+            alt.Tooltip("PlotValue:Q", title=selected_category, format=value_format)])
 
     selected_band = (
         alt.Chart(selected_period_df)
@@ -628,15 +671,15 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
             size=alt.condition(alt.datum.Period == selected_period, alt.value(150), alt.value(54)),
             strokeWidth=alt.condition(alt.datum.Period == selected_period, alt.value(2.4), alt.value(1.2))))
     points = (
-        alt.Chart(team_series)
+        alt.Chart(team_points)
         .mark_circle(size=115, stroke="#ffffff", strokeWidth=1.8)
         .encode(
             x="Period:O",
-            y=f"{selected_category}:Q",
+            y="PlotValue:Q",
             color=alt.value(team_color),
             tooltip=[
                 alt.Tooltip("Period:O", title="Period"),
-                alt.Tooltip(f"{selected_category}:Q", title=selected_category, format=".2f")]))
+                alt.Tooltip("PlotValue:Q", title=selected_category, format=value_format)]))
     return (
         (selected_band + median_line + opponent_lines + team_line + all_points + points)
         .properties(height=340, width="container")
@@ -2108,7 +2151,7 @@ with tab1:
         st.metric(label="Balance", value=net_fee(df, SelectedTeam, base_cap), delta=amount_paid(base_cap, SelectedTeam), delta_color="normal", help="The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border=True, format="dollar")
 
     st.markdown('<div class="sbc-section-label">Team Rosters</div>', unsafe_allow_html=True)
-    st.markdown("""
+    st.markdown(dedent("""
         <div class="sbc-legend">
             <div class="sbc-legend-title">Contract Status</div>
             <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#FCE5CD;"></span>Guaranteed</div>
@@ -2118,7 +2161,7 @@ with tab1:
             <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#CFFFFF;"></span>Restricted</div>
             <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#D9D9D9;"></span>Dead</div>
         </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
     st.markdown('<div class="sbc-cap-eyebrow">Active Players</div>', unsafe_allow_html=True)
     active_player_df = active_players(df, pics, SelectedTeam)
     render_cap_table(active_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
@@ -2150,13 +2193,13 @@ with tab1:
         restricted_count = trade_restrictions(df, pics, SelectedTeam).shape[0]
         rights_count = draft_retired_players(df, pics, SelectedTeam).shape[0]
         st.markdown(
-            f"""
+            dedent(f"""
             <div class="sbc-mini-note">
                 <strong>{free_agent_count}</strong> upcoming free agents<br>
                 <strong>{restricted_count}</strong> current trade restrictions<br>
                 <strong>{rights_count}</strong> draft-rights or retired assets
             </div>
-            """,
+            """),
             unsafe_allow_html=True)
 
     asset1, asset2, asset3 = st.columns([1.05, 1.15, 0.9])
@@ -2233,7 +2276,7 @@ with tab2:
     )
 
     st.markdown(
-        f"""
+        dedent(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
@@ -2267,7 +2310,7 @@ with tab2:
             </div>
         </div>
         <div class="sbc-mini-note"><strong>{total_pick_count}</strong> total pick records shown here, including <strong>{first_round_count}</strong> controlled or restricted first-round records.</div>
-        """,
+        """),
         unsafe_allow_html=True)
 
     render_pick_table(
