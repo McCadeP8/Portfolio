@@ -248,7 +248,8 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
                     cell_classes.append("sbc-year-col")
             elif col in image_columns and str(value).strip():
                 url = escape(str(value), quote=True)
-                value_html = f'<img class="sbc-table-img" src="{url}" alt="" referrerpolicy="no-referrer">'
+                image_class = "sbc-team-logo-img" if col == "Team_logo" else "sbc-table-img"
+                value_html = f'<img class="{image_class}" src="{url}" alt="" referrerpolicy="no-referrer">'
                 cell_classes.extend(["sbc-image-cell", "sbc-image-col"])
             else:
                 display = "—" if value == "" else value
@@ -1582,6 +1583,23 @@ st.markdown(
         margin: 0.28rem 1.1rem 0.28rem 0;
     }}
 
+    .sbc-legend-row span {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-right: 0.8rem;
+        white-space: nowrap;
+    }}
+
+    .sbc-legend-row i {{
+        width: 1.25rem;
+        height: 0.82rem;
+        border: 1px solid rgba(23, 32, 42, 0.12);
+        border-radius: 4px;
+        display: inline-block;
+        flex: 0 0 auto;
+    }}
+
     .sbc-swatch {{
         width: 1.25rem;
         height: 0.82rem;
@@ -1666,14 +1684,14 @@ st.markdown(
     }}
 
     .sbc-image-cell {{
-        width: 3rem;
-        min-width: 3rem;
+        width: 3.9rem;
+        min-width: 3.9rem;
         text-align: center;
     }}
 
     .sbc-table-img {{
-        width: 2.45rem;
-        height: 2.45rem;
+        width: 3.2rem;
+        height: 3.2rem;
         object-fit: cover;
         border-radius: 50%;
         display: block;
@@ -1681,6 +1699,15 @@ st.markdown(
         background: #eef2f6;
         border: 2px solid #ffffff;
         box-shadow: 0 0 0 1px rgba(23, 32, 42, 0.14), 0 4px 10px rgba(18, 25, 38, 0.12);
+    }}
+
+    .sbc-team-logo-img {{
+        width: 2.65rem;
+        height: 2.65rem;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+        filter: drop-shadow(0 4px 8px rgba(18, 25, 38, 0.13));
     }}
 
     .sbc-draft-hero {{
@@ -3562,6 +3589,89 @@ with tab5:
 
 with tab6:
 
+    active_all_df = active_players_all(df, pics)
+    inactive_all_df = inactive_players_all(df, pics)
+    dead_players_df = dead_players_all(df, pics)
+    all_free_agents_df = all_free_agents(df, pics)
+    draft_all_df = draft_rights_all(df, pics)
+    retired_all_df = retired_all(df, pics)
+    trade_restrictins_all_df = trade_restrictions_all(df, pics)
+
+    render_html(f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{current_year-1}-{str(current_year)[-2:]} League Player Office</div>
+                    <div class="sbc-draft-heading">League Players</div>
+                    <div class="sbc-draft-subcopy">Every roster, stash, dead salary, rights asset, upcoming free agent, and trade restriction in one league-wide view.</div>
+                </div>
+            </div>
+        </div>
+        <div class="sbc-draft-grid">
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">👥</div><div class="sbc-draft-tile-value">{active_all_df.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Active Players</div>
+                <div class="sbc-draft-tile-note">Players currently occupying active roster slots across the league.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">🌍</div><div class="sbc-draft-tile-value">{inactive_all_df.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Overseas Players</div>
+                <div class="sbc-draft-tile-note">Non-active players with guaranteed or unguaranteed salary records.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">⏳</div><div class="sbc-draft-tile-value">{all_free_agents_df.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Upcoming Free Agents</div>
+                <div class="sbc-draft-tile-note">Players reaching restricted or unrestricted free agency in the next class.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">🚧</div><div class="sbc-draft-tile-value">{trade_restrictins_all_df.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Trade Restrictions</div>
+                <div class="sbc-draft-tile-note">Current league-wide player movement restrictions.</div>
+            </div>
+        </div>
+        """)
+
+    render_html('<div class="sbc-section-label">Cap Sheet Legend</div>')
+    render_html("""
+        <div class="sbc-legend-row">
+            <span><i style="background:#FCE5CD;"></i>Guaranteed</span>
+            <span><i style="background:#F4CCCC;"></i>Non-Guaranteed</span>
+            <span><i style="background:#CFE2F3;"></i>Team Option</span>
+            <span><i style="background:#D9D2E9;"></i>Unrestricted</span>
+            <span><i style="background:#CFFFFF;"></i>Restricted</span>
+            <span><i style="background:#D9D9D9;"></i>Dead</span>
+        </div>
+        """)
+
+    render_html('<div class="sbc-section-label">League Rosters</div>')
+    render_html('<div class="sbc-cap-eyebrow">Active Players</div>')
+    render_cap_table(active_all_df, columns=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], image_columns=["Team_logo", " "])
+
+    render_html('<div class="sbc-cap-eyebrow">Overseas Players</div>')
+    render_cap_table(inactive_all_df, columns=["Team_logo", " ", "Player"] + columns_order + ["Bird Rights"], image_columns=["Team_logo", " "])
+
+    render_html('<div class="sbc-cap-eyebrow">Dead Players</div>')
+    render_cap_table(dead_players_df, columns=["Team_logo", " ", "Player"] + columns_order, image_columns=["Team_logo", " "])
+
+    render_html('<div class="sbc-section-label">Contract And Asset Details</div>')
+    asset1, asset2 = st.columns([1.1, 0.9])
+    with asset1:
+        render_html('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>')
+        render_cap_table(all_free_agents_df, columns=["Team_logo", " ", "Player"] + [str(current_year + year_offset)], image_columns=["Team_logo", " "])
+    with asset2:
+        render_html('<div class="sbc-cap-eyebrow">Trade Restrictions</div>')
+        render_cap_table(trade_restrictins_all_df, columns=["Team_logo", " ", "Player", "Trade Restriction"], image_columns=["Team_logo", " "], contract_colors=False)
+
+    asset3, asset4 = st.columns(2)
+    with asset3:
+        render_html('<div class="sbc-cap-eyebrow">Draft Rights</div>')
+        render_cap_table(draft_all_df, columns=["Team_logo", " ", "Player"] + columns_order, image_columns=["Team_logo", " "])
+    with asset4:
+        render_html('<div class="sbc-cap-eyebrow">Retired Rights</div>')
+        render_cap_table(retired_all_df, columns=["Team_logo", " ", "Player"] + columns_order, image_columns=["Team_logo", " "])
+
+    _legacy_tab6 = r'''
     col1, col2 = st.columns([1,7])
 
     with col1:
@@ -3639,7 +3749,101 @@ with tab6:
                 .format({c: "${:,.0f}" for c in trade_restrictins_all_df.columns if re.match(r"\d{4}", c)}))
             st.dataframe(trade_restrictins_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player", "Trade Restriction"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
+    '''
 with tab7:
+    all_full_team_picks = all_full_draft_picks(dp)
+    all_swap_team_picks = all_swap_draft_picks(dp)
+    all_split_team_picks = all_split_draft_picks(dp)
+    all_locked_team_picks = all_locked_draft_picks(dp)
+    all_shared_pick_count = all_swap_team_picks.shape[0] + all_split_team_picks.shape[0]
+    all_pick_count = all_full_team_picks.shape[0] + all_shared_pick_count + all_locked_team_picks.shape[0]
+    all_first_round_count = sum(
+        pick_df[pick_df["Round"].astype(str).str.contains("1st", na=False)].shape[0]
+        for pick_df in [all_full_team_picks, all_swap_team_picks, all_split_team_picks, all_locked_team_picks]
+        if "Round" in pick_df.columns
+    )
+
+    render_html(f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{current_year}-{str(current_year + 6)[-2:]} League Draft Inventory</div>
+                    <div class="sbc-draft-heading">League Draft Picks</div>
+                    <div class="sbc-draft-subcopy">A complete league-wide inventory of controlled picks, swap language, shared ownership, and locked draft assets.</div>
+                </div>
+            </div>
+        </div>
+        <div class="sbc-draft-grid">
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">✓</div><div class="sbc-draft-tile-value">{all_full_team_picks.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Full Control</div>
+                <div class="sbc-draft-tile-note">Picks controlled outright by their current owner.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">⇄</div><div class="sbc-draft-tile-value">{all_shared_pick_count}</div></div>
+                <div class="sbc-draft-tile-label">Swaps & Shared</div>
+                <div class="sbc-draft-tile-note">Pick swaps and assets with split or shared control language.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">⌖</div><div class="sbc-draft-tile-value">{all_locked_team_picks.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Locked</div>
+                <div class="sbc-draft-tile-note">Picks currently blocked from being traded.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">1</div><div class="sbc-draft-tile-value">{all_first_round_count}</div></div>
+                <div class="sbc-draft-tile-label">First-Round Records</div>
+                <div class="sbc-draft-tile-note">Round-one records across controlled, shared, and locked inventory.</div>
+            </div>
+        </div>
+        <div class="sbc-mini-note"><strong>{all_pick_count}</strong> total league pick records shown across all active draft-control categories.</div>
+        """)
+
+    render_pick_table(
+        all_full_team_picks,
+        "Fully Owned Picks",
+        "✓",
+        "Every pick currently controlled outright by its owner.",
+        "No fully owned picks are currently listed.",
+        columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
+        image_columns=["OGTeam", "CurrentTeam"],
+        status="full"
+    )
+
+    render_pick_table(
+        all_swap_team_picks,
+        "Swapped Draft Picks",
+        "⇄",
+        "Pick records with swap language attached.",
+        "No swapped picks are currently listed.",
+        columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
+        image_columns=["OGTeam", "CurrentTeam"],
+        status="swap"
+    )
+
+    render_pick_table(
+        all_split_team_picks,
+        "Split Draft Picks",
+        "◐",
+        "Picks with shared or split-control ownership language.",
+        "No split picks are currently listed.",
+        columns=["Year", "Round", "OGTeam", "Potential Owners", "Contacted", "Explanation"],
+        image_columns=["OGTeam"],
+        status="split"
+    )
+
+    render_pick_table(
+        all_locked_team_picks,
+        "Locked Draft Picks",
+        "⌖",
+        "Picks held by teams but currently restricted from trade.",
+        "No locked picks are currently listed.",
+        columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
+        image_columns=["OGTeam", "CurrentTeam"],
+        status="locked"
+    )
+
+    _legacy_tab7 = r'''
     all_full_team_picks = all_full_draft_picks(dp)
     st.header("Fully Owned Picks")
     st.dataframe(all_full_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
@@ -3656,6 +3860,7 @@ with tab7:
     st.header("Locked Draft Picks")
     st.dataframe(all_locked_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
+    '''
 with tab8:
     col1, col2, col3, col4 = st.columns(4)
     
