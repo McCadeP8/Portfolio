@@ -67,9 +67,18 @@ Teams = sorted(team_info.keys())
 
 top_col1, top_col2 = st.columns([5, 2], vertical_alignment="bottom")
 with top_col1:
-    st.markdown('<div class="sbc-app-kicker">SBC Fantasy Basketball League</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="sbc-app-masthead">
+            <div class="sbc-app-eyebrow">Welcome to the league office</div>
+            <div class="sbc-app-title">SBC Fantasy Basketball League</div>
+            <div class="sbc-app-subtitle">Cap sheets, live scores, draft assets, awards, and league history in one place.</div>
+        </div>
+        """,
+        unsafe_allow_html=True)
 with top_col2:
-    SelectedTeam = st.selectbox("Select Team", Teams, index=Teams.index("Vegas"), label_visibility="collapsed")
+    st.markdown('<div class="sbc-picker-eyebrow">Team View</div>', unsafe_allow_html=True)
+    SelectedTeam = st.selectbox("Choose your team", Teams, index=Teams.index("Vegas"))
 
 bg_color = team_info[SelectedTeam]["bg"]
 text_color = team_info[SelectedTeam]["text"]
@@ -120,17 +129,60 @@ st.markdown(
         border-bottom: 1px solid rgba(23, 32, 42, 0.06);
     }}
 
+    header[data-testid="stHeader"] *,
+    [data-testid="stToolbar"] *,
+    [data-testid="stToolbar"] button,
+    [data-testid="stToolbar"] a,
+    [data-testid="stToolbar"] svg {{
+        color: #111827 !important;
+        fill: #111827 !important;
+        stroke: #111827 !important;
+    }}
+
     [data-testid="stSidebar"] {{
         display: none;
     }}
 
-    .sbc-app-kicker {{
+    .sbc-app-masthead {{
+        margin-bottom: 0.3rem;
+    }}
+
+    .sbc-app-eyebrow {{
+        color: var(--sbc-team-primary);
+        font-size: 0.8rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        line-height: 1;
+        margin-bottom: 0.45rem;
+        text-transform: uppercase;
+    }}
+
+    .sbc-app-title {{
         color: var(--sbc-ink);
-        font-size: clamp(2.25rem, 4.8vw, 4.4rem);
+        font-size: clamp(2.15rem, 4.2vw, 4.05rem);
         font-weight: 950;
         letter-spacing: 0;
         line-height: 0.94;
-        margin: 0 0 0.65rem;
+        margin: 0;
+    }}
+
+    .sbc-app-subtitle {{
+        max-width: 48rem;
+        margin-top: 0.55rem;
+        color: var(--sbc-muted);
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.35;
+    }}
+
+    .sbc-picker-eyebrow {{
+        color: var(--sbc-team-primary);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        line-height: 1;
+        margin-bottom: 0.4rem;
+        text-transform: uppercase;
     }}
 
     .sbc-team-hero {{
