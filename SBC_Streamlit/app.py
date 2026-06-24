@@ -370,6 +370,8 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
         classes = []
         if col in image_columns:
             classes.append("sbc-pick-logo-col")
+        if col == "Round":
+            classes.append("sbc-pick-round-col")
         if col == "Contacted":
             classes.append("sbc-pick-contact-col")
         if col == "Explanation":
@@ -572,18 +574,17 @@ def render_live_stat_board(title, kicker, rows, selected_team):
         total_cells = []
         for total, is_leader, row in zip(totals, total_leaders, rows):
             classes = "sbc-live-total-value"
-            style = ""
             label = ""
+            team_total_info = team_info.get(row["team"], {})
+            total_bg = team_total_info.get("bg", bg_color)
+            total_text = team_total_info.get("text", "#ffffff")
+            total_secondary = team_total_info.get("bg2", total_text)
+            style = (
+                f' style="background:{escape(str(total_bg), quote=True)};'
+                f' color:{escape(str(total_text), quote=True)};'
+                f' box-shadow:inset 0 0 0 2px {escape(str(total_secondary), quote=True)};"')
             if is_leader and has_single_winner:
                 classes += " sbc-live-total-leader"
-                winner_info = team_info.get(row["team"], {})
-                winner_bg = winner_info.get("bg", bg_color)
-                winner_text = winner_info.get("text", "#ffffff")
-                winner_secondary = winner_info.get("bg2", winner_text)
-                style = (
-                    f' style="background:{escape(str(winner_bg), quote=True)};'
-                    f' color:{escape(str(winner_text), quote=True)};'
-                    f' box-shadow:inset 0 0 0 2px {escape(str(winner_secondary), quote=True)};"')
                 label = "Winner"
             elif is_leader:
                 classes += " sbc-live-total-tie"
@@ -703,6 +704,76 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         .configure_view(strokeWidth=0)
         .configure_axis(domainColor="#dbe2ea", tickColor="#dbe2ea", labelColor="#17202a", titleColor="#17202a", gridColor="#edf1f5")
         .configure_legend(labelColor="#17202a"))
+
+
+def schedule_result(team_score, opponent_score):
+    if is_blank_value(team_score) or is_blank_value(opponent_score):
+        return "TBD"
+    if float(team_score) > float(opponent_score):
+        return "W"
+    if float(team_score) < float(opponent_score):
+        return "L"
+    return "T"
+
+
+def render_schedule_table(schedule_df, selected_team):
+    if schedule_df is None or schedule_df.shape[0] == 0:
+        render_html('<div class="sbc-empty-state">No schedule records are available for this selection.</div>')
+        return
+
+    type_order = {"Regular Season": 0, "In-Season Tournament": 1, "Play-In": 2, "Playoffs": 3}
+    table_df = schedule_df.copy()
+    table_df["TypeOrder"] = table_df["Type"].map(type_order).fillna(9)
+    table_df = table_df.sort_values(["Period", "TypeOrder", "Game_ID"])
+
+    body_rows = []
+    for _, row in table_df.iterrows():
+        is_home = row.get("TeamA") == selected_team
+        opponent = row.get("TeamB") if is_home else row.get("TeamA")
+        opponent_info = team_info.get(opponent, {})
+        logo = opponent_info.get("logo", "")
+        logo_html = f'<img class="sbc-schedule-logo" src="{escape(str(logo), quote=True)}" alt="{escape(str(opponent), quote=True)} logo">' if logo else ""
+        location_text = "Home" if is_home else "Away"
+        venue_mark = "vs" if is_home else "@"
+        team_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
+        opponent_score = row.get("TeamBScore") if is_home else row.get("TeamAScore")
+        result = schedule_result(team_score, opponent_score)
+        result_class = {"W": "win", "L": "loss", "T": "tie"}.get(result, "tbd")
+        score_text = "TBD" if result == "TBD" else f"{float(team_score):g}-{float(opponent_score):g}"
+        type_text = clean_pick_display(row.get("Type", ""))
+        round_text = clean_pick_display(row.get("Round", ""))
+        context_bits = [bit for bit in [type_text, round_text if round_text != type_text else ""] if bit and bit != "-"]
+        context_text = " / ".join(context_bits)
+        body_rows.append(dedent(f"""
+        <tr class="sbc-schedule-row sbc-schedule-{result_class}">
+            <td class="sbc-schedule-period"><span>P{escape(str(row.get("Period", "")))}</span></td>
+            <td class="sbc-schedule-opponent">
+                {logo_html}
+                <div>
+                    <strong>{escape(str(venue_mark))} {escape(str(opponent))}</strong>
+                    <em>{escape(location_text)} / {escape(context_text)}</em>
+                </div>
+            </td>
+            <td class="sbc-schedule-type"><span>{escape(type_text)}</span></td>
+            <td class="sbc-schedule-score"><strong>{escape(score_text)}</strong><em>{escape(result)}</em></td>
+        </tr>
+        """))
+
+    render_html(f"""
+    <div class="sbc-schedule-table-wrap">
+        <table class="sbc-schedule-table">
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Opponent</th>
+                    <th>Type</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(body_rows)}</tbody>
+        </table>
+    </div>
+    """)
 
 st.markdown(
     f"""
@@ -1418,14 +1489,15 @@ st.markdown(
     }}
 
     .sbc-pick-logo-col {{
-        width: 3.7rem;
-        min-width: 3.7rem;
-        max-width: 3.7rem;
+        width: 3.15rem;
+        min-width: 3.15rem;
+        max-width: 3.15rem;
+        text-align: center !important;
     }}
 
     .sbc-pick-logo {{
-        width: 2rem;
-        height: 2rem;
+        width: 1.85rem;
+        height: 1.85rem;
         display: block;
         object-fit: contain;
         margin: 0 auto;
@@ -1438,18 +1510,20 @@ st.markdown(
         font-variant-numeric: tabular-nums;
     }}
 
+    .sbc-pick-round-col,
     .sbc-pick-round-cell {{
-        width: 3.7rem;
-        min-width: 3.7rem;
-        max-width: 3.7rem;
+        width: 3.15rem;
+        min-width: 3.15rem;
+        max-width: 3.15rem;
         font-weight: 850 !important;
+        text-align: center !important;
     }}
 
     .sbc-pick-contact-col,
     .sbc-pick-contact-cell {{
-        width: 13rem;
-        min-width: 13rem;
-        max-width: 13rem;
+        width: 13.75rem;
+        min-width: 13.75rem;
+        max-width: 13.75rem;
         text-align: left !important;
         white-space: normal !important;
     }}
@@ -1470,8 +1544,8 @@ st.markdown(
 
     .sbc-pick-detail-col,
     .sbc-pick-detail-cell {{
-        width: 30rem;
-        min-width: 30rem;
+        width: 34rem;
+        min-width: 34rem;
         text-align: left !important;
         white-space: normal !important;
     }}
@@ -1838,6 +1912,162 @@ st.markdown(
         margin-top: 0.24rem;
     }}
 
+    .sbc-schedule-table-wrap {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.12));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 16px 38px rgba(18, 25, 38, 0.09);
+        margin: 0.4rem 0 1.2rem;
+    }}
+
+    .sbc-schedule-table {{
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }}
+
+    .sbc-schedule-table th {{
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        padding: 0.78rem 0.85rem;
+        text-align: left;
+        text-transform: uppercase;
+    }}
+
+    .sbc-schedule-table th:nth-child(1) {{ width: 5.5rem; }}
+    .sbc-schedule-table th:nth-child(3) {{ width: 10rem; }}
+    .sbc-schedule-table th:nth-child(4) {{ width: 8.5rem; text-align: center; }}
+
+    .sbc-schedule-row {{
+        border-left: 0.42rem solid color-mix(in srgb, var(--sbc-team-primary) 60%, #ffffff);
+    }}
+
+    .sbc-schedule-row td {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.075);
+        color: var(--sbc-ink);
+        padding: 0.68rem 0.85rem;
+        vertical-align: middle;
+    }}
+
+    .sbc-schedule-row:last-child td {{ border-bottom: none; }}
+    .sbc-schedule-win {{ border-left-color: #58a76b; }}
+    .sbc-schedule-loss {{ border-left-color: #d96b6b; }}
+    .sbc-schedule-tie {{ border-left-color: #e6c85c; }}
+
+    .sbc-schedule-period span {{
+        display: inline-grid;
+        place-items: center;
+        width: 3.1rem;
+        height: 2.1rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--sbc-team-primary) 16%, #ffffff);
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 30%, rgba(23, 32, 42, 0.12));
+        color: var(--sbc-ink);
+        font-size: 0.78rem;
+        font-weight: 950;
+    }}
+
+    .sbc-schedule-opponent {{
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+    }}
+
+    .sbc-schedule-logo {{
+        width: 2.35rem;
+        height: 2.35rem;
+        flex: 0 0 2.35rem;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 8px rgba(18, 25, 38, 0.13));
+    }}
+
+    .sbc-schedule-opponent strong {{
+        display: block;
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.94rem;
+        font-weight: 950;
+        line-height: 1.05;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-schedule-opponent em {{
+        display: block;
+        margin-top: 0.2rem;
+        overflow: hidden;
+        color: var(--sbc-muted);
+        font-size: 0.7rem;
+        font-style: normal;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-schedule-type span {{
+        display: inline-flex;
+        max-width: 100%;
+        border-radius: 999px;
+        background: #f3f6f9;
+        border: 1px solid rgba(23, 32, 42, 0.09);
+        color: #344054;
+        font-size: 0.72rem;
+        font-weight: 900;
+        line-height: 1;
+        overflow: hidden;
+        padding: 0.42rem 0.58rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-schedule-score {{ text-align: center; }}
+
+    .sbc-schedule-score strong {{
+        display: block;
+        color: var(--sbc-ink);
+        font-size: 1rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }}
+
+    .sbc-schedule-score em {{
+        display: inline-grid;
+        place-items: center;
+        min-width: 2rem;
+        margin-top: 0.24rem;
+        border-radius: 999px;
+        background: #edf1f5;
+        color: #344054;
+        font-size: 0.62rem;
+        font-style: normal;
+        font-weight: 950;
+        line-height: 1;
+        padding: 0.25rem 0.42rem;
+    }}
+
+    .sbc-schedule-win .sbc-schedule-score em {{
+        background: color-mix(in srgb, #58a76b 24%, #ffffff);
+        color: #174221;
+    }}
+
+    .sbc-schedule-loss .sbc-schedule-score em {{
+        background: color-mix(in srgb, #d96b6b 20%, #ffffff);
+        color: #651f1f;
+    }}
+
+    .sbc-schedule-tie .sbc-schedule-score em {{
+        background: color-mix(in srgb, #e6c85c 34%, #ffffff);
+        color: #4d3a00;
+    }}
+
     [data-testid="stMetricDelta"],
     [data-testid="stMetricDelta"] * {{
         color: #4b5563 !important;
@@ -1887,6 +2117,21 @@ st.markdown(
         font-size: 0.78rem;
         font-weight: 850;
         line-height: 1.1;
+    }}
+
+    [data-testid="stMetric"] [data-testid="stTooltipIcon"],
+    [data-testid="stMetric"] button,
+    [data-testid="stMetric"] svg {{
+        color: var(--sbc-team-primary) !important;
+        fill: var(--sbc-team-primary) !important;
+        opacity: 1 !important;
+    }}
+
+    [data-testid="stMetric"] [data-testid="stTooltipIcon"]:hover,
+    [data-testid="stMetric"] button:hover,
+    [data-testid="stMetric"] button:hover svg {{
+        color: var(--sbc-team-secondary) !important;
+        fill: var(--sbc-team-secondary) !important;
     }}
 
     [data-testid="stMetricValue"] {{
@@ -2488,16 +2733,37 @@ with tab3:
         st.altair_chart(season_line_chart_data, use_container_width=True)
 
 with tab4:
-    st.subheader(f"{SelectedTeam} {current_year-1}-{str(current_year)[-2:]} Schedule")
-    TeamSchedule = get_team_schedule(all_time_schedule, SelectedTeam, current_year)
-    st.dataframe(TeamSchedule, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="Opp", width="small")})
-    total_miles, num_flights = get_team_mileage(SelectedTeam, current_year, all_time_schedule)
+    schedule_years = sorted(all_time_schedule["Year"].dropna().astype(int).unique().tolist())
+    default_schedule_year = current_year if current_year in schedule_years else schedule_years[-1]
+    render_html(f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">Travel Desk</div>
+                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Schedule</div>
+                    <div class="sbc-draft-subcopy">Opponent flow, home-road balance, matchup types, results, and travel load by season.</div>
+                </div>
+            </div>
+        </div>
+        """)
+    SelectedScheduleYear = st.selectbox(
+        "Schedule Year",
+        options=schedule_years,
+        index=schedule_years.index(default_schedule_year))
+    schedule_raw = all_time_schedule[
+        (all_time_schedule["Year"] == SelectedScheduleYear)
+        & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
+    ].copy()
+    render_html('<div class="sbc-section-label">Schedule</div>')
+    render_schedule_table(schedule_raw, SelectedTeam)
+    total_miles, num_flights = get_team_mileage(SelectedTeam, SelectedScheduleYear, all_time_schedule)
     col1, col2 = st.columns(2)
     with col1:
         st.metric(label="Total Miles", value=f"{int(total_miles):,} mi", help="Total miles traveled this season including road trips and returns home.", border=True)
     with col2:
         st.metric(label="Total Flights", value=num_flights, help="Number of flights taken this season (legs with distance > 0).", border=True)
-    st_folium(plot_team_flights(SelectedTeam, current_year, all_time_schedule), width="100%", height=480, returned_objects=[])
+    st_folium(plot_team_flights(SelectedTeam, SelectedScheduleYear, all_time_schedule), width="100%", height=480, returned_objects=[])
 
 with tab5:
     st.subheader("League Scoreboard")
