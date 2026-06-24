@@ -312,6 +312,10 @@ def live_team_full_name(team):
     return f"{team} {nickname_value}".strip()
 
 
+def live_chart_color(team, fallback):
+    return team_info.get(team, {}).get("bg", fallback)
+
+
 def render_pick_table(data, title, icon, description, empty_text, columns=None, image_columns=None, status="hold"):
     image_columns = set(image_columns or [])
     if data is None or data.shape[0] == 0:
@@ -449,7 +453,8 @@ def live_stat_score(values, stat):
         best = min(parsed)
     else:
         best = max(parsed)
-    return ["win" if val == best else "trail" for val in parsed]
+    winners = sum(1 for val in parsed if val == best)
+    return [("tie" if winners > 1 and val == best else "win" if val == best else "trail") for val in parsed]
 
 
 def live_rank_label(live_df, team, stat):
@@ -462,11 +467,13 @@ def live_rank_label(live_df, team, stat):
         if len(team_index) == 0:
             return ""
         rank_val = int(ranks.loc[team_index[0]])
+        is_tied = (ranks == rank_val).sum() > 1
         if 11 <= rank_val % 100 <= 13:
             suffix = "th"
         else:
             suffix = {1: "st", 2: "nd", 3: "rd"}.get(rank_val % 10, "th")
-        return f"{rank_val}{suffix}"
+        prefix = "T-" if is_tied else ""
+        return f"{prefix}{rank_val}{suffix}"
     except (TypeError, ValueError):
         return ""
 
@@ -501,9 +508,12 @@ def render_live_stat_board(title, kicker, rows, selected_team):
             states = live_stat_score(displays, stat)
         except (TypeError, ValueError):
             states = ["neutral"] * len(displays)
-        for idx, state in enumerate(states):
-            if len(rows) > 1 and state == "win":
-                totals[idx] += live_stat_points(points)
+        point_value = live_stat_points(points)
+        point_winners = [idx for idx, state in enumerate(states) if state in ["win", "tie"]]
+        split_value = point_value / len(point_winners) if point_winners else 0
+        for idx in point_winners:
+            if len(rows) > 1:
+                totals[idx] += split_value
         value_cells = "".join(
             f'<div class="sbc-live-stat-value sbc-live-stat-{state}"><span>{escape(str(display))}</span><em>{escape(str(row.get("ranks", {}).get(stat, "")))}</em></div>'
             for display, state, row in zip(displays, states, rows))
@@ -520,7 +530,12 @@ def render_live_stat_board(title, kicker, rows, selected_team):
 
     total_row = ""
     if len(rows) > 1:
-        total_cells = "".join(f'<div class="sbc-live-total-value">{total}</div>' for total in totals)
+        max_total = max(totals)
+        total_leaders = [total == max_total for total in totals]
+        has_single_winner = sum(total_leaders) == 1
+        total_cells = "".join(
+            f'<div class="sbc-live-total-value {"sbc-live-total-leader" if is_leader and has_single_winner else "sbc-live-total-tie" if is_leader else ""}"><span>{total:g}</span><em>{"Winner" if is_leader and has_single_winner else "Tied" if is_leader else ""}</em></div>'
+            for total, is_leader in zip(totals, total_leaders))
         total_row = dedent(f"""
         <div class="sbc-live-stat-row">
             <div class="sbc-live-total-name">
@@ -573,6 +588,9 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         .loc[:, ["Period", "Team", selected_category]]
         .rename(columns={"Team": "Series"}))
     plot_df = pd.concat([league_median, opponent_series, team_series], ignore_index=True)
+    selected_period_df = pd.DataFrame({"Period": [selected_period]})
+    color_domain = ["League Median"] + opponents + [selected_team]
+    color_range = ["#9ca3af"] + [live_chart_color(opponent, "#a3aab5") for opponent in opponents] + [team_color]
 
     base = alt.Chart(plot_df).encode(
         x=alt.X(
@@ -589,19 +607,26 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
             alt.Tooltip("Period:O", title="Period"),
             alt.Tooltip(f"{selected_category}:Q", title=selected_category, format=".2f")])
 
+    selected_band = (
+        alt.Chart(selected_period_df)
+        .mark_rect(color=team_color, opacity=0.10)
+        .encode(x=alt.X("Period:O", title=None)))
     median_line = (
         base.transform_filter(alt.datum.Series == "League Median")
         .mark_line(strokeWidth=2.5, strokeDash=[5, 4], color="#7c8794", interpolate="monotone"))
     opponent_lines = (
         base.transform_filter((alt.datum.Series != "League Median") & (alt.datum.Series != selected_team))
         .mark_line(strokeWidth=2.4, opacity=0.62, interpolate="monotone")
-        .encode(color=alt.Color("Series:N", scale=alt.Scale(scheme="tableau20"), legend=alt.Legend(title=None, orient="top"))))
+        .encode(color=alt.Color("Series:N", scale=alt.Scale(domain=color_domain, range=color_range), legend=alt.Legend(title=None, orient="top"))))
     team_line = (
         base.transform_filter(alt.datum.Series == selected_team)
         .mark_line(strokeWidth=4, color=team_color, interpolate="monotone"))
     all_points = (
         base.mark_circle(size=58, stroke="#ffffff", strokeWidth=1.2, opacity=0.95)
-        .encode(color=alt.condition(alt.datum.Series == selected_team, alt.value(team_color), alt.value("#9ca3af"))))
+        .encode(
+            color=alt.Color("Series:N", scale=alt.Scale(domain=color_domain, range=color_range), legend=None),
+            size=alt.condition(alt.datum.Period == selected_period, alt.value(150), alt.value(54)),
+            strokeWidth=alt.condition(alt.datum.Period == selected_period, alt.value(2.4), alt.value(1.2))))
     points = (
         alt.Chart(team_series)
         .mark_circle(size=115, stroke="#ffffff", strokeWidth=1.8)
@@ -612,14 +637,9 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
             tooltip=[
                 alt.Tooltip("Period:O", title="Period"),
                 alt.Tooltip(f"{selected_category}:Q", title=selected_category, format=".2f")]))
-    selected_rule = (
-        alt.Chart(pd.DataFrame({"Period": [selected_period]}))
-        .mark_rule(strokeDash=[5, 4], strokeWidth=2, color=team_color, opacity=0.55)
-        .encode(x="Period:O"))
-
     return (
-        (median_line + opponent_lines + team_line + all_points + points + selected_rule)
-        .properties(height=460)
+        (selected_band + median_line + opponent_lines + team_line + all_points + points)
+        .properties(height=340, width="container")
         .properties(background="#ffffff")
         .configure_view(strokeWidth=0)
         .configure_axis(domainColor="#dbe2ea", tickColor="#dbe2ea", labelColor="#17202a", titleColor="#17202a", gridColor="#edf1f5")
@@ -1646,9 +1666,40 @@ st.markdown(
         font-variant-numeric: tabular-nums;
     }}
 
+    .sbc-live-total-leader {{
+        background: var(--sbc-team-primary);
+        color: var(--sbc-team-text);
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sbc-team-secondary) 52%, #ffffff);
+    }}
+
+    .sbc-live-total-tie {{
+        background: #e6c85c;
+        color: #3f3000;
+        box-shadow: inset 0 0 0 2px rgba(63, 48, 0, 0.18);
+    }}
+
+    .sbc-live-total-value span {{
+        line-height: 1;
+    }}
+
+    .sbc-live-total-value em {{
+        margin-top: 0.18rem;
+        font-size: 0.58rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        line-height: 1;
+        text-transform: uppercase;
+    }}
+
     .sbc-live-stat-win {{
         background: color-mix(in srgb, #58a76b 22%, #ffffff);
         color: #163c21;
+    }}
+
+    .sbc-live-stat-tie {{
+        background: color-mix(in srgb, #e6c85c 30%, #ffffff);
+        color: #4d3a00;
     }}
 
     .sbc-live-stat-trail {{
@@ -2021,7 +2072,7 @@ with tab1:
                 <div>
                     <div class="sbc-draft-eyebrow">{season_label} Season Cap Office</div>
                     <div class="sbc-draft-heading">{team_name_html} {nickname_html} Cap</div>
-            <div class="sbc-draft-subcopy">Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
+                    <div class="sbc-draft-subcopy">Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
                 </div>
             </div>
         </div>
@@ -2337,14 +2388,12 @@ with tab3:
     SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
     st.markdown(
         dedent(f"""
-        <div class="sbc-chart-shell">
-            <div class="sbc-chart-head">
-                <div>
-                    <div class="sbc-chart-title">{escape(str(SelectedCategory))} by Matchup Period</div>
-                    <div class="sbc-chart-copy">{team_name_html}, this period's opponents, and the league median. Every line has visible period dots.</div>
-                </div>
-                <div class="sbc-live-badge">{SelectedYear}</div>
+        <div class="sbc-chart-head">
+            <div>
+                <div class="sbc-chart-title">{escape(str(SelectedCategory))} by Matchup Period</div>
+                <div class="sbc-chart-copy">{team_name_html}, this period's opponents, and the league median. Larger dots mark the selected period.</div>
             </div>
+            <div class="sbc-live-badge">{SelectedYear}</div>
         </div>
         """),
         unsafe_allow_html=True)
@@ -2354,114 +2403,6 @@ with tab3:
         st.markdown('<div class="sbc-empty-state">No season trend data is available for this selection.</div>', unsafe_allow_html=True)
     else:
         st.altair_chart(season_line_chart_data, use_container_width=True)
-
-    _legacy_live_tab3 = r'''
-    live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
-    live_stats_df_formatted = format_live_stats_df(live_stats_df_team)
-
-    st.markdown(
-        f"""
-        <div class="sbc-live-card">
-            <div class="sbc-live-card-head">
-                <div>
-                    <div class="sbc-live-card-kicker">Team Form</div>
-                    <div class="sbc-live-card-title">{team_name_html} Period {SelectedPeriod} Stat Profile</div>
-                </div>
-                <div class="sbc-live-badge">Stats + ranks</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True)
-    st.dataframe(live_stats_df_formatted, width="stretch", height="content", row_height=50, hide_index=True, placeholder="â€”", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-
-    st.markdown('<div class="sbc-section-label">Matchup Scoreboards</div>', unsafe_allow_html=True)
-    if matchup_count == 0:
-        st.markdown('<div class="sbc-empty-state">No matchup is listed for this team in the selected period.</div>', unsafe_allow_html=True)
-    else:
-        matchup_cols = st.columns(min(3, matchup_count))
-        for idx, (matchup_type, opponent) in enumerate(matchup_sections):
-            with matchup_cols[idx % len(matchup_cols)]:
-                st.markdown(
-                    f"""
-                    <div class="sbc-live-card">
-                        <div class="sbc-live-card-head">
-                            <div>
-                                <div class="sbc-live-card-kicker">{escape(matchup_type)}</div>
-                                <div class="sbc-live-card-title">vs {escape(str(opponent))}</div>
-                            </div>
-                            <div class="sbc-live-badge">P{SelectedPeriod}</div>
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True)
-                scoreboard = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, opponent)
-                st.dataframe(scoreboard, width="stretch", height="content", row_height=50, hide_index=True, placeholder="â€”", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-
-    st.markdown('<div class="sbc-section-label">Season Trend</div>', unsafe_allow_html=True)
-    st.markdown(
-        f"""
-        <div class="sbc-chart-shell">
-            <div class="sbc-chart-head">
-                <div>
-                    <div class="sbc-chart-title">{escape(str(SelectedCategory))} by Matchup Period</div>
-                    <div class="sbc-chart-copy">{team_name_html} against the league median, with the selected period marked.</div>
-                </div>
-                <div class="sbc-live-badge">{SelectedYear}</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True)
-    season_line_chart_data = build_live_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod, bg_color, text_color2)
-    if season_line_chart_data is None:
-        st.markdown('<div class="sbc-empty-state">No season trend data is available for this selection.</div>', unsafe_allow_html=True)
-    else:
-        st.altair_chart(season_line_chart_data, use_container_width=True)
-
-    '''
-
-    _legacy_tab3 = r'''
-    col1, col2 = st.columns([1, 9])
-
-    with col1:
-        SelectedYear = st.selectbox("Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
-        max_period = all_time_schedule[all_time_schedule["Year"] == SelectedYear]["Period"].max()
-        SelectedPeriod = st.selectbox("Period", options=list(range(1, max_period+1)), index=list(range(1, max_period+1)).index(min(current_matchup, max_period)))
-
-    with col2:
-        with st.spinner("Updating matchups..."):
-            live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
-        live_stats_df_team = team_with_ranks(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod)
-        live_stats_df_formatted = format_live_stats_df(live_stats_df_team)
-        st.subheader(f"Stats for {SelectedTeam} in Matchup Period {SelectedPeriod} in {SelectedYear}")
-        st.dataframe(live_stats_df_formatted, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
-        PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
-        PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
-        ISTOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "In-Season Tournament")
-        if len(RegOpponents) > 0:
-            st.subheader("Regular Season Matchup(s)")
-            scoreboard1 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[0])
-            st.dataframe(scoreboard1, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(RegOpponents) > 1:
-            scoreboard2 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, RegOpponents[1])
-            st.dataframe(scoreboard2, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(PIOpponents) > 0:
-            st.subheader("Play-In Matchup")
-            scoreboard3 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PIOpponents[0])
-            st.dataframe(scoreboard3, width ="stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(PlayOpponents) > 0:
-            st.subheader("Playoff Matchup")
-            scoreboard4 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, PlayOpponents[0])
-            st.dataframe(scoreboard4, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        if len(ISTOpponents) > 0:
-            st.subheader("In-Season Tournament Matchup")
-            scoreboard5 = matchup_scoreboard(live_stats_df, SelectedTeam, SelectedYear, SelectedPeriod, ISTOpponents[0])
-            st.dataframe(scoreboard5, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
-        SelectedCategory = st.selectbox("Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
-        season_line_chart_data = team_stats_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod)
-        st.altair_chart(season_line_chart_data, use_container_width=True)
-
-    '''
 
 with tab4:
     st.subheader(f"{SelectedTeam} {current_year-1}-{str(current_year)[-2:]} Schedule")
