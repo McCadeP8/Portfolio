@@ -301,6 +301,17 @@ LIVE_STATS = [
 ]
 
 
+def live_stat_points(points_text):
+    match = re.search(r"\d+", points_text)
+    return int(match.group(0)) if match else 0
+
+
+def live_team_full_name(team):
+    info = team_info.get(team, {})
+    nickname_value = info.get("nickname", "")
+    return f"{team} {nickname_value}".strip()
+
+
 def render_pick_table(data, title, icon, description, empty_text, columns=None, image_columns=None, status="hold"):
     image_columns = set(image_columns or [])
     if data is None or data.shape[0] == 0:
@@ -441,6 +452,36 @@ def live_stat_score(values, stat):
     return ["win" if val == best else "trail" for val in parsed]
 
 
+def live_rank_label(live_df, team, stat):
+    try:
+        if stat not in live_df.columns:
+            return ""
+        ascending = stat == "TO"
+        ranks = live_df[stat].rank(ascending=ascending, method="min")
+        team_index = live_df.index[live_df["Team"] == team]
+        if len(team_index) == 0:
+            return ""
+        rank_val = int(ranks.loc[team_index[0]])
+        if 11 <= rank_val % 100 <= 13:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(rank_val % 10, "th")
+        return f"{rank_val}{suffix}"
+    except (TypeError, ValueError):
+        return ""
+
+
+def live_row_payload(live_df, team):
+    row = live_df[live_df["Team"] == team]
+    if row.shape[0] == 0:
+        return None
+    return {
+        "team": team,
+        "data": row.iloc[0],
+        "ranks": {stat: live_rank_label(live_df, team, stat) for stat, _, _ in LIVE_STATS},
+    }
+
+
 def render_live_stat_board(title, kicker, rows, selected_team):
     if not rows:
         st.markdown('<div class="sbc-empty-state">No live stats are available for this selection.</div>', unsafe_allow_html=True)
@@ -450,18 +491,22 @@ def render_live_stat_board(title, kicker, rows, selected_team):
     for row in rows:
         logo = team_info.get(row["team"], {}).get("logo", "")
         logo_html = f'<img class="sbc-live-logo" src="{escape(str(logo), quote=True)}" alt="{escape(str(row["team"]), quote=True)} logo">' if logo else ""
-        team_headers.append(f'<div class="sbc-live-team-head">{logo_html}<span>{escape(str(row["team"]))}</span></div>')
+        team_headers.append(f'<div class="sbc-live-team-head">{logo_html}<span>{escape(live_team_full_name(row["team"]))}</span></div>')
 
     stat_rows = []
+    totals = [0] * len(rows)
     for stat, label, points in LIVE_STATS:
         displays = [live_stat_value(row["data"], stat) for row in rows]
         try:
             states = live_stat_score(displays, stat)
         except (TypeError, ValueError):
             states = ["neutral"] * len(displays)
+        for idx, state in enumerate(states):
+            if len(rows) > 1 and state == "win":
+                totals[idx] += live_stat_points(points)
         value_cells = "".join(
-            f'<div class="sbc-live-stat-value sbc-live-stat-{state}">{escape(str(display))}</div>'
-            for display, state in zip(displays, states))
+            f'<div class="sbc-live-stat-value sbc-live-stat-{state}"><span>{escape(str(display))}</span><em>{escape(str(row.get("ranks", {}).get(stat, "")))}</em></div>'
+            for display, state, row in zip(displays, states, rows))
         stat_rows.append(
             dedent(f"""
             <div class="sbc-live-stat-row">
@@ -473,6 +518,19 @@ def render_live_stat_board(title, kicker, rows, selected_team):
             </div>
             """))
 
+    total_row = ""
+    if len(rows) > 1:
+        total_cells = "".join(f'<div class="sbc-live-total-value">{total}</div>' for total in totals)
+        total_row = dedent(f"""
+        <div class="sbc-live-stat-row">
+            <div class="sbc-live-total-name">
+                <span>Total Score</span>
+                <em>category points won</em>
+            </div>
+            {total_cells}
+        </div>
+        """)
+
     st.markdown(
         dedent(f"""
         <section class="sbc-live-board">
@@ -481,12 +539,12 @@ def render_live_stat_board(title, kicker, rows, selected_team):
                     <div class="sbc-live-card-kicker">{escape(kicker)}</div>
                     <div class="sbc-live-card-title">{escape(title)}</div>
                 </div>
-                <div class="sbc-live-badge">{len(rows)} team{'s' if len(rows) != 1 else ''}</div>
             </div>
             <div class="sbc-live-board-grid" style="--sbc-live-team-cols: {len(rows)};">
                 <div class="sbc-live-team-spacer"></div>
                 {''.join(team_headers)}
                 {''.join(stat_rows)}
+                {total_row}
             </div>
         </section>
         """),
@@ -536,13 +594,14 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         .mark_line(strokeWidth=2.5, strokeDash=[5, 4], color="#7c8794", interpolate="monotone"))
     opponent_lines = (
         base.transform_filter((alt.datum.Series != "League Median") & (alt.datum.Series != selected_team))
-        .mark_line(strokeWidth=2.5, opacity=0.55, color=accent_color, interpolate="monotone"))
+        .mark_line(strokeWidth=2.4, opacity=0.62, interpolate="monotone")
+        .encode(color=alt.Color("Series:N", scale=alt.Scale(scheme="tableau20"), legend=alt.Legend(title=None, orient="top"))))
     team_line = (
         base.transform_filter(alt.datum.Series == selected_team)
         .mark_line(strokeWidth=4, color=team_color, interpolate="monotone"))
     all_points = (
         base.mark_circle(size=58, stroke="#ffffff", strokeWidth=1.2, opacity=0.95)
-        .encode(color=alt.condition(alt.datum.Series == selected_team, alt.value(team_color), alt.value(accent_color))))
+        .encode(color=alt.condition(alt.datum.Series == selected_team, alt.value(team_color), alt.value("#9ca3af"))))
     points = (
         alt.Chart(team_series)
         .mark_circle(size=115, stroke="#ffffff", strokeWidth=1.8)
@@ -561,8 +620,10 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
     return (
         (median_line + opponent_lines + team_line + all_points + points + selected_rule)
         .properties(height=460)
+        .properties(background="#ffffff")
         .configure_view(strokeWidth=0)
-        .configure_axis(domainColor="#dbe2ea", tickColor="#dbe2ea", labelColor="#17202a", titleColor="#17202a", gridColor="#e7ecf2"))
+        .configure_axis(domainColor="#dbe2ea", tickColor="#dbe2ea", labelColor="#17202a", titleColor="#17202a", gridColor="#edf1f5")
+        .configure_legend(labelColor="#17202a"))
 
 st.markdown(
     f"""
@@ -1450,8 +1511,8 @@ st.markdown(
         overflow: hidden;
         border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 24%, rgba(23, 32, 42, 0.11));
         border-radius: 8px;
-        background: rgba(255, 255, 255, 0.94);
-        box-shadow: 0 16px 38px rgba(18, 25, 38, 0.09);
+        background: #ffffff;
+        box-shadow: 0 12px 28px rgba(18, 25, 38, 0.07);
         margin: 0 0 1rem;
     }}
 
@@ -1505,26 +1566,31 @@ st.markdown(
     }}
 
     .sbc-live-stat-name,
-    .sbc-live-stat-value {{
+    .sbc-live-stat-value,
+    .sbc-live-total-name,
+    .sbc-live-total-value {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.065);
         min-height: 3.2rem;
         padding: 0.52rem 0.72rem;
     }}
 
-    .sbc-live-stat-name {{
+    .sbc-live-stat-name,
+    .sbc-live-total-name {{
         display: grid;
         align-content: center;
         background: rgba(247, 249, 252, 0.68);
         color: var(--sbc-ink);
     }}
 
-    .sbc-live-stat-name span {{
+    .sbc-live-stat-name span,
+    .sbc-live-total-name span {{
         font-size: 0.88rem;
         font-weight: 950;
         line-height: 1.05;
     }}
 
-    .sbc-live-stat-name em {{
+    .sbc-live-stat-name em,
+    .sbc-live-total-name em {{
         margin-top: 0.18rem;
         color: var(--sbc-muted);
         font-size: 0.69rem;
@@ -1537,12 +1603,47 @@ st.markdown(
     .sbc-live-stat-value {{
         display: grid;
         place-items: center;
+        align-content: center;
         border-left: 1px solid rgba(23, 32, 42, 0.06);
         color: var(--sbc-ink);
-        font-size: 1rem;
+        font-size: 0.98rem;
         font-weight: 950;
         font-variant-numeric: tabular-nums;
         text-align: center;
+    }}
+
+    .sbc-live-stat-value span {{
+        line-height: 1;
+    }}
+
+    .sbc-live-stat-value em {{
+        margin-top: 0.22rem;
+        color: #4b5563;
+        font-size: 0.66rem;
+        font-style: normal;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-live-total-name,
+    .sbc-live-total-value {{
+        background: #111827;
+        color: #ffffff;
+        border-bottom: none;
+    }}
+
+    .sbc-live-total-name em {{
+        color: rgba(255, 255, 255, 0.68);
+    }}
+
+    .sbc-live-total-value {{
+        display: grid;
+        place-items: center;
+        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 1.18rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
     }}
 
     .sbc-live-stat-win {{
@@ -1560,10 +1661,10 @@ st.markdown(
     }}
 
     .sbc-chart-shell {{
-        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.11));
+        border: 1px solid rgba(23, 32, 42, 0.10);
         border-radius: 8px;
-        background: rgba(255, 255, 255, 0.94);
-        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.08);
+        background: #ffffff;
+        box-shadow: 0 10px 28px rgba(18, 25, 38, 0.06);
         padding: 0.9rem 1rem 1rem;
         margin-top: 0.1rem;
     }}
@@ -2211,35 +2312,29 @@ with tab3:
     with st.spinner("Updating live center..."):
         live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
 
-    selected_live_row = live_stats_df[live_stats_df["Team"] == SelectedTeam]
-    render_live_stat_board(
-        f"{SelectedTeam} Period {SelectedPeriod} Stat Profile",
-        "Team Form",
-        [{"team": SelectedTeam, "data": selected_live_row.iloc[0]}] if selected_live_row.shape[0] > 0 else [],
-        SelectedTeam)
-
     st.markdown('<div class="sbc-section-label">Matchup Scoreboards</div>', unsafe_allow_html=True)
     if matchup_count == 0:
-        st.markdown('<div class="sbc-empty-state">No matchup is listed for this team in the selected period.</div>', unsafe_allow_html=True)
+        selected_payload = live_row_payload(live_stats_df, SelectedTeam)
+        render_live_stat_board(
+            f"{SelectedTeam} Period {SelectedPeriod} Stat Profile",
+            "No scheduled matchup",
+            [selected_payload] if selected_payload else [],
+            SelectedTeam)
     else:
-        for matchup_type, opponent in matchup_sections:
-            selected_row = live_stats_df[live_stats_df["Team"] == SelectedTeam]
-            opponent_row = live_stats_df[live_stats_df["Team"] == opponent]
-            matchup_rows = []
-            if selected_row.shape[0] > 0:
-                matchup_rows.append({"team": SelectedTeam, "data": selected_row.iloc[0]})
-            if opponent_row.shape[0] > 0:
-                matchup_rows.append({"team": opponent, "data": opponent_row.iloc[0]})
-            render_live_stat_board(
-                f"{SelectedTeam} vs {opponent}",
-                f"{matchup_type} - Period {SelectedPeriod}",
-                matchup_rows,
-                SelectedTeam)
+        matchup_cols = st.columns(min(3, matchup_count))
+        for idx, (matchup_type, opponent) in enumerate(matchup_sections):
+            with matchup_cols[idx % len(matchup_cols)]:
+                selected_payload = live_row_payload(live_stats_df, SelectedTeam)
+                opponent_payload = live_row_payload(live_stats_df, opponent)
+                matchup_rows = [payload for payload in [selected_payload, opponent_payload] if payload]
+                render_live_stat_board(
+                    f"{SelectedTeam} vs {opponent}",
+                    f"{matchup_type} - Period {SelectedPeriod}",
+                    matchup_rows,
+                    SelectedTeam)
 
     st.markdown('<div class="sbc-section-label">Season Trend</div>', unsafe_allow_html=True)
-    trend_col1, trend_col2 = st.columns([1, 2.4])
-    with trend_col1:
-        SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
+    SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
     st.markdown(
         dedent(f"""
         <div class="sbc-chart-shell">
