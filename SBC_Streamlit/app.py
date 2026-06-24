@@ -82,7 +82,6 @@ team_logo_html = escape(str(team_logo), quote=True)
 team_name_html = escape(str(SelectedTeam), quote=True)
 nickname_html = escape(str(nickname), quote=True)
 team_font_css = escape(str(team_font), quote=True)
-team_full_name_html = escape(f"{SelectedTeam} {nickname}", quote=True)
 
 st.markdown(
     f"""
@@ -111,7 +110,7 @@ st.markdown(
 
     .block-container {{
         max-width: 1500px;
-        padding-top: 1.25rem;
+        padding-top: 3.75rem;
         padding-bottom: 3rem;
     }}
 
@@ -160,20 +159,20 @@ st.markdown(
         position: relative;
         z-index: 1;
         display: grid;
-        grid-template-columns: minmax(5.5rem, 7rem) 1fr minmax(10rem, 18rem);
-        gap: 1.1rem;
+        grid-template-columns: minmax(6rem, 8.25rem) 1fr;
+        gap: 1.35rem;
         align-items: center;
     }}
 
     .sbc-logo-frame {{
-        width: 6.5rem;
-        height: 6.5rem;
+        width: 7.75rem;
+        height: 7.75rem;
         display: grid;
         place-items: center;
-        padding: 0.55rem;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.92);
-        box-shadow: inset 0 0 0 1px rgba(23, 32, 42, 0.08), 0 12px 28px rgba(0, 0, 0, 0.18);
+        padding: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
     }}
 
     .sbc-logo-frame img {{
@@ -181,45 +180,29 @@ st.markdown(
         max-height: 100%;
         object-fit: contain;
         display: block;
-    }}
-
-    .sbc-wordmark-frame {{
-        min-height: 4.5rem;
-        display: grid;
-        place-items: center;
-        padding: 0.55rem 0.75rem;
-        border-radius: 8px;
-        background: color-mix(in srgb, var(--sbc-team-secondary) 18%, transparent);
-        border: 1px solid color-mix(in srgb, var(--sbc-team-secondary) 52%, transparent);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-    }}
-
-    .sbc-wordmark-frame img {{
-        width: 100%;
-        max-height: 4.2rem;
-        object-fit: contain;
-        display: block;
+        filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.24));
     }}
 
     .sbc-team-typeface {{
         color: var(--sbc-team-secondary);
         font-family: var(--sbc-team-font);
-        font-size: clamp(1.7rem, 3.4vw, 3.5rem);
-        font-weight: 800;
-        line-height: 0.95;
-        text-align: center;
-        text-wrap: balance;
-        filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.18));
+        font-size: clamp(3.1rem, 8vw, 7.2rem);
+        font-weight: 900;
+        line-height: 0.86;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        text-shadow: 0 2px 14px rgba(0, 0, 0, 0.20);
     }}
 
     .sbc-team-title {{
         margin: 0;
         color: inherit;
-        font-family: var(--sbc-team-font);
-        font-size: clamp(2.25rem, 5vw, 4.7rem);
-        line-height: 0.95;
+        font-family: "Poppins", "Segoe UI", sans-serif;
+        font-size: 0.9rem;
+        line-height: 1;
         font-weight: 900;
-        text-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
     }}
 
     .sbc-team-subtitle {{
@@ -336,6 +319,7 @@ st.markdown(
 
     @media (max-width: 850px) {{
         .block-container {{
+            padding-top: 4.25rem;
             padding-left: 1rem;
             padding-right: 1rem;
         }}
@@ -345,17 +329,16 @@ st.markdown(
         }}
 
         .sbc-logo-frame {{
-            width: 4.8rem;
-            height: 4.8rem;
-        }}
-
-        .sbc-wordmark-frame {{
-            grid-column: 1 / -1;
-            min-height: 3.5rem;
+            width: 5rem;
+            height: 5rem;
         }}
 
         .sbc-team-title {{
-            font-size: 2.4rem;
+            font-size: 0.72rem;
+        }}
+
+        .sbc-team-typeface {{
+            font-size: clamp(2.25rem, 13vw, 4rem);
         }}
     }}
 
@@ -375,10 +358,8 @@ st.markdown(
             </div>
             <div>
                 <h1 class="sbc-team-title">{team_name_html}</h1>
+                <div class="sbc-team-typeface">{nickname_html}</div>
                 <div class="sbc-team-subtitle">{nickname_html} Cap Sheet and League Hub</div>
-            </div>
-            <div class="sbc-wordmark-frame">
-                <div class="sbc-team-typeface">{team_full_name_html}</div>
             </div>
         </div>
     </section>
