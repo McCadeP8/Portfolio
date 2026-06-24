@@ -92,6 +92,70 @@ team_name_html = escape(str(SelectedTeam), quote=True)
 nickname_html = escape(str(nickname), quote=True)
 team_font_css = escape(str(team_font), quote=True)
 
+def format_money(value):
+    try:
+        if value is None or value == "":
+            return "—"
+        return f"${float(value):,.0f}"
+    except (TypeError, ValueError):
+        return value
+
+def render_cap_table(data, columns=None, image_columns=None, money_columns=None, contract_colors=True):
+    image_columns = set(image_columns or [])
+    money_columns = set(money_columns or [])
+    if data is None or data.shape[0] == 0:
+        st.markdown('<div class="sbc-empty-state">No records to display.</div>', unsafe_allow_html=True)
+        return
+
+    table_df = data.copy()
+    if columns is None:
+        visible_columns = [c for c in table_df.columns if not str(c).startswith("Type")]
+    else:
+        visible_columns = [c for c in columns if c in table_df.columns]
+
+    header_cells = "".join(f"<th>{escape(str(col))}</th>" for col in visible_columns)
+    body_rows = []
+    for _, row in table_df.iterrows():
+        cells = []
+        for col in visible_columns:
+            raw_value = row.get(col, "")
+            cell_classes = []
+            style = ""
+            value = "" if raw_value is None else raw_value
+
+            if contract_colors and str(col).isdigit():
+                contract_type = row.get(f"Type{col}", None)
+                bg = type_colors.get(contract_type)
+                if bg:
+                    style = f' style="background:{escape(str(bg), quote=True)};"'
+                    cell_classes.append("sbc-money-cell")
+
+            if col in money_columns or str(col).isdigit():
+                value_html = escape(str(format_money(value)))
+                cell_classes.append("sbc-money-cell")
+            elif col in image_columns and str(value).strip():
+                url = escape(str(value), quote=True)
+                value_html = f'<img class="sbc-table-img" src="{url}" alt="" referrerpolicy="no-referrer">'
+                cell_classes.append("sbc-image-cell")
+            else:
+                display = "—" if str(value) == "nan" or value == "" else value
+                value_html = escape(str(display))
+
+            class_attr = f' class="{" ".join(cell_classes)}"' if cell_classes else ""
+            cells.append(f"<td{class_attr}{style}>{value_html}</td>")
+        body_rows.append(f"<tr>{''.join(cells)}</tr>")
+
+    st.markdown(
+        f"""
+        <div class="sbc-table-wrap">
+            <table class="sbc-cap-table">
+                <thead><tr>{header_cells}</tr></thead>
+                <tbody>{''.join(body_rows)}</tbody>
+            </table>
+        </div>
+        """,
+        unsafe_allow_html=True)
+
 st.markdown(
     f"""
     <style>
@@ -443,6 +507,83 @@ st.markdown(
         flex: 0 0 auto;
     }}
 
+    .sbc-table-wrap {{
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        border: 1px solid rgba(23, 32, 42, 0.10);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 12px 32px rgba(18, 25, 38, 0.07);
+        margin: 0.35rem 0 1.05rem;
+    }}
+
+    .sbc-cap-table {{
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.84rem;
+        line-height: 1.22;
+        color: var(--sbc-ink);
+    }}
+
+    .sbc-cap-table thead th {{
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: #f7f9fc;
+        color: var(--sbc-muted);
+        border-bottom: 1px solid rgba(23, 32, 42, 0.12);
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        padding: 0.62rem 0.7rem;
+        text-align: left;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-cap-table tbody td {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.07);
+        padding: 0.52rem 0.7rem;
+        vertical-align: middle;
+        font-weight: 650;
+        white-space: nowrap;
+    }}
+
+    .sbc-cap-table tbody tr:nth-child(even) td {{
+        background-color: rgba(247, 249, 252, 0.55);
+    }}
+
+    .sbc-cap-table tbody tr:hover td {{
+        background-color: color-mix(in srgb, var(--sbc-team-primary) 8%, #ffffff);
+    }}
+
+    .sbc-cap-table tbody tr:last-child td {{
+        border-bottom: none;
+    }}
+
+    .sbc-money-cell {{
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-weight: 800 !important;
+    }}
+
+    .sbc-image-cell {{
+        width: 3rem;
+        min-width: 3rem;
+        text-align: center;
+    }}
+
+    .sbc-table-img {{
+        width: 2.15rem;
+        height: 2.15rem;
+        object-fit: contain;
+        border-radius: 50%;
+        display: block;
+        margin: 0 auto;
+    }}
+
     h1, h2, h3 {{
         color: var(--sbc-ink);
         letter-spacing: 0;
@@ -477,16 +618,28 @@ st.markdown(
         border: 1px solid var(--sbc-border);
         border-radius: 8px;
         box-shadow: 0 10px 30px rgba(18, 25, 38, 0.06);
+        padding: 0.65rem 0.75rem;
     }}
 
     [data-testid="stMetricLabel"] p {{
         color: var(--sbc-muted);
-        font-weight: 800;
+        font-size: 0.78rem;
+        font-weight: 850;
+        line-height: 1.1;
     }}
 
     [data-testid="stMetricValue"] {{
         color: var(--sbc-ink);
+        font-size: clamp(1.05rem, 1.45vw, 1.55rem);
         font-weight: 900;
+        line-height: 1.05;
+        overflow-wrap: anywhere;
+    }}
+
+    [data-testid="stMetricDelta"] {{
+        font-size: 0.78rem;
+        font-weight: 800;
+        line-height: 1.1;
     }}
 
     [data-testid="stDataFrame"] {{
@@ -770,28 +923,19 @@ with tab1:
         st.markdown('<div class="sbc-section-label">Team Rosters</div>', unsafe_allow_html=True)
         st.markdown('<div class="sbc-cap-eyebrow">Active Players</div>', unsafe_allow_html=True)
         active_player_df = active_players(df, pics, SelectedTeam)
-        active_player_df = (active_player_df.style
-            .apply(lambda row: style_salaries(row, type_colors), axis=1)
-            .format({c: "${:,.0f}" for c in active_player_df.columns if re.match(r"\d{4}", c)}))
-        st.dataframe(active_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
+        render_cap_table(active_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
 
         overseas_player_df = overseas_players(df, pics, SelectedTeam)
         st.markdown('<div class="sbc-cap-eyebrow">Overseas Players</div>', unsafe_allow_html=True)
         if overseas_player_df.shape[0] > 0:
-            overseas_player_df = (overseas_player_df.style
-                .apply(lambda row: style_salaries(row, type_colors), axis=1)
-                .format({c: "${:,.0f}" for c in overseas_player_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(overseas_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
+            render_cap_table(overseas_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
         else:
             st.markdown('<div class="sbc-empty-state">No overseas players are currently listed for this team.</div>', unsafe_allow_html=True)
 
         dead_player_df = dead_players(df, pics, SelectedTeam)
         st.markdown('<div class="sbc-cap-eyebrow">Dead Players</div>', unsafe_allow_html=True)
         if dead_player_df.shape[0] > 0:
-            dead_player_df = (dead_player_df.style
-                .apply(lambda row: style_salaries(row, type_colors), axis=1)
-                .format({c: "${:,.0f}" for c in dead_player_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(dead_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(" ")})
+            render_cap_table(dead_player_df, columns=[" ", "Player"] + columns_order, image_columns=[" "])
         else:
             st.markdown('<div class="sbc-empty-state">No dead salary is currently listed for this team.</div>', unsafe_allow_html=True)
 
@@ -800,17 +944,12 @@ with tab1:
     with detail1:
         st.markdown('<div class="sbc-cap-eyebrow">Exceptions</div>', unsafe_allow_html=True)
         exception_df = exception_table(exceptions, SelectedTeam)
-        exception_df = (exception_df.style
-            .format({"Amount": "${:,.0f}"}))
-        st.dataframe(exception_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—")
+        render_cap_table(exception_df, money_columns=["Amount"], contract_colors=False)
 
         st.markdown('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>', unsafe_allow_html=True)
         free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
         if free_agent_player_df.shape[0] > 0:
-            free_agent_player_df = (free_agent_player_df.style
-                .apply(lambda row: style_salaries(row, type_colors), axis=1)
-                .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(free_agent_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + [str(current_year+ year_offset)], column_config={" ": st.column_config.ImageColumn(" ")})
+            render_cap_table(free_agent_player_df, columns=[" ", "Player"] + [str(current_year+ year_offset)], image_columns=[" "])
         else:
             st.markdown('<div class="sbc-empty-state">No upcoming free agents are currently listed for this team.</div>', unsafe_allow_html=True)
 
@@ -818,17 +957,14 @@ with tab1:
         st.markdown('<div class="sbc-cap-eyebrow">Trade Restrictions</div>', unsafe_allow_html=True)
         restricted_df = trade_restrictions(df, pics, SelectedTeam)
         if restricted_df.shape[0] > 0:
-            st.dataframe(restricted_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_config={" ": st.column_config.ImageColumn(" ")})
+            render_cap_table(restricted_df, image_columns=[" "], contract_colors=False)
         else:
             st.markdown('<div class="sbc-empty-state">No trade restrictions are currently listed for this team.</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="sbc-cap-eyebrow">Draft Rights & Retired</div>', unsafe_allow_html=True)
         draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
         if draft_retired_player_df.shape[0] > 0:
-            draft_retired_player_df = (draft_retired_player_df.style
-                .apply(lambda row: style_salaries(row, type_colors), axis=1)
-                .format({c: "${:,.0f}" for c in draft_retired_player_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(draft_retired_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=(" ", "Player"), column_config={" ": st.column_config.ImageColumn(" ")})
+            render_cap_table(draft_retired_player_df, columns=[" ", "Player"], image_columns=[" "])
         else:
             st.markdown('<div class="sbc-empty-state">No draft-rights or retired players are currently listed for this team.</div>', unsafe_allow_html=True)
 
