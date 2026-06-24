@@ -751,7 +751,7 @@ def render_schedule_table(schedule_df, selected_team):
     type_order = {"Regular Season": 0, "In-Season Tournament": 1, "Play-In": 2, "Playoffs": 3}
     table_df = schedule_df.copy()
     table_df["TypeOrder"] = table_df["Type"].map(type_order).fillna(9)
-    table_df = table_df.sort_values(["Period", "TypeOrder", "Game_ID"])
+    table_df = table_df.sort_values(["TypeOrder", "Period", "Game_ID"])
 
     body_rows = []
     current_type = None
@@ -760,7 +760,6 @@ def render_schedule_table(schedule_df, selected_team):
         opponent = row.get("TeamB") if is_home else row.get("TeamA")
         opponent_info = team_info.get(opponent, {})
         opponent_color = opponent_info.get("bg", "#94a3b8")
-        opponent_font = TEAM_FONTS.get(opponent, "Poppins")
         logo = opponent_info.get("logo", "")
         logo_html = f'<img class="sbc-schedule-logo" src="{escape(str(logo), quote=True)}" alt="{escape(str(opponent), quote=True)} logo">' if logo else ""
         venue_mark = "vs" if is_home else "@"
@@ -770,19 +769,16 @@ def render_schedule_table(schedule_df, selected_team):
         result_class = {"W": "win", "L": "loss"}.get(result, "tbd")
         score_text = "TBD" if result == "TBD" else f"{float(team_score):g}-{float(opponent_score):g}"
         type_text = clean_pick_display(row.get("Type", ""))
-        round_text = clean_pick_display(row.get("Round", ""))
         if type_text != current_type:
             current_type = type_text
             body_rows.append(f'<tr class="sbc-schedule-group-row"><td colspan="3"><span>{escape(type_text)}</span></td></tr>')
-        round_subtext = "" if round_text in ["-", type_text] else f"<em>{escape(round_text)}</em>"
         body_rows.append(dedent(f"""
-        <tr class="sbc-schedule-row sbc-schedule-{result_class}" style="--sbc-opponent-color:{escape(str(opponent_color), quote=True)}; --sbc-opponent-font:'{escape(str(opponent_font), quote=True)}', 'Poppins', sans-serif;">
+        <tr class="sbc-schedule-row sbc-schedule-{result_class}" style="--sbc-opponent-color:{escape(str(opponent_color), quote=True)};">
             <td class="sbc-schedule-period"><span>P{escape(str(row.get("Period", "")))}</span></td>
             <td class="sbc-schedule-opponent">
                 {logo_html}
                 <div>
                     <strong>{escape(str(venue_mark))} {escape(str(opponent))}</strong>
-                    {round_subtext}
                 </div>
             </td>
             <td class="sbc-schedule-score"><strong>{escape(score_text)}</strong><em>{escape(result)}</em></td>
@@ -917,13 +913,16 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
       }}
       return pts;
     }}
-    const movers = [];
+    let traveler = null;
+    let travelerRoute = [];
     function redraw() {{
       g.innerHTML = "";
-      movers.length = 0;
+      traveler = null;
+      travelerRoute = [];
       arcs.forEach((a, i) => {{
         const color = a.color_hex || "#2563eb";
         const pts = curvePoints(a, 36);
+        travelerRoute = travelerRoute.concat(i === 0 ? pts : pts.slice(1));
         const d = pts.map((p, idx) => `${{idx ? "L" : "M"}} ${{p[0].toFixed(1)}} ${{p[1].toFixed(1)}}`).join(" ");
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", d);
@@ -933,14 +932,6 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
         path.setAttribute("stroke-opacity", "0.42");
         path.setAttribute("stroke-linecap", "round");
         g.appendChild(path);
-        const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        dot.setAttribute("r", "5.2");
-        dot.setAttribute("fill", color);
-        dot.setAttribute("stroke", "#ffffff");
-        dot.setAttribute("stroke-width", "1.5");
-        dot.setAttribute("opacity", "0.94");
-        g.appendChild(dot);
-        movers.push({{ dot, pts, offset: (i % 14) * 0.075 }});
       }});
       nodes.forEach(n => {{
         const p = map.latLngToLayerPoint([n.lat, n.lon]);
@@ -954,17 +945,25 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
         ring.setAttribute("opacity", "0.96");
         g.appendChild(ring);
       }});
+      if (travelerRoute.length) {{
+        traveler = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        traveler.setAttribute("r", "6.2");
+        traveler.setAttribute("fill", "{bg_color}");
+        traveler.setAttribute("stroke", "#ffffff");
+        traveler.setAttribute("stroke-width", "1.8");
+        traveler.setAttribute("opacity", "0.96");
+        g.appendChild(traveler);
+      }}
     }}
     function animate(now) {{
-      const cycle = 7600;
-      movers.forEach(m => {{
-        const raw = ((now % cycle) / cycle + m.offset) % 1;
-        const t = raw <= 0.5 ? raw * 2 : (1 - raw) * 2;
-        const idx = Math.min(Math.floor(t * (m.pts.length - 1)), m.pts.length - 1);
-        const p = m.pts[idx];
-        m.dot.setAttribute("cx", p[0]);
-        m.dot.setAttribute("cy", p[1]);
-      }});
+      if (traveler && travelerRoute.length) {{
+        const cycle = Math.max(9000, travelerRoute.length * 42);
+        const raw = (now % cycle) / cycle;
+        const idx = Math.min(Math.floor(raw * (travelerRoute.length - 1)), travelerRoute.length - 1);
+        const p = travelerRoute[idx];
+        traveler.setAttribute("cx", p[0]);
+        traveler.setAttribute("cy", p[1]);
+      }}
       requestAnimationFrame(animate);
     }}
     redraw();
@@ -2209,17 +2208,16 @@ st.markdown(
         display: block;
         overflow: hidden;
         color: #111827;
-        font-family: var(--sbc-opponent-font);
-        font-size: 1.12rem;
+        font-family: "Poppins", "Segoe UI", sans-serif;
+        font-size: 0.98rem;
         font-weight: 950;
         line-height: 1.08;
-        padding-bottom: 0.04em;
         text-overflow: ellipsis;
         white-space: nowrap;
     }}
 
     .sbc-schedule-opponent em {{
-        display: block;
+        display: none;
         margin-top: 0.2rem;
         overflow: hidden;
         color: var(--sbc-muted);
