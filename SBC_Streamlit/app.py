@@ -271,6 +271,100 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
         """,
         unsafe_allow_html=True)
 
+def clean_pick_display(value):
+    if is_blank_value(value):
+        return "—"
+    text = str(value).strip()
+    return "—" if text.lower() in ["false", "nan", "none", "nat"] else text
+
+
+def render_pick_table(data, title, icon, description, empty_text, columns=None, image_columns=None, status="hold"):
+    image_columns = set(image_columns or [])
+    if data is None or data.shape[0] == 0:
+        st.markdown(
+            f"""
+            <section class="sbc-pick-panel sbc-pick-panel-{status}">
+                <div class="sbc-pick-panel-head">
+                    <div class="sbc-pick-icon">{icon}</div>
+                    <div>
+                        <div class="sbc-pick-title">{escape(title)}</div>
+                        <div class="sbc-pick-copy">{escape(description)}</div>
+                    </div>
+                    <div class="sbc-pick-count">0</div>
+                </div>
+                <div class="sbc-pick-empty">{escape(empty_text)}</div>
+            </section>
+            """,
+            unsafe_allow_html=True)
+        return
+
+    table_df = data.copy()
+    if columns is None:
+        visible_columns = list(table_df.columns)
+    else:
+        visible_columns = [c for c in columns if c in table_df.columns]
+
+    header_cells = []
+    for col in visible_columns:
+        label = {
+            "OGTeam": "Slot",
+            "CurrentTeam": "Owner",
+            "Contacted": "Contacted",
+            "Explanation": "Details",
+        }.get(col, col)
+        classes = []
+        if col in image_columns:
+            classes.append("sbc-pick-logo-col")
+        if col == "Explanation":
+            classes.append("sbc-pick-detail-col")
+        class_attr = f' class="{" ".join(classes)}"' if classes else ""
+        header_cells.append(f"<th{class_attr}>{escape(str(label))}</th>")
+
+    body_rows = []
+    for _, row in table_df.iterrows():
+        cells = []
+        for col in visible_columns:
+            raw_value = row.get(col, "")
+            value = "" if is_blank_value(raw_value) else raw_value
+            cell_classes = []
+            if col in image_columns and str(value).strip():
+                url = escape(str(value), quote=True)
+                value_html = f'<img class="sbc-pick-logo" src="{url}" alt="" referrerpolicy="no-referrer">'
+                cell_classes.extend(["sbc-pick-logo-cell", "sbc-pick-logo-col"])
+            else:
+                display = clean_pick_display(value)
+                value_html = escape(str(display))
+                if col == "Explanation":
+                    cell_classes.append("sbc-pick-detail-cell")
+                if col == "Year":
+                    cell_classes.append("sbc-pick-year-cell")
+                if col == "Round":
+                    cell_classes.append("sbc-pick-round-cell")
+            class_attr = f' class="{" ".join(cell_classes)}"' if cell_classes else ""
+            cells.append(f"<td{class_attr}>{value_html}</td>")
+        body_rows.append(f"<tr>{''.join(cells)}</tr>")
+
+    st.markdown(
+        f"""
+        <section class="sbc-pick-panel sbc-pick-panel-{status}">
+            <div class="sbc-pick-panel-head">
+                <div class="sbc-pick-icon">{icon}</div>
+                <div>
+                    <div class="sbc-pick-title">{escape(title)}</div>
+                    <div class="sbc-pick-copy">{escape(description)}</div>
+                </div>
+                <div class="sbc-pick-count">{table_df.shape[0]}</div>
+            </div>
+            <div class="sbc-pick-table-wrap">
+                <table class="sbc-pick-table">
+                    <thead><tr>{''.join(header_cells)}</tr></thead>
+                    <tbody>{''.join(body_rows)}</tbody>
+                </table>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True)
+
 st.markdown(
     f"""
     <style>
@@ -292,9 +386,9 @@ st.markdown(
     .stApp {{
         font-family: "Poppins", "Segoe UI", sans-serif;
         background:
-            radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--sbc-team-primary) 28%, transparent) 0, transparent 34rem),
-            radial-gradient(circle at 88% 5%, color-mix(in srgb, var(--sbc-team-secondary) 24%, transparent) 0, transparent 30rem),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 246, 248, 0.97) 34%, #eef2f6 100%);
+            radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--sbc-team-primary) 42%, transparent) 0, transparent 38rem),
+            radial-gradient(circle at 90% 2%, color-mix(in srgb, var(--sbc-team-secondary) 36%, transparent) 0, transparent 34rem),
+            linear-gradient(180deg, color-mix(in srgb, var(--sbc-team-primary) 12%, #ffffff) 0%, rgba(244, 246, 248, 0.94) 34%, color-mix(in srgb, var(--sbc-team-secondary) 9%, #eef2f6) 100%);
         color: var(--sbc-ink);
     }}
 
@@ -727,6 +821,283 @@ st.markdown(
         box-shadow: 0 0 0 1px rgba(23, 32, 42, 0.14), 0 4px 10px rgba(18, 25, 38, 0.12);
     }}
 
+    .sbc-draft-hero {{
+        position: relative;
+        overflow: hidden;
+        margin: 0.35rem 0 0.95rem;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 24%, rgba(255, 255, 255, 0.82));
+        border-radius: 8px;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--sbc-team-primary) 88%, #111827 12%) 0%, color-mix(in srgb, var(--sbc-team-secondary) 70%, #111827 30%) 100%);
+        color: var(--sbc-team-text);
+        box-shadow: 0 22px 55px rgba(18, 25, 38, 0.18);
+        padding: 1.15rem 1.25rem;
+    }}
+
+    .sbc-draft-hero::after {{
+        content: "";
+        position: absolute;
+        inset: auto -4rem -7rem auto;
+        width: 18rem;
+        height: 18rem;
+        border: 1.35rem solid rgba(255, 255, 255, 0.11);
+        border-radius: 999px;
+    }}
+
+    .sbc-draft-hero-inner {{
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 1.05rem;
+        align-items: center;
+    }}
+
+    .sbc-draft-logo {{
+        width: 5.25rem;
+        height: 5.25rem;
+        object-fit: contain;
+        filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.28));
+    }}
+
+    .sbc-draft-eyebrow {{
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 0.76rem;
+        font-weight: 950;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-draft-heading {{
+        margin-top: 0.18rem;
+        color: #ffffff;
+        font-family: var(--sbc-team-font);
+        font-size: clamp(2rem, 4.5vw, 4rem);
+        font-weight: 950;
+        line-height: 1.08;
+        padding-bottom: 0.06em;
+        text-shadow: 0 2px 16px rgba(0, 0, 0, 0.24);
+    }}
+
+    .sbc-draft-subcopy {{
+        max-width: 52rem;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 0.96rem;
+        font-weight: 750;
+        line-height: 1.35;
+    }}
+
+    .sbc-draft-grid {{
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.8rem;
+        margin: 0.85rem 0 1rem;
+    }}
+
+    .sbc-draft-tile {{
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 28%, rgba(23, 32, 42, 0.10));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 12px 28px rgba(18, 25, 38, 0.075);
+        padding: 0.86rem 0.9rem;
+        min-height: 6.2rem;
+    }}
+
+    .sbc-draft-tile-top {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem;
+    }}
+
+    .sbc-draft-tile-icon {{
+        width: 2.35rem;
+        height: 2.35rem;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--sbc-team-primary) 14%, #ffffff);
+        color: var(--sbc-team-primary);
+        font-size: 1.15rem;
+        font-weight: 950;
+    }}
+
+    .sbc-draft-tile-value {{
+        color: var(--sbc-ink);
+        font-size: 1.75rem;
+        font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-draft-tile-label {{
+        margin-top: 0.72rem;
+        color: var(--sbc-ink);
+        font-size: 0.86rem;
+        font-weight: 900;
+        line-height: 1.15;
+    }}
+
+    .sbc-draft-tile-note {{
+        margin-top: 0.25rem;
+        color: var(--sbc-muted);
+        font-size: 0.76rem;
+        font-weight: 750;
+        line-height: 1.25;
+    }}
+
+    .sbc-pick-panel {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.11));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.08);
+        margin: 0 0 0.9rem;
+    }}
+
+    .sbc-pick-panel-head {{
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.8rem;
+        align-items: center;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--sbc-team-primary) 12%, #ffffff) 0%, rgba(255, 255, 255, 0.88) 100%);
+        padding: 0.78rem 0.9rem;
+    }}
+
+    .sbc-pick-icon {{
+        width: 2.5rem;
+        height: 2.5rem;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--sbc-team-primary);
+        color: var(--sbc-team-text);
+        font-size: 1.18rem;
+        font-weight: 950;
+        box-shadow: 0 8px 18px color-mix(in srgb, var(--sbc-team-primary) 28%, transparent);
+    }}
+
+    .sbc-pick-title {{
+        color: var(--sbc-ink);
+        font-size: 1.02rem;
+        font-weight: 950;
+        line-height: 1.05;
+    }}
+
+    .sbc-pick-copy {{
+        margin-top: 0.24rem;
+        color: var(--sbc-muted);
+        font-size: 0.78rem;
+        font-weight: 750;
+        line-height: 1.25;
+    }}
+
+    .sbc-pick-count {{
+        min-width: 2.65rem;
+        height: 2.25rem;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: #ffffff;
+        border: 1px solid rgba(23, 32, 42, 0.10);
+        color: var(--sbc-ink);
+        font-size: 1.2rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-pick-table-wrap {{
+        width: 100%;
+        overflow-x: auto;
+        background: #ffffff;
+    }}
+
+    .sbc-pick-table {{
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        color: var(--sbc-ink);
+        font-size: 0.84rem;
+        line-height: 1.25;
+    }}
+
+    .sbc-pick-table thead th {{
+        background: #f7f9fc;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.11);
+        color: var(--sbc-ink);
+        font-size: 0.7rem;
+        font-weight: 950;
+        letter-spacing: 0.07em;
+        padding: 0.62rem 0.68rem;
+        text-align: center;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-pick-table tbody td {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.065);
+        color: var(--sbc-ink);
+        font-weight: 700;
+        padding: 0.48rem 0.68rem;
+        text-align: center;
+        vertical-align: middle;
+        white-space: nowrap;
+    }}
+
+    .sbc-pick-table tbody tr:nth-child(even) td {{
+        background: rgba(247, 249, 252, 0.62);
+    }}
+
+    .sbc-pick-table tbody tr:hover td {{
+        background: color-mix(in srgb, var(--sbc-team-primary) 8%, #ffffff);
+    }}
+
+    .sbc-pick-table tbody tr:last-child td {{
+        border-bottom: none;
+    }}
+
+    .sbc-pick-logo-col {{
+        width: 4.3rem;
+        min-width: 4.3rem;
+    }}
+
+    .sbc-pick-logo {{
+        width: 2.35rem;
+        height: 2.35rem;
+        display: block;
+        object-fit: contain;
+        margin: 0 auto;
+        filter: drop-shadow(0 4px 8px rgba(18, 25, 38, 0.13));
+    }}
+
+    .sbc-pick-year-cell {{
+        font-size: 0.92rem;
+        font-weight: 950 !important;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-pick-round-cell {{
+        min-width: 6.75rem;
+        font-weight: 850 !important;
+    }}
+
+    .sbc-pick-detail-col,
+    .sbc-pick-detail-cell {{
+        min-width: 14rem;
+        text-align: left !important;
+        white-space: normal !important;
+    }}
+
+    .sbc-pick-empty {{
+        padding: 0.9rem;
+        color: var(--sbc-muted);
+        font-size: 0.9rem;
+        font-weight: 750;
+        line-height: 1.35;
+        background: #ffffff;
+    }}
+
     [data-testid="stMetricDelta"],
     [data-testid="stMetricDelta"] * {{
         color: #4b5563 !important;
@@ -853,6 +1224,43 @@ st.markdown(
 
         .sbc-team-typeface {{
             font-size: clamp(1.85rem, 8vw, 3.15rem);
+        }}
+
+        .sbc-draft-hero-inner {{
+            grid-template-columns: 4.4rem 1fr;
+            gap: 0.85rem;
+        }}
+
+        .sbc-draft-logo {{
+            width: 4.4rem;
+            height: 4.4rem;
+        }}
+
+        .sbc-draft-grid {{
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }}
+
+        .sbc-pick-panel-head {{
+            grid-template-columns: auto 1fr;
+        }}
+
+        .sbc-pick-count {{
+            grid-column: 1 / -1;
+            justify-self: start;
+        }}
+    }}
+
+    @media (max-width: 560px) {{
+        .sbc-draft-grid {{
+            grid-template-columns: 1fr;
+        }}
+
+        .sbc-draft-heading {{
+            font-size: clamp(1.7rem, 10vw, 2.55rem);
+        }}
+
+        .sbc-draft-subcopy {{
+            font-size: 0.86rem;
         }}
     }}
 
@@ -1126,35 +1534,131 @@ with tab1:
             st.markdown('<div class="sbc-empty-state">No draft-rights or retired players are currently listed for this team.</div>', unsafe_allow_html=True)
 
 with tab2:
-    st.subheader(f"{SelectedTeam} Future Draft Picks")
+    # Custom draft-room layout replaces the legacy dataframe stack below.
     
     full_team_picks = full_draft_picks(dp, SelectedTeam)
-    if full_team_picks.shape[0] > 0:
+    if False and full_team_picks.shape[0] > 0:
         st.header("Fully Owned Picks")
         st.dataframe(full_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
     
     swap_team_picks = swap_draft_picks(dp, SelectedTeam)
-    if swap_team_picks.shape[0] > 0:
+    if False and swap_team_picks.shape[0] > 0:
         st.header("Swapped Draft Picks")
         st.dataframe(swap_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
     split_team_picks = split_draft_picks(dp, SelectedTeam)
-    if split_team_picks.shape[0] > 0:
+    if False and split_team_picks.shape[0] > 0:
         st.header("Split Draft Picks")
         st.dataframe(split_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small")})
 
     locked_team_picks = locked_draft_picks(dp, SelectedTeam)
-    if locked_team_picks.shape[0] > 0:
+    if False and locked_team_picks.shape[0] > 0:
         st.header("Locked Draft Picks")
         st.dataframe(locked_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
     original_team_picks = original_draft_picks(dp, SelectedTeam)
-    if original_team_picks.shape[0] > 0:
+    if False and original_team_picks.shape[0] > 0:
         st.header("Traded Away Draft Picks")
         st.dataframe(original_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
     touched_team_picks = touched_draft_picks(dp, SelectedTeam)
-    if touched_team_picks.shape[0] > 0:
+
+    shared_pick_frames = []
+    if swap_team_picks.shape[0] > 0:
+        swap_display = swap_team_picks.copy()
+        swap_display["Type"] = "Swap"
+        shared_pick_frames.append(swap_display)
+    if split_team_picks.shape[0] > 0:
+        split_display = split_team_picks.copy()
+        split_display["Type"] = "Shared"
+        shared_pick_frames.append(split_display)
+    shared_team_picks = pd.concat(shared_pick_frames, ignore_index=True) if shared_pick_frames else pd.DataFrame()
+
+    total_pick_count = full_team_picks.shape[0] + shared_team_picks.shape[0] + locked_team_picks.shape[0] + original_team_picks.shape[0]
+    first_round_count = sum(
+        pick_df[pick_df["Round"].astype(str).str.contains("1st", na=False)].shape[0]
+        for pick_df in [full_team_picks, shared_team_picks, locked_team_picks]
+        if "Round" in pick_df.columns
+    )
+
+    st.markdown(
+        f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{current_year}-{str(current_year + 6)[-2:]} Draft Room</div>
+                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Picks</div>
+                    <div class="sbc-draft-subcopy">A clean view of owned assets, shared-control picks, locked picks, and outbound picks now controlled elsewhere.</div>
+                </div>
+            </div>
+        </div>
+        <div class="sbc-draft-grid">
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">✓</div><div class="sbc-draft-tile-value">{full_team_picks.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Full Control</div>
+                <div class="sbc-draft-tile-note">Owned outright and currently tradeable unless another rule applies.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">⇄</div><div class="sbc-draft-tile-value">{shared_team_picks.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Swaps & Shared</div>
+                <div class="sbc-draft-tile-note">Assets with swap language, split rights, or shared control.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">⌖</div><div class="sbc-draft-tile-value">{locked_team_picks.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Locked</div>
+                <div class="sbc-draft-tile-note">Picks held by the team but currently blocked from being traded.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">↗</div><div class="sbc-draft-tile-value">{original_team_picks.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Traded Away</div>
+                <div class="sbc-draft-tile-note">Original team slots that now belong to another franchise.</div>
+            </div>
+        </div>
+        <div class="sbc-mini-note"><strong>{total_pick_count}</strong> total pick records shown here, including <strong>{first_round_count}</strong> controlled or restricted first-round records.</div>
+        """,
+        unsafe_allow_html=True)
+
+    render_pick_table(
+        full_team_picks,
+        "Full Control Picks",
+        "✓",
+        "Picks the team controls outright.",
+        "No fully controlled picks are currently listed.",
+        columns=["Year", "Round", "OGTeam", "Contacted", "Explanation"],
+        image_columns=["OGTeam"],
+        status="hold")
+
+    render_pick_table(
+        shared_team_picks,
+        "Swaps & Shared Control",
+        "⇄",
+        "Picks with swap language, shared ownership, or split-control terms.",
+        "No swapped or shared-control picks are currently listed.",
+        columns=["Type", "Year", "Round", "OGTeam", "Contacted", "Explanation"],
+        image_columns=["OGTeam"],
+        status="swap")
+
+    render_pick_table(
+        locked_team_picks,
+        "Locked Picks",
+        "⌖",
+        "Picks the team has, but is not allowed to trade right now.",
+        "No locked picks are currently listed.",
+        columns=["Year", "Round", "OGTeam", "Contacted", "Explanation"],
+        image_columns=["OGTeam"],
+        status="locked")
+
+    render_pick_table(
+        original_team_picks,
+        "Traded Away Picks",
+        "↗",
+        "Original team picks that now sit with another owner.",
+        "No traded-away picks are currently listed.",
+        columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
+        image_columns=["OGTeam", "CurrentTeam"],
+        status="away")
+    if False and touched_team_picks.shape[0] > 0:
         st.header("Touched Draft Picks")
         st.dataframe(touched_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
