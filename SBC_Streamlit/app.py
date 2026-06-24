@@ -267,11 +267,14 @@ st.markdown(
     }}
 
     div[data-baseweb="select"] > div {{
-        min-height: 3.15rem;
+        min-height: 2.85rem;
         border-radius: 8px !important;
         border: 1px solid rgba(23, 32, 42, 0.16) !important;
         background: #ffffff !important;
         box-shadow: 0 8px 22px rgba(18, 25, 38, 0.08);
+        align-items: center !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
     }}
 
     div[data-baseweb="select"] > div:hover,
@@ -286,6 +289,7 @@ st.markdown(
     div[data-baseweb="select"] div {{
         font-weight: 800;
         color: var(--sbc-ink) !important;
+        line-height: 1.2 !important;
     }}
 
     div[data-baseweb="select"] svg {{
@@ -343,6 +347,100 @@ st.markdown(
     [data-baseweb="tag"] span {{
         color: var(--sbc-ink) !important;
         font-weight: 800 !important;
+    }}
+
+    .sbc-cap-page-title {{
+        margin: 0.45rem 0 1rem;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.10);
+    }}
+
+    .sbc-cap-eyebrow {{
+        color: var(--sbc-team-primary);
+        font-size: 0.76rem;
+        font-weight: 950;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-cap-heading {{
+        margin-top: 0.2rem;
+        color: var(--sbc-ink);
+        font-size: clamp(1.65rem, 3vw, 2.65rem);
+        font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-cap-subcopy {{
+        margin-top: 0.45rem;
+        color: var(--sbc-muted);
+        font-size: 0.96rem;
+        font-weight: 700;
+    }}
+
+    .sbc-section-label {{
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin: 1.1rem 0 0.55rem;
+        color: var(--sbc-ink);
+        font-size: 1.08rem;
+        font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-section-label::before {{
+        content: "";
+        width: 0.45rem;
+        height: 1.25rem;
+        border-radius: 3px;
+        background: var(--sbc-team-primary);
+    }}
+
+    .sbc-mini-note,
+    .sbc-empty-state {{
+        border: 1px solid rgba(23, 32, 42, 0.10);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.78);
+        color: var(--sbc-muted);
+        font-size: 0.92rem;
+        font-weight: 700;
+        line-height: 1.35;
+        padding: 0.85rem 0.95rem;
+        box-shadow: 0 10px 28px rgba(18, 25, 38, 0.05);
+    }}
+
+    .sbc-legend {{
+        border: 1px solid rgba(23, 32, 42, 0.10);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 12px 32px rgba(18, 25, 38, 0.07);
+        padding: 0.95rem;
+    }}
+
+    .sbc-legend-title {{
+        color: var(--sbc-ink);
+        font-size: 0.9rem;
+        font-weight: 950;
+        margin-bottom: 0.65rem;
+    }}
+
+    .sbc-legend-row {{
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        color: var(--sbc-ink);
+        font-size: 0.86rem;
+        font-weight: 750;
+        margin: 0.42rem 0;
+    }}
+
+    .sbc-swatch {{
+        width: 1.25rem;
+        height: 0.82rem;
+        border-radius: 4px;
+        border: 1px solid rgba(23, 32, 42, 0.12);
+        flex: 0 0 auto;
     }}
 
     h1, h2, h3 {{
@@ -499,6 +597,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13
     "✅ Data Checks"])
 
 with tab1:
+    r'''
     st.subheader(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
     
     col1, col2, col3, col4 = st.columns(4)
@@ -599,6 +698,139 @@ with tab1:
                 .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                 .format({c: "${:,.0f}" for c in draft_retired_player_df.columns if re.match(r"\d{4}", c)}))
             st.dataframe(draft_retired_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=(" ", "Player"), column_config={" ": st.column_config.ImageColumn(" ")})
+
+    '''
+
+    season_label = f"{current_year-1}-{str(current_year)[-2:]}"
+    cap_total = get_cap_total(df, exceptions, SelectedTeam)
+    tax_total = get_tax_total(df, SelectedTeam)
+    active_count = active_player_n(df, SelectedTeam)
+    inactive_count = inactive_player_n(df, SelectedTeam)
+
+    st.markdown(
+        f"""
+        <div class="sbc-cap-page-title">
+            <div class="sbc-cap-eyebrow">{season_label} Season</div>
+            <div class="sbc-cap-heading">{team_name_html} {nickname_html} Cap Sheet</div>
+            <div class="sbc-cap-subcopy">Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
+        </div>
+        """,
+        unsafe_allow_html=True)
+
+    st.markdown('<div class="sbc-section-label">League Thresholds</div>', unsafe_allow_html=True)
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric(label="Salary Cap", value=current_salary_cap, delta="10.0%", delta_color="normal", help="Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border=True, format="dollar")
+    with col2:
+        st.metric(label="Luxury Tax", value=current_luxury_tax, delta="10.0%", delta_color="normal", help="Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border=True, format="dollar")
+    with col3:
+        st.metric(label="Apron #1", value=current_apron_1, delta="10.0%", delta_color="normal", help="Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border=True, format="dollar")
+    with col4:
+        st.metric(label="Apron #2", value=current_apron_2, delta="10.0%", delta_color="normal", help="Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade-related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border=True, format="dollar")
+
+    st.markdown('<div class="sbc-section-label">Team Snapshot</div>', unsafe_allow_html=True)
+    snap1, snap2, snap3, snap4, snap5, snap6 = st.columns(6)
+    with snap1:
+        st.metric(label="Players", value=active_count, delta=inactive_count, delta_color="off", help="The first number shows active roster players (up to 14, plus up to 3 IR). Teams must carry at least 12 active players, or face penalties after 14 days. The second number represents non-active players, including overseas players, draft rights, retired, and waived players and there is no limit. To qualify as overseas, a drafted player must have spent their entire SBC career abroad, with status locking on opening night.", border=True, format="plain", delta_arrow="off")
+    with snap2:
+        st.metric(label="Cap Total", value=cap_total, delta=cap_total-current_salary_cap, delta_color="inverse", help="The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap.", border=True, format="dollar")
+    with snap3:
+        st.metric(label="Tax Total", value=tax_total, delta=tax_total-current_luxury_tax, delta_color="inverse", help="The first number shows total team salary against the luxury tax, including all active and inactive player salaries and incomplete roster charges. Unlike the real NBA, rookie and second-year undrafted fees are not included. The second number shows remaining space relative to the Luxury Tax.", border=True, format="dollar")
+    with snap4:
+        st.metric(label="Apron Space", value=team_hard_cap(base_cap, SelectedTeam), delta=team_hard_cap_n(df, SelectedTeam, base_cap), help="The first value indicates whether the team is uncapped, capped at the first apron, or capped at the second apron while the second value shows how far the team is from the applicable cap.", border=True, format="dollar")
+    with snap5:
+        st.metric(label="Entry Fee", value=base_fee(df, SelectedTeam, base_cap), delta=luxury_fee(df, SelectedTeam, base_cap), delta_color="inverse", help="The SBCFBL uses a 3,000,000-1 scale. The first number is the base entry fee, calculated from the Tax Total plus a $3.00 In-Season Tournament fee. The second number shows the Luxury Tax penalty for the season, scaled as a payable fee.", border=True, format="dollar")
+    with snap6:
+        st.metric(label="Balance", value=net_fee(df, SelectedTeam, base_cap), delta=amount_paid(base_cap, SelectedTeam), delta_color="normal", help="The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border=True, format="dollar")
+
+    roster_left, roster_right = st.columns([1.1, 3.2])
+    with roster_left:
+        st.markdown('<div class="sbc-section-label">Legend</div>', unsafe_allow_html=True)
+        st.markdown("""
+            <div class="sbc-legend">
+                <div class="sbc-legend-title">Contract Status</div>
+                <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#FCE5CD;"></span>Guaranteed</div>
+                <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#F4CCCC;"></span>Non-Guaranteed</div>
+                <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#CFE2F3;"></span>Team Option</div>
+                <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#D9D2E9;"></span>Unrestricted</div>
+                <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#CFFFFF;"></span>Restricted</div>
+                <div class="sbc-legend-row"><span class="sbc-swatch" style="background:#D9D9D9;"></span>Dead</div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown('<div class="sbc-section-label">Roster Notes</div>', unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="sbc-mini-note">
+                {SelectedTeam} currently carries <strong>{active_count}</strong> active players and <strong>{inactive_count}</strong> non-active roster assets.
+            </div>
+            """,
+            unsafe_allow_html=True)
+
+    with roster_right:
+        st.markdown('<div class="sbc-section-label">Team Rosters</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sbc-cap-eyebrow">Active Players</div>', unsafe_allow_html=True)
+        active_player_df = active_players(df, pics, SelectedTeam)
+        active_player_df = (active_player_df.style
+            .apply(lambda row: style_salaries(row, type_colors), axis=1)
+            .format({c: "${:,.0f}" for c in active_player_df.columns if re.match(r"\d{4}", c)}))
+        st.dataframe(active_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
+
+        overseas_player_df = overseas_players(df, pics, SelectedTeam)
+        st.markdown('<div class="sbc-cap-eyebrow">Overseas Players</div>', unsafe_allow_html=True)
+        if overseas_player_df.shape[0] > 0:
+            overseas_player_df = (overseas_player_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)
+                .format({c: "${:,.0f}" for c in overseas_player_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(overseas_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order + ["Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
+        else:
+            st.markdown('<div class="sbc-empty-state">No overseas players are currently listed for this team.</div>', unsafe_allow_html=True)
+
+        dead_player_df = dead_players(df, pics, SelectedTeam)
+        st.markdown('<div class="sbc-cap-eyebrow">Dead Players</div>', unsafe_allow_html=True)
+        if dead_player_df.shape[0] > 0:
+            dead_player_df = (dead_player_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)
+                .format({c: "${:,.0f}" for c in dead_player_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(dead_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(" ")})
+        else:
+            st.markdown('<div class="sbc-empty-state">No dead salary is currently listed for this team.</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="sbc-section-label">Contract And Asset Details</div>', unsafe_allow_html=True)
+    detail1, detail2 = st.columns([1.15, 1])
+    with detail1:
+        st.markdown('<div class="sbc-cap-eyebrow">Exceptions</div>', unsafe_allow_html=True)
+        exception_df = exception_table(exceptions, SelectedTeam)
+        exception_df = (exception_df.style
+            .format({"Amount": "${:,.0f}"}))
+        st.dataframe(exception_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—")
+
+        st.markdown('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>', unsafe_allow_html=True)
+        free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
+        if free_agent_player_df.shape[0] > 0:
+            free_agent_player_df = (free_agent_player_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)
+                .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(free_agent_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + [str(current_year+ year_offset)], column_config={" ": st.column_config.ImageColumn(" ")})
+        else:
+            st.markdown('<div class="sbc-empty-state">No upcoming free agents are currently listed for this team.</div>', unsafe_allow_html=True)
+
+    with detail2:
+        st.markdown('<div class="sbc-cap-eyebrow">Trade Restrictions</div>', unsafe_allow_html=True)
+        restricted_df = trade_restrictions(df, pics, SelectedTeam)
+        if restricted_df.shape[0] > 0:
+            st.dataframe(restricted_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_config={" ": st.column_config.ImageColumn(" ")})
+        else:
+            st.markdown('<div class="sbc-empty-state">No trade restrictions are currently listed for this team.</div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="sbc-cap-eyebrow">Draft Rights & Retired</div>', unsafe_allow_html=True)
+        draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
+        if draft_retired_player_df.shape[0] > 0:
+            draft_retired_player_df = (draft_retired_player_df.style
+                .apply(lambda row: style_salaries(row, type_colors), axis=1)
+                .format({c: "${:,.0f}" for c in draft_retired_player_df.columns if re.match(r"\d{4}", c)}))
+            st.dataframe(draft_retired_player_df, width="stretch", height="content", row_height=50, hide_index=True, placeholder="—", column_order=(" ", "Player"), column_config={" ": st.column_config.ImageColumn(" ")})
+        else:
+            st.markdown('<div class="sbc-empty-state">No draft-rights or retired players are currently listed for this team.</div>', unsafe_allow_html=True)
 
 with tab2:
     st.subheader(f"{SelectedTeam} Future Draft Picks")
