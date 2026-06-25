@@ -15,6 +15,9 @@ import json
 import altair as alt
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
 
+def safe_team_info(team, field, default=""):
+    return team_info.get(str(team), {}).get(field, default)
+
 @st.cache_data(ttl=86400)
 def get_data() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
@@ -1130,7 +1133,13 @@ def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rost
     return df
 
 def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFrame:
+    required_standings = {"Year", "Period", "Record", "Team"}
+    required_picks = {"Year", "Round", "OGTeam", "CurrentTeam", "Explanation"}
+    if not required_standings.issubset(df.columns) or not required_picks.issubset(dp.columns):
+        return pd.DataFrame(columns=["Pick", "Slot", "Team", "Explanation", "Time Due (ET)"])
     df = df[(df['Year'] == current_year) & (df['Period'] == 99)]
+    if df.empty:
+        return pd.DataFrame(columns=["Pick", "Slot", "Team", "Explanation", "Time Due (ET)"])
     df[['Wins', 'Losses']] = df['Record'].str.split('-', expand=True).astype(int)
     df['winPercentage'] = df['Wins'] / (df['Wins'] + df['Losses'])    
     df = df[['Team', 'winPercentage']]
@@ -1138,8 +1147,10 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
     dp = dp.merge(df, how = 'left', left_on = 'OGTeam', right_on = 'Team')
     dp = dp[dp['Round'] == round]
     dp = dp.sort_values('winPercentage', ascending=True)
-    dp['Pick'] = np.where(round == "1st Round", range(1, 31), range(31, 61))
-    dp["Time Due (ET)"] = ["10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM","1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM", "12:00 AM", "12:30 AM", "1:00 AM"]
+    pick_start = 1 if round == "1st Round" else 31
+    dp['Pick'] = range(pick_start, pick_start + dp.shape[0])
+    draft_times = ["10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM","1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM", "12:00 AM", "12:30 AM", "1:00 AM"]
+    dp["Time Due (ET)"] = [draft_times[i % len(draft_times)] for i in range(dp.shape[0])]
     dp = dp[['Pick', 'OGTeam', 'CurrentTeam', 'Explanation', 'Time Due (ET)']]
     dp = dp.rename(columns={'OGTeam': 'Slot'})
     dp = dp.rename(columns={'CurrentTeam': 'Team'})
@@ -1257,8 +1268,7 @@ def team_with_ranks(df: pd.DataFrame, SelectedTeam: str, SelectedYear: int, Sele
     out["Team"] = out["Team"].map(lambda t: team_info.get(t, {}).get("logo", "") if t else "")
 
     return out
-    
-current_matchup = current_matchup_period()
+
 def team_stats_line_chart(df: pd.DataFrame, SelectedTeam: str, SelectedCategory: str, SelectedYear: int, SelectedMatchup: int) -> alt.Chart:
     df_year = df[df["Year"] == SelectedYear]
     df_year = df_year[df_year["MP"] != 0]
@@ -1687,12 +1697,12 @@ def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
 
 def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     df = df[(df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
-    df["TeamA_Nickname"] = df["TeamA"].apply(lambda x: team_info[x]["nickname"])
-    df["TeamB_Nickname"] = df["TeamB"].apply(lambda x: team_info[x]["nickname"])
-    df["TeamA_logo"] = df["TeamA"].apply(lambda x: team_info[x]["logo"])
-    df["TeamB_logo"] = df["TeamB"].apply(lambda x: team_info[x]["logo"])
-    df["TeamA_color"] = df["TeamA"].apply(lambda x: team_info[x]["bg"])
-    df["TeamB_color"] = df["TeamB"].apply(lambda x: team_info[x]["bg"])
+    df["TeamA_Nickname"] = df["TeamA"].apply(lambda x: safe_team_info(x, "nickname", str(x)))
+    df["TeamB_Nickname"] = df["TeamB"].apply(lambda x: safe_team_info(x, "nickname", str(x)))
+    df["TeamA_logo"] = df["TeamA"].apply(lambda x: safe_team_info(x, "logo"))
+    df["TeamB_logo"] = df["TeamB"].apply(lambda x: safe_team_info(x, "logo"))
+    df["TeamA_color"] = df["TeamA"].apply(lambda x: safe_team_info(x, "bg", "#111827"))
+    df["TeamB_color"] = df["TeamB"].apply(lambda x: safe_team_info(x, "bg", "#111827"))
     conditions = [df["Type"] == "Regular Season", df["Round"] == "Group Stage", (df["Type"] == "In-Season Tournament") & (df["Round"] != "Group Stage"), df["Type"].isin(["Play-In", "Playoffs"])]
     choices = ["Record", "GSRecord", "IST Seed", "Playoff Seed"]
     df["lookup_col"] = np.select(conditions, choices, default=None)
@@ -1788,13 +1798,19 @@ def get_team_mileage(SelectedTeam, Year, df):
     team_df["TypeOrder"] = team_df["Type"].map(type_order)
     team_df = team_df.sort_values(["Period", "TypeOrder"]).reset_index(drop=True)
     team_df.drop(columns="TypeOrder", inplace=True)
-    current_lat = team_info[SelectedTeam]["lat"]
-    current_lon = team_info[SelectedTeam]["lon"]
+    selected_info = team_info.get(SelectedTeam)
+    if not selected_info:
+        return 0, 0
+    current_lat = selected_info["lat"]
+    current_lon = selected_info["lon"]
     miles_per_game = []
     for _, row in team_df.iterrows():
         dest = row["TeamB"] if row["TeamA"] == SelectedTeam else SelectedTeam
-        dest_lat = team_info[dest]["lat"]
-        dest_lon = team_info[dest]["lon"]
+        dest_info = team_info.get(dest)
+        if not dest_info:
+            continue
+        dest_lat = dest_info["lat"]
+        dest_lon = dest_info["lon"]
         miles = haversine(current_lat, current_lon, dest_lat, dest_lon)
         miles_per_game.append(miles)
         current_lat, current_lon = dest_lat, dest_lon
@@ -1819,7 +1835,9 @@ def plot_team_flights(SelectedTeam, Year, df):
     type_order = {"Regular Season": 0, "In-Season Tournament": 1}
     team_df["TypeOrder"] = team_df["Type"].map(type_order)
     team_df = team_df.sort_values(["Period", "TypeOrder"]).reset_index(drop=True)
-    home = team_info[SelectedTeam]
+    home = team_info.get(SelectedTeam)
+    if not home:
+        return folium.Map(location=[39.5, -98.35], zoom_start=4, tiles="CartoDB Positron", zoom_control=False)
     team_color = home["bg"]
     team_color2 = home["bg2"]
     current_lat = home["lat"]
@@ -1828,8 +1846,11 @@ def plot_team_flights(SelectedTeam, Year, df):
     visited = set()
     for _, row in team_df.iterrows():
         dest = row["TeamB"] if row["TeamA"] == SelectedTeam else SelectedTeam
-        dest_lat = team_info[dest]["lat"]
-        dest_lon = team_info[dest]["lon"]
+        dest_info = team_info.get(dest)
+        if not dest_info:
+            continue
+        dest_lat = dest_info["lat"]
+        dest_lon = dest_info["lon"]
         if dest_lat != current_lat or dest_lon != current_lon:
             folium.PolyLine(locations=[[current_lat, current_lon], [dest_lat, dest_lon]], color=team_color, weight=3, opacity=0.8).add_to(m)
         if dest not in visited:
