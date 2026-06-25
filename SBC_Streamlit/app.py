@@ -6561,122 +6561,13 @@ with tab12:
         </div>
     """)
 
-    about_cols = st.columns(3)
-    with about_cols[0]:
-        render_about_feature(
-            "Built For Front Office Reps",
-            "Founded by Sports Business Classroom alumni, SBCFBL turns the NBA rulebook into a living team-building environment.",
-            "2020",
-            "blue",
-        )
-    with about_cols[1]:
-        render_about_feature(
-            "Thirty Original Organizations",
-            "Every franchise has its own location, nickname, colors, logo, font, cap sheet, draft assets, and operating identity.",
-            "30 Teams",
-            "green",
-        )
-    with about_cols[2]:
-        render_about_feature(
-            "Real Stakes, Real Strategy",
-            "League fees, luxury tax, prizes, charitable giving, roster rules, exceptions, deadlines, and trades all matter.",
-            "$10K+ Raised",
-            "gold",
-        )
-
     render_html("""
         <div class="sbc-awards-section-head">
-            <span>How The League Works</span>
-            <em>The high-level rules commissioners, owners, and new members need fastest.</em>
+            <span>League Guide</span>
+            <em>The original SBCFBL overview, preserved with the full written detail.</em>
         </div>
     """)
-    rule_cols = st.columns(3)
-    with rule_cols[0]:
-        render_about_rule_card(
-            "Roster Construction",
-            [
-                "12-player in-season minimum with a 14-player standard maximum.",
-                "17-player offseason limit and three IR slots instead of two-way contracts.",
-                "Overseas rights preserve drafted players through rookie-contract windows.",
-            ],
-            "blue",
-        )
-    with rule_cols[1]:
-        render_about_rule_card(
-            "Schedule And Playoffs",
-            [
-                "72-game regular season over 36 matchup periods.",
-                "Triple round-robin inside conference and double round-robin outside it.",
-                "Play-in rounds lead into four seven-day playoff series.",
-            ],
-            "green",
-        )
-    with rule_cols[2]:
-        render_about_rule_card(
-            "Scoring Model",
-            [
-                "413 available matchup points across NBA-style categories.",
-                "207 points wins the matchup; category count resolves most ties.",
-                "Efficiency categories require minimum attempt thresholds.",
-            ],
-            "gold",
-        )
 
-    finance_cols = st.columns(3)
-    with finance_cols[0]:
-        render_about_rule_card(
-            "Cap And Fees",
-            [
-                "Scaled NBA salary cap economics keep rosters realistic and entry fees manageable.",
-                "Luxury tax mirrors the NBA structure and affects both cost and competitive posture.",
-                "Base roster funds support operations first, then prize distributions.",
-            ],
-            "blue",
-        )
-    with finance_cols[1]:
-        render_about_rule_card(
-            "Free Agency",
-            [
-                "Seven 48-hour moratorium days with Qualtrics bidding.",
-                "Players sign through bid thresholds, consecutive interest, or final-day resolution.",
-                "Restricted free agency, sign-and-trades, and offseason guarantees are built in.",
-            ],
-            "green",
-        )
-    with finance_cols[2]:
-        render_about_rule_card(
-            "Draft And Trades",
-            [
-                "The draft follows NBA structure, lottery logic, and scheduled timeslots.",
-                "Late picks can trigger simultaneous clocks and eventual autodraft handling.",
-                "Trade deadline timing follows the NBA deadline with a 24-hour SBCFBL delay.",
-            ],
-            "red",
-        )
-
-    render_html("""
-        <div class="sbc-awards-section-head">
-            <span>Why It Exists</span>
-            <em>A serious sandbox for learning the tiny decisions that shape a basketball organization.</em>
-        </div>
-    """)
-    purpose_cols = st.columns([1, 1])
-    with purpose_cols[0]:
-        render_about_feature(
-            "Professional Development",
-            "The league gives members meaningful practice with CBA mechanics, roster constraints, trade construction, draft planning, and long-term asset management.",
-            "NBA-Style",
-            "blue",
-        )
-    with purpose_cols[1]:
-        render_about_feature(
-            "Community Impact",
-            "SBCFBL has paired competitive team building with charitable giving and a growing alumni network of members pursuing basketball roles.",
-            "Community",
-            "green",
-        )
-
-    _legacy_tab12 = r'''
     st.subheader("SBCFBL Introduction")
     st.markdown("""
     The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from Seth Partnow, who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
@@ -6827,7 +6718,6 @@ with tab12:
 
     This document is intended as a **quick-reference guide** and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered **the premier fantasy basketball experience**.
     """)
-    '''
 
 with tab13:
     picture_check = data_picture_check(df, pics)
