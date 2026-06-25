@@ -477,6 +477,102 @@ def render_draft_team_wordmark(value, empty_text="Not on roster", include_nickna
     )
 
 
+def team_visuals(team):
+    info = team_info.get(str(team), {})
+    return {
+        "logo": info.get("logo", ""),
+        "primary": info.get("bg", LEAGUE_PRIMARY),
+        "secondary": info.get("bg2", LEAGUE_SECONDARY),
+        "text": info.get("text", "#ffffff"),
+        "nickname": info.get("nickname", ""),
+        "font": TEAM_FONTS.get(str(team), "Poppins"),
+    }
+
+
+def current_year_salary_for_players(data, players):
+    if not players or f"Y{current_year}" not in data.columns:
+        return 0
+    return data[data["Player"].isin(players)][f"Y{current_year}"].fillna(0).sum()
+
+
+def render_trade_hero(team, outgoing_count=None, incoming_count=None):
+    visuals = team_visuals(team)
+    counts_html = ""
+    if outgoing_count is not None and incoming_count is not None:
+        counts_html = f"""
+            <div class="sbc-trade-hero-counts">
+                <span><strong>{escape(str(outgoing_count))}</strong><em>Outgoing</em></span>
+                <span><strong>{escape(str(incoming_count))}</strong><em>Incoming</em></span>
+            </div>
+        """
+    render_html(f"""
+        <div class="sbc-trade-hero" style="--trade-primary:{escape(str(visuals["primary"]), quote=True)};--trade-secondary:{escape(str(visuals["secondary"]), quote=True)};--trade-text:{escape(str(visuals["text"]), quote=True)};">
+            <div class="sbc-trade-hero-bg"></div>
+            <div class="sbc-trade-hero-inner">
+                <div class="sbc-trade-logo-frame">
+                    <img src="{escape(str(visuals["logo"]), quote=True)}" alt="{escape(str(team), quote=True)} logo" referrerpolicy="no-referrer">
+                </div>
+                <div>
+                    <div class="sbc-trade-eyebrow">Transaction Command Center</div>
+                    <div class="sbc-trade-heading">Trade Machine</div>
+                    <div class="sbc-trade-subcopy">Build the deal, inspect the assets, and run roster, apron, cash, exception, and salary-return checks from one front-office desk.</div>
+                </div>
+                {counts_html}
+            </div>
+        </div>
+    """)
+
+
+def render_trade_panel_header(title, subtitle, team=None, tone="blue"):
+    style = ""
+    logo_html = ""
+    if team:
+        visuals = team_visuals(team)
+        style = f' style="--trade-primary:{escape(str(visuals["primary"]), quote=True)};--trade-secondary:{escape(str(visuals["secondary"]), quote=True)};"'
+        logo_html = f'<img src="{escape(str(visuals["logo"]), quote=True)}" alt="{escape(str(team), quote=True)} logo" referrerpolicy="no-referrer">'
+    render_html(f"""
+        <div class="sbc-trade-panel-head sbc-trade-panel-{tone}"{style}>
+            {logo_html}
+            <div>
+                <span>{escape(title)}</span>
+                <em>{escape(subtitle)}</em>
+            </div>
+        </div>
+    """)
+
+
+def render_trade_summary_card(title, value, detail, tone="blue"):
+    render_html(f"""
+        <section class="sbc-trade-summary-card sbc-trade-summary-{tone}">
+            <span>{escape(title)}</span>
+            <strong>{escape(str(value))}</strong>
+            <em>{escape(str(detail))}</em>
+        </section>
+    """)
+
+
+def render_trade_asset_chips(title, items, empty_text, tone="blue"):
+    if items:
+        chips = "".join(f'<span class="sbc-trade-chip">{escape(str(item))}</span>' for item in items)
+    else:
+        chips = f'<span class="sbc-trade-empty-chip">{escape(empty_text)}</span>'
+    render_html(f"""
+        <section class="sbc-trade-chip-card sbc-trade-summary-{tone}">
+            <div class="sbc-trade-chip-title">{escape(title)}</div>
+            <div class="sbc-trade-chip-grid">{chips}</div>
+        </section>
+    """)
+
+
+def render_about_copy_card(title, body_html, accent="blue"):
+    render_html(f"""
+        <section class="sbc-about-copy-card sbc-about-feature-{accent}">
+            <div class="sbc-about-copy-title">{escape(title)}</div>
+            <div class="sbc-about-copy-body">{body_html}</div>
+        </section>
+    """)
+
+
 def team_logo_name_mark(team, include_nickname=True, class_name="sbc-award-team-mark"):
     team = clean_pick_display(team)
     if team not in team_info:
@@ -4461,6 +4557,274 @@ st.markdown(
         padding: 0.32rem 0.6rem;
     }}
 
+    .sbc-about-copy-card {{
+        --about-accent: {LEAGUE_PRIMARY};
+        margin-bottom: 0.95rem;
+        padding: 1rem 1.08rem;
+        border: 1px solid color-mix(in srgb, var(--about-accent) 22%, rgba(23, 32, 42, 0.12));
+        border-left: 5px solid var(--about-accent);
+        border-radius: 8px;
+        background: linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, var(--about-accent) 5%, #ffffff) 100%);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.075);
+    }}
+
+    .sbc-about-copy-title {{
+        color: var(--sbc-ink);
+        font-size: 1.16rem;
+        font-weight: 950;
+        line-height: 1.08;
+        margin-bottom: 0.58rem;
+    }}
+
+    .sbc-about-copy-body {{
+        color: #263244;
+        font-size: 0.95rem;
+        font-weight: 650;
+        line-height: 1.55;
+    }}
+
+    .sbc-about-copy-body p {{
+        margin: 0 0 0.76rem;
+    }}
+
+    .sbc-about-copy-body p:last-child {{
+        margin-bottom: 0;
+    }}
+
+    .sbc-about-copy-body ul {{
+        margin: 0.55rem 0 0.72rem;
+        padding-left: 1.1rem;
+    }}
+
+    .sbc-about-copy-body li {{
+        margin: 0.22rem 0;
+    }}
+
+    .sbc-about-copy-body a {{
+        color: var(--about-accent);
+        font-weight: 900;
+        text-decoration: none;
+    }}
+
+    .sbc-trade-hero {{
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--trade-primary, {LEAGUE_PRIMARY}) 92%, #111827 8%), color-mix(in srgb, var(--trade-secondary, {LEAGUE_SECONDARY}) 72%, #111827 28%));
+        box-shadow: 0 20px 48px rgba(18, 25, 38, 0.18);
+    }}
+
+    .sbc-trade-hero-bg {{
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(90deg, rgba(255,255,255,0.12) 0 1px, transparent 1px 100%),
+            linear-gradient(0deg, rgba(255,255,255,0.1) 0 1px, transparent 1px 100%);
+        background-size: 28px 28px;
+        opacity: 0.34;
+    }}
+
+    .sbc-trade-hero-inner {{
+        position: relative;
+        display: grid;
+        grid-template-columns: 6.2rem minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.05rem 1.15rem;
+    }}
+
+    .sbc-trade-logo-frame {{
+        display: grid;
+        place-items: center;
+        width: 5.7rem;
+        height: 5.7rem;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.92);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.7), 0 16px 28px rgba(0,0,0,0.18);
+    }}
+
+    .sbc-trade-logo-frame img {{
+        max-width: 4.9rem;
+        max-height: 4.9rem;
+        object-fit: contain;
+    }}
+
+    .sbc-trade-eyebrow {{
+        color: rgba(255,255,255,0.82);
+        font-size: 0.76rem;
+        font-weight: 950;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-trade-heading {{
+        color: #ffffff;
+        font-family: "{league_font_css}", "Poppins", sans-serif;
+        font-size: clamp(2rem, 4.8vw, 4rem);
+        font-weight: 950;
+        line-height: 0.95;
+        text-shadow: 0 10px 24px rgba(0,0,0,0.22);
+    }}
+
+    .sbc-trade-subcopy {{
+        max-width: 54rem;
+        color: rgba(255,255,255,0.9);
+        font-size: 0.96rem;
+        font-weight: 760;
+        line-height: 1.35;
+        margin-top: 0.28rem;
+    }}
+
+    .sbc-trade-hero-counts {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(5.2rem, 1fr));
+        gap: 0.55rem;
+    }}
+
+    .sbc-trade-hero-counts span,
+    .sbc-trade-summary-card,
+    .sbc-trade-chip-card {{
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(255,255,255,0.92);
+        box-shadow: 0 14px 30px rgba(18,25,38,0.1);
+    }}
+
+    .sbc-trade-hero-counts span {{
+        display: grid;
+        place-items: center;
+        min-height: 4.4rem;
+        padding: 0.55rem;
+    }}
+
+    .sbc-trade-hero-counts strong {{
+        color: var(--trade-primary, {LEAGUE_PRIMARY});
+        font-size: 1.45rem;
+        font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-trade-hero-counts em {{
+        color: var(--sbc-muted);
+        font-size: 0.72rem;
+        font-style: normal;
+        font-weight: 900;
+        text-transform: uppercase;
+    }}
+
+    .sbc-trade-panel-head {{
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 0.65rem;
+        margin: 0.4rem 0 0.55rem;
+        padding: 0.68rem 0.76rem;
+        border-radius: 8px;
+        border: 1px solid color-mix(in srgb, var(--trade-primary, {LEAGUE_PRIMARY}) 24%, rgba(23, 32, 42, 0.12));
+        border-top: 4px solid var(--trade-primary, {LEAGUE_PRIMARY});
+        background: linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, var(--trade-primary, {LEAGUE_PRIMARY}) 8%, #ffffff) 100%);
+    }}
+
+    .sbc-trade-panel-green {{
+        --trade-primary: {LEAGUE_SECONDARY};
+    }}
+
+    .sbc-trade-panel-head img {{
+        width: 2.35rem;
+        height: 2.35rem;
+        object-fit: contain;
+    }}
+
+    .sbc-trade-panel-head span {{
+        display: block;
+        color: var(--sbc-ink);
+        font-size: 1rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-trade-panel-head em {{
+        display: block;
+        color: var(--sbc-muted);
+        font-size: 0.78rem;
+        font-style: normal;
+        font-weight: 800;
+    }}
+
+    .sbc-trade-summary-card,
+    .sbc-trade-chip-card {{
+        --trade-card-accent: {LEAGUE_PRIMARY};
+        padding: 0.78rem 0.85rem;
+        margin-bottom: 0.75rem;
+        border: 1px solid color-mix(in srgb, var(--trade-card-accent) 22%, rgba(23, 32, 42, 0.12));
+        border-top: 4px solid var(--trade-card-accent);
+        background: linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, var(--trade-card-accent) 6%, #ffffff) 100%);
+    }}
+
+    .sbc-trade-summary-green {{ --trade-card-accent: {LEAGUE_SECONDARY}; }}
+    .sbc-trade-summary-gold {{ --trade-card-accent: #b88914; }}
+    .sbc-trade-summary-red {{ --trade-card-accent: #b91c1c; }}
+
+    .sbc-trade-summary-card span,
+    .sbc-trade-chip-title {{
+        color: var(--sbc-muted);
+        font-size: 0.73rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-trade-summary-card strong {{
+        display: block;
+        color: var(--sbc-ink);
+        font-size: clamp(1.25rem, 2.2vw, 1.85rem);
+        font-weight: 950;
+        line-height: 1.05;
+        margin-top: 0.14rem;
+    }}
+
+    .sbc-trade-summary-card em {{
+        display: block;
+        color: var(--sbc-muted);
+        font-size: 0.78rem;
+        font-style: normal;
+        font-weight: 800;
+        margin-top: 0.12rem;
+    }}
+
+    .sbc-trade-chip-grid {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.38rem;
+        margin-top: 0.48rem;
+    }}
+
+    .sbc-trade-chip,
+    .sbc-trade-empty-chip {{
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.8rem;
+        border-radius: 999px;
+        padding: 0.32rem 0.55rem;
+        font-size: 0.78rem;
+        font-weight: 850;
+        line-height: 1.1;
+    }}
+
+    .sbc-trade-chip {{
+        background: color-mix(in srgb, var(--trade-card-accent) 14%, #ffffff);
+        color: color-mix(in srgb, var(--trade-card-accent) 70%, #111827 30%);
+        border: 1px solid color-mix(in srgb, var(--trade-card-accent) 22%, rgba(23, 32, 42, 0.1));
+    }}
+
+    .sbc-trade-empty-chip {{
+        background: #f3f6fa;
+        color: var(--sbc-muted);
+        border: 1px dashed rgba(23, 32, 42, 0.18);
+    }}
+
     .sbc-award-card,
     .sbc-award-team-card {{
         overflow: hidden;
@@ -5880,18 +6244,21 @@ with tab8:
 
     '''
 with tab9:
+    render_trade_hero(SelectedTeam)
 
     with st.form("team_selection_form"):
-    
+        render_trade_panel_header("Build The Deal", f"{SelectedTeam} {nickname} transaction worksheet", SelectedTeam)
         col1, col2 = st.columns(2)
     
         with col1:
+            render_trade_panel_header("Outgoing Package", "Assets leaving your organization", SelectedTeam, "blue")
             SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, SelectedTeam))
             SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, SelectedTeam))
             SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, SelectedTeam))
             CashOut = st.number_input(label="Cash Out:", min_value = 110000, max_value= max_cash, placeholder = "None", value = None)
 
         with col2:
+            render_trade_panel_header("Incoming Package", "Assets your organization receives", tone="green")
             SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, SelectedTeam))
             SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, SelectedTeam))
             SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, SelectedTeam))
@@ -5899,14 +6266,58 @@ with tab9:
 
         submitted = st.form_submit_button("Submit")
 
-    if submitted and (SelectedPicksIn or SelectedPicksOut or SelectedPlayersIn or SelectedPlayersOut):
+    trade_has_assets = bool(SelectedPicksIn or SelectedPicksOut or SelectedPlayersIn or SelectedPlayersOut or SelectedExceptionIn or SelectedExceptionOut or CashIn or CashOut)
+
+    if submitted and trade_has_assets:
+        outgoing_salary = current_year_salary_for_players(df, SelectedPlayersOut)
+        incoming_salary = current_year_salary_for_players(df, SelectedPlayersIn)
+        salary_delta = incoming_salary - outgoing_salary
+        active_out = df[(df["Player"].isin(SelectedPlayersOut)) & (df["Type"] == "Active Players")].shape[0]
+        active_in = df[(df["Player"].isin(SelectedPlayersIn)) & (df["Type"] == "Active Players")].shape[0]
+        roster_before = active_player_n(df, SelectedTeam)
+        roster_after = roster_before - active_out + active_in
+        cap_total_before = get_cap_total(df, exceptions, SelectedTeam)
+        cap_total_after = cap_total_before + salary_delta
+        rendered_out = len(SelectedPlayersOut) + len(SelectedPicksOut) + len(SelectedExceptionOut) + (1 if CashOut else 0)
+        rendered_in = len(SelectedPlayersIn) + len(SelectedPicksIn) + len(SelectedExceptionIn) + (1 if CashIn else 0)
+
+        render_trade_hero(SelectedTeam, rendered_out, rendered_in)
+
+        render_html("""
+            <div class="sbc-awards-section-head">
+                <span>Deal Snapshot</span>
+                <em>Current-year salary, roster movement, and apron-relevant context before the rule checks fire.</em>
+            </div>
+        """)
+        summary_cols = st.columns(4)
+        with summary_cols[0]:
+            render_trade_summary_card("Incoming Salary", format_money(incoming_salary), f"{len(SelectedPlayersIn)} player(s)", "green")
+        with summary_cols[1]:
+            render_trade_summary_card("Outgoing Salary", format_money(outgoing_salary), f"{len(SelectedPlayersOut)} player(s)", "blue")
+        with summary_cols[2]:
+            delta_tone = "red" if salary_delta > 0 else "green"
+            render_trade_summary_card("Net Salary", format_money(salary_delta), f"Projected cap total {format_money(cap_total_after)}", delta_tone)
+        with summary_cols[3]:
+            roster_tone = "red" if roster_after < 12 or roster_after > 17 else ("gold" if roster_after >= 15 else "green")
+            render_trade_summary_card("Roster After", roster_after, f"Started with {roster_before} active", roster_tone)
+
+        chip_cols = st.columns(2)
+        with chip_cols[0]:
+            render_trade_asset_chips("Outgoing Players", SelectedPlayersOut, "No outgoing players selected", "blue")
+            render_trade_asset_chips("Outgoing Picks", SelectedPicksOut, "No outgoing picks selected", "blue")
+            render_trade_asset_chips("Outgoing Exceptions / Cash", SelectedExceptionOut + ([f"Cash: {format_money(CashOut)}"] if CashOut else []), "No outgoing exceptions or cash", "gold")
+        with chip_cols[1]:
+            render_trade_asset_chips("Incoming Players", SelectedPlayersIn, "No incoming players selected", "green")
+            render_trade_asset_chips("Incoming Picks", SelectedPicksIn, "No incoming picks selected", "green")
+            render_trade_asset_chips("Incoming Exceptions / Cash", SelectedExceptionIn + ([f"Cash: {format_money(CashIn)}"] if CashIn else []), "No incoming exceptions or cash", "gold")
 
         col1, col2 = st.columns(2)
 
         with col1:
+            render_trade_panel_header("Outgoing Detail", "Players, picks, exceptions, and cash leaving the building", SelectedTeam, "blue")
             players_trade_out = players_out_table(df, pics, SelectedPlayersOut)
             if players_trade_out.shape[0] > 0:
-                st.subheader("Players Going Out")
+                render_html('<div class="sbc-cap-eyebrow">Players Going Out</div>')
                 players_trade_out = (players_trade_out.style
                     .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                     .format({c: "${:,.0f}" for c in players_trade_out.columns if re.match(r"\d{4}", c)}))
@@ -5914,18 +6325,19 @@ with tab9:
 
             picks_trade_out = picks_out_table(dp, SelectedPicksOut)
             if picks_trade_out.shape[0] > 0:
-                st.subheader("Picks Going Out")
+                render_html('<div class="sbc-cap-eyebrow">Picks Going Out</div>')
                 st.dataframe(picks_trade_out, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
             experiations_out = exceptions_out_table(exceptions, SelectedExceptionOut)
             if experiations_out.shape[0] > 0:
-                st.subheader("Exceptions Being Used")
+                render_html('<div class="sbc-cap-eyebrow">Exceptions Being Used</div>')
                 st.dataframe(experiations_out, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
         with col2:
+            render_trade_panel_header("Incoming Detail", "Players, picks, exceptions, and cash entering the building", tone="green")
             players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
             if players_traded_in.shape[0] > 0:
-                st.subheader("Players Coming In")
+                render_html('<div class="sbc-cap-eyebrow">Players Coming In</div>')
                 players_traded_in = (players_traded_in.style
                     .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                     .format({c: "${:,.0f}" for c in players_traded_in.columns if re.match(r"\d{4}", c)}))
@@ -5933,18 +6345,23 @@ with tab9:
 
             picks_trade_in = picks_in_table(dp, SelectedPicksIn)
             if picks_trade_in.shape[0] > 0:
-                st.subheader("Picks Coming In")
+                render_html('<div class="sbc-cap-eyebrow">Picks Coming In</div>')
                 st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
             experiations_in = exceptions_in_table(exceptions, SelectedExceptionIn)
             if experiations_in.shape[0] > 0:
-                st.subheader("Exceptions Being Used")
+                render_html('<div class="sbc-cap-eyebrow">Exceptions Being Used</div>')
                 st.dataframe(experiations_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
 
-
-        st.subheader("Roster Limit")
+        render_html("""
+            <div class="sbc-awards-section-head">
+                <span>Rule Desk</span>
+                <em>Roster and apron checks using the existing SBCFBL trade logic.</em>
+            </div>
+        """)
+        render_trade_panel_header("Roster Limit", "Active-player compliance after the transaction", SelectedTeam, "blue")
         net_players_check(df, SelectedTeam, SelectedPlayersIn, SelectedPlayersOut)
-        st.subheader("Salary Limit")
+        render_trade_panel_header("Salary Limit", "Salary matching and exception checks", SelectedTeam, "gold")
         #salary_trade_check()
         #tpe_check()
         #bae_mle_check()
@@ -5952,15 +6369,18 @@ with tab9:
         #create_tpe_check()
         #new_trade_rest_check()
         #old_team_check()
-        st.subheader("Second Apron Checks")
+        render_trade_panel_header("Second Apron Checks", "Cash and sign-and-trade TPE restrictions", SelectedTeam, "red")
         no_cash(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, CashOut)
         tpe_st_check(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, SelectedExceptionOut)
         #no_aggregation_check()
-        st.subheader("First Apron Checks")
+        render_trade_panel_header("First Apron Checks", "BAE/MLE and salary-return restrictions", SelectedTeam, "gold")
         no_bae_mle_check(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, SelectedExceptionOut)
         under_100_percent_check(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, SelectedExceptionOut)
-        st.subheader("Draft Pick Check")
+        render_trade_panel_header("Draft Pick Check", "Stepien and pick-trade review", SelectedTeam, "green")
+        render_html('<div class="sbc-empty-state">Stepien validation hook is still under construction for the submitted deal.</div>')
         #stepien_check()
+    elif submitted:
+        render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", SelectedTeam, "gold")
 
 with tab10:
     render_html(f"""
@@ -6568,6 +6988,106 @@ with tab12:
         </div>
     """)
 
+    render_about_copy_card("SBCFBL Introduction", """
+        <p>The <strong>Sports Business Classroom Fantasy Basketball League (SBCFBL)</strong> was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from Seth Partnow, who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.</p>
+        <p>The SBCFBL was created and developed from the ground up by <a href="https://x.com/McCadeP8">McCade Pearson</a>. Over the past six years, SBCFBL has been intentionally designed to closely mirror the structure, rules, and financial mechanics outlined in the NBA's official <a href="https://imgix.cosmicjs.com/25da5eb0-15eb-11ee-b5b3-fbd321202bdf-Final-2023-NBA-Collective-Bargaining-Agreement-6-28-23.pdf">Collective Bargaining Agreement (CBA)</a>.</p>
+        <p>Since its launch, SBCFBL has helped more than half a dozen participants secure roles with NBA teams and has raised over $10,000 for charitable causes, serving as both a professional development platform and a vehicle for positive community impact.</p>
+    """, "blue")
+
+    about_cols = st.columns(2)
+    with about_cols[0]:
+        render_about_copy_card("SBCFBL Pre-Launch", """
+            <p>During the SBCFBL's formation, McCade Pearson led the development of all franchise identities. This process included the creation of 30 distinct and original brands, each with a unique location, area-appropriate team name, and customized color scheme. In 2022, this branding effort was further expanded to include original team logos for every franchise.</p>
+            <p>All 30 organizations are based in the United States or Vancouver. To date, the only franchise to undergo rebranding is the San Diego Wave, following the introduction of an NWSL expansion team with the same name.</p>
+        """, "green")
+    with about_cols[1]:
+        render_about_copy_card("SBCFBL Initial Roster Construction", """
+            <p>To initialize rosters, SBCFBL conducted a 30-team slow blind auction over the course of multiple 'days'. Each organization began with a clean salary cap sheet, along with access to the full Mid-Level Exception (MLE) and Bi-Annual Exception (BAE) in Year 1 to facilitate roster construction and competitive balance.</p>
+            <p>To ensure a realistic distribution of contract lengths across the SBCFBL, contract values were permitted to differ from real-world figures, while contract durations were aligned with each player's actual NBA contract length at the time. Following a series of randomized draws and strategic bidding rounds, all 30 team rosters were completed and the SBCFBL officially launched.</p>
+        """, "gold")
+
+    render_about_copy_card("SBCFBL Scoring System", """
+        <p>The SBCFBL scoring system is modeled after the structure of the United States Electoral College. Rather than states, the SBCFBL allocates weighted values to traditional basketball performance categories that most strongly correlate with winning NBA games-beyond points alone.</p>
+        <p>Each category contributes a fixed number of "votes," with higher-impact metrics carrying greater weight.</p>
+        <ul>
+            <li><strong>Points</strong>: 61</li>
+            <li><strong>Assists</strong>: 41</li>
+            <li><strong>True Shooting Percentage</strong>: 41</li>
+            <li><strong>Blocks</strong>: 31</li>
+            <li><strong>Defensive Rebounds</strong>: 31</li>
+            <li><strong>Offensive Rebounds</strong>: 31</li>
+            <li><strong>Plus-Minus</strong>: 31</li>
+            <li><strong>Steals</strong>: 31</li>
+            <li><strong>Three-Point Percentage</strong>: 31</li>
+            <li><strong>Two-Point Percentage</strong>: 31</li>
+            <li><strong>Free Throw Percentage</strong>: 21</li>
+            <li><strong>Turnovers*</strong>: -21</li>
+            <li><strong>Minutes Played</strong>: 11</li>
+        </ul>
+        <p>In total, <strong>413 points</strong> are available in each matchup, with <strong>207 points required to win</strong>. The inclusion of an additional digit in each category allows a tie to be resolved by awarding the win to the team that captures the most individual categories. In the rare event of a 206.5-206.5 tie, the win is awarded to the home team.</p>
+        <p>To be eligible to win the four efficiency categories, teams must meet the following minimum thresholds: <strong>10 field goal attempts (FGA)</strong>, <strong>10 three-point attempts (3PA)</strong>, and <strong>5 free throw attempts (FTA)</strong>.</p>
+        <p>This nontraditional scoring system expands strategic flexibility and encourages sophisticated analytical decision-making, creating a more dynamic and engaging competitive environment than standard fantasy formats.</p>
+        <p><em>*For Turnovers, the team with the lower total is awarded the category.</em></p>
+    """, "blue")
+
+    about_cols = st.columns(2)
+    with about_cols[0]:
+        render_about_copy_card("SBCFBL Roster Construction", """
+            <p>To balance the need for a waiver wire, the SBCFBL employs unique roster rules. Each organization must maintain a <strong>minimum of 12 players</strong> and may carry <strong>up to 14 players</strong> during the season. Instead of two-way contracts, each organization has access to <strong>three IR slots</strong>. During the offseason, rosters may expand to a straight <strong>17 players</strong>.</p>
+            <p>The SBCFBL also accommodates <strong>overseas players</strong>. To qualify, a player must be drafted by the SBCFBL and assigned 'overseas' during the summer prior to the season, locking in their status on opening night. These players may remain overseas for the duration of their rookie contract. This system allows organizations to retain second-round draft picks in situations where a standard roster would not have space for them.</p>
+            <p>On a day-to-day basis, each SBCFBL organization maintains roster spots for the following positions:</p>
+            <ul><li><strong>Point Guard (PG)</strong></li><li><strong>Shooting Guard (SG)</strong></li><li><strong>Small Forward (SF)</strong></li><li><strong>Power Forward (PF)</strong></li><li><strong>Center (C)</strong></li><li><strong>Three Flex (FLX)</strong></li><li><strong>Six Bench</strong></li></ul>
+            <p>Player position eligibility is determined by <strong>Fantrax</strong> each season. Organizations may request the addition of a new position for a player within <strong>two weeks after the season begins</strong>. The commissioner reviews these requests using independent sources and makes the final decision.</p>
+        """, "green")
+    with about_cols[1]:
+        render_about_copy_card("SBCFBL Season Structure", """
+            <p>The SBCFBL consists of 30 organizations organized into six divisions across two conferences. The regular season schedule is designed to emulate the length and intensity of the NBA. Following minor adjustments due to COVID-shortened seasons, the SBCFBL now plays a <strong>72-game schedule</strong>, consisting of a <strong>triple round-robin for 42 intraconference games</strong> and a <strong>double round-robin for 30 interconference games</strong> per organization, spread over <strong>36 periods</strong>. Each period features two games per organization played over a 3-4 day stretch.</p>
+            <p>The playoffs closely mirror the NBA's format, beginning with <strong>two rounds of three-day play-in games</strong>, followed by <strong>four rounds of seven-day playoff series</strong>, ultimately producing a single, undisputed SBCFBL champion who hoists the Larry Coon Trophy.</p>
+            <p>With the addition of the NBA Cup in 2023, the SBCFBL added a cup as well. organizations play four games in the five periods leading up to a quarterfinal, semfinal, and championship matchup that takes place over the NBA Cup Final. While NBA Cup Final games obviously don't count, they do in only our SBCFBL Cup Championship for entertainment purposes. None of the SBCFBL Cup games count towards our regular season standings due to the complexity of folding them into the regular season schedule.</p>
+        """, "gold")
+
+    render_about_copy_card("SBCFBL Financial Structure", """
+        <p>The SBCFBL initially launched using a <strong>2,000,000:1 scale</strong> relative to the NBA, meaning a player with a $10,000,000 salary would cost an owner $5 in the league. As the NBA salary cap increased, the league adjusted to a <strong>3,000,000:1 scale</strong> for the 2025-26 season to keep entry fees accessible while maintaining realistic roster management. Currently the formula used to determine the ratio for the year is to take the NBA's Salary Cap, divide by 60,000,000 and raise the quotient to the nearest integer before multiplying by 1,000,000. The league also enforces a <strong>luxury tax</strong> consistent with the NBA's structure.</p>
+        <p>Entry fees collected for each organization's base roster are pooled into a league fund. These funds are first allocated to cover operational expenses, including <strong>Fantrax fees</strong> and the purchase of the <strong>Larry Coon Trophy</strong>. After these costs, remaining funds are distributed to successful organizations as follows:</p>
+        <ul><li><strong>Champion</strong>: 1/2 of the remaining pool</li><li><strong>Runner-up</strong>: 1/6 of the remaining pool</li><li><strong>Conference Finalists (2 organizations)</strong>: 1/12 each of the remaining poool</li><li><strong>Conference Semifinalists (4 organizations)</strong>: 1/24 each each of the remaining pool</li></ul>
+        <p>In addition to entry fees, the SBCFBL collects <strong>luxury tax payments</strong>. During the league's first five years, the full luxury tax pool was awarded to the league champion to donate to a charity of their choice. This approach both supported charitable causes and limited organizations' ability to recoup luxury tax payments to fund additional championships.</p>
+        <p>As of the 2025-26 season, <strong>50% of the luxury tax pool continues to be allocated to charitable causes</strong>, while the remaining 50% is redistributed evenly among organizations that did not exceed the luxury tax threshold.</p>
+        <p><strong>SBCFBL Cup</strong> carries an entry fee of <strong>$3</strong> per organization. The winner of the Cup receives <strong>$75</strong>, while the runner-up is awarded <strong>$15</strong>.</p>
+    """, "blue")
+
+    about_cols = st.columns(2)
+    with about_cols[0]:
+        render_about_copy_card("SBCFBL Free Agency", """
+            <p>The SBCFBL Free Agency moratorium spans <strong>seven "days"</strong>, each lasting 48 hours, concluding on <strong>July 1, 3, 5, 7, 9, 11, and 13</strong>. During this period, organizations place bids through a <strong>Qualtrics survey</strong>, with a maximum of <strong>20 bids per organization per day</strong>.</p>
+            <p>After each day, <strong>signings are announced</strong>, along with an updated list of free agents showing the number of bids received and the current highest bid for each player.</p>
+            <p>Players are released in <strong>three tiers</strong> based on their previous season's salary. A player signs after either receiving <strong>five bids</strong> or having at least one bid for <strong>two consecutive days</strong> (signing on the third day). Players sign for the <strong>highest year-one salary bid</strong>, and organizations determine contract length <strong>as part of their bid</strong>, not after securing the signing.</p>
+            <p>All offseason contracts in the SBCFBL are <strong>fully guaranteed</strong>. <strong>Player options</strong> are not permitted, as allowing them would require every signing to include one. Similarly, <strong>team options</strong> are disallowed outside of rookie contracts, ensuring clarity and consistency in all agreements.</p>
+            <p>Any players with remaining bids sign on the <strong>seventh day</strong>, marking the end of the moratorium.</p>
+            <p><strong>Restricted free agent signings</strong> have just under one day for the incumbent organization to match a bid. <strong>Sign-and-trade deals</strong> are permitted, provided the transaction is agreed upon by the conclusion of the moratorium.</p>
+            <p>In the event of multiple organizations submitting identical bids for a player, the incumbent organization has a <strong>50% chance</strong> to retain the player, while the remaining organizations split the other 50%. For <strong>supermax-eligible players</strong>, if the incumbent organization matches the supermax amount, they have a <strong>75% chance</strong> to retain the player.</p>
+            <p>This 48-hour bidding process continues throughout free agency, but activity generally slows significantly after the moratorium concludes. Once the SBCFBL season begins, <strong>contracts become non-guaranteed</strong>, and organizations may only execute signings on the <strong>first day of a matchup</strong>.</p>
+        """, "green")
+    with about_cols[1]:
+        render_about_copy_card("SBCFBL Draft", """
+            <p>The SBCFBL Draft follows the same structure as the NBA Draft, including <strong>lottery procedures and tiebreakers</strong>. Rather than using a traditional countdown timer for each pick, the draft operates on <strong>scheduled timeslots</strong>. For example, the <strong>first overall pick</strong> always occurs between <strong>10:00 a.m. and 10:30 a.m. EDT</strong> on the Saturday following the NBA Draft, with the <strong>second pick</strong> due at <strong>11:00 a.m. EDT</strong>, and so on.</p>
+            <p>If all organizations submit their picks early, the next organization may proceed immediately. Should a team <strong>miss their designated timeslot</strong>, multiple organizations may be placed <strong>on the clock simultaneously</strong>. Any organization that is <strong>over two hours late</strong> will have their pick <strong>autodrafted</strong>, typically receiving the highest remaining NBA draft pick (e.g., the first pick would be autodrafted at 12:30 p.m. EDT, likely selecting the 5th overall player).</p>
+            <p>The <strong>second round</strong> follows the same timeslot framework on <strong>Sunday</strong>, maintaining consistency and pace throughout the draft.</p>
+        """, "gold")
+
+    about_cols = st.columns(2)
+    with about_cols[0]:
+        render_about_copy_card("SBCFBL Trade Deadline", """
+            <p>The SBCFBL Trade Deadline occurs 24 hours after the NBA Trade Deadline, typically on Friday at 3:00 PM EST. As with all trades, a trade must be formally presented and agreed upon in a "call" (i.e., a private Discord group chat) involving all parties. On trade deadline day, the group chat between the involved parties and McCade must be initiated before the official deadline.</p>
+            <p>At 3:00 PM, McCade will begin processing trades. Teams may continue negotiations and finalize details up until McCade addresses the trade call. If any issues arise, the trade will be placed at the back of the queue, and corrections can be made until McCade returns to it.</p>
+            <p>The trade market officially closes once McCade has updated all trades, which may occur within minutes or several hours.</p>
+        """, "red")
+    with about_cols[1]:
+        render_about_copy_card("SBCFBL Other Information", """
+            <p>All other SBCFBL operations adhere as closely as possible to the <strong>NBA Collective Bargaining Agreement (CBA)</strong>, including, but not limited to, <strong>salary cap rules, trade regulations, exceptions, and deadlines</strong>. Most SBCFBL deadlines are set on a <strong>24-hour delay</strong> relative to the NBA, including the <strong>waive-and-stretch deadline, player guarantee date, offseason signing and trade restrictions,</strong> and the <strong>trade deadline</strong>.</p>
+            <p>This document is intended as a <strong>quick-reference guide</strong> and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered <strong>the premier fantasy basketball experience</strong>.</p>
+        """, "blue")
+
+    _legacy_tab12 = r'''
     st.subheader("SBCFBL Introduction")
     st.markdown("""
     The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from Seth Partnow, who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
@@ -6718,6 +7238,7 @@ with tab12:
 
     This document is intended as a **quick-reference guide** and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered **the premier fantasy basketball experience**.
     """)
+    '''
 
 with tab13:
     picture_check = data_picture_check(df, pics)
