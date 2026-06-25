@@ -338,6 +338,10 @@ def team_font_for_name(team):
     return TEAM_FONTS.get(str(team), "Poppins")
 
 
+def team_nickname_for_name(team):
+    return team_info.get(str(team), {}).get("nickname", "")
+
+
 def team_names_from_list(value):
     if is_blank_value(value):
         return []
@@ -363,20 +367,51 @@ def render_team_logo_cluster(value):
         logos.append(
             f'<span class="sbc-pick-logo-chip" title="{escape(live_team_full_name(team), quote=True)}">'
             f'<img class="sbc-pick-logo" src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">'
-            f'<span>{escape(team)}</span>'
+            f'<span>{escape(live_team_full_name(team))}</span>'
             f'</span>'
         )
     return f'<div class="sbc-pick-logo-cluster">{"".join(logos)}</div>'
+
+
+def render_team_logo_chip_from_url(value):
+    logo = "" if is_blank_value(value) else str(value)
+    if not logo.strip():
+        return escape(str(clean_pick_display(value)))
+    logo_to_team = {info.get("logo", ""): team for team, info in team_info.items()}
+    team = logo_to_team.get(logo, "")
+    label = live_team_full_name(team) if team else ""
+    return (
+        f'<div class="sbc-pick-logo-cluster sbc-pick-logo-cluster-single">'
+        f'<span class="sbc-pick-logo-chip" title="{escape(label, quote=True)}">'
+        f'<img class="sbc-pick-logo" src="{escape(logo, quote=True)}" alt="{escape(label, quote=True)} logo" referrerpolicy="no-referrer">'
+        f'<span>{escape(label)}</span>'
+        f'</span></div>'
+    )
 
 
 def render_slot_team(value):
     team = clean_pick_display(value)
     color = team_color_for_name(team)
     font = team_font_for_name(team)
+    nickname = team_nickname_for_name(team)
     return (
         f'<span class="sbc-pick-slot-team" '
         f'style="--slot-color:{escape(str(color), quote=True)};--slot-font:{escape(str(font), quote=True)};">'
-        f'{escape(str(team))}</span>'
+        f'<strong>{escape(str(team))}</strong>'
+        f'<em>{escape(str(nickname))}</em>'
+        f'</span>'
+    )
+
+
+def render_team_name_stack(team):
+    team = str(team)
+    color = team_color_for_name(team)
+    font = team_font_for_name(team)
+    nickname = team_nickname_for_name(team)
+    return (
+        f'<div class="sbc-overview-team-name" '
+        f'style="--overview-team-color:{escape(str(color), quote=True)};--overview-team-font:{escape(str(font), quote=True)};">'
+        f'<strong>{escape(team)}</strong><em>{escape(str(nickname))}</em></div>'
     )
 
 
@@ -386,11 +421,13 @@ def render_overview_table(data):
         return
     table_df = data.copy()
     money_cols = ["Cap Space", "Tax Space", "Apron 1 Space", "Apron 2 Space", "Base Fee", "Luxury Fee", "Balance", "Amount Paid"]
+    cents_cols = ["Base Fee", "Luxury Fee", "Balance", "Amount Paid"]
     visible_cols = ["Logo", "Team", "Active Players", "Hard Cap"] + money_cols
     visible_cols = [col for col in visible_cols if col in table_df.columns]
     rows = []
     for _, row in table_df.iterrows():
         cells = []
+        hard_cap = str(row.get("Hard Cap", ""))
         for col in visible_cols:
             value = row.get(col, "")
             if col == "Logo":
@@ -402,13 +439,27 @@ def render_overview_table(data):
                 except (TypeError, ValueError):
                     pass
                 tone = "good" if numeric >= 0 else "bad"
-                cells.append(f'<td class="sbc-overview-money sbc-money-{tone}">{escape(str(format_money(value)))}</td>')
+                important = (col == "Apron 1 Space" and hard_cap == "First Apron") or (col == "Apron 2 Space" and hard_cap == "Second Apron")
+                formatted = f"${numeric:,.2f}" if col in cents_cols else format_money(value)
+                important_class = " sbc-overview-important-money" if important else ""
+                cells.append(f'<td class="sbc-overview-money sbc-money-{tone}{important_class}">{escape(str(formatted))}</td>')
             elif col == "Active Players":
-                cells.append(f'<td class="sbc-overview-center">{escape(str(value))}</td>')
+                try:
+                    active_n = int(float(value))
+                except (TypeError, ValueError):
+                    active_n = 0
+                status = "danger" if active_n <= 11 or active_n >= 18 else "warn" if active_n <= 13 else "ok"
+                cells.append(f'<td class="sbc-overview-center"><span class="sbc-overview-active sbc-overview-active-{status}">{escape(str(value))}</span></td>')
+            elif col == "Hard Cap":
+                cap_class = " sbc-overview-hardcap-alert" if hard_cap in ["First Apron", "Second Apron"] else ""
+                flag = '<span class="sbc-hardcap-flag">!</span>' if cap_class else ""
+                cells.append(f'<td class="sbc-overview-hardcap{cap_class}">{flag}{escape(str(value))}</td>')
+            elif col == "Team":
+                cells.append(f'<td>{render_team_name_stack(value)}</td>')
             else:
                 cells.append(f'<td>{escape(str(value))}</td>')
         rows.append(f"<tr>{''.join(cells)}</tr>")
-    headers = "".join(f"<th>{escape(str(col))}</th>" for col in visible_cols)
+    headers = "".join(f"<th>{'' if col == 'Logo' else escape(str(col))}</th>" for col in visible_cols)
     render_html(f"""
         <div class="sbc-overview-table-wrap">
             <table class="sbc-overview-table">
@@ -445,14 +496,13 @@ def render_current_draft_table(data, title, icon, description):
     for _, row in data.iterrows():
         slot_team = clean_pick_display(row.get("Slot", ""))
         current_team = clean_pick_display(row.get("Team", ""))
-        slot_logo = team_logo_for_name(slot_team)
         current_logo = team_logo_for_name(current_team)
         detail = clean_pick_display(row.get("Explanation", ""))
         rows.append(f"""
             <tr>
                 <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
-                <td class="sbc-draft-team-cell"><img src="{escape(slot_logo, quote=True)}" alt=""><strong>{escape(str(slot_team))}</strong></td>
-                <td class="sbc-draft-team-cell"><img src="{escape(current_logo, quote=True)}" alt=""><strong>{escape(str(current_team))}</strong></td>
+                <td class="sbc-draft-team-cell sbc-draft-slot-cell">{render_slot_team(slot_team)}</td>
+                <td class="sbc-draft-team-cell">{render_team_logo_chip_from_url(current_logo)}</td>
                 <td class="sbc-draft-detail">{escape(str(detail))}</td>
                 <td class="sbc-draft-time">{escape(str(row.get("Time Due (ET)", "")))}</td>
             </tr>
@@ -632,8 +682,7 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
             value = "" if is_blank_value(raw_value) else raw_value
             cell_classes = []
             if col in image_columns and str(value).strip():
-                url = escape(str(value), quote=True)
-                value_html = f'<img class="sbc-pick-logo" src="{url}" alt="" referrerpolicy="no-referrer">'
+                value_html = render_team_logo_chip_from_url(value)
                 cell_classes.extend(["sbc-pick-logo-cell", "sbc-pick-logo-col"])
             elif col == "OGTeam":
                 value_html = render_slot_team(value)
@@ -1501,37 +1550,142 @@ def standings_snapshot(standings_df, selected_year, selected_period, conference)
     return table.reset_index(drop=True)
 
 
-def ist_standings_snapshot(standings_df, selected_year, selected_period):
-    if standings_df.empty:
-        return pd.DataFrame()
-    games = team_game_rows(all_time_schedule, selected_year, selected_period, ["In-Season Tournament"])
-    if games.empty:
-        return pd.DataFrame()
-    teams_with_games = sorted(set(games["TeamA"].dropna().astype(str)).union(games["TeamB"].dropna().astype(str)))
-    table = standings_df[
-        (standings_df["Year"] == selected_year)
-        & (standings_df["Period"] == selected_period)
-        & (standings_df["Team"].astype(str).isin(teams_with_games))
+def ist_group_games(selected_year):
+    games = all_time_schedule[
+        (all_time_schedule["Year"] == selected_year)
+        & (all_time_schedule["Type"].astype(str) == "In-Season Tournament")
     ].copy()
-    if table.empty:
-        table = standings_df[
-            (standings_df["Year"] == selected_year)
-            & (standings_df["Period"] == 99)
-            & (standings_df["Team"].astype(str).isin(teams_with_games))
-        ].copy()
+    if games.empty:
+        return games
+    group_stage = games[games["Round"].astype(str).str.contains("Group", case=False, na=False)].copy()
+    return group_stage if not group_stage.empty else games
+
+
+def infer_ist_groups(selected_year):
+    games = ist_group_games(selected_year)
+    if games.empty:
+        return {}
+    teams = sorted(set(games["TeamA"].dropna().astype(str)).union(games["TeamB"].dropna().astype(str)))
+    parent = {team: team for team in teams}
+
+    def find(team):
+        while parent[team] != team:
+            parent[team] = parent[parent[team]]
+            team = parent[team]
+        return team
+
+    def union(a, b):
+        root_a = find(a)
+        root_b = find(b)
+        if root_a != root_b:
+            parent[root_b] = root_a
+
+    for _, game in games.iterrows():
+        team_a = str(game.get("TeamA", ""))
+        team_b = str(game.get("TeamB", ""))
+        if team_a in parent and team_b in parent:
+            union(team_a, team_b)
+
+    components = {}
+    for team in teams:
+        components.setdefault(find(team), []).append(team)
+
+    groups = {}
+    for conference in ["West", "East"]:
+        conf_components = [
+            sorted(group)
+            for group in components.values()
+            if group and team_info.get(group[0], {}).get("conf") == conference
+        ]
+        conf_components = sorted(conf_components, key=lambda group: group[0])
+        for idx, group in enumerate(conf_components[:3]):
+            groups[f"{conference} {chr(ord('A') + idx)}"] = group
+    return groups
+
+
+def ist_record_for_team(team, games):
+    team_games = games[(games["TeamA"].astype(str) == team) | (games["TeamB"].astype(str) == team)]
+    wins = 0
+    losses = 0
+    for _, game in team_games.iterrows():
+        is_a = str(game.get("TeamA", "")) == team
+        own = score_numeric(game.get("TeamAScore" if is_a else "TeamBScore", 0))
+        opp = score_numeric(game.get("TeamBScore" if is_a else "TeamAScore", 0))
+        if own > opp:
+            wins += 1
+        elif own < opp:
+            losses += 1
+    return wins, losses
+
+
+def rank_ist_teams(teams, games):
+    rows = []
+    for team in teams:
+        wins, losses = ist_record_for_team(team, games)
+        rows.append({
+            "Team": team,
+            "wins": wins,
+            "losses": losses,
+            "PointDiff": point_diff_for_games(team, games),
+            "Record": f"{wins}-{losses}",
+        })
+    table = pd.DataFrame(rows)
     if table.empty:
         return table
-    table["Conference"] = table["Team"].map(lambda team: team_info.get(team, {}).get("conf", ""))
-    table["Division"] = table["Team"].map(lambda team: team_info.get(team, {}).get("div", ""))
-    table[["wins", "losses"]] = table["GSRecord"].apply(lambda value: pd.Series(parse_record_value(value)))
     table["WinPctRaw"] = table["wins"] / (table["wins"] + table["losses"]).replace(0, pd.NA)
     table["WinPctRaw"] = table["WinPctRaw"].fillna(0)
-    table = nba_style_rank_table(table, games)
-    table["Logo"] = table["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
-    table["FullTeam"] = table["Team"].map(live_team_full_name)
-    table["WinPct"] = (table["WinPctRaw"] * 100).round(1).astype(str) + "%"
-    table["PointDiffDisplay"] = table["PointDiff"].map(lambda value: f"{value:+.0f}")
-    return table.reset_index(drop=True)
+    ranked = []
+    for _, group in table.sort_values(["WinPctRaw", "wins", "PointDiff", "Team"], ascending=[False, False, False, True]).groupby(["wins", "losses"], sort=False):
+        tied = group["Team"].astype(str).tolist()
+        common_games = tied_team_games(games, tied)
+        group = group.copy()
+        group["_h2h"] = group["Team"].map(lambda team: record_pct_for_games(str(team), common_games))
+        ranked.append(group.sort_values(["_h2h", "PointDiff", "Team"], ascending=[False, False, True]))
+    out = pd.concat(ranked, ignore_index=True).drop(columns=["_h2h"], errors="ignore")
+    out["FullTeam"] = out["Team"].map(live_team_full_name)
+    out["Logo"] = out["Team"].map(lambda team: team_info.get(team, {}).get("logo", ""))
+    out["PointDiffDisplay"] = out["PointDiff"].map(lambda value: f"{value:+.0f}")
+    return out.reset_index(drop=True)
+
+
+def ist_group_tables(selected_year, selected_period):
+    groups = infer_ist_groups(selected_year)
+    if not groups:
+        return {}
+    played_games = team_game_rows(ist_group_games(selected_year), selected_year, selected_period)
+    if played_games.empty:
+        return {}
+    grouped = {}
+    for group_name, teams in groups.items():
+        group_games = played_games[
+            played_games["TeamA"].astype(str).isin(teams)
+            & played_games["TeamB"].astype(str).isin(teams)
+        ].copy()
+        ranked = rank_ist_teams(teams, group_games)
+        if not ranked.empty:
+            grouped[group_name] = ranked
+    for conference in ["West", "East"]:
+        conference_groups = {name: table for name, table in grouped.items() if name.startswith(conference)}
+        non_winners = []
+        for table in conference_groups.values():
+            if table.shape[0] > 1:
+                non_winners.append(table.iloc[1:].copy())
+        if non_winners:
+            wildcard_pool = pd.concat(non_winners, ignore_index=True)
+            ranked_wildcards = []
+            for _, group in wildcard_pool.sort_values(["WinPctRaw", "wins", "PointDiff", "Team"], ascending=[False, False, False, True]).groupby(["wins", "losses"], sort=False):
+                tied = group["Team"].astype(str).tolist()
+                common_games = tied_team_games(played_games, tied)
+                group = group.copy()
+                group["_h2h"] = group["Team"].map(lambda team: record_pct_for_games(str(team), common_games))
+                ranked_wildcards.append(group.sort_values(["_h2h", "PointDiff", "Team"], ascending=[False, False, True]))
+            wildcard = pd.concat(ranked_wildcards, ignore_index=True).iloc[0]["Team"]
+            for table in conference_groups.values():
+                table["Tier"] = ["winner" if idx == 0 else "wildcard" if row["Team"] == wildcard else "out" for idx, row in table.iterrows()]
+        else:
+            for table in conference_groups.values():
+                table["Tier"] = ["winner" if idx == 0 else "out" for idx, _ in table.iterrows()]
+    return grouped
 
 
 def render_scoreboard_cards(scores_df):
@@ -1658,51 +1812,61 @@ def render_conference_standings(standings_df, selected_year, selected_period, co
 
 
 def render_ist_standings(standings_df, selected_year, selected_period):
-    table = ist_standings_snapshot(standings_df, selected_year, selected_period)
-    if table.empty:
+    grouped = ist_group_tables(selected_year, selected_period)
+    if not grouped:
         return
-    rows = []
-    for idx, row in table.iterrows():
-        tier = "playoff" if idx <= 7 else "playin" if idx <= 15 else "lottery"
-        rows.append(f"""
-            <tr class="sbc-standings-{tier}">
-                <td class="sbc-standings-rank"><span>{idx + 1}</span></td>
-                <td class="sbc-standings-team">
-                    <img src="{escape(str(row.get("Logo", "")), quote=True)}" alt="{escape(str(row.get("FullTeam", "")), quote=True)} logo">
-                    <strong>{escape(str(row.get("FullTeam", "")))}</strong>
-                </td>
-                <td>{escape(str(row.get("GSRecord", "")))}</td>
-                <td>{escape(str(row.get("WinPct", "")))}</td>
-                <td>{escape(str(row.get("PointDiffDisplay", "")))}</td>
-                <td>{escape(str(row.get("Conference", "")))}</td>
-                <td>{escape(str(row.get("IST Seed", "")))}</td>
-            </tr>
+    panels = []
+    for conference in ["West", "East"]:
+        sections = []
+        for group_name in [f"{conference} A", f"{conference} B", f"{conference} C"]:
+            table = grouped.get(group_name)
+            if table is None or table.empty:
+                continue
+            rows = []
+            for idx, row in table.iterrows():
+                tier = {"winner": "playoff", "wildcard": "playin"}.get(row.get("Tier", "out"), "lottery")
+                rows.append(f"""
+                    <tr class="sbc-standings-{tier}">
+                        <td class="sbc-standings-rank"><span>{idx + 1}</span></td>
+                        <td class="sbc-standings-team">
+                            <img src="{escape(str(row.get("Logo", "")), quote=True)}" alt="{escape(str(row.get("FullTeam", "")), quote=True)} logo">
+                            <strong>{escape(str(row.get("FullTeam", "")))}</strong>
+                        </td>
+                        <td>{escape(str(row.get("Record", "")))}</td>
+                        <td>{escape(str(row.get("PointDiffDisplay", "")))}</td>
+                    </tr>
+                """)
+            sections.append(f"""
+                <tr class="sbc-standings-group-row"><td colspan="4">{escape(group_name)}</td></tr>
+                {''.join(rows)}
+            """)
+        if not sections:
+            continue
+        panels.append(f"""
+            <section class="sbc-standings-panel">
+                <div class="sbc-standings-head">
+                    <span>{conference} Groups</span>
+                    <em>Through Period {escape(str(selected_period))}</em>
+                </div>
+                <div class="sbc-standings-table-wrap">
+                    <table class="sbc-standings-table sbc-ist-standings-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Team</th>
+                                <th>Record</th>
+                                <th>Diff</th>
+                            </tr>
+                        </thead>
+                        <tbody>{''.join(sections)}</tbody>
+                    </table>
+                </div>
+            </section>
         """)
+    if not panels:
+        return
     render_html('<div class="sbc-section-label">Tournament Snapshot</div>')
-    render_html(f"""
-        <section class="sbc-standings-panel sbc-standings-panel-wide">
-            <div class="sbc-standings-head">
-                <span>In-Season Tournament Standings</span>
-                <em>Through Period {escape(str(selected_period))}</em>
-            </div>
-            <div class="sbc-standings-table-wrap">
-                <table class="sbc-standings-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Team</th>
-                            <th>Record</th>
-                            <th>Win %</th>
-                            <th>Diff.</th>
-                            <th>Conf.</th>
-                            <th>IST</th>
-                        </tr>
-                    </thead>
-                    <tbody>{''.join(rows)}</tbody>
-                </table>
-            </div>
-        </section>
-    """)
+    render_html(f'<div class="sbc-standings-layout">{"".join(panels)}</div>')
 
 st.markdown(
     f"""
@@ -2473,12 +2637,13 @@ st.markdown(
         width: 10.75rem;
         min-width: 10.75rem;
         max-width: 10.75rem;
-        text-align: left !important;
+        text-align: center !important;
     }}
 
     .sbc-pick-slot-team {{
         color: var(--slot-color);
-        display: inline-block;
+        display: inline-grid;
+        justify-items: center;
         font-family: var(--slot-font), "Poppins", sans-serif;
         font-size: 1.02rem;
         font-weight: 950;
@@ -2487,23 +2652,43 @@ st.markdown(
         text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
     }}
 
+    .sbc-pick-slot-team strong,
+    .sbc-pick-slot-team em {{
+        display: block;
+        font-style: normal;
+        line-height: 1.05;
+        text-align: center;
+    }}
+
+    .sbc-pick-slot-team em {{
+        margin-top: 0.16rem;
+        font-family: "Poppins", sans-serif;
+        font-size: 0.72rem;
+        font-weight: 850;
+        color: var(--sbc-muted);
+    }}
+
     .sbc-pick-logo-cluster {{
         display: flex;
         align-items: center;
+        justify-content: center;
         flex-wrap: wrap;
         gap: 0.35rem;
     }}
 
     .sbc-pick-logo-chip {{
-        display: inline-flex;
+        display: inline-grid;
+        justify-items: center;
         align-items: center;
-        gap: 0.28rem;
+        gap: 0.18rem;
     }}
 
     .sbc-pick-logo-chip span {{
         color: var(--sbc-muted);
         font-size: 0.68rem;
         font-weight: 850;
+        line-height: 1.05;
+        text-align: center;
     }}
 
     .sbc-pick-year-cell {{
@@ -2526,7 +2711,7 @@ st.markdown(
         width: 15.75rem;
         min-width: 15.75rem;
         max-width: 15.75rem;
-        text-align: left !important;
+        text-align: center !important;
         white-space: normal !important;
     }}
 
@@ -3301,6 +3486,11 @@ st.markdown(
     .sbc-standings-table th:nth-child(1) {{ width: 3.4rem; }}
     .sbc-standings-table th:nth-child(2) {{ width: 14rem; text-align: left; }}
 
+    .sbc-ist-standings-table th:nth-child(1) {{ width: 3.4rem; }}
+    .sbc-ist-standings-table th:nth-child(2) {{ width: 13.5rem; text-align: left; }}
+    .sbc-ist-standings-table th:nth-child(3),
+    .sbc-ist-standings-table th:nth-child(4) {{ width: 5.2rem; }}
+
     .sbc-standings-table td {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.065);
         color: var(--sbc-ink);
@@ -3315,6 +3505,18 @@ st.markdown(
 
     .sbc-standings-table tr:last-child td {{
         border-bottom: none;
+    }}
+
+    .sbc-standings-group-row td {{
+        height: auto !important;
+        background: #111827 !important;
+        color: #ffffff !important;
+        font-size: 0.82rem !important;
+        font-weight: 950 !important;
+        letter-spacing: 0.08em;
+        padding: 0.52rem 0.68rem !important;
+        text-align: left !important;
+        text-transform: uppercase;
     }}
 
     .sbc-standings-playoff td {{
@@ -3405,7 +3607,7 @@ st.markdown(
     }}
 
     .sbc-overview-table th:nth-child(1) {{ width: 3.5rem; }}
-    .sbc-overview-table th:nth-child(2) {{ width: 9rem; text-align: left; }}
+    .sbc-overview-table th:nth-child(2) {{ width: 10rem; text-align: left; }}
     .sbc-overview-table td,
     .sbc-draft-board-table td {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.07);
@@ -3429,13 +3631,102 @@ st.markdown(
     }}
 
     .sbc-overview-money {{
+        color: var(--sbc-ink) !important;
+        font-family: "Poppins", "Segoe UI", sans-serif;
         font-variant-numeric: tabular-nums;
+        font-size: 0.8rem !important;
+        font-weight: 850 !important;
+        letter-spacing: 0;
+    }}
+
+    .sbc-money-good {{ color: #1f5f34 !important; }}
+    .sbc-money-bad {{ color: #8d2424 !important; }}
+    .sbc-overview-important-money {{
+        background: color-mix(in srgb, #c7a731 24%, #ffffff) !important;
+        box-shadow: inset 0 0 0 2px rgba(199, 167, 49, 0.38);
+    }}
+    .sbc-overview-center {{ font-weight: 950 !important; }}
+
+    .sbc-overview-logo-cell img {{
+        width: 3.25rem;
+        height: 3.25rem;
+    }}
+
+    .sbc-overview-team-name {{
+        color: var(--overview-team-color);
+        display: grid;
+        gap: 0.14rem;
+        line-height: 1.05;
+    }}
+
+    .sbc-overview-team-name strong {{
+        display: block;
+        font-family: var(--overview-team-font), "Poppins", sans-serif;
+        font-size: 1rem;
+        font-weight: 950;
+    }}
+
+    .sbc-overview-team-name em {{
+        color: var(--sbc-muted);
+        display: block;
+        font-family: "Poppins", "Segoe UI", sans-serif;
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 850;
+        line-height: 1;
+    }}
+
+    .sbc-overview-active {{
+        display: inline-grid;
+        place-items: center;
+        min-width: 2.35rem;
+        height: 2.15rem;
+        border-radius: 999px;
+        border: 1px solid rgba(23, 32, 42, 0.12);
+        font-size: 0.9rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-overview-active-ok {{
+        background: color-mix(in srgb, #3f8f55 14%, #ffffff);
+        color: #194926;
+    }}
+
+    .sbc-overview-active-warn {{
+        background: color-mix(in srgb, #c97f25 22%, #ffffff);
+        color: #6a3a08;
+    }}
+
+    .sbc-overview-active-danger {{
+        background: color-mix(in srgb, #c84d4d 18%, #ffffff);
+        color: #7c1f1f;
+    }}
+
+    .sbc-overview-hardcap {{
+        font-size: 0.78rem !important;
+        font-weight: 850 !important;
+    }}
+
+    .sbc-overview-hardcap-alert {{
+        background: color-mix(in srgb, #c7a731 20%, #ffffff) !important;
+        color: #5f4700 !important;
         font-weight: 950 !important;
     }}
 
-    .sbc-money-good {{ color: #256f3b !important; }}
-    .sbc-money-bad {{ color: #9f2626 !important; }}
-    .sbc-overview-center {{ font-weight: 950 !important; }}
+    .sbc-hardcap-flag {{
+        display: inline-grid;
+        place-items: center;
+        width: 1.2rem;
+        height: 1.2rem;
+        margin-right: 0.32rem;
+        border-radius: 999px;
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.72rem;
+        font-weight: 950;
+        vertical-align: middle;
+    }}
 
     .sbc-payout-grid {{
         display: grid;
@@ -3542,7 +3833,15 @@ st.markdown(
 
     .sbc-draft-team-cell,
     .sbc-draft-player-cell {{
+        text-align: center !important;
+    }}
+
+    .sbc-draft-player-cell {{
         text-align: left !important;
+    }}
+
+    .sbc-draft-slot-cell .sbc-pick-slot-team {{
+        margin: 0 auto;
     }}
 
     .sbc-draft-team-cell img {{
