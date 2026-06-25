@@ -264,11 +264,20 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
         if col in image_columns:
             th_classes.append("sbc-image-col")
         class_attr = f' class="{" ".join(th_classes)}"' if th_classes else ""
-        header_cells.append(f"<th{class_attr}>{escape(str(col))}</th>")
+        label = "" if col == "Team_logo" else str(col)
+        header_cells.append(f"<th{class_attr}>{escape(label)}</th>")
 
     body_rows = []
+    logo_to_team = {info.get("logo", ""): team for team, info in team_info.items()}
     for _, row in table_df.iterrows():
         cells = []
+        team_logo_value = row.get("Team_logo", "")
+        row_style = ""
+        if str(team_logo_value).strip():
+            row_team = logo_to_team.get(str(team_logo_value), "")
+            row_color = team_info.get(row_team, {}).get("bg", "")
+            if row_color:
+                row_style = f' style="--row-team-color:{escape(str(row_color), quote=True)};"'
         for col in visible_columns:
             raw_value = row.get(col, "")
             cell_classes = []
@@ -299,7 +308,7 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
 
             class_attr = f' class="{" ".join(cell_classes)}"' if cell_classes else ""
             cells.append(f"<td{class_attr}{style}>{value_html}</td>")
-        body_rows.append(f"<tr>{''.join(cells)}</tr>")
+        body_rows.append(f"<tr{row_style}>{''.join(cells)}</tr>")
 
     render_html(f"""
         <div class="sbc-table-wrap">
@@ -319,6 +328,56 @@ def safe_table_call(fn, *args, **kwargs):
 
 def team_logo_for_name(team):
     return team_info.get(str(team), {}).get("logo", "")
+
+
+def team_color_for_name(team):
+    return team_info.get(str(team), {}).get("bg", "var(--sbc-ink)")
+
+
+def team_font_for_name(team):
+    return TEAM_FONTS.get(str(team), "Poppins")
+
+
+def team_names_from_list(value):
+    if is_blank_value(value):
+        return []
+    text = str(value)
+    if text.lower().strip() in ["false", "nan", "none", "nat"]:
+        return []
+    names = []
+    for part in re.split(r",|/|;|\bor\b", text):
+        team = part.strip()
+        if team in team_info:
+            names.append(team)
+    return names
+
+
+def render_team_logo_cluster(value):
+    teams = team_names_from_list(value)
+    if not teams:
+        display = clean_pick_display(value)
+        return escape(str(display))
+    logos = []
+    for team in teams:
+        logo = team_logo_for_name(team)
+        logos.append(
+            f'<span class="sbc-pick-logo-chip" title="{escape(live_team_full_name(team), quote=True)}">'
+            f'<img class="sbc-pick-logo" src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">'
+            f'<span>{escape(team)}</span>'
+            f'</span>'
+        )
+    return f'<div class="sbc-pick-logo-cluster">{"".join(logos)}</div>'
+
+
+def render_slot_team(value):
+    team = clean_pick_display(value)
+    color = team_color_for_name(team)
+    font = team_font_for_name(team)
+    return (
+        f'<span class="sbc-pick-slot-team" '
+        f'style="--slot-color:{escape(str(color), quote=True)};--slot-font:{escape(str(font), quote=True)};">'
+        f'{escape(str(team))}</span>'
+    )
 
 
 def render_overview_table(data):
@@ -552,7 +611,7 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
             classes.append("sbc-pick-logo-col")
         if col == "Round":
             classes.append("sbc-pick-round-col")
-        if col == "Contacted":
+        if col in ["Contacted", "Potential Owners"]:
             classes.append("sbc-pick-contact-col")
         if col == "Explanation":
             classes.append("sbc-pick-detail-col")
@@ -576,13 +635,17 @@ def render_pick_table(data, title, icon, description, empty_text, columns=None, 
                 url = escape(str(value), quote=True)
                 value_html = f'<img class="sbc-pick-logo" src="{url}" alt="" referrerpolicy="no-referrer">'
                 cell_classes.extend(["sbc-pick-logo-cell", "sbc-pick-logo-col"])
+            elif col == "OGTeam":
+                value_html = render_slot_team(value)
+                cell_classes.append("sbc-pick-slot-cell")
+            elif col in ["Contacted", "Potential Owners"]:
+                value_html = render_team_logo_cluster(value)
+                cell_classes.append("sbc-pick-contact-cell")
             else:
                 display = clean_pick_display(value)
                 value_html = escape(str(display))
                 if col == "Explanation":
                     cell_classes.append("sbc-pick-detail-cell")
-                if col == "Contacted":
-                    cell_classes.append("sbc-pick-contact-cell")
                 if col == "Year":
                     cell_classes.append("sbc-pick-year-cell")
                 if col == "Round":
@@ -1257,8 +1320,159 @@ def score_numeric(value):
         return 0
 
 
+def parse_record_value(value):
+    text = "" if is_blank_value(value) else str(value)
+    match = re.search(r"(\d+)\s*-\s*(\d+)", text)
+    if not match:
+        return 0, 0
+    return int(match.group(1)), int(match.group(2))
+
+
+def pct_from_record_value(value):
+    wins, losses = parse_record_value(value)
+    total = wins + losses
+    return wins / total if total else 0
+
+
+def team_game_rows(schedule_df, selected_year, selected_period, competition_types=None):
+    if schedule_df.empty:
+        return schedule_df.copy()
+    games = schedule_df[
+        (schedule_df["Year"] == selected_year)
+        & (schedule_df["Period"] <= selected_period)
+    ].copy()
+    if competition_types:
+        games = games[games["Type"].astype(str).isin(competition_types)].copy()
+    return games
+
+
+def point_diff_for_games(team, games):
+    if games.empty:
+        return 0
+    team_a = games["TeamA"].astype(str) == team
+    team_b = games["TeamB"].astype(str) == team
+    scored = games.loc[team_a, "TeamAScore"].map(score_numeric).sum() + games.loc[team_b, "TeamBScore"].map(score_numeric).sum()
+    allowed = games.loc[team_a, "TeamBScore"].map(score_numeric).sum() + games.loc[team_b, "TeamAScore"].map(score_numeric).sum()
+    return scored - allowed
+
+
+def record_pct_for_games(team, games):
+    if games.empty:
+        return 0
+    team_games = games[(games["TeamA"].astype(str) == team) | (games["TeamB"].astype(str) == team)]
+    wins = 0
+    losses = 0
+    for _, game in team_games.iterrows():
+        is_a = str(game.get("TeamA", "")) == team
+        own = score_numeric(game.get("TeamAScore" if is_a else "TeamBScore", 0))
+        opp = score_numeric(game.get("TeamBScore" if is_a else "TeamAScore", 0))
+        if own > opp:
+            wins += 1
+        elif own < opp:
+            losses += 1
+    total = wins + losses
+    return wins / total if total else 0
+
+
+def tied_team_games(games, teams):
+    teams = set(teams)
+    if games.empty or not teams:
+        return games.iloc[0:0].copy()
+    return games[
+        games["TeamA"].astype(str).isin(teams)
+        & games["TeamB"].astype(str).isin(teams)
+    ].copy()
+
+
+def opponent_games(team, games, opponents):
+    opponents = set(opponents)
+    if games.empty or not opponents:
+        return games.iloc[0:0].copy()
+    is_team_a = games["TeamA"].astype(str) == team
+    is_team_b = games["TeamB"].astype(str) == team
+    return games[
+        (is_team_a & games["TeamB"].astype(str).isin(opponents))
+        | (is_team_b & games["TeamA"].astype(str).isin(opponents))
+    ].copy()
+
+
+def division_leaders_from_table(table):
+    leaders = set()
+    for _, div_table in table.groupby("Division"):
+        if div_table.empty:
+            continue
+        ordered = div_table.sort_values(["WinPctRaw", "wins", "PointDiff", "Team"], ascending=[False, False, False, True])
+        leaders.add(str(ordered.iloc[0]["Team"]))
+    return leaders
+
+
+def playoff_eligible_teams(table):
+    eligible = set()
+    for _, conf_table in table.groupby("Conference"):
+        ordered = conf_table.sort_values(["WinPctRaw", "wins", "PointDiff", "Team"], ascending=[False, False, False, True])
+        eligible.update(ordered.head(10)["Team"].astype(str).tolist())
+    return eligible
+
+
+def tiebreak_value(table, team, criterion, games, playoff_teams, division_leaders):
+    info = team_info.get(team, {})
+    if criterion == "division_leader":
+        return 1 if team in division_leaders else 0
+    if criterion == "division_pct":
+        division_opponents = [name for name, item in team_info.items() if item.get("div") == info.get("div") and name != team]
+        return record_pct_for_games(team, opponent_games(team, games, division_opponents))
+    if criterion == "conference_pct":
+        conference_opponents = [name for name, item in team_info.items() if item.get("conf") == info.get("conf") and name != team]
+        return record_pct_for_games(team, opponent_games(team, games, conference_opponents))
+    if criterion == "playoff_own_conf_pct":
+        opponents = [name for name in playoff_teams if name != team and team_info.get(name, {}).get("conf") == info.get("conf")]
+        return record_pct_for_games(team, opponent_games(team, games, opponents))
+    if criterion == "playoff_other_conf_pct":
+        opponents = [name for name in playoff_teams if team_info.get(name, {}).get("conf") != info.get("conf")]
+        return record_pct_for_games(team, opponent_games(team, games, opponents))
+    if criterion == "point_diff":
+        return point_diff_for_games(team, games)
+    return 0
+
+
+def nba_style_rank_table(table, games):
+    if table.empty:
+        return table
+    table = table.copy()
+    table["PointDiff"] = table["Team"].map(lambda team: point_diff_for_games(str(team), games))
+    table = table.sort_values(["WinPctRaw", "wins", "PointDiff", "Team"], ascending=[False, False, False, True])
+    division_leaders = division_leaders_from_table(table)
+    playoff_teams = playoff_eligible_teams(table)
+    ranked_groups = []
+    for _, group in table.groupby(["wins", "losses"], sort=False):
+        teams = group["Team"].astype(str).tolist()
+        if len(teams) == 1:
+            ranked_groups.append(group)
+            continue
+        group = group.copy()
+        common_games = tied_team_games(games, teams)
+        if len(teams) == 2:
+            criteria = ["head_to_head", "division_leader", "division_pct", "conference_pct", "playoff_own_conf_pct", "playoff_other_conf_pct", "point_diff"]
+        else:
+            criteria = ["division_leader", "head_to_head", "division_pct", "conference_pct", "playoff_own_conf_pct", "point_diff"]
+        sort_cols = []
+        for criterion in criteria:
+            if criterion == "division_pct" and len(set(group["Division"].astype(str))) > 1:
+                continue
+            col = f"_tb_{criterion}"
+            if criterion == "head_to_head":
+                group[col] = group["Team"].map(lambda team: record_pct_for_games(str(team), common_games))
+            else:
+                group[col] = group["Team"].map(lambda team: tiebreak_value(table, str(team), criterion, games, playoff_teams, division_leaders))
+            sort_cols.append(col)
+        ranked_groups.append(group.sort_values(sort_cols + ["PointDiff", "Team"], ascending=[False] * len(sort_cols) + [False, True]))
+    ranked = pd.concat(ranked_groups, ignore_index=True)
+    return ranked.drop(columns=[col for col in ranked.columns if str(col).startswith("_tb_")], errors="ignore")
+
+
 def standings_snapshot(standings_df, selected_year, selected_period, conference):
     team_to_conf = {team: info["conf"] for team, info in team_info.items()}
+    team_to_div = {team: info["div"] for team, info in team_info.items()}
     snapshot_period = selected_period
     if not ((standings_df["Year"] == selected_year) & (standings_df["Period"] == snapshot_period)).any():
         snapshot_period = 99
@@ -1267,19 +1481,57 @@ def standings_snapshot(standings_df, selected_year, selected_period, conference)
         & (standings_df["Period"] == snapshot_period)
     ].copy()
     table["Conference"] = table["Team"].map(team_to_conf)
+    table["Division"] = table["Team"].map(team_to_div)
+    if table.empty:
+        return table
+    table[["wins", "losses"]] = table["Record"].apply(lambda value: pd.Series(parse_record_value(value)))
+    table["WinPctRaw"] = table["wins"] / (table["wins"] + table["losses"]).replace(0, pd.NA)
+    table["WinPctRaw"] = table["WinPctRaw"].fillna(0)
+    games = team_game_rows(all_time_schedule, selected_year, snapshot_period, ["Regular Season"])
+    table = nba_style_rank_table(table, games)
     table = table[table["Conference"] == conference].copy()
     if table.empty:
         return table
-    table[["wins", "losses"]] = table["Record"].str.split("-", expand=True).astype(int)
-    table["WinPctRaw"] = table["wins"] / (table["wins"] + table["losses"]).replace(0, pd.NA)
-    table["WinPctRaw"] = table["WinPctRaw"].fillna(0)
     max_wins = table["wins"].max()
     table["GB"] = (max_wins - table["wins"]).astype(float).round(1).astype(str)
     table.loc[table["GB"] == "0.0", "GB"] = "-"
     table["Logo"] = table["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     table["FullTeam"] = table["Team"].map(live_team_full_name)
     table["WinPct"] = (table["WinPctRaw"] * 100).round(1).astype(str) + "%"
-    return table.sort_values(["WinPctRaw", "wins", "Team"], ascending=[False, False, True]).reset_index(drop=True)
+    return table.reset_index(drop=True)
+
+
+def ist_standings_snapshot(standings_df, selected_year, selected_period):
+    if standings_df.empty:
+        return pd.DataFrame()
+    games = team_game_rows(all_time_schedule, selected_year, selected_period, ["In-Season Tournament"])
+    if games.empty:
+        return pd.DataFrame()
+    teams_with_games = sorted(set(games["TeamA"].dropna().astype(str)).union(games["TeamB"].dropna().astype(str)))
+    table = standings_df[
+        (standings_df["Year"] == selected_year)
+        & (standings_df["Period"] == selected_period)
+        & (standings_df["Team"].astype(str).isin(teams_with_games))
+    ].copy()
+    if table.empty:
+        table = standings_df[
+            (standings_df["Year"] == selected_year)
+            & (standings_df["Period"] == 99)
+            & (standings_df["Team"].astype(str).isin(teams_with_games))
+        ].copy()
+    if table.empty:
+        return table
+    table["Conference"] = table["Team"].map(lambda team: team_info.get(team, {}).get("conf", ""))
+    table["Division"] = table["Team"].map(lambda team: team_info.get(team, {}).get("div", ""))
+    table[["wins", "losses"]] = table["GSRecord"].apply(lambda value: pd.Series(parse_record_value(value)))
+    table["WinPctRaw"] = table["wins"] / (table["wins"] + table["losses"]).replace(0, pd.NA)
+    table["WinPctRaw"] = table["WinPctRaw"].fillna(0)
+    table = nba_style_rank_table(table, games)
+    table["Logo"] = table["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
+    table["FullTeam"] = table["Team"].map(live_team_full_name)
+    table["WinPct"] = (table["WinPctRaw"] * 100).round(1).astype(str) + "%"
+    table["PointDiffDisplay"] = table["PointDiff"].map(lambda value: f"{value:+.0f}")
+    return table.reset_index(drop=True)
 
 
 def render_scoreboard_cards(scores_df):
@@ -1366,7 +1618,7 @@ def render_conference_standings(standings_df, selected_year, selected_period, co
         tier = "playoff" if idx <= 5 else "playin" if idx <= 9 else "lottery"
         rows.append(f"""
             <tr class="sbc-standings-{tier}">
-                <td class="sbc-standings-rank">{idx + 1}</td>
+                <td class="sbc-standings-rank"><span>{idx + 1}</span></td>
                 <td class="sbc-standings-team">
                     <img src="{escape(str(row.get("Logo", "")), quote=True)}" alt="{escape(str(row.get("FullTeam", "")), quote=True)} logo">
                     <strong>{escape(str(row.get("FullTeam", "")))}</strong>
@@ -1389,13 +1641,61 @@ def render_conference_standings(standings_df, selected_year, selected_period, co
                 <table class="sbc-standings-table">
                     <thead>
                         <tr>
-                            <th>Seed</th>
+                            <th>Rank</th>
                             <th>Team</th>
                             <th>Record</th>
                             <th>Win %</th>
                             <th>GB</th>
                             <th>Conf.</th>
                             <th>Div.</th>
+                        </tr>
+                    </thead>
+                    <tbody>{''.join(rows)}</tbody>
+                </table>
+            </div>
+        </section>
+    """)
+
+
+def render_ist_standings(standings_df, selected_year, selected_period):
+    table = ist_standings_snapshot(standings_df, selected_year, selected_period)
+    if table.empty:
+        return
+    rows = []
+    for idx, row in table.iterrows():
+        tier = "playoff" if idx <= 7 else "playin" if idx <= 15 else "lottery"
+        rows.append(f"""
+            <tr class="sbc-standings-{tier}">
+                <td class="sbc-standings-rank"><span>{idx + 1}</span></td>
+                <td class="sbc-standings-team">
+                    <img src="{escape(str(row.get("Logo", "")), quote=True)}" alt="{escape(str(row.get("FullTeam", "")), quote=True)} logo">
+                    <strong>{escape(str(row.get("FullTeam", "")))}</strong>
+                </td>
+                <td>{escape(str(row.get("GSRecord", "")))}</td>
+                <td>{escape(str(row.get("WinPct", "")))}</td>
+                <td>{escape(str(row.get("PointDiffDisplay", "")))}</td>
+                <td>{escape(str(row.get("Conference", "")))}</td>
+                <td>{escape(str(row.get("IST Seed", "")))}</td>
+            </tr>
+        """)
+    render_html('<div class="sbc-section-label">Tournament Snapshot</div>')
+    render_html(f"""
+        <section class="sbc-standings-panel sbc-standings-panel-wide">
+            <div class="sbc-standings-head">
+                <span>In-Season Tournament Standings</span>
+                <em>Through Period {escape(str(selected_period))}</em>
+            </div>
+            <div class="sbc-standings-table-wrap">
+                <table class="sbc-standings-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Team</th>
+                            <th>Record</th>
+                            <th>Win %</th>
+                            <th>Diff.</th>
+                            <th>Conf.</th>
+                            <th>IST</th>
                         </tr>
                     </thead>
                     <tbody>{''.join(rows)}</tbody>
@@ -1680,7 +1980,7 @@ st.markdown(
 
     .sbc-cap-eyebrow {{
         color: var(--sbc-team-primary);
-        font-size: 0.76rem;
+        font-size: 0.98rem;
         font-weight: 950;
         letter-spacing: 0.16em;
         text-transform: uppercase;
@@ -1707,7 +2007,7 @@ st.markdown(
         gap: 0.55rem;
         margin: 1.1rem 0 0.55rem;
         color: var(--sbc-ink);
-        font-size: 1.08rem;
+        font-size: 1.28rem;
         font-weight: 950;
         line-height: 1;
     }}
@@ -1829,8 +2129,16 @@ st.markdown(
         text-align: center;
     }}
 
+    .sbc-cap-table tbody tr[style*="--row-team-color"] td {{
+        background-color: color-mix(in srgb, var(--row-team-color) 5%, #ffffff);
+    }}
+
     .sbc-cap-table tbody tr:nth-child(even) td {{
         background-color: rgba(247, 249, 252, 0.55);
+    }}
+
+    .sbc-cap-table tbody tr:nth-child(even)[style*="--row-team-color"] td {{
+        background-color: color-mix(in srgb, var(--row-team-color) 7%, #ffffff);
     }}
 
     .sbc-cap-table tbody tr:hover td {{
@@ -1869,6 +2177,7 @@ st.markdown(
         width: 3.2rem;
         height: 3.2rem;
         object-fit: cover;
+        object-position: center 18%;
         border-radius: 50%;
         display: block;
         margin: 0 auto;
@@ -1878,8 +2187,8 @@ st.markdown(
     }}
 
     .sbc-team-logo-img {{
-        width: 2.65rem;
-        height: 2.65rem;
+        width: 3.05rem;
+        height: 3.05rem;
         object-fit: contain;
         display: block;
         margin: 0 auto;
@@ -2045,7 +2354,7 @@ st.markdown(
 
     .sbc-pick-title {{
         color: var(--sbc-ink);
-        font-size: 1.02rem;
+        font-size: 1.22rem;
         font-weight: 950;
         line-height: 1.05;
     }}
@@ -2092,7 +2401,7 @@ st.markdown(
         background: #f7f9fc;
         border-bottom: 1px solid rgba(23, 32, 42, 0.11);
         color: var(--sbc-ink);
-        font-size: 0.7rem;
+        font-size: 0.86rem;
         font-weight: 950;
         letter-spacing: 0.07em;
         padding: 0.62rem 0.68rem;
@@ -2144,19 +2453,57 @@ st.markdown(
     }}
 
     .sbc-pick-logo-col {{
-        width: 3.15rem;
-        min-width: 3.15rem;
-        max-width: 3.15rem;
+        width: 4.1rem;
+        min-width: 4.1rem;
+        max-width: 4.1rem;
         text-align: center !important;
     }}
 
     .sbc-pick-logo {{
-        width: 1.85rem;
-        height: 1.85rem;
+        width: 2.35rem;
+        height: 2.35rem;
         display: block;
         object-fit: contain;
         margin: 0 auto;
         filter: drop-shadow(0 4px 8px rgba(18, 25, 38, 0.13));
+    }}
+
+
+    .sbc-pick-slot-cell {{
+        width: 10.75rem;
+        min-width: 10.75rem;
+        max-width: 10.75rem;
+        text-align: left !important;
+    }}
+
+    .sbc-pick-slot-team {{
+        color: var(--slot-color);
+        display: inline-block;
+        font-family: var(--slot-font), "Poppins", sans-serif;
+        font-size: 1.02rem;
+        font-weight: 950;
+        line-height: 1.05;
+        overflow-wrap: anywhere;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
+    }}
+
+    .sbc-pick-logo-cluster {{
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }}
+
+    .sbc-pick-logo-chip {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+    }}
+
+    .sbc-pick-logo-chip span {{
+        color: var(--sbc-muted);
+        font-size: 0.68rem;
+        font-weight: 850;
     }}
 
     .sbc-pick-year-cell {{
@@ -2176,9 +2523,9 @@ st.markdown(
 
     .sbc-pick-contact-col,
     .sbc-pick-contact-cell {{
-        width: 13.75rem;
-        min-width: 13.75rem;
-        max-width: 13.75rem;
+        width: 15.75rem;
+        min-width: 15.75rem;
+        max-width: 15.75rem;
         text-align: left !important;
         white-space: normal !important;
     }}
@@ -2585,7 +2932,7 @@ st.markdown(
     .sbc-schedule-table th {{
         background: #111827;
         color: #ffffff;
-        font-size: 0.72rem;
+        font-size: 0.86rem;
         font-weight: 950;
         letter-spacing: 0.08em;
         padding: 0.78rem 0.85rem;
@@ -2879,7 +3226,7 @@ st.markdown(
     }}
 
     .sbc-score-winner b {{
-        color: var(--score-color);
+        color: var(--sbc-ink);
     }}
 
     .sbc-standings-layout {{
@@ -2897,6 +3244,10 @@ st.markdown(
         box-shadow: 0 14px 34px rgba(18, 25, 38, 0.075);
     }}
 
+    .sbc-standings-panel-wide {{
+        margin: 0.25rem 0 1.1rem;
+    }}
+
     .sbc-standings-head {{
         display: flex;
         align-items: center;
@@ -2909,7 +3260,7 @@ st.markdown(
     }}
 
     .sbc-standings-head span {{
-        font-size: 0.9rem;
+        font-size: 1.1rem;
         font-weight: 950;
         line-height: 1.1;
     }}
@@ -2938,7 +3289,7 @@ st.markdown(
         background: #f7f9fc;
         border-bottom: 1px solid rgba(23, 32, 42, 0.1);
         color: var(--sbc-ink);
-        font-size: 0.66rem;
+        font-size: 0.84rem;
         font-weight: 950;
         letter-spacing: 0.07em;
         padding: 0.58rem 0.6rem;
@@ -2967,21 +3318,34 @@ st.markdown(
     }}
 
     .sbc-standings-playoff td {{
-        background: color-mix(in srgb, #58a76b 12%, #ffffff);
+        background: color-mix(in srgb, #3f8f55 16%, #ffffff);
     }}
 
     .sbc-standings-playin td {{
-        background: color-mix(in srgb, #e6c85c 15%, #ffffff);
+        background: color-mix(in srgb, #c7a731 19%, #ffffff);
     }}
 
     .sbc-standings-lottery td {{
-        background: color-mix(in srgb, #d96b6b 9%, #ffffff);
+        background: color-mix(in srgb, #c84d4d 13%, #ffffff);
     }}
 
     .sbc-standings-rank {{
         color: var(--sbc-ink);
         font-weight: 950 !important;
         font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-standings-rank span {{
+        display: inline-grid;
+        place-items: center;
+        width: 2.15rem;
+        height: 2.15rem;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid rgba(23, 32, 42, 0.14);
+        box-shadow: 0 4px 10px rgba(18, 25, 38, 0.08);
+        color: var(--sbc-ink);
+        font-weight: 950;
     }}
 
     .sbc-standings-team {{
@@ -3031,7 +3395,7 @@ st.markdown(
     .sbc-draft-board-table th {{
         background: #111827;
         color: #ffffff;
-        font-size: 0.68rem;
+        font-size: 0.86rem;
         font-weight: 950;
         letter-spacing: 0.07em;
         padding: 0.66rem 0.65rem;
@@ -3182,8 +3546,8 @@ st.markdown(
     }}
 
     .sbc-draft-team-cell img {{
-        width: 2.2rem;
-        height: 2.2rem;
+        width: 2.65rem;
+        height: 2.65rem;
         object-fit: contain;
         vertical-align: middle;
         margin-right: 0.45rem;
@@ -3194,6 +3558,7 @@ st.markdown(
         width: 2.6rem;
         height: 2.6rem;
         object-fit: cover;
+        object-position: center 18%;
         border-radius: 999px;
         vertical-align: middle;
         margin-right: 0.55rem;
@@ -3779,7 +4144,7 @@ with tab2:
         "Picks the team controls outright.",
         "No fully controlled picks are currently listed.",
         columns=["Year", "Round", "OGTeam", "Contacted", "Explanation"],
-        image_columns=["OGTeam"],
+        image_columns=[],
         status="hold")
 
     render_pick_table(
@@ -3789,7 +4154,7 @@ with tab2:
         "Picks with swap language, shared ownership, or split-control terms.",
         "No swapped or shared-control picks are currently listed.",
         columns=["Year", "Round", "OGTeam", "Contacted", "Explanation"],
-        image_columns=["OGTeam"],
+        image_columns=[],
         status="swap")
 
     render_pick_table(
@@ -3799,7 +4164,7 @@ with tab2:
         "Picks the team has, but is not allowed to trade right now.",
         "No locked picks are currently listed.",
         columns=["Year", "Round", "OGTeam", "Contacted", "Explanation"],
-        image_columns=["OGTeam"],
+        image_columns=[],
         status="locked")
 
     render_pick_table(
@@ -3809,7 +4174,7 @@ with tab2:
         "Original team picks that now sit with another owner.",
         "No traded-away picks are currently listed.",
         columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
-        image_columns=["OGTeam", "CurrentTeam"],
+        image_columns=["CurrentTeam"],
         status="away")
     if False and touched_team_picks.shape[0] > 0:
         st.header("Touched Draft Picks")
@@ -3948,21 +4313,21 @@ with tab4:
     render_team_travel_map(schedule_raw, SelectedTeam, SelectedScheduleYear)
 
 with tab5:
-    SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
-    period_options2 = schedule_period_options(all_time_schedule, SelectedYear2)
-    SelectedPeriod2 = st.selectbox("Select Period", options=period_options2, index=current_period_index(period_options2))
     render_html(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
                 <div>
-                    <div class="sbc-draft-eyebrow">{SelectedYear2} League Scoreboard / Period {SelectedPeriod2}</div>
+                    <div class="sbc-draft-eyebrow">League Scoreboard</div>
                     <div class="sbc-draft-heading">SBC Scoreboard</div>
                     <div class="sbc-draft-subcopy">Every matchup in the selected window, with scores grouped by competition type.</div>
                 </div>
             </div>
         </div>
         """)
+    SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
+    period_options2 = schedule_period_options(all_time_schedule, SelectedYear2)
+    SelectedPeriod2 = st.selectbox("Select Period", options=period_options2, index=current_period_index(period_options2))
 
     scoreboard_schedule = all_time_schedule[
         (all_time_schedule["Year"] == SelectedYear2)
@@ -3979,28 +4344,28 @@ with tab5:
     render_scoreboard_cards(live_stats_total_scores)
 
 with standings_tab:
-    StandingsYear = st.selectbox("Standings Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
-    standings_period_options = schedule_period_options(all_time_schedule, StandingsYear)
-    StandingsPeriod = st.selectbox("Standings Period", options=standings_period_options, index=current_period_index(standings_period_options))
     render_html(f"""
         <div class="sbc-draft-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
                 <div>
-                    <div class="sbc-draft-eyebrow">{StandingsYear} League Table / Period {StandingsPeriod}</div>
+                    <div class="sbc-draft-eyebrow">League Table</div>
                     <div class="sbc-draft-heading">SBC Standings</div>
                     <div class="sbc-draft-subcopy">Conference position, win percentage, games back, and conference/division record through the selected period.</div>
                 </div>
             </div>
         </div>
         """)
+    StandingsYear = st.selectbox("Standings Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
+    standings_period_options = schedule_period_options(all_time_schedule, StandingsYear)
+    StandingsPeriod = st.selectbox("Standings Period", options=standings_period_options, index=current_period_index(standings_period_options))
     render_html('<div class="sbc-section-label">Standings Snapshot</div>')
     west_col, east_col = st.columns(2)
     with west_col:
         render_conference_standings(standings, StandingsYear, StandingsPeriod, "West")
     with east_col:
         render_conference_standings(standings, StandingsYear, StandingsPeriod, "East")
-    render_html('<div class="sbc-empty-state">Tiebreakers are not currently implemented, so teams with identical records are sorted alphabetically inside the standings tier.</div>')
+    render_ist_standings(standings, StandingsYear, StandingsPeriod)
 
 with tab6:
 
@@ -4221,7 +4586,7 @@ with tab7:
         "Every pick currently controlled outright by its owner.",
         "No fully owned picks are currently listed.",
         columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
-        image_columns=["OGTeam", "CurrentTeam"],
+        image_columns=["CurrentTeam"],
         status="full"
     )
 
@@ -4232,7 +4597,7 @@ with tab7:
         "Pick records with swap language attached.",
         "No swapped picks are currently listed.",
         columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
-        image_columns=["OGTeam", "CurrentTeam"],
+        image_columns=["CurrentTeam"],
         status="swap"
     )
 
@@ -4243,7 +4608,7 @@ with tab7:
         "Picks with shared or split-control ownership language.",
         "No split picks are currently listed.",
         columns=["Year", "Round", "OGTeam", "Potential Owners", "Contacted", "Explanation"],
-        image_columns=["OGTeam"],
+        image_columns=[],
         status="split"
     )
 
@@ -4254,7 +4619,7 @@ with tab7:
         "Picks held by teams but currently restricted from trade.",
         "No locked picks are currently listed.",
         columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
-        image_columns=["OGTeam", "CurrentTeam"],
+        image_columns=["CurrentTeam"],
         status="locked"
     )
 
@@ -5061,3 +5426,4 @@ with tab13:
     if positoinal_check_df.shape[0] > 0:
         st.header("Fantrax Positional Check")
         st.dataframe(positoinal_check_df)
+
