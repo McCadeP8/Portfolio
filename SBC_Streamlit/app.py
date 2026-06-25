@@ -194,6 +194,7 @@ team_font_css = escape(str(team_font), quote=True)
 league_logo_html = escape(str(LEAGUE_LOGO), quote=True)
 league_font_css = escape(str(LEAGUE_FONT), quote=True)
 
+#ABC 
 def format_money(value):
     try:
         if value is None or value == "":
