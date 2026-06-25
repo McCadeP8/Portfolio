@@ -66,27 +66,32 @@ TEAM_ABBREVIATIONS = {
     "Buffalo": "BUF",
     "Cincinnati": "CIN",
     "Columbus": "COL",
-    "Des Moines": "DSM",
-    "El Paso": "ELP",
+    "Des Moines": "DMR",
+    "El Paso": "EPV",
     "Honolulu": "HON",
     "Jacksonville": "JAX",
     "Kentucky": "KEN",
     "Lansing": "LAN",
     "Lincoln": "LIN",
-    "Little Rock": "LIT",
+    "Little Rock": "LBF",
     "Manchester": "MAN",
     "Nashville": "NSH",
     "Pittsburgh": "PIT",
     "Providence": "PRO",
-    "San Diego": "SDG",
+    "San Diego": "SDS",
     "San Jose": "SJO",
     "Seattle": "SEA",
     "St. Louis": "STL",
-    "Tampa Bay": "TBY",
+    "Tampa Bay": "TBF",
     "Tulsa": "TUL",
     "Vancouver": "VAN",
-    "Vegas": "VEG",
+    "Vegas": "VBJ",
 }
+
+LEAGUE_LOGO = "https://pbs.twimg.com/media/HLq5ARaaQAA4KwY?format=png&name=small"
+LEAGUE_PRIMARY = "#09438E"
+LEAGUE_SECONDARY = "#009C3D"
+LEAGUE_FONT = "Bungee"
 
 st.set_page_config(
     page_title="SBC Cap Sheets",
@@ -163,10 +168,12 @@ team_award_history = ensure_columns(team_award_history, ["Award", "Year", "Winne
 
 Teams = sorted(team_info.keys())
 
-_, top_col2 = st.columns([5, 2], vertical_alignment="bottom")
-with top_col2:
-    render_html('<div class="sbc-picker-eyebrow">Team View</div>')
-    SelectedTeam = st.selectbox("Choose your team", Teams, index=Teams.index("Vegas"))
+if "_sbc_selected_team" not in st.session_state:
+    st.session_state["_sbc_selected_team"] = "Vegas"
+SelectedTeam = st.session_state.get("_sbc_selected_team", "Vegas")
+if SelectedTeam not in Teams:
+    SelectedTeam = "Vegas"
+    st.session_state["_sbc_selected_team"] = SelectedTeam
 
 previous_selected_team = st.session_state.get("_sbc_previous_selected_team")
 selected_team_changed = previous_selected_team is not None and previous_selected_team != SelectedTeam
@@ -183,6 +190,8 @@ team_logo_html = escape(str(team_logo), quote=True)
 team_name_html = escape(str(SelectedTeam), quote=True)
 nickname_html = escape(str(nickname), quote=True)
 team_font_css = escape(str(team_font), quote=True)
+league_logo_html = escape(str(LEAGUE_LOGO), quote=True)
+league_font_css = escape(str(LEAGUE_FONT), quote=True)
 
 def format_money(value):
     try:
@@ -496,6 +505,7 @@ def render_overview_table(data):
         rows.append(f"<tr>{''.join(cells)}</tr>")
     header_labels = {
         "Logo": "",
+        "Active Players": "Active",
         "Apron 1 Space": "A1 Space",
         "Apron 2 Space": "A2 Space",
     }
@@ -1911,7 +1921,7 @@ def render_ist_standings(standings_df, selected_year, selected_period):
 st.markdown(
     f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Amatic+SC:wght@700&family=Arvo:wght@400;700&family=Audiowide&family=Baloo+2:wght@700;800&family=Bebas+Neue&family=Cabin+Sketch:wght@700&family=Comfortaa:wght@700&family=Creepster&family=Dancing+Script:wght@700&family=Fjalla+One&family=IM+Fell+English&family=Indie+Flower&family=Lobster&family=Neucha&family=Oswald:wght@700&family=Pacifico&family=Parisienne&family=Pathway+Gothic+One&family=Permanent+Marker&family=Playfair+Display:wght@800&family=Poppins:wght@400;600;700;800;900&family=Quicksand:wght@700&family=Roboto+Slab:wght@800&family=Rye&family=Satisfy&family=Shadows+Into+Light&family=Tangerine:wght@700&family=Teko:wght@700&family=Ubuntu:wght@700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Amatic+SC:wght@700&family=Arvo:wght@400;700&family=Audiowide&family=Baloo+2:wght@700;800&family=Bebas+Neue&family=Bungee&family=Cabin+Sketch:wght@700&family=Comfortaa:wght@700&family=Creepster&family=Dancing+Script:wght@700&family=Fjalla+One&family=IM+Fell+English&family=Indie+Flower&family=Lobster&family=Neucha&family=Oswald:wght@700&family=Pacifico&family=Parisienne&family=Pathway+Gothic+One&family=Permanent+Marker&family=Playfair+Display:wght@800&family=Poppins:wght@400;600;700;800;900&family=Quicksand:wght@700&family=Roboto+Slab:wght@800&family=Rye&family=Satisfy&family=Shadows+Into+Light&family=Tangerine:wght@700&family=Teko:wght@700&family=Ubuntu:wght@700&display=swap');
 
     :root {{
         --sbc-team-primary: {bg_color};
@@ -1970,7 +1980,35 @@ st.markdown(
     }}
 
     .sbc-app-masthead {{
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.75rem;
+    }}
+
+    .sbc-league-masthead {{
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.95rem 1.1rem;
+        border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 24%, rgba(23, 32, 42, 0.12));
+        border-radius: 8px;
+        background: linear-gradient(135deg, color-mix(in srgb, {LEAGUE_PRIMARY} 10%, #ffffff) 0%, color-mix(in srgb, {LEAGUE_SECONDARY} 9%, #ffffff) 100%);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.075);
+    }}
+
+    .sbc-league-masthead img {{
+        width: clamp(4.25rem, 9vw, 6.25rem);
+        height: clamp(4.25rem, 9vw, 6.25rem);
+        object-fit: contain;
+        filter: drop-shadow(0 8px 16px rgba(18, 25, 38, 0.18));
+    }}
+
+    .sbc-league-masthead .sbc-app-eyebrow {{
+        color: {LEAGUE_SECONDARY};
+    }}
+
+    .sbc-league-masthead .sbc-app-title {{
+        color: {LEAGUE_PRIMARY};
+        font-family: "{league_font_css}", "Poppins", sans-serif;
     }}
 
     .sbc-app-eyebrow {{
@@ -2457,6 +2495,20 @@ st.markdown(
         text-shadow: 0 2px 16px rgba(0, 0, 0, 0.24);
     }}
 
+    .sbc-league-hero {{
+        --sbc-team-primary: {LEAGUE_PRIMARY};
+        --sbc-team-secondary: {LEAGUE_SECONDARY};
+        --sbc-team-text: #ffffff;
+        --sbc-team-font: "{league_font_css}", "Poppins", sans-serif;
+        border-color: color-mix(in srgb, {LEAGUE_PRIMARY} 24%, rgba(255, 255, 255, 0.82));
+        background: linear-gradient(135deg, color-mix(in srgb, {LEAGUE_PRIMARY} 90%, #111827 10%) 0%, color-mix(in srgb, {LEAGUE_SECONDARY} 76%, #111827 24%) 100%);
+    }}
+
+    .sbc-league-hero .sbc-draft-heading {{
+        font-family: "{league_font_css}", "Poppins", sans-serif;
+        letter-spacing: 0;
+    }}
+
     .sbc-draft-subcopy {{
         max-width: 52rem;
         color: rgba(255, 255, 255, 0.88);
@@ -2677,7 +2729,7 @@ st.markdown(
         width: 12.75rem;
         min-width: 12.75rem;
         max-width: 12.75rem;
-        text-align: center !important;
+        text-align: left !important;
     }}
 
     .sbc-pick-slot-team {{
@@ -2688,7 +2740,7 @@ st.markdown(
         font-weight: 950;
         line-height: 1.05;
         overflow-wrap: anywhere;
-        text-align: center;
+        text-align: left;
         text-shadow: none;
         white-space: nowrap;
     }}
@@ -3632,9 +3684,9 @@ st.markdown(
     }}
 
     .sbc-overview-table th:nth-child(1) {{ width: 3.4rem; }}
-    .sbc-overview-table th:nth-child(2) {{ width: 8.5rem; text-align: left; }}
-    .sbc-overview-table th:nth-child(3) {{ width: 5.2rem; }}
-    .sbc-overview-table th:nth-child(4) {{ width: 7.2rem; }}
+    .sbc-overview-table th:nth-child(2) {{ width: 7.2rem; text-align: left; }}
+    .sbc-overview-table th:nth-child(3) {{ width: 4.35rem; }}
+    .sbc-overview-table th:nth-child(4) {{ width: 8.1rem; }}
     .sbc-overview-table th:nth-child(5),
     .sbc-overview-table th:nth-child(6) {{ width: 7.2rem; }}
     .sbc-overview-table th:nth-child(7),
@@ -3876,7 +3928,7 @@ st.markdown(
     }}
 
     .sbc-draft-slot-cell .sbc-pick-slot-team {{
-        margin: 0 auto;
+        margin: 0;
     }}
 
     .sbc-draft-team-cell img {{
@@ -4131,13 +4183,23 @@ st.markdown(
     </style>""",
     unsafe_allow_html=True)
 
+render_html(f"""
+    <div class="sbc-app-masthead sbc-league-masthead">
+        <img src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+        <div>
+            <div class="sbc-app-eyebrow">Sports Business Classroom Fantasy Basketball League</div>
+            <div class="sbc-app-title">SBC League Office</div>
+        </div>
+    </div>
+    """)
+
 if selected_team_changed and SelectedTeam == "Honolulu":
     st.balloons()
 if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
 
 team_hub_tab, league_hub_tab, tab9, tab10, tab11, tab12, tab13 = st.tabs([
-    f"🏢 {SelectedTeam} Hub",
+    "🏢 Team Hub",
     "🏟️ League Hub",
     "🔁 Trade Machine",
     "📚 Drafts",
@@ -4146,6 +4208,11 @@ team_hub_tab, league_hub_tab, tab9, tab10, tab11, tab12, tab13 = st.tabs([
     "✅ Data Checks"])
 
 with team_hub_tab:
+    picker_col, _ = st.columns([1.15, 3.85], vertical_alignment="bottom")
+    with picker_col:
+        render_html('<div class="sbc-picker-eyebrow">Team View</div>')
+        st.selectbox("Choose your team", Teams, key="_sbc_selected_team")
+
     tab1, tab2, tab3, tab4 = st.tabs([
         f"💰 {SelectedTeam} Cap",
         f"🏀 {SelectedTeam} Picks",
@@ -4648,9 +4715,9 @@ with tab4:
 
 with tab5:
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
                 <div>
                     <div class="sbc-draft-eyebrow">League Scoreboard</div>
                     <div class="sbc-draft-heading">SBC Scoreboard</div>
@@ -4679,9 +4746,9 @@ with tab5:
 
 with standings_tab:
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
                 <div>
                     <div class="sbc-draft-eyebrow">League Table</div>
                     <div class="sbc-draft-heading">SBC Standings</div>
@@ -4712,9 +4779,9 @@ with tab6:
     trade_restrictins_all_df = safe_table_call(trade_restrictions_all, df, pics)
 
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
                 <div>
                     <div class="sbc-draft-eyebrow">{current_year-1}-{str(current_year)[-2:]} League Player Office</div>
                     <div class="sbc-draft-heading">League Players</div>
@@ -4878,9 +4945,9 @@ with tab7:
     )
 
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
                 <div>
                     <div class="sbc-draft-eyebrow">{current_year}-{str(current_year + 6)[-2:]} League Draft Inventory</div>
                     <div class="sbc-draft-heading">League Draft Picks</div>
@@ -4977,9 +5044,9 @@ with tab7:
     '''
 with tab8:
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
                 <div>
                     <div class="sbc-draft-eyebrow">{current_year-1}-{str(current_year)[-2:]} League Office</div>
                     <div class="sbc-draft-heading">League Overview</div>
