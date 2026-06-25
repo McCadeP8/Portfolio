@@ -457,7 +457,7 @@ def render_draft_team_wordmark(value, empty_text="Not on roster"):
     return (
         f'<span class="sbc-draft-team-wordmark" '
         f'style="--draft-team-color:{escape(str(color), quote=True)};--draft-team-font:{escape(str(font), quote=True)};">'
-        f'{escape(live_team_full_name(team))}'
+        f'{escape(str(team))}'
         f'</span>'
     )
 
@@ -551,7 +551,7 @@ def render_payout_cards(cards):
 def render_current_draft_table(data, title, icon, description):
     if data is None or data.empty:
         render_html(f"""
-            <section class="sbc-draft-board">
+            <section class="sbc-draft-board sbc-current-draft-board">
                 <div class="sbc-draft-board-head"><span>{icon}</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
                 <div class="sbc-pick-empty">No draft board data is available.</div>
             </section>
@@ -561,14 +561,12 @@ def render_current_draft_table(data, title, icon, description):
     has_details = any(clean_pick_display(row.get("Explanation", "")) != "â€”" for _, row in data.iterrows())
     for _, row in data.iterrows():
         slot_team = clean_pick_display(row.get("Slot", ""))
-        current_team = clean_pick_display(row.get("Team", ""))
         detail = clean_pick_display(row.get("Explanation", ""))
         detail_cell = f'<td class="sbc-draft-detail">{escape(str(detail))}</td>' if has_details else ""
         rows.append(f"""
             <tr>
                 <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
-                <td class="sbc-draft-team-cell sbc-draft-slot-cell">{render_slot_team(slot_team)}</td>
-                <td class="sbc-draft-team-cell">{render_draft_team_wordmark(current_team)}</td>
+                <td class="sbc-draft-team-cell sbc-draft-slot-cell">{render_draft_team_wordmark(slot_team)}</td>
                 <td class="sbc-draft-player-cell sbc-draft-player-pending">
                     <img src="{DRAFT_SILHOUETTE}" alt="">
                     <strong>{escape(str(row.get("Time Due (ET)", "")))} (ET)</strong>
@@ -577,11 +575,11 @@ def render_current_draft_table(data, title, icon, description):
             </tr>
         """)
     render_html(f"""
-        <section class="sbc-draft-board">
+        <section class="sbc-draft-board sbc-current-draft-board">
             <div class="sbc-draft-board-head"><span>{icon}</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
             <div class="sbc-draft-board-wrap">
                 <table class="sbc-draft-board-table">
-                    <thead><tr><th>Pick</th><th>Slot</th><th>Owner</th><th>Player</th>{'<th>Details</th>' if has_details else ''}</tr></thead>
+                    <thead><tr><th>Pick</th><th>Drafted By</th><th>Player</th>{'<th>Details</th>' if has_details else ''}</tr></thead>
                     <tbody>{''.join(rows)}</tbody>
                 </table>
             </div>
@@ -592,7 +590,7 @@ def render_current_draft_table(data, title, icon, description):
 def render_draft_history_table(data, title, description):
     if data is None or data.empty:
         render_html(f"""
-            <section class="sbc-draft-board">
+            <section class="sbc-draft-board sbc-history-draft-board">
                 <div class="sbc-draft-board-head"><span>✓</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
                 <div class="sbc-pick-empty">No draft history is available.</div>
             </section>
@@ -612,7 +610,7 @@ def render_draft_history_table(data, title, description):
             </tr>
         """)
     render_html(f"""
-        <section class="sbc-draft-board">
+        <section class="sbc-draft-board sbc-history-draft-board">
             <div class="sbc-draft-board-head"><span>✓</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
             <div class="sbc-draft-board-wrap">
                 <table class="sbc-draft-board-table">
@@ -1943,10 +1941,14 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Amatic+SC:wght@700&family=Arvo:wght@400;700&family=Audiowide&family=Baloo+2:wght@700;800&family=Bebas+Neue&family=Bungee&family=Cabin+Sketch:wght@700&family=Comfortaa:wght@700&family=Creepster&family=Dancing+Script:wght@700&family=Fjalla+One&family=IM+Fell+English&family=Indie+Flower&family=Lobster&family=Neucha&family=Oswald:wght@700&family=Pacifico&family=Parisienne&family=Pathway+Gothic+One&family=Permanent+Marker&family=Playfair+Display:wght@800&family=Poppins:wght@400;600;700;800;900&family=Quicksand:wght@700&family=Roboto+Slab:wght@800&family=Rye&family=Satisfy&family=Shadows+Into+Light&family=Tangerine:wght@700&family=Teko:wght@700&family=Ubuntu:wght@700&display=swap');
 
     :root {{
-        --sbc-team-primary: {bg_color};
-        --sbc-team-secondary: {text_color2};
-        --sbc-team-text: {text_color};
-        --sbc-team-font: "{team_font_css}", "Poppins", sans-serif;
+        --sbc-team-primary: {LEAGUE_PRIMARY};
+        --sbc-team-secondary: {LEAGUE_SECONDARY};
+        --sbc-team-text: #ffffff;
+        --sbc-team-font: "{league_font_css}", "Poppins", sans-serif;
+        --sbc-selected-primary: {bg_color};
+        --sbc-selected-secondary: {text_color2};
+        --sbc-selected-text: {text_color};
+        --sbc-selected-font: "{team_font_css}", "Poppins", sans-serif;
         --sbc-bg: #f4f6f8;
         --sbc-panel: #ffffff;
         --sbc-ink: #17202a;
@@ -1962,6 +1964,13 @@ st.markdown(
             radial-gradient(circle at 90% 2%, color-mix(in srgb, var(--sbc-team-secondary) 36%, transparent) 0, transparent 34rem),
             linear-gradient(180deg, color-mix(in srgb, var(--sbc-team-primary) 12%, #ffffff) 0%, rgba(244, 246, 248, 0.94) 34%, color-mix(in srgb, var(--sbc-team-secondary) 9%, #eef2f6) 100%);
         color: var(--sbc-ink);
+    }}
+
+    .stApp:has([data-baseweb="tab-list"]:first-of-type [role="tab"]:first-child[aria-selected="true"]) {{
+        background:
+            radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--sbc-selected-primary) 42%, transparent) 0, transparent 38rem),
+            radial-gradient(circle at 90% 2%, color-mix(in srgb, var(--sbc-selected-secondary) 36%, transparent) 0, transparent 34rem),
+            linear-gradient(180deg, color-mix(in srgb, var(--sbc-selected-primary) 12%, #ffffff) 0%, rgba(244, 246, 248, 0.94) 34%, color-mix(in srgb, var(--sbc-selected-secondary) 9%, #eef2f6) 100%);
     }}
 
     .block-container {{
@@ -2512,6 +2521,13 @@ st.markdown(
         line-height: 1.08;
         padding-bottom: 0.06em;
         text-shadow: 0 2px 16px rgba(0, 0, 0, 0.24);
+    }}
+
+    .sbc-team-branded {{
+        --sbc-team-primary: var(--sbc-selected-primary);
+        --sbc-team-secondary: var(--sbc-selected-secondary);
+        --sbc-team-text: var(--sbc-selected-text);
+        --sbc-team-font: var(--sbc-selected-font);
     }}
 
     .sbc-league-hero {{
@@ -3926,6 +3942,11 @@ st.markdown(
     .sbc-draft-board-table th:nth-child(4) {{ width: 14rem; }}
     .sbc-draft-board-table th:nth-child(5) {{ width: 10rem; }}
 
+    .sbc-current-draft-board .sbc-draft-board-table th:nth-child(2) {{ width: 14.5rem; text-align: left; }}
+    .sbc-current-draft-board .sbc-draft-board-table th:nth-child(3) {{ width: 12rem; text-align: left; }}
+    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(2),
+    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(4) {{ text-align: left; }}
+
     .sbc-draft-pick-no span {{
         display: inline-grid;
         place-items: center;
@@ -3941,6 +3962,16 @@ st.markdown(
     .sbc-draft-team-cell,
     .sbc-draft-player-cell {{
         text-align: center !important;
+    }}
+
+    .sbc-current-draft-board .sbc-draft-board-table td,
+    .sbc-history-draft-board .sbc-draft-board-table td {{
+        height: 4.2rem;
+    }}
+
+    .sbc-current-draft-board .sbc-draft-team-cell,
+    .sbc-history-draft-board .sbc-draft-team-cell {{
+        text-align: left !important;
     }}
 
     .sbc-draft-player-cell {{
@@ -3986,8 +4017,8 @@ st.markdown(
         font-size: 0.98rem;
         font-weight: 950;
         line-height: 1.05;
-        text-align: center;
-        white-space: normal;
+        text-align: left;
+        white-space: nowrap;
     }}
 
     .sbc-draft-team-empty {{
@@ -4384,7 +4415,7 @@ with tab1:
     inactive_count = inactive_player_n(df, SelectedTeam)
 
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-team-branded">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
                 <div>
@@ -4548,7 +4579,7 @@ with tab2:
     )
 
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-team-branded">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
                 <div>
@@ -4629,7 +4660,7 @@ with tab2:
 
 with tab3:
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-team-branded">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
                 <div>
@@ -4727,17 +4758,16 @@ with tab4:
     if not schedule_years:
         schedule_years = [current_year]
     default_schedule_year = current_year if current_year in schedule_years else schedule_years[-1]
-    SelectedScheduleYear = st.selectbox(
-        "Schedule Year",
-        options=schedule_years,
-        index=schedule_years.index(default_schedule_year))
+    if "_sbc_schedule_year" not in st.session_state or st.session_state["_sbc_schedule_year"] not in schedule_years:
+        st.session_state["_sbc_schedule_year"] = default_schedule_year
+    SelectedScheduleYear = st.session_state["_sbc_schedule_year"]
     schedule_raw = all_time_schedule[
         (all_time_schedule["Year"] == SelectedScheduleYear)
         & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
     ].copy()
     schedule_record = schedule_regular_record(schedule_raw, SelectedTeam)
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-team-branded">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
                 <div>
@@ -4748,6 +4778,17 @@ with tab4:
             </div>
         </div>
         """)
+    render_html("""
+        <div class="sbc-live-controls">
+            <div class="sbc-live-control-title">Schedule Window</div>
+            <div class="sbc-live-control-copy">Choose the season to refresh the schedule table, travel totals, and map.</div>
+        </div>
+        """)
+    SelectedScheduleYear = st.selectbox("Schedule Year", options=schedule_years, key="_sbc_schedule_year")
+    schedule_raw = all_time_schedule[
+        (all_time_schedule["Year"] == SelectedScheduleYear)
+        & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
+    ].copy()
     render_html('<div class="sbc-section-label">Schedule</div>')
     render_schedule_table(schedule_raw, SelectedTeam)
     total_miles, num_flights = calculate_team_travel_summary(SelectedTeam, SelectedScheduleYear, all_time_schedule)
@@ -5284,9 +5325,9 @@ with tab9:
 
 with tab10:
     render_html(f"""
-        <div class="sbc-draft-hero">
+        <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
                 <div>
                     <div class="sbc-draft-eyebrow">Historical Draft Room</div>
                     <div class="sbc-draft-heading">SBC Drafts</div>
