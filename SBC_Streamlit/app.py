@@ -466,11 +466,29 @@ def render_draft_team_wordmark(value, empty_text="Not on roster", include_nickna
     color = team_color_for_name(team)
     secondary = team_secondary_for_name(team)
     font = team_font_for_name(team)
+    logo = team_logo_for_name(team)
     display = live_team_full_name(team) if include_nickname else str(team)
     return (
-        f'<span class="sbc-draft-team-wordmark" '
+        f'<span class="sbc-draft-team-mark" '
         f'style="--draft-team-color:{escape(str(color), quote=True)};--draft-team-secondary:{escape(str(secondary), quote=True)};--draft-team-font:{escape(str(font), quote=True)};">'
-        f'{escape(display)}'
+        f'<img src="{escape(str(logo), quote=True)}" alt="{escape(display, quote=True)} logo" referrerpolicy="no-referrer">'
+        f'<span class="sbc-draft-team-wordmark">{escape(display)}</span>'
+        f'</span>'
+    )
+
+
+def team_logo_name_mark(team, include_nickname=True, class_name="sbc-award-team-mark"):
+    team = clean_pick_display(team)
+    if team not in team_info:
+        return f'<span class="{class_name} sbc-award-team-missing">{escape(str(team))}</span>'
+    display = live_team_full_name(team) if include_nickname else str(team)
+    logo = team_logo_for_name(team)
+    color = team_color_for_name(team)
+    secondary = team_secondary_for_name(team)
+    return (
+        f'<span class="{class_name}" style="--award-team-color:{escape(str(color), quote=True)};--award-team-secondary:{escape(str(secondary), quote=True)};">'
+        f'<img src="{escape(str(logo), quote=True)}" alt="{escape(display, quote=True)} logo" referrerpolicy="no-referrer">'
+        f'<strong>{escape(display)}</strong>'
         f'</span>'
     )
 
@@ -4175,6 +4193,22 @@ st.markdown(
         white-space: nowrap;
     }}
 
+    .sbc-draft-team-mark {{
+        display: inline-grid;
+        grid-template-columns: 2rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.48rem;
+        max-width: 100%;
+    }}
+
+    .sbc-draft-team-mark img {{
+        width: 1.9rem;
+        height: 1.9rem;
+        object-fit: contain;
+        margin: 0;
+        filter: drop-shadow(0 3px 6px rgba(18, 25, 38, 0.14));
+    }}
+
     .sbc-draft-team-empty {{
         color: var(--sbc-muted);
         display: inline-block;
@@ -4306,6 +4340,191 @@ st.markdown(
     .sbc-live-draft-empty {{
         color: var(--sbc-muted);
         font-weight: 900;
+    }}
+
+    .sbc-awards-section-head {{
+        display: grid;
+        gap: 0.18rem;
+        margin: 1.2rem 0 0.75rem;
+    }}
+
+    .sbc-awards-section-head span {{
+        color: var(--sbc-ink);
+        font-family: "{league_font_css}", "Poppins", sans-serif;
+        font-size: clamp(1.45rem, 2.7vw, 2.35rem);
+        font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-awards-section-head em {{
+        color: var(--sbc-muted);
+        font-size: 0.9rem;
+        font-style: normal;
+        font-weight: 800;
+    }}
+
+    .sbc-award-card,
+    .sbc-award-team-card {{
+        overflow: hidden;
+        margin-bottom: 0.85rem;
+        border: 1px solid color-mix(in srgb, var(--award-accent, {LEAGUE_PRIMARY}) 26%, rgba(23, 32, 42, 0.12));
+        border-top: 4px solid var(--award-accent, {LEAGUE_PRIMARY});
+        border-radius: 8px;
+        background: linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, var(--award-accent, {LEAGUE_PRIMARY}) 7%, #ffffff) 100%);
+        box-shadow: 0 16px 36px rgba(18, 25, 38, 0.085);
+    }}
+
+    .sbc-award-card-blue {{ --award-accent: {LEAGUE_PRIMARY}; }}
+    .sbc-award-card-green {{ --award-accent: {LEAGUE_SECONDARY}; }}
+    .sbc-award-card-red {{ --award-accent: #b91c1c; }}
+    .sbc-award-card-gold {{ --award-accent: #c99720; }}
+
+    .sbc-award-card-top {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        padding: 0.72rem 0.85rem;
+        background: color-mix(in srgb, var(--award-accent, {LEAGUE_PRIMARY}) 13%, #ffffff);
+        border-bottom: 1px solid color-mix(in srgb, var(--award-accent, {LEAGUE_PRIMARY}) 18%, rgba(23, 32, 42, 0.08));
+    }}
+
+    .sbc-award-card-top span {{
+        color: var(--sbc-ink);
+        font-size: 0.92rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-award-card-top em {{
+        display: inline-grid;
+        place-items: center;
+        min-width: 3.1rem;
+        border-radius: 999px;
+        background: var(--award-accent, {LEAGUE_PRIMARY});
+        color: #ffffff;
+        font-size: 0.76rem;
+        font-style: normal;
+        font-weight: 950;
+        padding: 0.28rem 0.5rem;
+    }}
+
+    .sbc-award-player-grid {{
+        display: grid;
+        gap: 0.55rem;
+        padding: 0.78rem;
+    }}
+
+    .sbc-award-player-grid-compact {{
+        grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    }}
+
+    .sbc-award-player {{
+        display: grid;
+        grid-template-columns: 3.2rem 1fr;
+        align-items: center;
+        gap: 0.65rem;
+        min-width: 0;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.78);
+        border: 1px solid rgba(23, 32, 42, 0.08);
+        padding: 0.48rem;
+    }}
+
+    .sbc-award-player-compact {{
+        grid-template-columns: 2.6rem 1fr;
+    }}
+
+    .sbc-award-headshot {{
+        width: 3.2rem;
+        height: 3.2rem;
+        border-radius: 999px;
+        object-fit: cover;
+        object-position: center 18%;
+        background: #111827;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px rgba(23, 32, 42, 0.16);
+    }}
+
+    .sbc-award-player-compact .sbc-award-headshot {{
+        width: 2.6rem;
+        height: 2.6rem;
+    }}
+
+    .sbc-award-player strong {{
+        display: block;
+        color: var(--sbc-ink);
+        font-size: 0.9rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-award-week {{
+        display: inline-block;
+        color: var(--award-accent, {LEAGUE_PRIMARY});
+        font-size: 0.68rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-award-mini-logo {{
+        width: 1.55rem;
+        height: 1.55rem;
+        object-fit: contain;
+        margin-top: 0.18rem;
+        filter: drop-shadow(0 2px 4px rgba(18,25,38,0.12));
+    }}
+
+    .sbc-award-wordmark-wrap {{
+        display: grid;
+        place-items: center;
+        min-height: 7rem;
+        padding: 1rem;
+        background: linear-gradient(135deg, color-mix(in srgb, var(--award-team-color, {LEAGUE_PRIMARY}) 13%, #ffffff), color-mix(in srgb, var(--award-team-secondary, {LEAGUE_SECONDARY}) 13%, #ffffff));
+    }}
+
+    .sbc-award-team-feature .sbc-award-wordmark-wrap {{
+        min-height: 10rem;
+    }}
+
+    .sbc-award-wordmark {{
+        max-width: min(100%, 18rem);
+        max-height: 8rem;
+        object-fit: contain;
+        filter: drop-shadow(0 10px 18px rgba(18,25,38,0.16));
+    }}
+
+    .sbc-award-team-footer {{
+        padding: 0.75rem 0.85rem;
+    }}
+
+    .sbc-award-team-mark {{
+        display: inline-grid;
+        grid-template-columns: 2.25rem 1fr;
+        align-items: center;
+        gap: 0.55rem;
+    }}
+
+    .sbc-award-team-mark img {{
+        width: 2.25rem;
+        height: 2.25rem;
+        object-fit: contain;
+    }}
+
+    .sbc-award-team-mark strong {{
+        color: color-mix(in srgb, var(--award-team-color, {LEAGUE_PRIMARY}) 70%, #111827 30%);
+        font-size: 0.94rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-award-empty,
+    .sbc-award-team-missing {{
+        color: var(--sbc-muted);
+        font-size: 0.84rem;
+        font-weight: 850;
+        padding: 0.75rem;
     }}
 
     .sbc-draft-detail {{
@@ -5839,8 +6058,199 @@ with tab10:
 
 
     '''
+
+
+def award_year_filter(table, year):
+    if table is None or table.empty or "Year" not in table.columns:
+        return pd.DataFrame()
+    work = table.copy()
+    work["_award_year"] = pd.to_numeric(work["Year"], errors="coerce")
+    return work[work["_award_year"] == year].copy()
+
+
+def team_award_winner(award_table, year, award):
+    work = award_year_filter(award_table, year)
+    if work.empty or not {"Award", "Winner"}.issubset(work.columns):
+        return "Not Awarded"
+    row = work[work["Award"].astype(str) == award]
+    if row.empty:
+        return "Not Awarded"
+    return clean_pick_display(row.iloc[0]["Winner"])
+
+
+def player_award_table(year, award, mode="single"):
+    if mode == "allstar":
+        return safe_table_call(get_all_stars_award, award_history, ft_players, all_time_rosters, pics, year, award)
+    if mode == "short":
+        return safe_table_call(get_short_term_awards, award_history, ft_players, all_time_rosters, pics, year, award)
+    return safe_table_call(get_single_award, award_history, ft_players, all_time_rosters, pics, year, award)
+
+
+def render_award_player_rows(data, compact=False):
+    if data is None or data.empty:
+        return '<div class="sbc-award-empty">Not awarded yet</div>'
+    cards = []
+    for _, row in data.iterrows():
+        name = clean_pick_display(row.get("Winner", ""))
+        picture = row.get("Picture_Online", "")
+        logo = row.get("logo", "")
+        week = clean_pick_display(row.get("Week", ""))
+        week_html = f'<span class="sbc-award-week">{escape(str(week))}</span>' if week != "â€”" else ""
+        logo_html = f'<img class="sbc-award-mini-logo" src="{escape(str(logo), quote=True)}" alt="Team logo" referrerpolicy="no-referrer">' if not is_blank_value(logo) else ""
+        img_html = f'<img class="sbc-award-headshot" src="{escape(str(picture), quote=True)}" alt="{escape(str(name), quote=True)}">' if not is_blank_value(picture) else '<div class="sbc-award-headshot sbc-award-headshot-empty"></div>'
+        cards.append(f"""
+            <div class="sbc-award-player {'sbc-award-player-compact' if compact else ''}">
+                {img_html}
+                <div>
+                    {week_html}
+                    <strong>{escape(str(name))}</strong>
+                    {logo_html}
+                </div>
+            </div>
+        """)
+    return "".join(cards)
+
+
+def render_player_award(title, award, year, mode="single", tone="blue", compact=False):
+    data = player_award_table(year, award, mode)
+    render_html(f"""
+        <section class="sbc-award-card sbc-award-card-{tone}">
+            <div class="sbc-award-card-top">
+                <span>{escape(title)}</span>
+                <em>{escape(str(year))}</em>
+            </div>
+            <div class="sbc-award-player-grid {'sbc-award-player-grid-compact' if compact else ''}">
+                {render_award_player_rows(data, compact=compact)}
+            </div>
+        </section>
+    """)
+
+
+def render_team_award_card(title, award, year, tone="blue", feature=False):
+    winner = team_award_winner(team_award_history, year, award)
+    if winner in team_info:
+        wordmark = team_info[winner].get("wordmark", "")
+        mark = team_logo_name_mark(winner)
+        color = team_color_for_name(winner)
+        secondary = team_secondary_for_name(winner)
+    else:
+        wordmark = "https://pbs.twimg.com/media/HCRpyEUaQAAPORi?format=png&name=medium"
+        mark = f'<span class="sbc-award-team-missing">{escape(str(winner))}</span>'
+        color = LEAGUE_PRIMARY
+        secondary = LEAGUE_SECONDARY
+    render_html(f"""
+        <section class="sbc-award-team-card sbc-award-card-{tone} {'sbc-award-team-feature' if feature else ''}" style="--award-team-color:{escape(str(color), quote=True)};--award-team-secondary:{escape(str(secondary), quote=True)};">
+            <div class="sbc-award-card-top">
+                <span>{escape(title)}</span>
+                <em>{escape(str(year))}</em>
+            </div>
+            <div class="sbc-award-wordmark-wrap">
+                <img class="sbc-award-wordmark" src="{escape(str(wordmark), quote=True)}" alt="{escape(str(winner), quote=True)} wordmark" referrerpolicy="no-referrer">
+            </div>
+            <div class="sbc-award-team-footer">{mark}</div>
+        </section>
+    """)
+
+
+def render_awards_section(title, subtitle, columns):
+    render_html(f"""
+        <div class="sbc-awards-section-head">
+            <span>{escape(title)}</span>
+            <em>{escape(subtitle)}</em>
+        </div>
+    """)
+    return st.columns(columns)
+
+
 with tab11:
-    AwardYears = st.selectbox("Select Award Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
+    award_year_options = list(range(2021, current_year+1))
+    AwardYears = st.selectbox("Select Award Year", options=award_year_options, index=award_year_options.index(current_year))
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{AwardYears} Trophy Case</div>
+                    <div class="sbc-draft-heading">SBCFBL Awards</div>
+                    <div class="sbc-draft-subcopy">Champions, postseason heroes, award winners, all-league teams, all-stars, and monthly honors in one polished gallery.</div>
+                </div>
+            </div>
+        </div>
+    """)
+
+    col1, col2 = render_awards_section("Crown Jewels", "League champion, Cup champion, and signature postseason stars.", [1, 1])
+    with col1:
+        render_team_award_card("SBCFBL Champion", "Champion", AwardYears, "gold", feature=True)
+        render_player_award("Finals MVP", "Finals MVP", AwardYears, tone="gold")
+        render_player_award("Championship Roster", "Champion", AwardYears, tone="gold", compact=True)
+    with col2:
+        render_team_award_card("SBCFBL Cup Winner", "Cup Winner", AwardYears, "green", feature=True)
+        render_player_award("Cup MVP", "Cup MVP", AwardYears, tone="green")
+        render_player_award("Cup-Winning Roster", "Cup Winner", AwardYears, tone="green", compact=True)
+
+    west_col, east_col = render_awards_section("Conference & Division Crowns", "The paths through each side of the bracket.", [1, 1])
+    with west_col:
+        render_team_award_card("Western Conference Champion", "WC Champion", AwardYears, "blue")
+        render_player_award("Western Conference MVP", "WCF MVP", AwardYears, tone="blue")
+        div_cols = st.columns(3)
+        with div_cols[0]:
+            render_team_award_card("Pacific Champion", "Pacific Champion", AwardYears, "blue")
+        with div_cols[1]:
+            render_team_award_card("Northwest Champion", "Northwest Champion", AwardYears, "blue")
+        with div_cols[2]:
+            render_team_award_card("Southwest Champion", "Southwest Champion", AwardYears, "blue")
+    with east_col:
+        render_team_award_card("Eastern Conference Champion", "EC Champion", AwardYears, "red")
+        render_player_award("Eastern Conference MVP", "ECF MVP", AwardYears, tone="red")
+        div_cols = st.columns(3)
+        with div_cols[0]:
+            render_team_award_card("Central Champion", "Central Champion", AwardYears, "red")
+        with div_cols[1]:
+            render_team_award_card("Atlantic Champion", "Atlantic Champion", AwardYears, "red")
+        with div_cols[2]:
+            render_team_award_card("Southeast Champion", "Southeast Champion", AwardYears, "red")
+
+    cols = render_awards_section("Individual Hardware", "The season's headliners and category kings.", [1, 1, 1])
+    individual_awards = [
+        ("Most Valuable Player", "MVP", "gold"),
+        ("Clutch Player of the Year", "Clutch", "blue"),
+        ("Defensive Player of the Year", "DPOY", "green"),
+        ("Most Improved Player", "MIP", "blue"),
+        ("Rookie of the Year", "ROY", "red"),
+        ("Sixth Man of the Year", "6MOY", "green"),
+    ]
+    for idx, (title, award, tone) in enumerate(individual_awards):
+        with cols[idx % 3]:
+            render_player_award(title, award, AwardYears, tone=tone)
+
+    team_cols = render_awards_section("All-League Teams", "The best five-man groups from the season.", [1, 1, 1])
+    for col, (title, award, tone) in zip(team_cols, [("All-SBC First Team", "All-SBC 1st Team", "gold"), ("All-SBC Second Team", "All-SBC 2nd Team", "blue"), ("All-SBC Third Team", "All-SBC 3rd Team", "green")]):
+        with col:
+            render_player_award(title, award, AwardYears, tone=tone, compact=True)
+
+    col1, col2 = render_awards_section("Defense, Rookies & All-Star Stage", "Special teams, regular season crown, and showcase stars.", [1, 1])
+    with col1:
+        render_player_award("All-Defense First Team", "All-Defense 1st Team", AwardYears, tone="green", compact=True)
+        render_player_award("All-Rookie First Team", "All-Rookie 1st Team", AwardYears, tone="red", compact=True)
+        render_team_award_card("Regular Season Champion", "RS Champion", AwardYears, "gold")
+        render_player_award("Western Conference All-Stars", "West All-Star", AwardYears, mode="allstar", tone="blue", compact=True)
+    with col2:
+        render_player_award("All-Defense Second Team", "All-Defense 2nd Team", AwardYears, tone="green", compact=True)
+        render_player_award("All-Rookie Second Team", "All-Rookie 2nd Team", AwardYears, tone="red", compact=True)
+        render_player_award("All-Star Game MVP", "ASG MVP", AwardYears, tone="gold")
+        render_player_award("Eastern Conference All-Stars", "East All-Star", AwardYears, mode="allstar", tone="red", compact=True)
+
+    col1, col2 = render_awards_section("Monthly & Weekly Honors", "A full season of recurring winners without the spreadsheet slog.", [1, 1])
+    with col1:
+        render_player_award("West Player of the Month", "West POM", AwardYears, mode="short", tone="blue", compact=True)
+        render_player_award("West Rookie of the Month", "West ROM", AwardYears, mode="short", tone="blue", compact=True)
+        render_player_award("West Player of the Week", "West POW", AwardYears, mode="short", tone="blue", compact=True)
+    with col2:
+        render_player_award("East Player of the Month", "East POM", AwardYears, mode="short", tone="red", compact=True)
+        render_player_award("East Rookie of the Month", "East ROM", AwardYears, mode="short", tone="red", compact=True)
+        render_player_award("East Player of the Week", "East POW", AwardYears, mode="short", tone="red", compact=True)
+
+    _legacy_tab11 = r'''
     st.title("2025 SBCFBL Awards")
 
     col1, col2 = st.columns([1,1])
@@ -5995,6 +6405,8 @@ with tab11:
         st.subheader("Eastern Conference Player of the Week")
         ECPOW = get_short_term_awards(award_history, ft_players, all_time_rosters, pics, AwardYears, "East POW")
         st.dataframe(ECPOW, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
+
+    '''
 
 with tab12:
     st.subheader("SBCFBL Introduction")
