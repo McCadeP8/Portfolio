@@ -384,6 +384,10 @@ def team_color_for_name(team):
     return team_info.get(str(team), {}).get("bg", "var(--sbc-ink)")
 
 
+def team_secondary_for_name(team):
+    return team_info.get(str(team), {}).get("bg2", team_color_for_name(team))
+
+
 def team_font_for_name(team):
     return TEAM_FONTS.get(str(team), "Poppins")
 
@@ -460,11 +464,12 @@ def render_draft_team_wordmark(value, empty_text="Not on roster", include_nickna
     if is_blank_value(value) or team == "â€”" or team not in team_info:
         return f'<span class="sbc-draft-team-empty">{escape(empty_text)}</span>'
     color = team_color_for_name(team)
+    secondary = team_secondary_for_name(team)
     font = team_font_for_name(team)
     display = live_team_full_name(team) if include_nickname else str(team)
     return (
         f'<span class="sbc-draft-team-wordmark" '
-        f'style="--draft-team-color:{escape(str(color), quote=True)};--draft-team-font:{escape(str(font), quote=True)};">'
+        f'style="--draft-team-color:{escape(str(color), quote=True)};--draft-team-secondary:{escape(str(secondary), quote=True)};--draft-team-font:{escape(str(font), quote=True)};">'
         f'{escape(display)}'
         f'</span>'
     )
@@ -593,25 +598,30 @@ def render_current_draft_table(data, title, icon, description):
     """)
 
 
-def draft_clock_pick(round_df, draft_date):
+def draft_clock_picks(round_df, draft_date):
     if round_df is None or round_df.empty:
-        return None, "Board not loaded"
+        return None, None, "Board not loaded"
     now_et = datetime.now(ZoneInfo("America/New_York"))
     if now_et.date() < draft_date:
-        return round_df.iloc[0], "On deck"
+        on_clock = round_df.iloc[0]
+        on_deck = round_df.iloc[1] if round_df.shape[0] > 1 else None
+        return on_clock, on_deck, "On the clock"
     if now_et.date() > draft_date:
-        return round_df.iloc[-1], "Draft day complete"
-    active = round_df.iloc[0]
-    for _, row in round_df.iterrows():
+        return round_df.iloc[-1], None, "Draft day complete"
+    active_idx = 0
+    for idx, row in round_df.reset_index(drop=True).iterrows():
         try:
             pick_time = datetime.strptime(str(row.get("Time Due (ET)", "")), "%I:%M %p").time()
         except ValueError:
             continue
         if datetime.combine(draft_date, pick_time, ZoneInfo("America/New_York")) <= now_et:
-            active = row
+            active_idx = idx
         else:
             break
-    return active, "On the clock"
+    clean_df = round_df.reset_index(drop=True)
+    on_clock = clean_df.iloc[active_idx]
+    on_deck = clean_df.iloc[active_idx + 1] if active_idx + 1 < clean_df.shape[0] else None
+    return on_clock, on_deck, "On the clock"
 
 
 def draft_countdown_text(target_dt, now_dt):
@@ -627,33 +637,49 @@ def draft_countdown_text(target_dt, now_dt):
     return f"{minutes}m"
 
 
+def draft_target_iso(row, draft_date):
+    if row is None:
+        return ""
+    try:
+        target_time = datetime.strptime(str(row.get("Time Due (ET)", "")), "%I:%M %p").time()
+    except ValueError:
+        target_time = time(10, 30)
+    return datetime.combine(draft_date, target_time, ZoneInfo("America/New_York")).isoformat()
+
+
+def render_draft_clock_card(row, label, draft_date):
+    if row is None:
+        return """
+            <div class="sbc-live-draft-card">
+                <div class="sbc-live-draft-empty">No next pick</div>
+            </div>
+        """
+    slot_team = clean_pick_display(row.get("Slot", ""))
+    team_label = live_team_full_name(slot_team)
+    team_logo = team_logo_for_name(slot_team)
+    primary = team_color_for_name(slot_team) if slot_team in team_info else LEAGUE_PRIMARY
+    secondary = team_secondary_for_name(slot_team) if slot_team in team_info else LEAGUE_SECONDARY
+    logo_html = f'<img src="{escape(str(team_logo), quote=True)}" alt="{escape(str(team_label), quote=True)} logo">' if team_logo else ""
+    return f"""
+        <div class="sbc-live-draft-card" style="--clock-team-color:{escape(str(primary), quote=True)};--clock-team-secondary:{escape(str(secondary), quote=True)};">
+            <div class="sbc-live-draft-pick-circle">{escape(str(row.get("Pick", "--")))}</div>
+            <div class="sbc-live-draft-logo">{logo_html}</div>
+            <div class="sbc-live-draft-card-copy">
+                <span>{escape(label)}</span>
+                <strong>{escape(team_label)}</strong>
+                <em class="sbc-countdown" data-target="{escape(draft_target_iso(row, draft_date), quote=True)}">Calculating...</em>
+            </div>
+        </div>
+    """
+
+
 def render_live_draft_room_header(round_1_df, round_2_df):
     round_1_date = date(2026, 6, 27)
     round_2_date = date(2026, 6, 28)
     now_et = datetime.now(ZoneInfo("America/New_York"))
     active_df = round_2_df if now_et.date() >= round_2_date else round_1_df
     active_date = round_2_date if now_et.date() >= round_2_date else round_1_date
-    active_row, status = draft_clock_pick(active_df, active_date)
-    if active_row is None:
-        pick_number = "--"
-        team_label = "Draft board loading"
-        logo_html = ""
-        team_style = ""
-        countdown_label = "--"
-    else:
-        pick_number = str(active_row.get("Pick", "--"))
-        slot_team = clean_pick_display(active_row.get("Slot", ""))
-        team_label = live_team_full_name(slot_team)
-        team_logo = team_logo_for_name(slot_team)
-        team_color = team_color_for_name(slot_team) if slot_team in team_info else LEAGUE_PRIMARY
-        team_style = f' style="--clock-team-color:{escape(str(team_color), quote=True)};"'
-        logo_html = f'<img src="{escape(str(team_logo), quote=True)}" alt="{escape(str(team_label), quote=True)} logo">' if team_logo else ""
-        try:
-            target_time = datetime.strptime(str(active_row.get("Time Due (ET)", "")), "%I:%M %p").time()
-            target_dt = datetime.combine(active_date, target_time, ZoneInfo("America/New_York"))
-            countdown_label = "Due now" if now_et >= target_dt else f"{draft_countdown_text(target_dt, now_et)} until pick"
-        except ValueError:
-            countdown_label = f"{active_row.get('Time Due (ET)', '--')} ET"
+    active_row, deck_row, status = draft_clock_picks(active_df, active_date)
     render_html(f"""
         <section class="sbc-live-draft-room">
             <div>
@@ -661,14 +687,9 @@ def render_live_draft_room_header(round_1_df, round_2_df):
                 <div class="sbc-live-draft-title">2026 SBCFBL Draft</div>
                 <div class="sbc-live-draft-dates">Round 1: Saturday, June 27th / Round 2: Sunday, June 28th</div>
             </div>
-            <div class="sbc-live-draft-clock"{team_style}>
-                <div class="sbc-live-draft-pick-circle">{escape(pick_number)}</div>
-                <div class="sbc-live-draft-logo">{logo_html}</div>
-                <div>
-                    <span>{escape(status)}</span>
-                    <strong>{escape(team_label)}</strong>
-                    <em>{escape(countdown_label)}</em>
-                </div>
+            <div class="sbc-live-draft-cards">
+                {render_draft_clock_card(active_row, status, active_date)}
+                {render_draft_clock_card(deck_row, "On deck", active_date)}
             </div>
         </section>
         """)
@@ -4064,12 +4085,12 @@ st.markdown(
 
     .sbc-current-draft-board .sbc-draft-board-table tr[style*="--draft-row-color"] td,
     .sbc-history-draft-board .sbc-draft-board-table tr[style*="--draft-row-color"] td {{
-        background-color: color-mix(in srgb, var(--draft-row-color) 7%, #ffffff);
+        background-color: color-mix(in srgb, var(--draft-row-color) 5%, #ffffff);
     }}
 
     .sbc-current-draft-board .sbc-draft-board-table tr[style*="--draft-row-color"]:nth-child(even) td,
     .sbc-history-draft-board .sbc-draft-board-table tr[style*="--draft-row-color"]:nth-child(even) td {{
-        background-color: color-mix(in srgb, var(--draft-row-color) 10%, #ffffff);
+        background-color: color-mix(in srgb, var(--draft-row-color) 8%, #ffffff);
     }}
 
     .sbc-current-draft-board .sbc-draft-team-cell,
@@ -4114,7 +4135,7 @@ st.markdown(
     }}
 
     .sbc-draft-team-wordmark {{
-        color: var(--draft-team-color);
+        color: color-mix(in srgb, var(--draft-team-secondary) 72%, #111827 28%);
         display: inline-block;
         font-family: "Poppins", "Segoe UI", sans-serif;
         font-size: 0.9rem;
@@ -4139,7 +4160,7 @@ st.markdown(
 
     .sbc-live-draft-room {{
         display: grid;
-        grid-template-columns: 1fr minmax(16rem, 24rem);
+        grid-template-columns: minmax(18rem, 1fr) minmax(27rem, 1.25fr);
         gap: 1rem;
         align-items: center;
         margin: 0.85rem 0 1rem;
@@ -4174,16 +4195,24 @@ st.markdown(
         margin-top: 0.25rem;
     }}
 
-    .sbc-live-draft-clock {{
+    .sbc-live-draft-cards {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }}
+
+    .sbc-live-draft-card {{
         display: grid;
         grid-template-columns: auto auto 1fr;
         gap: 0.75rem;
         align-items: center;
         border-radius: 8px;
-        background: linear-gradient(135deg, color-mix(in srgb, var(--clock-team-color, {LEAGUE_PRIMARY}) 84%, #111827 16%) 0%, #111827 100%);
-        color: #ffffff;
-        padding: 0.8rem 0.95rem;
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--clock-team-color, {LEAGUE_PRIMARY}) 34%, rgba(255,255,255,0.18));
+        background: linear-gradient(135deg, color-mix(in srgb, var(--clock-team-color, {LEAGUE_PRIMARY}) 12%, #ffffff) 0%, color-mix(in srgb, var(--clock-team-secondary, {LEAGUE_SECONDARY}) 12%, #ffffff) 100%);
+        border: 1px solid color-mix(in srgb, var(--clock-team-color, {LEAGUE_PRIMARY}) 28%, rgba(23, 32, 42, 0.12));
+        border-left: 0.35rem solid var(--clock-team-color, {LEAGUE_PRIMARY});
+        color: var(--sbc-ink);
+        min-height: 5.35rem;
+        padding: 0.78rem 0.9rem;
     }}
 
     .sbc-live-draft-pick-circle {{
@@ -4192,11 +4221,11 @@ st.markdown(
         display: grid;
         place-items: center;
         border-radius: 999px;
-        background: #ffffff;
-        color: var(--clock-team-color, {LEAGUE_PRIMARY});
+        background: var(--clock-team-color, {LEAGUE_PRIMARY});
+        color: #ffffff;
         font-size: 1.08rem;
         font-weight: 950;
-        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 8px 18px color-mix(in srgb, var(--clock-team-color, {LEAGUE_PRIMARY}) 25%, transparent);
     }}
 
     .sbc-live-draft-logo {{
@@ -4213,25 +4242,40 @@ st.markdown(
         filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.28));
     }}
 
-    .sbc-live-draft-clock span {{
-        color: color-mix(in srgb, {LEAGUE_SECONDARY} 82%, #ffffff);
+    .sbc-live-draft-card-copy {{
+        display: grid;
+        gap: 0.12rem;
+        min-width: 0;
+    }}
+
+    .sbc-live-draft-card-copy span {{
+        color: color-mix(in srgb, var(--clock-team-secondary, {LEAGUE_SECONDARY}) 68%, #111827 32%);
         font-size: 0.72rem;
         font-weight: 950;
         letter-spacing: 0.14em;
         text-transform: uppercase;
     }}
 
-    .sbc-live-draft-clock strong {{
+    .sbc-live-draft-card-copy strong {{
+        color: var(--sbc-ink);
         font-size: 1rem;
         font-weight: 950;
         line-height: 1.15;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }}
 
-    .sbc-live-draft-clock em {{
-        color: rgba(255, 255, 255, 0.74);
+    .sbc-live-draft-card-copy em {{
+        color: var(--sbc-muted);
         font-size: 0.8rem;
         font-style: normal;
         font-weight: 800;
+    }}
+
+    .sbc-live-draft-empty {{
+        color: var(--sbc-muted);
+        font-weight: 900;
     }}
 
     .sbc-draft-detail {{
@@ -4502,6 +4546,34 @@ try {
 } catch (error) {
   // Keep the league-branded fallback if parent DOM access is unavailable.
 }
+</script>
+""", height=0)
+
+components.html("""
+<script>
+try {
+  const doc = window.parent.document;
+  function formatCountdown(ms) {
+    if (ms <= 0) return 'Due now';
+    const totalMinutes = Math.floor(ms / 60000);
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) return `${days}d ${hours}h ${minutes}m until pick`;
+    if (hours > 0) return `${hours}h ${minutes}m until pick`;
+    return `${minutes}m until pick`;
+  }
+  function syncDraftCountdowns() {
+    doc.querySelectorAll('.sbc-countdown[data-target]').forEach((node) => {
+      const target = new Date(node.dataset.target);
+      if (!Number.isNaN(target.getTime())) {
+        node.textContent = formatCountdown(target.getTime() - Date.now());
+      }
+    });
+  }
+  syncDraftCountdowns();
+  setInterval(syncDraftCountdowns, 30000);
+} catch (error) {}
 </script>
 """, height=0)
 

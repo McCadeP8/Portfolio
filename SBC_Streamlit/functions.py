@@ -1145,7 +1145,7 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
     df = df[['Team', 'winPercentage']]
     dp = dp[dp['Year'] == current_year].copy()
     dp = dp[dp['Round'] == round].copy()
-    order_col = "CurrentTeam" if round != "1st Round" else "OGTeam"
+    order_col = "CurrentTeam"
     dp["_DraftOrderTeam"] = dp[order_col].astype(str).str.split(",").str[0].str.strip()
     dp = dp.merge(df, how = 'left', left_on = '_DraftOrderTeam', right_on = 'Team')
     dp = dp.sort_values('winPercentage', ascending=True)
