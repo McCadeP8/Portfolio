@@ -9,8 +9,10 @@ import altair as alt
 import re as re
 import json
 import math
+from datetime import datetime, date, time
 from html import escape
 from textwrap import dedent
+from zoneinfo import ZoneInfo
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, period, stat_to_scipId
@@ -211,7 +213,7 @@ def clean_cap_display(col, value):
         text = re.sub(r"(?i)(Traded-Player(?: Exception)?)(?:\s*#?\d+)$", r"\1", text).strip()
     return text
 
-def render_cap_table(data, columns=None, image_columns=None, money_columns=None, contract_colors=True):
+def render_cap_table(data, columns=None, image_columns=None, money_columns=None, contract_colors=True, row_team=None):
     image_columns = set(image_columns or [])
     money_columns = set(money_columns or [])
     if data is None or data.shape[0] == 0:
@@ -317,7 +319,11 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
         cells = []
         team_logo_value = row.get("Team_logo", "")
         row_style = ""
-        if str(team_logo_value).strip():
+        if row_team:
+            row_color = team_info.get(str(row_team), {}).get("bg", "")
+            if row_color:
+                row_style = f' style="--row-team-color:{escape(str(row_color), quote=True)};"'
+        elif str(team_logo_value).strip():
             row_team = logo_to_team.get(str(team_logo_value), "")
             row_color = team_info.get(row_team, {}).get("bg", "")
             if row_color:
@@ -449,16 +455,17 @@ def render_slot_team(value):
     )
 
 
-def render_draft_team_wordmark(value, empty_text="Not on roster"):
+def render_draft_team_wordmark(value, empty_text="Not on roster", include_nickname=False):
     team = clean_pick_display(value)
     if is_blank_value(value) or team == "â€”" or team not in team_info:
         return f'<span class="sbc-draft-team-empty">{escape(empty_text)}</span>'
     color = team_color_for_name(team)
     font = team_font_for_name(team)
+    display = live_team_full_name(team) if include_nickname else str(team)
     return (
         f'<span class="sbc-draft-team-wordmark" '
         f'style="--draft-team-color:{escape(str(color), quote=True)};--draft-team-font:{escape(str(font), quote=True)};">'
-        f'{escape(str(team))}'
+        f'{escape(display)}'
         f'</span>'
     )
 
@@ -559,20 +566,16 @@ def render_current_draft_table(data, title, icon, description):
         """)
         return
     rows = []
-    has_details = any(clean_pick_display(row.get("Explanation", "")) != "â€”" for _, row in data.iterrows())
     for _, row in data.iterrows():
         slot_team = clean_pick_display(row.get("Slot", ""))
-        detail = clean_pick_display(row.get("Explanation", ""))
-        detail_cell = f'<td class="sbc-draft-detail">{escape(str(detail))}</td>' if has_details else ""
         rows.append(f"""
             <tr>
                 <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
-                <td class="sbc-draft-team-cell sbc-draft-slot-cell">{render_draft_team_wordmark(slot_team)}</td>
+                <td class="sbc-draft-team-cell sbc-draft-slot-cell">{render_draft_team_wordmark(slot_team, include_nickname=True)}</td>
                 <td class="sbc-draft-player-cell sbc-draft-player-pending">
                     <img src="{DRAFT_SILHOUETTE}" alt="">
                     <strong>{escape(str(row.get("Time Due (ET)", "")))} (ET)</strong>
                 </td>
-                {detail_cell}
             </tr>
         """)
     render_html(f"""
@@ -580,12 +583,64 @@ def render_current_draft_table(data, title, icon, description):
             <div class="sbc-draft-board-head"><span>{icon}</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
             <div class="sbc-draft-board-wrap">
                 <table class="sbc-draft-board-table">
-                    <thead><tr><th>Pick</th><th>Drafted By</th><th>Player</th>{'<th>Details</th>' if has_details else ''}</tr></thead>
+                    <thead><tr><th>Pick</th><th>Drafted By</th><th>Player</th></tr></thead>
                     <tbody>{''.join(rows)}</tbody>
                 </table>
             </div>
         </section>
     """)
+
+
+def draft_clock_pick(round_df, draft_date):
+    if round_df is None or round_df.empty:
+        return None, "Board not loaded"
+    now_et = datetime.now(ZoneInfo("America/New_York"))
+    if now_et.date() < draft_date:
+        return round_df.iloc[0], "On deck"
+    if now_et.date() > draft_date:
+        return round_df.iloc[-1], "Draft day complete"
+    active = round_df.iloc[0]
+    for _, row in round_df.iterrows():
+        try:
+            pick_time = datetime.strptime(str(row.get("Time Due (ET)", "")), "%I:%M %p").time()
+        except ValueError:
+            continue
+        if datetime.combine(draft_date, pick_time, ZoneInfo("America/New_York")) <= now_et:
+            active = row
+        else:
+            break
+    return active, "On the clock"
+
+
+def render_live_draft_room_header(round_1_df, round_2_df):
+    round_1_date = date(2026, 6, 27)
+    round_2_date = date(2026, 6, 28)
+    now_et = datetime.now(ZoneInfo("America/New_York"))
+    active_df = round_2_df if now_et.date() >= round_2_date else round_1_df
+    active_date = round_2_date if now_et.date() >= round_2_date else round_1_date
+    active_row, status = draft_clock_pick(active_df, active_date)
+    if active_row is None:
+        pick_label = "Pick --"
+        team_label = "Draft board loading"
+        time_label = "--"
+    else:
+        pick_label = f"Pick {active_row.get('Pick', '--')}"
+        team_label = live_team_full_name(clean_pick_display(active_row.get("Slot", "")))
+        time_label = f"{active_row.get('Time Due (ET)', '--')} ET"
+    render_html(f"""
+        <section class="sbc-live-draft-room">
+            <div>
+                <div class="sbc-live-draft-kicker">Live Draft Room</div>
+                <div class="sbc-live-draft-title">2026 SBCFBL Draft</div>
+                <div class="sbc-live-draft-dates">Round 1: Saturday, June 27th / Round 2: Sunday, June 28th</div>
+            </div>
+            <div class="sbc-live-draft-clock">
+                <span>{escape(status)}</span>
+                <strong>{escape(pick_label)} - {escape(team_label)}</strong>
+                <em>{escape(time_label)}</em>
+            </div>
+        </section>
+        """)
 
 
 def render_draft_history_table(data, title, description):
@@ -1965,13 +2020,6 @@ st.markdown(
             radial-gradient(circle at 90% 2%, color-mix(in srgb, var(--sbc-team-secondary) 36%, transparent) 0, transparent 34rem),
             linear-gradient(180deg, color-mix(in srgb, var(--sbc-team-primary) 12%, #ffffff) 0%, rgba(244, 246, 248, 0.94) 34%, color-mix(in srgb, var(--sbc-team-secondary) 9%, #eef2f6) 100%);
         color: var(--sbc-ink);
-    }}
-
-    .stApp:has([data-baseweb="tab-list"]:first-of-type [role="tab"]:first-child[aria-selected="true"]) {{
-        background:
-            radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--sbc-selected-primary) 42%, transparent) 0, transparent 38rem),
-            radial-gradient(circle at 90% 2%, color-mix(in srgb, var(--sbc-selected-secondary) 36%, transparent) 0, transparent 34rem),
-            linear-gradient(180deg, color-mix(in srgb, var(--sbc-selected-primary) 12%, #ffffff) 0%, rgba(244, 246, 248, 0.94) 34%, color-mix(in srgb, var(--sbc-selected-secondary) 9%, #eef2f6) 100%);
     }}
 
     .block-container {{
@@ -3943,8 +3991,11 @@ st.markdown(
     .sbc-draft-board-table th:nth-child(4) {{ width: 14rem; }}
     .sbc-draft-board-table th:nth-child(5) {{ width: 10rem; }}
 
-    .sbc-current-draft-board .sbc-draft-board-table th:nth-child(2) {{ width: 14.5rem; text-align: left; }}
+    .sbc-current-draft-board .sbc-draft-board-table th:nth-child(2) {{ width: 15.8rem; text-align: left; }}
     .sbc-current-draft-board .sbc-draft-board-table th:nth-child(3) {{ width: 12rem; text-align: left; }}
+    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(2) {{ width: 9.8rem; text-align: left; }}
+    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(3) {{ width: 18.5rem; }}
+    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(4) {{ width: 9.8rem; text-align: left; }}
     .sbc-history-draft-board .sbc-draft-board-table th:nth-child(2),
     .sbc-history-draft-board .sbc-draft-board-table th:nth-child(4) {{ text-align: left; }}
 
@@ -4033,6 +4084,74 @@ st.markdown(
     .sbc-draft-player-pending strong {{
         color: var(--sbc-ink);
         font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-live-draft-room {{
+        display: grid;
+        grid-template-columns: 1fr minmax(16rem, 24rem);
+        gap: 1rem;
+        align-items: center;
+        margin: 0.85rem 0 1rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 24%, rgba(23, 32, 42, 0.12));
+        border-left: 0.45rem solid {LEAGUE_SECONDARY};
+        border-radius: 8px;
+        background: linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, {LEAGUE_PRIMARY} 7%, #ffffff) 100%);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.075);
+    }}
+
+    .sbc-live-draft-kicker {{
+        color: {LEAGUE_SECONDARY};
+        font-size: 0.76rem;
+        font-weight: 950;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-live-draft-title {{
+        color: {LEAGUE_PRIMARY};
+        font-family: "{league_font_css}", "Poppins", sans-serif;
+        font-size: clamp(1.55rem, 3vw, 2.55rem);
+        font-weight: 950;
+        line-height: 1.05;
+    }}
+
+    .sbc-live-draft-dates {{
+        color: var(--sbc-muted);
+        font-size: 0.9rem;
+        font-weight: 800;
+        margin-top: 0.25rem;
+    }}
+
+    .sbc-live-draft-clock {{
+        display: grid;
+        gap: 0.2rem;
+        justify-items: start;
+        border-radius: 8px;
+        background: #111827;
+        color: #ffffff;
+        padding: 0.85rem 0.95rem;
+    }}
+
+    .sbc-live-draft-clock span {{
+        color: color-mix(in srgb, {LEAGUE_SECONDARY} 82%, #ffffff);
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-live-draft-clock strong {{
+        font-size: 1rem;
+        font-weight: 950;
+        line-height: 1.15;
+    }}
+
+    .sbc-live-draft-clock em {{
+        color: rgba(255, 255, 255, 0.74);
+        font-size: 0.8rem;
+        font-style: normal;
+        font-weight: 800;
     }}
 
     .sbc-draft-detail {{
@@ -4470,12 +4589,12 @@ with tab1:
         """)
     render_html('<div class="sbc-cap-eyebrow">Active Players</div>')
     active_player_df = active_players(df, pics, SelectedTeam)
-    render_cap_table(active_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
+    render_cap_table(active_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "], row_team=SelectedTeam)
 
     overseas_player_df = overseas_players(df, pics, SelectedTeam)
     render_html('<div class="sbc-cap-eyebrow">Overseas Players</div>')
     if overseas_player_df.shape[0] > 0:
-        render_cap_table(overseas_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
+        render_cap_table(overseas_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "], row_team=SelectedTeam)
     else:
         render_html('<div class="sbc-empty-state">No overseas players are currently listed for this team.</div>')
 
@@ -4483,7 +4602,7 @@ with tab1:
     render_html('<div class="sbc-cap-eyebrow">Dead Players</div>')
     if dead_player_df.shape[0] > 0:
         dead_player_df["Bird Rights"] = ""
-        render_cap_table(dead_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "])
+        render_cap_table(dead_player_df, columns=[" ", "Player"] + columns_order + ["Bird Rights"], image_columns=[" "], row_team=SelectedTeam)
     else:
         render_html('<div class="sbc-empty-state">No dead salary is currently listed for this team.</div>')
 
@@ -4511,7 +4630,7 @@ with tab1:
         render_html('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>')
         free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
         if free_agent_player_df.shape[0] > 0:
-            render_cap_table(free_agent_player_df, columns=[" ", "Player"] + [str(current_year+ year_offset)], image_columns=[" "])
+            render_cap_table(free_agent_player_df, columns=[" ", "Player"] + [str(current_year+ year_offset)], image_columns=[" "], row_team=SelectedTeam)
         else:
             render_html('<div class="sbc-empty-state">No upcoming free agents are currently listed for this team.</div>')
 
@@ -4519,7 +4638,7 @@ with tab1:
         render_html('<div class="sbc-cap-eyebrow">Trade Restrictions</div>')
         restricted_df = trade_restrictions(df, pics, SelectedTeam)
         if restricted_df.shape[0] > 0:
-            render_cap_table(restricted_df, columns=[" ", "Player", "Trade Restriction"], image_columns=[" "], contract_colors=False)
+            render_cap_table(restricted_df, columns=[" ", "Player", "Trade Restriction"], image_columns=[" "], contract_colors=False, row_team=SelectedTeam)
         else:
             render_html('<div class="sbc-empty-state">No trade restrictions are currently listed for this team.</div>')
 
@@ -4527,7 +4646,7 @@ with tab1:
         render_html('<div class="sbc-cap-eyebrow">Draft Rights & Retired</div>')
         draft_retired_player_df = draft_retired_players(df, pics, SelectedTeam)
         if draft_retired_player_df.shape[0] > 0:
-            render_cap_table(draft_retired_player_df, columns=[" ", "Player"], image_columns=[" "])
+            render_cap_table(draft_retired_player_df, columns=[" ", "Player"], image_columns=[" "], row_team=SelectedTeam)
         else:
             render_html('<div class="sbc-empty-state">No draft-rights or retired players are currently listed for this team.</div>')
 
@@ -5345,21 +5464,25 @@ with tab10:
     draft_year_tabs = st.tabs([str(year) for year in draft_years])
     for draft_tab, draft_year in zip(draft_year_tabs, draft_years):
         with draft_tab:
-            c1, c2 = st.columns(2)
             if draft_year == current_year:
+                current_round_1 = safe_table_call(current_draft, standings, dp, "1st Round")
+                current_round_2 = safe_table_call(current_draft, standings, dp, "2nd Round")
+                render_live_draft_room_header(current_round_1, current_round_2)
+                c1, c2 = st.columns(2)
                 with c1:
                     render_current_draft_table(
-                        safe_table_call(current_draft, standings, dp, "1st Round"),
+                        current_round_1,
                         f"{draft_year} Round 1",
                         "1",
-                        "First-round draft clock, slot ownership, and time due.")
+                        "Saturday, June 27th.")
                 with c2:
                     render_current_draft_table(
-                        safe_table_call(current_draft, standings, dp, "2nd Round"),
+                        current_round_2,
                         f"{draft_year} Round 2",
                         "2",
-                        "Second-round draft clock, slot ownership, and time due.")
+                        "Sunday, June 28th.")
             else:
+                c1, c2 = st.columns(2)
                 with c1:
                     render_draft_history_table(
                         safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"),
@@ -5864,5 +5987,3 @@ with tab13:
     if positoinal_check_df.shape[0] > 0:
         st.header("Fantrax Positional Check")
         st.dataframe(positoinal_check_df)
-
-
