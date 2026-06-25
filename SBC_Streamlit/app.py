@@ -4103,9 +4103,9 @@ st.markdown(
 
     .sbc-current-draft-board .sbc-draft-board-table th:nth-child(2) {{ width: 15.8rem; text-align: left; }}
     .sbc-current-draft-board .sbc-draft-board-table th:nth-child(3) {{ width: 12rem; text-align: left; }}
-    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(2) {{ width: 9.8rem; text-align: left; }}
-    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(3) {{ width: 18.5rem; }}
-    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(4) {{ width: 9.8rem; text-align: left; }}
+    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(2) {{ width: 9.9rem; text-align: left; }}
+    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(3) {{ width: 14.4rem; }}
+    .sbc-history-draft-board .sbc-draft-board-table th:nth-child(4) {{ width: 13.1rem; text-align: left; }}
     .sbc-history-draft-board .sbc-draft-board-table th:nth-child(2),
     .sbc-history-draft-board .sbc-draft-board-table th:nth-child(4) {{ text-align: left; }}
 
@@ -4202,8 +4202,8 @@ st.markdown(
     }}
 
     .sbc-draft-team-mark img {{
-        width: 1.9rem;
-        height: 1.9rem;
+        width: 1.7rem;
+        height: 1.7rem;
         object-fit: contain;
         margin: 0;
         filter: drop-shadow(0 3px 6px rgba(18, 25, 38, 0.14));
@@ -4361,6 +4361,104 @@ st.markdown(
         font-size: 0.9rem;
         font-style: normal;
         font-weight: 800;
+    }}
+
+    .sbc-about-feature,
+    .sbc-about-rule-card,
+    .sbc-check-card {{
+        --about-accent: {LEAGUE_PRIMARY};
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--about-accent) 22%, rgba(23, 32, 42, 0.12));
+        border-top: 4px solid var(--about-accent);
+        border-radius: 8px;
+        background: linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, var(--about-accent) 6%, #ffffff) 100%);
+        box-shadow: 0 16px 36px rgba(18, 25, 38, 0.08);
+    }}
+
+    .sbc-about-feature {{
+        min-height: 10.6rem;
+        padding: 0.95rem;
+        margin-bottom: 0.85rem;
+        display: grid;
+        align-content: start;
+        gap: 0.38rem;
+    }}
+
+    .sbc-about-feature-blue,
+    .sbc-check-clear {{ --about-accent: {LEAGUE_PRIMARY}; }}
+
+    .sbc-about-feature-green {{ --about-accent: {LEAGUE_SECONDARY}; }}
+    .sbc-about-feature-gold {{ --about-accent: #b88914; }}
+    .sbc-about-feature-red,
+    .sbc-check-issue {{ --about-accent: #b91c1c; }}
+
+    .sbc-about-stat {{
+        width: fit-content;
+        border-radius: 999px;
+        background: var(--about-accent);
+        color: #ffffff;
+        font-size: 0.78rem;
+        font-weight: 950;
+        padding: 0.26rem 0.58rem;
+    }}
+
+    .sbc-about-feature-title,
+    .sbc-about-rule-title,
+    .sbc-check-title {{
+        color: var(--sbc-ink);
+        font-size: 1.02rem;
+        font-weight: 950;
+        line-height: 1.12;
+    }}
+
+    .sbc-about-feature-body,
+    .sbc-check-copy {{
+        color: var(--sbc-muted);
+        font-size: 0.88rem;
+        font-weight: 760;
+        line-height: 1.42;
+    }}
+
+    .sbc-about-rule-card {{
+        padding: 0.85rem 0.95rem;
+        margin-bottom: 0.85rem;
+    }}
+
+    .sbc-about-rule-card ul {{
+        margin: 0.58rem 0 0;
+        padding-left: 1.05rem;
+        color: var(--sbc-muted);
+        font-size: 0.86rem;
+        font-weight: 760;
+        line-height: 1.42;
+    }}
+
+    .sbc-about-rule-card li + li {{
+        margin-top: 0.28rem;
+    }}
+
+    .sbc-check-card {{
+        margin-bottom: 0.65rem;
+        padding: 0.85rem 0.95rem;
+    }}
+
+    .sbc-check-top {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.85rem;
+    }}
+
+    .sbc-check-badge {{
+        flex: 0 0 auto;
+        min-width: 4.7rem;
+        border-radius: 999px;
+        background: var(--about-accent);
+        color: #ffffff;
+        font-size: 0.78rem;
+        font-weight: 950;
+        text-align: center;
+        padding: 0.32rem 0.6rem;
     }}
 
     .sbc-award-card,
@@ -6162,6 +6260,47 @@ def render_awards_section(title, subtitle, columns):
     return st.columns(columns)
 
 
+def render_about_feature(title, body, stat=None, accent="blue"):
+    stat_html = f'<div class="sbc-about-stat">{escape(str(stat))}</div>' if stat else ""
+    render_html(f"""
+        <section class="sbc-about-feature sbc-about-feature-{accent}">
+            {stat_html}
+            <div class="sbc-about-feature-title">{escape(title)}</div>
+            <div class="sbc-about-feature-body">{escape(body)}</div>
+        </section>
+    """)
+
+
+def render_about_rule_card(title, items, accent="blue"):
+    rows = "".join(f"<li>{escape(str(item))}</li>" for item in items)
+    render_html(f"""
+        <section class="sbc-about-rule-card sbc-about-feature-{accent}">
+            <div class="sbc-about-rule-title">{escape(title)}</div>
+            <ul>{rows}</ul>
+        </section>
+    """)
+
+
+def render_check_card(title, description, check_df):
+    count = 0 if check_df is None else check_df.shape[0]
+    status = "clear" if count == 0 else "issue"
+    status_text = "Clear" if count == 0 else f"{count} issues"
+    render_html(f"""
+        <section class="sbc-check-card sbc-check-{status}">
+            <div class="sbc-check-top">
+                <div>
+                    <div class="sbc-check-title">{escape(title)}</div>
+                    <div class="sbc-check-copy">{escape(description)}</div>
+                </div>
+                <div class="sbc-check-badge">{escape(status_text)}</div>
+            </div>
+        </section>
+    """)
+    if count > 0:
+        with st.expander(f"Review {title}", expanded=False):
+            st.dataframe(check_df, width="stretch", hide_index=True)
+
+
 with tab11:
     award_year_options = list(range(2021, current_year+1))
     AwardYears = st.selectbox("Select Award Year", options=award_year_options, index=award_year_options.index(current_year))
@@ -6409,6 +6548,135 @@ with tab11:
     '''
 
 with tab12:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">Rules / Origin / Operating Model</div>
+                    <div class="sbc-draft-heading">About SBCFBL</div>
+                    <div class="sbc-draft-subcopy">A front-office fantasy basketball league built around NBA-style roster building, cap strategy, scheduled drafts, custom organizations, and real competitive stakes.</div>
+                </div>
+            </div>
+        </div>
+    """)
+
+    about_cols = st.columns(3)
+    with about_cols[0]:
+        render_about_feature(
+            "Built For Front Office Reps",
+            "Founded by Sports Business Classroom alumni, SBCFBL turns the NBA rulebook into a living team-building environment.",
+            "2020",
+            "blue",
+        )
+    with about_cols[1]:
+        render_about_feature(
+            "Thirty Original Organizations",
+            "Every franchise has its own location, nickname, colors, logo, font, cap sheet, draft assets, and operating identity.",
+            "30 Teams",
+            "green",
+        )
+    with about_cols[2]:
+        render_about_feature(
+            "Real Stakes, Real Strategy",
+            "League fees, luxury tax, prizes, charitable giving, roster rules, exceptions, deadlines, and trades all matter.",
+            "$10K+ Raised",
+            "gold",
+        )
+
+    render_html("""
+        <div class="sbc-awards-section-head">
+            <span>How The League Works</span>
+            <em>The high-level rules commissioners, owners, and new members need fastest.</em>
+        </div>
+    """)
+    rule_cols = st.columns(3)
+    with rule_cols[0]:
+        render_about_rule_card(
+            "Roster Construction",
+            [
+                "12-player in-season minimum with a 14-player standard maximum.",
+                "17-player offseason limit and three IR slots instead of two-way contracts.",
+                "Overseas rights preserve drafted players through rookie-contract windows.",
+            ],
+            "blue",
+        )
+    with rule_cols[1]:
+        render_about_rule_card(
+            "Schedule And Playoffs",
+            [
+                "72-game regular season over 36 matchup periods.",
+                "Triple round-robin inside conference and double round-robin outside it.",
+                "Play-in rounds lead into four seven-day playoff series.",
+            ],
+            "green",
+        )
+    with rule_cols[2]:
+        render_about_rule_card(
+            "Scoring Model",
+            [
+                "413 available matchup points across NBA-style categories.",
+                "207 points wins the matchup; category count resolves most ties.",
+                "Efficiency categories require minimum attempt thresholds.",
+            ],
+            "gold",
+        )
+
+    finance_cols = st.columns(3)
+    with finance_cols[0]:
+        render_about_rule_card(
+            "Cap And Fees",
+            [
+                "Scaled NBA salary cap economics keep rosters realistic and entry fees manageable.",
+                "Luxury tax mirrors the NBA structure and affects both cost and competitive posture.",
+                "Base roster funds support operations first, then prize distributions.",
+            ],
+            "blue",
+        )
+    with finance_cols[1]:
+        render_about_rule_card(
+            "Free Agency",
+            [
+                "Seven 48-hour moratorium days with Qualtrics bidding.",
+                "Players sign through bid thresholds, consecutive interest, or final-day resolution.",
+                "Restricted free agency, sign-and-trades, and offseason guarantees are built in.",
+            ],
+            "green",
+        )
+    with finance_cols[2]:
+        render_about_rule_card(
+            "Draft And Trades",
+            [
+                "The draft follows NBA structure, lottery logic, and scheduled timeslots.",
+                "Late picks can trigger simultaneous clocks and eventual autodraft handling.",
+                "Trade deadline timing follows the NBA deadline with a 24-hour SBCFBL delay.",
+            ],
+            "red",
+        )
+
+    render_html("""
+        <div class="sbc-awards-section-head">
+            <span>Why It Exists</span>
+            <em>A serious sandbox for learning the tiny decisions that shape a basketball organization.</em>
+        </div>
+    """)
+    purpose_cols = st.columns([1, 1])
+    with purpose_cols[0]:
+        render_about_feature(
+            "Professional Development",
+            "The league gives members meaningful practice with CBA mechanics, roster constraints, trade construction, draft planning, and long-term asset management.",
+            "NBA-Style",
+            "blue",
+        )
+    with purpose_cols[1]:
+        render_about_feature(
+            "Community Impact",
+            "SBCFBL has paired competitive team building with charitable giving and a growing alumni network of members pursuing basketball roles.",
+            "Community",
+            "green",
+        )
+
+    _legacy_tab12 = r'''
     st.subheader("SBCFBL Introduction")
     st.markdown("""
     The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** was established in Fall 2020 by alumni of the Sports Business Classroom 2019 and 2020 cohorts. The SBCFBL was inspired by guidance from Seth Partnow, who encouraged students pursuing careers in the NBA to gain hands-on experience by managing every aspect of a simulated professional team.
@@ -6559,45 +6827,60 @@ with tab12:
 
     This document is intended as a **quick-reference guide** and is not an exhaustive rulebook. Its purpose is to provide key information and highlight why the SBCFBL is considered **the premier fantasy basketball experience**.
     """)
+    '''
 
 with tab13:
-
     picture_check = data_picture_check(df, pics)
-    if picture_check.shape[0] > 0:
-        st.header("Pictures")
-        st.dataframe(picture_check)
-
     roster_n_check = data_roster_check(df)
-    #if roster_n_check.shape[0] > 0:
-    #    st.header("Roster Count")
-    #    st.dataframe(roster_n_check)
-
     missing_salary_check = data_missing_salary_check(df)
-    if missing_salary_check.shape[0] > 0:
-        st.header("Missing Salary Info")
-        st.dataframe(missing_salary_check)
-
     hard_cap_check_df = hard_cap_check(df, base_cap)
-    if hard_cap_check_df.shape[0] > 0:
-        st.header("Hard Cap Broken")        
-        st.dataframe(hard_cap_check_df)
-
-    stepien_check = stepien_data_check(dp)
-    if stepien_check.shape[0] > 0:
-        st.header("Stepien Rule Broken")
-        st.dataframe(stepien_check)
-
+    stepien_check_df = stepien_data_check(dp)
     missing_fantrax = fantrax_players_check(df, ft_players, ft_roster)
-    if missing_fantrax.shape[0] > 0:
-        st.header("Cap Sheet to Fantrax Translation")
-        st.dataframe(missing_fantrax)
-
     cap_sheet_to_fantrax_df = fantrax_roster_check(df, ft_players, ft_roster)
-    if cap_sheet_to_fantrax_df.shape[0] > 0:
-        st.header("Cap Sheet to Fantrax Roster")
-        st.dataframe(cap_sheet_to_fantrax_df)
+    positional_check_df = fantrax_positional_check(df, ft_players, ft_roster)
 
-    positoinal_check_df = fantrax_positional_check(df, ft_players, ft_roster)
-    if positoinal_check_df.shape[0] > 0:
-        st.header("Fantrax Positional Check")
-        st.dataframe(positoinal_check_df)
+    check_items = [
+        ("Pictures", "Players missing image links or mapped headshots.", picture_check),
+        ("Roster Count", "Organizations outside expected roster-size rules.", roster_n_check),
+        ("Missing Salary Info", "Cap sheet rows missing salary or contract fields.", missing_salary_check),
+        ("Hard Cap Broken", "Teams that appear to be over a hard-cap limit.", hard_cap_check_df),
+        ("Stepien Rule Broken", "Draft assets that may violate Stepien protections.", stepien_check_df),
+        ("Cap Sheet To Fantrax Translation", "Players that do not translate cleanly into Fantrax player data.", missing_fantrax),
+        ("Cap Sheet To Fantrax Roster", "Roster mismatches between the cap sheet and Fantrax.", cap_sheet_to_fantrax_df),
+        ("Fantrax Positional Check", "Position eligibility mismatches that need manual review.", positional_check_df),
+    ]
+    issue_count = sum(0 if table is None else table.shape[0] for _, _, table in check_items)
+    clear_count = sum(1 for _, _, table in check_items if table is None or table.shape[0] == 0)
+
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">Integrity Desk</div>
+                    <div class="sbc-draft-heading">Data Checks</div>
+                    <div class="sbc-draft-subcopy">A clean command center for roster, salary, draft, image, and Fantrax validation issues before they become real app problems.</div>
+                </div>
+            </div>
+        </div>
+    """)
+
+    status_cols = st.columns(3)
+    with status_cols[0]:
+        render_about_feature("Checks Run", "Automated validations across the league data model.", len(check_items), "blue")
+    with status_cols[1]:
+        render_about_feature("Checks Clear", "Validation groups with no current rows to review.", clear_count, "green")
+    with status_cols[2]:
+        render_about_feature("Open Issues", "Total rows currently returned by the data checks.", issue_count, "red" if issue_count else "green")
+
+    render_html("""
+        <div class="sbc-awards-section-head">
+            <span>Review Queue</span>
+            <em>Cards stay compact when clean and open into the source table when a check returns rows.</em>
+        </div>
+    """)
+    for idx in range(0, len(check_items), 2):
+        cols = st.columns(2)
+        for col, (title, description, table) in zip(cols, check_items[idx:idx + 2]):
+            with col:
+                render_check_card(title, description, table)
