@@ -135,6 +135,10 @@ with top_col2:
     render_html('<div class="sbc-picker-eyebrow">Team View</div>')
     SelectedTeam = st.selectbox("Choose your team", Teams, index=Teams.index("Vegas"))
 
+previous_selected_team = st.session_state.get("_sbc_previous_selected_team")
+selected_team_changed = previous_selected_team is not None and previous_selected_team != SelectedTeam
+st.session_state["_sbc_previous_selected_team"] = SelectedTeam
+
 bg_color = team_info[SelectedTeam]["bg"]
 text_color = team_info[SelectedTeam]["text"]
 text_color2 = team_info[SelectedTeam]["bg2"]
@@ -309,8 +313,137 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
 def safe_table_call(fn, *args, **kwargs):
     try:
         return fn(*args, **kwargs)
-    except KeyError:
+    except Exception:
         return pd.DataFrame()
+
+
+def team_logo_for_name(team):
+    return team_info.get(str(team), {}).get("logo", "")
+
+
+def render_overview_table(data):
+    if data is None or data.empty:
+        render_html('<div class="sbc-empty-state">No overview data is available.</div>')
+        return
+    table_df = data.copy()
+    money_cols = ["Cap Space", "Tax Space", "Apron 1 Space", "Apron 2 Space", "Base Fee", "Luxury Fee", "Balance", "Amount Paid"]
+    visible_cols = ["Logo", "Team", "Active Players", "Hard Cap"] + money_cols
+    visible_cols = [col for col in visible_cols if col in table_df.columns]
+    rows = []
+    for _, row in table_df.iterrows():
+        cells = []
+        for col in visible_cols:
+            value = row.get(col, "")
+            if col == "Logo":
+                cells.append(f'<td class="sbc-overview-logo-cell"><img class="sbc-team-logo-img" src="{escape(str(value), quote=True)}" alt=""></td>')
+            elif col in money_cols:
+                numeric = 0
+                try:
+                    numeric = float(value)
+                except (TypeError, ValueError):
+                    pass
+                tone = "good" if numeric >= 0 else "bad"
+                cells.append(f'<td class="sbc-overview-money sbc-money-{tone}">{escape(str(format_money(value)))}</td>')
+            elif col == "Active Players":
+                cells.append(f'<td class="sbc-overview-center">{escape(str(value))}</td>')
+            else:
+                cells.append(f'<td>{escape(str(value))}</td>')
+        rows.append(f"<tr>{''.join(cells)}</tr>")
+    headers = "".join(f"<th>{escape(str(col))}</th>" for col in visible_cols)
+    render_html(f"""
+        <div class="sbc-overview-table-wrap">
+            <table class="sbc-overview-table">
+                <thead><tr>{headers}</tr></thead>
+                <tbody>{''.join(rows)}</tbody>
+            </table>
+        </div>
+        """)
+
+
+def render_payout_cards(cards):
+    card_html = []
+    for label, value, note in cards:
+        card_html.append(f"""
+            <div class="sbc-payout-card">
+                <div class="sbc-payout-label">{escape(str(label))}</div>
+                <div class="sbc-payout-value">{escape(str(format_money(value)))}</div>
+                <div class="sbc-payout-note">{escape(str(note))}</div>
+            </div>
+        """)
+    render_html(f'<div class="sbc-payout-grid">{"".join(card_html)}</div>')
+
+
+def render_current_draft_table(data, title, icon, description):
+    if data is None or data.empty:
+        render_html(f"""
+            <section class="sbc-draft-board">
+                <div class="sbc-draft-board-head"><span>{icon}</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
+                <div class="sbc-pick-empty">No draft board data is available.</div>
+            </section>
+        """)
+        return
+    rows = []
+    for _, row in data.iterrows():
+        slot_team = clean_pick_display(row.get("Slot", ""))
+        current_team = clean_pick_display(row.get("Team", ""))
+        slot_logo = team_logo_for_name(slot_team)
+        current_logo = team_logo_for_name(current_team)
+        detail = clean_pick_display(row.get("Explanation", ""))
+        rows.append(f"""
+            <tr>
+                <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
+                <td class="sbc-draft-team-cell"><img src="{escape(slot_logo, quote=True)}" alt=""><strong>{escape(str(slot_team))}</strong></td>
+                <td class="sbc-draft-team-cell"><img src="{escape(current_logo, quote=True)}" alt=""><strong>{escape(str(current_team))}</strong></td>
+                <td class="sbc-draft-detail">{escape(str(detail))}</td>
+                <td class="sbc-draft-time">{escape(str(row.get("Time Due (ET)", "")))}</td>
+            </tr>
+        """)
+    render_html(f"""
+        <section class="sbc-draft-board">
+            <div class="sbc-draft-board-head"><span>{icon}</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
+            <div class="sbc-draft-board-wrap">
+                <table class="sbc-draft-board-table">
+                    <thead><tr><th>Pick</th><th>Slot</th><th>Owner</th><th>Details</th><th>Time Due</th></tr></thead>
+                    <tbody>{''.join(rows)}</tbody>
+                </table>
+            </div>
+        </section>
+    """)
+
+
+def render_draft_history_table(data, title, description):
+    if data is None or data.empty:
+        render_html(f"""
+            <section class="sbc-draft-board">
+                <div class="sbc-draft-board-head"><span>✓</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
+                <div class="sbc-pick-empty">No draft history is available.</div>
+            </section>
+        """)
+        return
+    rows = []
+    for _, row in data.iterrows():
+        rows.append(f"""
+            <tr>
+                <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
+                <td class="sbc-draft-team-cell"><img src="{escape(str(row.get("Drafted Team", "")), quote=True)}" alt=""></td>
+                <td class="sbc-draft-player-cell">
+                    <img src="{escape(str(row.get("Picture_Online", "")), quote=True)}" alt="">
+                    <strong>{escape(str(row.get("Player", "")))}</strong>
+                </td>
+                <td class="sbc-draft-team-cell"><img src="{escape(str(row.get("Current Team", "")), quote=True)}" alt=""></td>
+            </tr>
+        """)
+    render_html(f"""
+        <section class="sbc-draft-board">
+            <div class="sbc-draft-board-head"><span>✓</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
+            <div class="sbc-draft-board-wrap">
+                <table class="sbc-draft-board-table">
+                    <thead><tr><th>Pick</th><th>Drafted By</th><th>Player</th><th>Current Team</th></tr></thead>
+                    <tbody>{''.join(rows)}</tbody>
+                </table>
+            </div>
+        </section>
+    """)
 
 
 def clean_pick_display(value):
@@ -2877,6 +3010,217 @@ st.markdown(
         white-space: nowrap;
     }}
 
+    .sbc-overview-table-wrap,
+    .sbc-draft-board {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.12));
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.075);
+        margin: 0.45rem 0 1rem;
+    }}
+
+    .sbc-overview-table,
+    .sbc-draft-board-table {{
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }}
+
+    .sbc-overview-table th,
+    .sbc-draft-board-table th {{
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.68rem;
+        font-weight: 950;
+        letter-spacing: 0.07em;
+        padding: 0.66rem 0.65rem;
+        text-align: center;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-overview-table th:nth-child(1) {{ width: 3.5rem; }}
+    .sbc-overview-table th:nth-child(2) {{ width: 9rem; text-align: left; }}
+    .sbc-overview-table td,
+    .sbc-draft-board-table td {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.07);
+        color: var(--sbc-ink);
+        font-size: 0.78rem;
+        font-weight: 800;
+        height: 3.65rem;
+        padding: 0.5rem 0.65rem;
+        text-align: center;
+        vertical-align: middle;
+    }}
+
+    .sbc-overview-table tr:nth-child(even) td,
+    .sbc-draft-board-table tr:nth-child(even) td {{
+        background: rgba(247, 249, 252, 0.62);
+    }}
+
+    .sbc-overview-table td:nth-child(2) {{
+        text-align: left;
+        font-weight: 950;
+    }}
+
+    .sbc-overview-money {{
+        font-variant-numeric: tabular-nums;
+        font-weight: 950 !important;
+    }}
+
+    .sbc-money-good {{ color: #256f3b !important; }}
+    .sbc-money-bad {{ color: #9f2626 !important; }}
+    .sbc-overview-center {{ font-weight: 950 !important; }}
+
+    .sbc-payout-grid {{
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.78rem;
+        margin: 0.45rem 0 1rem;
+    }}
+
+    .sbc-payout-card {{
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 24%, rgba(23, 32, 42, 0.11));
+        border-top: 4px solid var(--sbc-team-primary);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 12px 28px rgba(18, 25, 38, 0.065);
+        min-height: 7rem;
+        padding: 0.82rem 0.88rem;
+    }}
+
+    .sbc-payout-label {{
+        color: var(--sbc-muted);
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-payout-value {{
+        color: var(--sbc-ink);
+        font-size: 1.45rem;
+        font-weight: 950;
+        line-height: 1;
+        margin-top: 0.42rem;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-payout-note {{
+        color: var(--sbc-muted);
+        font-size: 0.73rem;
+        font-weight: 750;
+        line-height: 1.28;
+        margin-top: 0.42rem;
+    }}
+
+    .sbc-draft-board-head {{
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 0.72rem;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--sbc-team-primary) 16%, #ffffff) 0%, #ffffff 100%);
+        padding: 0.78rem 0.88rem;
+    }}
+
+    .sbc-draft-board-head > span {{
+        width: 2.35rem;
+        height: 2.35rem;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--sbc-team-primary);
+        color: var(--sbc-team-text);
+        font-weight: 950;
+    }}
+
+    .sbc-draft-board-head strong {{
+        display: block;
+        color: var(--sbc-ink);
+        font-size: 1rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }}
+
+    .sbc-draft-board-head em {{
+        display: block;
+        color: var(--sbc-muted);
+        font-size: 0.76rem;
+        font-style: normal;
+        font-weight: 750;
+        line-height: 1.25;
+        margin-top: 0.18rem;
+    }}
+
+    .sbc-draft-board-wrap {{
+        overflow-x: auto;
+    }}
+
+    .sbc-draft-board-table th:nth-child(1) {{ width: 4.2rem; }}
+    .sbc-draft-board-table th:nth-child(2),
+    .sbc-draft-board-table th:nth-child(3) {{ width: 9rem; }}
+    .sbc-draft-board-table th:nth-child(5) {{ width: 7.5rem; }}
+
+    .sbc-draft-pick-no span {{
+        display: inline-grid;
+        place-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--sbc-team-primary) 16%, #ffffff);
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 30%, rgba(23, 32, 42, 0.12));
+        color: var(--sbc-ink);
+        font-weight: 950;
+    }}
+
+    .sbc-draft-team-cell,
+    .sbc-draft-player-cell {{
+        text-align: left !important;
+    }}
+
+    .sbc-draft-team-cell img {{
+        width: 2.2rem;
+        height: 2.2rem;
+        object-fit: contain;
+        vertical-align: middle;
+        margin-right: 0.45rem;
+        filter: drop-shadow(0 3px 7px rgba(18, 25, 38, 0.12));
+    }}
+
+    .sbc-draft-player-cell img {{
+        width: 2.6rem;
+        height: 2.6rem;
+        object-fit: cover;
+        border-radius: 999px;
+        vertical-align: middle;
+        margin-right: 0.55rem;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px rgba(23, 32, 42, 0.14);
+    }}
+
+    .sbc-draft-team-cell strong,
+    .sbc-draft-player-cell strong {{
+        font-size: 0.82rem;
+        font-weight: 950;
+    }}
+
+    .sbc-draft-detail {{
+        color: var(--sbc-muted) !important;
+        font-size: 0.74rem !important;
+        font-weight: 750 !important;
+        text-align: left !important;
+        white-space: normal;
+    }}
+
+    .sbc-draft-time {{
+        color: var(--sbc-team-primary) !important;
+        font-weight: 950 !important;
+        font-variant-numeric: tabular-nums;
+    }}
+
     [data-testid="stMetricDelta"],
     [data-testid="stMetricDelta"] * {{
         color: #4b5563 !important;
@@ -3061,7 +3405,8 @@ st.markdown(
         }}
 
         .sbc-score-grid,
-        .sbc-standings-layout {{
+        .sbc-standings-layout,
+        .sbc-payout-grid {{
             grid-template-columns: 1fr;
         }}
     }}
@@ -3087,17 +3432,14 @@ st.markdown(
     </style>""",
     unsafe_allow_html=True)
 
-if SelectedTeam == "Honolulu":
+if selected_team_changed and SelectedTeam == "Honolulu":
     st.balloons()
-if SelectedTeam == "Manchester":
+if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
 
-team_hub_tab, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = st.tabs([
+team_hub_tab, league_hub_tab, tab9, tab10, tab11, tab12, tab13 = st.tabs([
     f"🏢 {SelectedTeam} Hub",
-    "🏟️ Scoreboard",
-    "👥 Players",
-    "🎯 Draft Picks",
-    "🏆 Overview",
+    "🏟️ League Hub",
     "🔁 Trade Machine",
     "📚 Drafts",
     "⭐ Awards",
@@ -3110,6 +3452,14 @@ with team_hub_tab:
         f"🏀 {SelectedTeam} Picks",
         f"📊 {SelectedTeam} Live",
         f"🗓️ {SelectedTeam} Schedule"])
+
+with league_hub_tab:
+    tab5, standings_tab, tab6, tab7, tab8 = st.tabs([
+        "🏟️ Scoreboard",
+        "📈 Standings",
+        "👥 Players",
+        "🎯 Draft Picks",
+        "🏆 Overview"])
 
 with tab1:
     _legacy_tab1 = r'''
@@ -3608,7 +3958,7 @@ with tab5:
                 <div>
                     <div class="sbc-draft-eyebrow">{SelectedYear2} League Scoreboard / Period {SelectedPeriod2}</div>
                     <div class="sbc-draft-heading">SBC Scoreboard</div>
-                    <div class="sbc-draft-subcopy">Every matchup in the selected window, paired with standings through that point in the season.</div>
+                    <div class="sbc-draft-subcopy">Every matchup in the selected window, with scores grouped by competition type.</div>
                 </div>
             </div>
         </div>
@@ -3628,12 +3978,28 @@ with tab5:
     render_html('<div class="sbc-section-label">All Scores</div>')
     render_scoreboard_cards(live_stats_total_scores)
 
+with standings_tab:
+    StandingsYear = st.selectbox("Standings Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
+    standings_period_options = schedule_period_options(all_time_schedule, StandingsYear)
+    StandingsPeriod = st.selectbox("Standings Period", options=standings_period_options, index=current_period_index(standings_period_options))
+    render_html(f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{StandingsYear} League Table / Period {StandingsPeriod}</div>
+                    <div class="sbc-draft-heading">SBC Standings</div>
+                    <div class="sbc-draft-subcopy">Conference position, win percentage, games back, and conference/division record through the selected period.</div>
+                </div>
+            </div>
+        </div>
+        """)
     render_html('<div class="sbc-section-label">Standings Snapshot</div>')
     west_col, east_col = st.columns(2)
     with west_col:
-        render_conference_standings(standings, SelectedYear2, SelectedPeriod2, "West")
+        render_conference_standings(standings, StandingsYear, StandingsPeriod, "West")
     with east_col:
-        render_conference_standings(standings, SelectedYear2, SelectedPeriod2, "East")
+        render_conference_standings(standings, StandingsYear, StandingsPeriod, "East")
     render_html('<div class="sbc-empty-state">Tiebreakers are not currently implemented, so teams with identical records are sorted alphabetically inside the standings tier.</div>')
 
 with tab6:
@@ -3911,6 +4277,69 @@ with tab7:
 
     '''
 with tab8:
+    render_html(f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{current_year-1}-{str(current_year)[-2:]} League Office</div>
+                    <div class="sbc-draft-heading">League Overview</div>
+                    <div class="sbc-draft-subcopy">Cap thresholds, organization balances, payout structure, and league-wide financial positioning.</div>
+                </div>
+            </div>
+        </div>
+        """)
+
+    overview_df = overall_cap_table(df, exceptions, base_cap)
+    cap_space_count = (overview_df["Cap Space"] > 0).sum() if "Cap Space" in overview_df.columns else 0
+    tax_team_count = (overview_df["Luxury Fee"] > 0).sum() if "Luxury Fee" in overview_df.columns else 0
+    total_base_fees = overview_df["Base Fee"].sum() if "Base Fee" in overview_df.columns else 0
+    total_luxury_fees = overview_df["Luxury Fee"].sum() if "Luxury Fee" in overview_df.columns else 0
+
+    render_html(f"""
+        <div class="sbc-draft-grid">
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">$</div><div class="sbc-draft-tile-value">{format_money(current_salary_cap)}</div></div>
+                <div class="sbc-draft-tile-label">Salary Cap</div>
+                <div class="sbc-draft-tile-note">Primary roster-building threshold for the current league year.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">Tax</div><div class="sbc-draft-tile-value">{format_money(current_luxury_tax)}</div></div>
+                <div class="sbc-draft-tile-label">Luxury Tax</div>
+                <div class="sbc-draft-tile-note">{tax_team_count} organizations currently project a luxury fee.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">A1</div><div class="sbc-draft-tile-value">{format_money(current_apron_1)}</div></div>
+                <div class="sbc-draft-tile-label">Apron #1</div>
+                <div class="sbc-draft-tile-note">{cap_space_count} organizations currently show positive cap space.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">A2</div><div class="sbc-draft-tile-value">{format_money(current_apron_2)}</div></div>
+                <div class="sbc-draft-tile-label">Apron #2</div>
+                <div class="sbc-draft-tile-note">Hard-cap pressure point for the highest-spending organizations.</div>
+            </div>
+        </div>
+        """)
+
+    render_html('<div class="sbc-section-label">Organization Ledger</div>')
+    render_overview_table(overview_df)
+
+    render_html('<div class="sbc-section-label">League Payouts</div>')
+    render_payout_cards([
+        ("Champion", unit_payout(df, exceptions, base_cap) * 12, "SBCFBL champion base-pool payout."),
+        ("Runner-Up", unit_payout(df, exceptions, base_cap) * 4, "Finals runner-up base-pool payout."),
+        ("Conference Finalist", unit_payout(df, exceptions, base_cap) * 2, "Paid to each conference runner-up."),
+        ("Conference Semifinalist", unit_payout(df, exceptions, base_cap), "Paid to each semifinal loser."),
+        ("Charity Champion", tax_payout_champ(df, exceptions, base_cap), "Champion-directed charity payout from luxury fees."),
+        ("Tax Payback", tax_payout_split(df, exceptions, base_cap), "Split among non-tax organizations."),
+        ("IST Champion", 75, "Flat payout for the SBCFBL Cup champion."),
+        ("IST Runner Up", 15, "Flat payout for the SBCFBL Cup runner-up."),
+    ])
+
+    render_html(f'<div class="sbc-mini-note"><strong>{format_money(total_base_fees)}</strong> in base fees and <strong>{format_money(total_luxury_fees)}</strong> in luxury fees are currently represented in the organization ledger.</div>')
+
+    _legacy_tab8 = r'''
+    render_html('<div class="sbc-section-label">League Thresholds</div>')
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -3925,12 +4354,14 @@ with tab8:
     with col4:
         st.metric(label = "Apron #2", value = current_apron_2, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
 
+    render_html('<div class="sbc-section-label">Organization Ledger</div>')
     overall_cap_df = overall_cap_table(df, exceptions, base_cap)
     styled_overall_cap_df = (overall_cap_df.style
         .apply(lambda row: style_overall_cap(row), axis=1)
         .format({c: "${:,.2f}" for c in overall_cap_df.columns if c in ["Base Fee", "Luxury Fee", "Balance", "Amount Paid", "Cap Space", "Tax Space", "Apron 1 Space", "Apron 2 Space"]}))
     st.dataframe(styled_overall_cap_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"Logo": st.column_config.ImageColumn(label="", width="small")})
 
+    render_html('<div class="sbc-section-label">Base Pool Payouts</div>')
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -3945,6 +4376,7 @@ with tab8:
     with col4:
         st.metric(label = "Conference Semifinalists", value = unit_payout(df, exceptions, base_cap)*1, help = "Awarded to each Conference Semifinal loser (4 total). Prize equals 1⁄24 of the base fee pool after Fantrax, Larry Coon Trophy, and IST fees.", border = True, format = "dollar")
 
+    render_html('<div class="sbc-section-label">Tax And Cup Payouts</div>')
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -3959,6 +4391,7 @@ with tab8:
     with col4:
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
+    '''
 with tab9:
 
     with st.form("team_selection_form"):
@@ -4043,7 +4476,98 @@ with tab9:
         #stepien_check()
 
 with tab10:
+    render_html(f"""
+        <div class="sbc-draft-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">Historical Draft Room</div>
+                    <div class="sbc-draft-heading">SBC Drafts</div>
+                    <div class="sbc-draft-subcopy">Draft boards by year, round, pick order, drafted organization, current organization, and player headshot.</div>
+                </div>
+            </div>
+        </div>
+        """)
 
+    current_round_1 = safe_table_call(current_draft, standings, dp, "1st Round")
+    current_round_2 = safe_table_call(current_draft, standings, dp, "2nd Round")
+    current_total_picks = current_round_1.shape[0] + current_round_2.shape[0]
+
+    render_html(f"""
+        <div class="sbc-draft-grid">
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">1</div><div class="sbc-draft-tile-value">{current_round_1.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Round 1 Picks</div>
+                <div class="sbc-draft-tile-note">Saturday board with slot, current owner, detail, and pick clock.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">2</div><div class="sbc-draft-tile-value">{current_round_2.shape[0]}</div></div>
+                <div class="sbc-draft-tile-label">Round 2 Picks</div>
+                <div class="sbc-draft-tile-note">Second-round board in the same live draft format.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">#</div><div class="sbc-draft-tile-value">{current_total_picks}</div></div>
+                <div class="sbc-draft-tile-label">Current Board</div>
+                <div class="sbc-draft-tile-note">Total picks currently loaded for the {current_year} draft.</div>
+            </div>
+            <div class="sbc-draft-tile">
+                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">⏱</div><div class="sbc-draft-tile-value">30m</div></div>
+                <div class="sbc-draft-tile-label">Pick Window</div>
+                <div class="sbc-draft-tile-note">Live board uses the time-due slots from the draft helper.</div>
+            </div>
+        </div>
+        """)
+
+    draft_room_tab, draft_history_tab, lottery_room_tab = st.tabs(["Current Draft Room", "Draft History", "Lottery"])
+
+    with draft_room_tab:
+        render_html('<div class="sbc-section-label">Current Draft Board</div>')
+        render_current_draft_table(current_round_1, f"{current_year} Round 1", "1", "Saturday live board with pick clock and ownership notes.")
+        render_current_draft_table(current_round_2, f"{current_year} Round 2", "2", "Second-round board with owner and slot context.")
+
+    with draft_history_tab:
+        render_html('<div class="sbc-section-label">Draft History</div>')
+        history_tabs = st.tabs(["2025", "2024", "2023", "2022", "2021"])
+        for history_tab, draft_year in zip(history_tabs, [2025, 2024, 2023, 2022, 2021]):
+            with history_tab:
+                c1, c2 = st.columns(2)
+                with c1:
+                    render_draft_history_table(safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"), f"{draft_year} Round 1", "First-round selections and current team context.")
+                with c2:
+                    render_draft_history_table(safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"), f"{draft_year} Round 2", "Second-round selections and current team context.")
+
+    with lottery_room_tab:
+        render_html('<div class="sbc-section-label">Lottery Simulator</div>')
+        col1, col2, col3, col4 = st.columns(4)
+        options = [None] + list(range(1, 15))
+        with col1:
+            ball1 = st.selectbox("Lottery Ball 1", options, key="new_lottery_ball_1")
+        with col2:
+            ball2 = st.selectbox("Lottery Ball 2", options, key="new_lottery_ball_2")
+        with col3:
+            ball3 = st.selectbox("Lottery Ball 3", options, key="new_lottery_ball_3")
+        with col4:
+            ball4 = st.selectbox("Lottery Ball 4", options, key="new_lottery_ball_4")
+        try:
+            base_table = lottery_table(standings)
+        except Exception:
+            base_table = pd.DataFrame(columns=["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball", "Ownership"])
+        filtered_table = base_table.copy()
+        ball_cols = ["Lowest Ball", "Lower Ball", "Higher Ball", "Highest Ball"]
+        for ball in [ball1, ball2, ball3, ball4]:
+            if ball:
+                filtered_table = filtered_table[filtered_table[ball_cols].isin([ball]).any(axis=1)]
+        summary = (
+            filtered_table["Ownership"].value_counts().rename_axis("Team").reset_index(name="Count")
+            if "Ownership" in filtered_table.columns else pd.DataFrame(columns=["Team", "Count"])
+        )
+        l1, l2 = st.columns([3, 1])
+        with l1:
+            render_cap_table(filtered_table, columns=ball_cols + ["Ownership"], contract_colors=False)
+        with l2:
+            render_cap_table(summary, columns=["Team", "Count"], contract_colors=False)
+
+    _legacy_tab10 = r'''
     tab2026, tab2025, tab2024, tab2023, tab2022, tab2021, tablottery = st.tabs(["2026 Draft", "2025 Draft", "2024 Draft", "2023 Draft", "2022 Draft", "2021 Draft", "Lottery"])
 
     with tab2026:
@@ -4177,8 +4701,6 @@ with tab10:
 
         summary["Count"] = summary["Count"].astype(int)
         
-        if all(ball is not None for ball in [ball1, ball2, ball3, ball4]):
-            st.balloons()
         # Sort by count descending
         summary = summary.sort_values("Count", ascending=False)
         col5, col6 = st.columns([4, 1])        
@@ -4188,7 +4710,7 @@ with tab10:
             st.dataframe(summary, width="stretch", hide_index=True)
 
 
-
+    '''
 with tab11:
     AwardYears = st.selectbox("Select Award Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
     st.title("2025 SBCFBL Awards")
