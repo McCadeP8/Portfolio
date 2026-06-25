@@ -285,7 +285,7 @@ def format_money(value):
     except (TypeError, ValueError):
         return value
 
-def render_cap_table(data, columns=None, image_columns=None, money_columns=None, contract_colors=True):
+def render_cap_table(data, columns=None, image_columns=None, money_columns=None, contract_colors=True, row_team=None):
     image_columns = set(image_columns or [])
     money_columns = set(money_columns or [])
     if data is None or data.shape[0] == 0:
@@ -324,8 +324,8 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
             if row_color:
                 row_style = f' style="--row-team-color:{escape(str(row_color), quote=True)};"'
         elif str(team_logo_value).strip():
-            row_team = logo_to_team.get(str(team_logo_value), "")
-            row_color = team_info.get(row_team, {}).get("bg", "")
+            logo_team = logo_to_team.get(str(team_logo_value), "")
+            row_color = team_info.get(logo_team, {}).get("bg", "")
             if row_color:
                 row_style = f' style="--row-team-color:{escape(str(row_color), quote=True)};"'
         for col in visible_columns:
