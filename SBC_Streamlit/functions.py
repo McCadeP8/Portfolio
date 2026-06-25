@@ -1143,15 +1143,18 @@ def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFram
     df[['Wins', 'Losses']] = df['Record'].str.split('-', expand=True).astype(int)
     df['winPercentage'] = df['Wins'] / (df['Wins'] + df['Losses'])    
     df = df[['Team', 'winPercentage']]
-    dp = dp[dp['Year'] == current_year]
-    dp = dp.merge(df, how = 'left', left_on = 'OGTeam', right_on = 'Team')
-    dp = dp[dp['Round'] == round]
+    dp = dp[dp['Year'] == current_year].copy()
+    dp = dp[dp['Round'] == round].copy()
+    order_col = "CurrentTeam" if round != "1st Round" else "OGTeam"
+    dp["_DraftOrderTeam"] = dp[order_col].astype(str).str.split(",").str[0].str.strip()
+    dp = dp.merge(df, how = 'left', left_on = '_DraftOrderTeam', right_on = 'Team')
     dp = dp.sort_values('winPercentage', ascending=True)
     pick_start = 1 if round == "1st Round" else 31
     dp['Pick'] = range(pick_start, pick_start + dp.shape[0])
     draft_times = ["10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM","1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM", "12:00 AM", "12:30 AM", "1:00 AM"]
     dp["Time Due (ET)"] = [draft_times[i % len(draft_times)] for i in range(dp.shape[0])]
-    dp = dp[['Pick', 'OGTeam', 'CurrentTeam', 'Explanation', 'Time Due (ET)']]
+    dp = dp[['Pick', '_DraftOrderTeam', 'CurrentTeam', 'Explanation', 'Time Due (ET)']]
+    dp = dp.rename(columns={'_DraftOrderTeam': 'OGTeam'})
     dp = dp.rename(columns={'OGTeam': 'Slot'})
     dp = dp.rename(columns={'CurrentTeam': 'Team'})
     return dp

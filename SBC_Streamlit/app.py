@@ -568,8 +568,10 @@ def render_current_draft_table(data, title, icon, description):
     rows = []
     for _, row in data.iterrows():
         slot_team = clean_pick_display(row.get("Slot", ""))
+        row_color = team_color_for_name(slot_team) if slot_team in team_info else ""
+        row_style = f' style="--draft-row-color:{escape(str(row_color), quote=True)};"' if row_color else ""
         rows.append(f"""
-            <tr>
+            <tr{row_style}>
                 <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
                 <td class="sbc-draft-team-cell sbc-draft-slot-cell">{render_draft_team_wordmark(slot_team, include_nickname=True)}</td>
                 <td class="sbc-draft-player-cell sbc-draft-player-pending">
@@ -612,6 +614,19 @@ def draft_clock_pick(round_df, draft_date):
     return active, "On the clock"
 
 
+def draft_countdown_text(target_dt, now_dt):
+    delta = target_dt - now_dt
+    total_seconds = max(0, int(delta.total_seconds()))
+    days, remainder = divmod(total_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, _ = divmod(remainder, 60)
+    if days > 0:
+        return f"{days}d {hours}h {minutes}m"
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
+
+
 def render_live_draft_room_header(round_1_df, round_2_df):
     round_1_date = date(2026, 6, 27)
     round_2_date = date(2026, 6, 28)
@@ -620,13 +635,25 @@ def render_live_draft_room_header(round_1_df, round_2_df):
     active_date = round_2_date if now_et.date() >= round_2_date else round_1_date
     active_row, status = draft_clock_pick(active_df, active_date)
     if active_row is None:
-        pick_label = "Pick --"
+        pick_number = "--"
         team_label = "Draft board loading"
-        time_label = "--"
+        logo_html = ""
+        team_style = ""
+        countdown_label = "--"
     else:
-        pick_label = f"Pick {active_row.get('Pick', '--')}"
-        team_label = live_team_full_name(clean_pick_display(active_row.get("Slot", "")))
-        time_label = f"{active_row.get('Time Due (ET)', '--')} ET"
+        pick_number = str(active_row.get("Pick", "--"))
+        slot_team = clean_pick_display(active_row.get("Slot", ""))
+        team_label = live_team_full_name(slot_team)
+        team_logo = team_logo_for_name(slot_team)
+        team_color = team_color_for_name(slot_team) if slot_team in team_info else LEAGUE_PRIMARY
+        team_style = f' style="--clock-team-color:{escape(str(team_color), quote=True)};"'
+        logo_html = f'<img src="{escape(str(team_logo), quote=True)}" alt="{escape(str(team_label), quote=True)} logo">' if team_logo else ""
+        try:
+            target_time = datetime.strptime(str(active_row.get("Time Due (ET)", "")), "%I:%M %p").time()
+            target_dt = datetime.combine(active_date, target_time, ZoneInfo("America/New_York"))
+            countdown_label = "Due now" if now_et >= target_dt else f"{draft_countdown_text(target_dt, now_et)} until pick"
+        except ValueError:
+            countdown_label = f"{active_row.get('Time Due (ET)', '--')} ET"
     render_html(f"""
         <section class="sbc-live-draft-room">
             <div>
@@ -634,10 +661,14 @@ def render_live_draft_room_header(round_1_df, round_2_df):
                 <div class="sbc-live-draft-title">2026 SBCFBL Draft</div>
                 <div class="sbc-live-draft-dates">Round 1: Saturday, June 27th / Round 2: Sunday, June 28th</div>
             </div>
-            <div class="sbc-live-draft-clock">
-                <span>{escape(status)}</span>
-                <strong>{escape(pick_label)} - {escape(team_label)}</strong>
-                <em>{escape(time_label)}</em>
+            <div class="sbc-live-draft-clock"{team_style}>
+                <div class="sbc-live-draft-pick-circle">{escape(pick_number)}</div>
+                <div class="sbc-live-draft-logo">{logo_html}</div>
+                <div>
+                    <span>{escape(status)}</span>
+                    <strong>{escape(team_label)}</strong>
+                    <em>{escape(countdown_label)}</em>
+                </div>
             </div>
         </section>
         """)
@@ -654,10 +685,13 @@ def render_draft_history_table(data, title, description):
         return
     rows = []
     for _, row in data.iterrows():
+        drafted_team = clean_pick_display(row.get("Drafted Team Name", ""))
+        row_color = team_color_for_name(drafted_team) if drafted_team in team_info else ""
+        row_style = f' style="--draft-row-color:{escape(str(row_color), quote=True)};"' if row_color else ""
         rows.append(f"""
-            <tr>
+            <tr{row_style}>
                 <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
-                <td class="sbc-draft-team-cell">{render_draft_team_wordmark(row.get("Drafted Team Name", ""))}</td>
+                <td class="sbc-draft-team-cell">{render_draft_team_wordmark(drafted_team)}</td>
                 <td class="sbc-draft-player-cell">
                     <img src="{escape(str(row.get("Picture_Online", "")), quote=True)}" alt="">
                     <strong>{escape(str(row.get("Player", "")))}</strong>
@@ -2020,6 +2054,13 @@ st.markdown(
             radial-gradient(circle at 90% 2%, color-mix(in srgb, var(--sbc-team-secondary) 36%, transparent) 0, transparent 34rem),
             linear-gradient(180deg, color-mix(in srgb, var(--sbc-team-primary) 12%, #ffffff) 0%, rgba(244, 246, 248, 0.94) 34%, color-mix(in srgb, var(--sbc-team-secondary) 9%, #eef2f6) 100%);
         color: var(--sbc-ink);
+    }}
+
+    html[data-sbc-main-tab="team"] .stApp {{
+        background:
+            radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--sbc-selected-primary) 42%, transparent) 0, transparent 38rem),
+            radial-gradient(circle at 90% 2%, color-mix(in srgb, var(--sbc-selected-secondary) 36%, transparent) 0, transparent 34rem),
+            linear-gradient(180deg, color-mix(in srgb, var(--sbc-selected-primary) 12%, #ffffff) 0%, rgba(244, 246, 248, 0.94) 34%, color-mix(in srgb, var(--sbc-selected-secondary) 9%, #eef2f6) 100%);
     }}
 
     .block-container {{
@@ -4021,6 +4062,16 @@ st.markdown(
         height: 4.2rem;
     }}
 
+    .sbc-current-draft-board .sbc-draft-board-table tr[style*="--draft-row-color"] td,
+    .sbc-history-draft-board .sbc-draft-board-table tr[style*="--draft-row-color"] td {{
+        background-color: color-mix(in srgb, var(--draft-row-color) 7%, #ffffff);
+    }}
+
+    .sbc-current-draft-board .sbc-draft-board-table tr[style*="--draft-row-color"]:nth-child(even) td,
+    .sbc-history-draft-board .sbc-draft-board-table tr[style*="--draft-row-color"]:nth-child(even) td {{
+        background-color: color-mix(in srgb, var(--draft-row-color) 10%, #ffffff);
+    }}
+
     .sbc-current-draft-board .sbc-draft-team-cell,
     .sbc-history-draft-board .sbc-draft-team-cell {{
         text-align: left !important;
@@ -4065,10 +4116,10 @@ st.markdown(
     .sbc-draft-team-wordmark {{
         color: var(--draft-team-color);
         display: inline-block;
-        font-family: var(--draft-team-font), "Poppins", sans-serif;
-        font-size: 0.98rem;
+        font-family: "Poppins", "Segoe UI", sans-serif;
+        font-size: 0.9rem;
         font-weight: 950;
-        line-height: 1.05;
+        line-height: 1.12;
         text-align: left;
         white-space: nowrap;
     }}
@@ -4125,12 +4176,41 @@ st.markdown(
 
     .sbc-live-draft-clock {{
         display: grid;
-        gap: 0.2rem;
-        justify-items: start;
+        grid-template-columns: auto auto 1fr;
+        gap: 0.75rem;
+        align-items: center;
         border-radius: 8px;
-        background: #111827;
+        background: linear-gradient(135deg, color-mix(in srgb, var(--clock-team-color, {LEAGUE_PRIMARY}) 84%, #111827 16%) 0%, #111827 100%);
         color: #ffffff;
-        padding: 0.85rem 0.95rem;
+        padding: 0.8rem 0.95rem;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--clock-team-color, {LEAGUE_PRIMARY}) 34%, rgba(255,255,255,0.18));
+    }}
+
+    .sbc-live-draft-pick-circle {{
+        width: 3rem;
+        height: 3rem;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--clock-team-color, {LEAGUE_PRIMARY});
+        font-size: 1.08rem;
+        font-weight: 950;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+    }}
+
+    .sbc-live-draft-logo {{
+        width: 3.2rem;
+        height: 3.2rem;
+        display: grid;
+        place-items: center;
+    }}
+
+    .sbc-live-draft-logo img {{
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.28));
     }}
 
     .sbc-live-draft-clock span {{
@@ -4402,6 +4482,28 @@ team_hub_tab, league_hub_tab, tab9, tab10, tab11, tab12, tab13 = st.tabs([
     "⭐ Awards",
     "📖 About",
     "✅ Data Checks"])
+
+components.html("""
+<script>
+try {
+  const doc = window.parent.document;
+  function syncSbcMainTab() {
+    const tabs = Array.from(doc.querySelectorAll('[role="tab"]'));
+    const teamTab = tabs.find(tab => (tab.textContent || '').includes('Team Hub'));
+    const isTeam = teamTab && teamTab.getAttribute('aria-selected') === 'true';
+    doc.documentElement.dataset.sbcMainTab = isTeam ? 'team' : 'league';
+  }
+  syncSbcMainTab();
+  new MutationObserver(syncSbcMainTab).observe(doc.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['aria-selected']
+  });
+} catch (error) {
+  // Keep the league-branded fallback if parent DOM access is unavailable.
+}
+</script>
+""", height=0)
 
 with team_hub_tab:
     picker_col, _ = st.columns([1.15, 3.85], vertical_alignment="bottom")
