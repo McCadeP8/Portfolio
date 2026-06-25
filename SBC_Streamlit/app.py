@@ -79,7 +79,7 @@ TEAM_ABBREVIATIONS = {
     "Pittsburgh": "PIT",
     "Providence": "PRO",
     "San Diego": "SDS",
-    "San Jose": "SJO",
+    "San Jose": "SJS",
     "Seattle": "SEA",
     "St. Louis": "STL",
     "Tampa Bay": "TBF",
@@ -92,6 +92,7 @@ LEAGUE_LOGO = "https://pbs.twimg.com/media/HLq5ARaaQAA4KwY?format=png&name=small
 LEAGUE_PRIMARY = "#09438E"
 LEAGUE_SECONDARY = "#009C3D"
 LEAGUE_FONT = "Bungee"
+DRAFT_SILHOUETTE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='48' fill='%23111827'/%3E%3Ccircle cx='48' cy='35' r='17' fill='%23f8fafc'/%3E%3Cpath d='M18 83c4-20 17-31 30-31s26 11 30 31' fill='%23f8fafc'/%3E%3C/svg%3E"
 
 st.set_page_config(
     page_title="SBC Cap Sheets",
@@ -447,6 +448,20 @@ def render_slot_team(value):
     )
 
 
+def render_draft_team_wordmark(value, empty_text="Not on roster"):
+    team = clean_pick_display(value)
+    if is_blank_value(value) or team == "â€”" or team not in team_info:
+        return f'<span class="sbc-draft-team-empty">{escape(empty_text)}</span>'
+    color = team_color_for_name(team)
+    font = team_font_for_name(team)
+    return (
+        f'<span class="sbc-draft-team-wordmark" '
+        f'style="--draft-team-color:{escape(str(color), quote=True)};--draft-team-font:{escape(str(font), quote=True)};">'
+        f'{escape(live_team_full_name(team))}'
+        f'</span>'
+    )
+
+
 def render_team_name_stack(team):
     team = str(team)
     color = team_color_for_name(team)
@@ -543,18 +558,22 @@ def render_current_draft_table(data, title, icon, description):
         """)
         return
     rows = []
+    has_details = any(clean_pick_display(row.get("Explanation", "")) != "â€”" for _, row in data.iterrows())
     for _, row in data.iterrows():
         slot_team = clean_pick_display(row.get("Slot", ""))
         current_team = clean_pick_display(row.get("Team", ""))
-        current_logo = team_logo_for_name(current_team)
         detail = clean_pick_display(row.get("Explanation", ""))
+        detail_cell = f'<td class="sbc-draft-detail">{escape(str(detail))}</td>' if has_details else ""
         rows.append(f"""
             <tr>
                 <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
                 <td class="sbc-draft-team-cell sbc-draft-slot-cell">{render_slot_team(slot_team)}</td>
-                <td class="sbc-draft-team-cell">{render_team_logo_chip_from_url(current_logo)}</td>
-                <td class="sbc-draft-detail">{escape(str(detail))}</td>
-                <td class="sbc-draft-time">{escape(str(row.get("Time Due (ET)", "")))}</td>
+                <td class="sbc-draft-team-cell">{render_draft_team_wordmark(current_team)}</td>
+                <td class="sbc-draft-player-cell sbc-draft-player-pending">
+                    <img src="{DRAFT_SILHOUETTE}" alt="">
+                    <strong>{escape(str(row.get("Time Due (ET)", "")))} (ET)</strong>
+                </td>
+                {detail_cell}
             </tr>
         """)
     render_html(f"""
@@ -562,7 +581,7 @@ def render_current_draft_table(data, title, icon, description):
             <div class="sbc-draft-board-head"><span>{icon}</span><div><strong>{escape(title)}</strong><em>{escape(description)}</em></div></div>
             <div class="sbc-draft-board-wrap">
                 <table class="sbc-draft-board-table">
-                    <thead><tr><th>Pick</th><th>Slot</th><th>Owner</th><th>Details</th><th>Time Due</th></tr></thead>
+                    <thead><tr><th>Pick</th><th>Slot</th><th>Owner</th><th>Player</th>{'<th>Details</th>' if has_details else ''}</tr></thead>
                     <tbody>{''.join(rows)}</tbody>
                 </table>
             </div>
@@ -584,12 +603,12 @@ def render_draft_history_table(data, title, description):
         rows.append(f"""
             <tr>
                 <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
-                <td class="sbc-draft-team-cell">{render_team_logo_chip_from_url(row.get("Drafted Team", ""))}</td>
+                <td class="sbc-draft-team-cell">{render_draft_team_wordmark(row.get("Drafted Team Name", ""))}</td>
                 <td class="sbc-draft-player-cell">
                     <img src="{escape(str(row.get("Picture_Online", "")), quote=True)}" alt="">
                     <strong>{escape(str(row.get("Player", "")))}</strong>
                 </td>
-                <td class="sbc-draft-team-cell">{render_team_logo_chip_from_url(row.get("Current Team", ""))}</td>
+                <td class="sbc-draft-team-cell">{render_draft_team_wordmark(row.get("Current Team Name", ""))}</td>
             </tr>
         """)
     render_html(f"""
@@ -3902,9 +3921,10 @@ st.markdown(
     }}
 
     .sbc-draft-board-table th:nth-child(1) {{ width: 4.2rem; }}
-    .sbc-draft-board-table th:nth-child(2) {{ width: 12.75rem; }}
-    .sbc-draft-board-table th:nth-child(3) {{ width: 5.75rem; }}
-    .sbc-draft-board-table th:nth-child(5) {{ width: 7.5rem; }}
+    .sbc-draft-board-table th:nth-child(2) {{ width: 13.5rem; }}
+    .sbc-draft-board-table th:nth-child(3) {{ width: 12.5rem; }}
+    .sbc-draft-board-table th:nth-child(4) {{ width: 14rem; }}
+    .sbc-draft-board-table th:nth-child(5) {{ width: 10rem; }}
 
     .sbc-draft-pick-no span {{
         display: inline-grid;
@@ -3925,6 +3945,7 @@ st.markdown(
 
     .sbc-draft-player-cell {{
         text-align: left !important;
+        white-space: nowrap;
     }}
 
     .sbc-draft-slot-cell .sbc-pick-slot-team {{
@@ -3956,6 +3977,30 @@ st.markdown(
     .sbc-draft-player-cell strong {{
         font-size: 0.82rem;
         font-weight: 950;
+    }}
+
+    .sbc-draft-team-wordmark {{
+        color: var(--draft-team-color);
+        display: inline-block;
+        font-family: var(--draft-team-font), "Poppins", sans-serif;
+        font-size: 0.98rem;
+        font-weight: 950;
+        line-height: 1.05;
+        text-align: center;
+        white-space: normal;
+    }}
+
+    .sbc-draft-team-empty {{
+        color: var(--sbc-muted);
+        display: inline-block;
+        font-size: 0.78rem;
+        font-weight: 900;
+        line-height: 1.1;
+    }}
+
+    .sbc-draft-player-pending strong {{
+        color: var(--sbc-ink);
+        font-variant-numeric: tabular-nums;
     }}
 
     .sbc-draft-detail {{
@@ -4220,12 +4265,12 @@ with team_hub_tab:
         f"🗓️ {SelectedTeam} Schedule"])
 
 with league_hub_tab:
-    tab5, standings_tab, tab6, tab7, tab8 = st.tabs([
+    tab8, tab5, standings_tab, tab6, tab7 = st.tabs([
+        "🏆 Overview",
         "🏟️ Scoreboard",
         "📈 Standings",
         "👥 Players",
-        "🎯 Draft Picks",
-        "🏆 Overview"])
+        "🎯 Draft Picks"])
 
 with tab1:
     _legacy_tab1 = r'''
@@ -5251,30 +5296,38 @@ with tab10:
         </div>
         """)
 
-    current_round_1 = safe_table_call(past_draft, df, pics, dh, current_year, "1st Round")
-    current_round_2 = safe_table_call(past_draft, df, pics, dh, current_year, "2nd Round")
-
-    draft_room_tab, draft_history_tab = st.tabs(["Current Draft Room", "Draft History"])
-
-    with draft_room_tab:
-        render_html('<div class="sbc-section-label">Current Draft Board</div>')
-        c1, c2 = st.columns(2)
-        with c1:
-            render_draft_history_table(current_round_1, f"{current_year} Round 1", "First-round selections and current team context.")
-        with c2:
-            render_draft_history_table(current_round_2, f"{current_year} Round 2", "Second-round selections and current team context.")
-
-    with draft_history_tab:
-        render_html('<div class="sbc-section-label">Draft History</div>')
-        history_years = [year for year in [2025, 2024, 2023, 2022, 2021] if year != current_year]
-        history_tabs = st.tabs([str(year) for year in history_years])
-        for history_tab, draft_year in zip(history_tabs, history_years):
-            with history_tab:
-                c1, c2 = st.columns(2)
+    draft_years = []
+    for year in [current_year, 2025, 2024, 2023, 2022, 2021]:
+        if year not in draft_years:
+            draft_years.append(year)
+    draft_year_tabs = st.tabs([str(year) for year in draft_years])
+    for draft_tab, draft_year in zip(draft_year_tabs, draft_years):
+        with draft_tab:
+            c1, c2 = st.columns(2)
+            if draft_year == current_year:
                 with c1:
-                    render_draft_history_table(safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"), f"{draft_year} Round 1", "First-round selections and current team context.")
+                    render_current_draft_table(
+                        safe_table_call(current_draft, standings, dp, "1st Round"),
+                        f"{draft_year} Round 1",
+                        "1",
+                        "First-round draft clock, slot ownership, and time due.")
                 with c2:
-                    render_draft_history_table(safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"), f"{draft_year} Round 2", "Second-round selections and current team context.")
+                    render_current_draft_table(
+                        safe_table_call(current_draft, standings, dp, "2nd Round"),
+                        f"{draft_year} Round 2",
+                        "2",
+                        "Second-round draft clock, slot ownership, and time due.")
+            else:
+                with c1:
+                    render_draft_history_table(
+                        safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"),
+                        f"{draft_year} Round 1",
+                        "First-round selections and current team context.")
+                with c2:
+                    render_draft_history_table(
+                        safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"),
+                        f"{draft_year} Round 2",
+                        "Second-round selections and current team context.")
     _legacy_tab10 = r'''
     tab2026, tab2025, tab2024, tab2023, tab2022, tab2021, tablottery = st.tabs(["2026 Draft", "2025 Draft", "2024 Draft", "2023 Draft", "2022 Draft", "2021 Draft", "Lottery"])
 

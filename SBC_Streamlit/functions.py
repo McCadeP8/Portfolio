@@ -1152,9 +1152,11 @@ def past_draft(df: pd.DataFrame, pics: pd.DataFrame, dh: pd.DataFrame, year: flo
     dh = dh.merge(df[['Player', 'Team']], on='Player', how='left')
     dh = dh.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     dh = dh.drop(columns=["Year",'Round'])
+    dh["Drafted Team Name"] = dh["Team_x"]
+    dh["Current Team Name"] = dh["Team_y"]
     dh["Drafted Team"] = dh["Team_x"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     dh["Current Team"] = dh["Team_y"].map(lambda t: team_info.get(t, {}).get("logo", ""))
-    dh = dh[['Pick', 'Drafted Team', 'Player', 'Picture_Online', 'Current Team']]
+    dh = dh[['Pick', 'Drafted Team Name', 'Drafted Team', 'Player', 'Picture_Online', 'Current Team Name', 'Current Team']]
     return dh
 
 def lottery_table(standings: pd.DataFrame) -> pd.DataFrame:
