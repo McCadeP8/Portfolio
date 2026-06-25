@@ -598,6 +598,36 @@ def render_current_draft_table(data, title, icon, description):
     """)
 
 
+def current_draft_from_history(draft_history, round_name):
+    expected = ["Pick", "Slot", "Team", "Time Due (ET)"]
+    if draft_history is None or draft_history.empty or not {"Year", "Round", "Pick", "Team"}.issubset(draft_history.columns):
+        return pd.DataFrame(columns=expected)
+    history = draft_history.copy()
+    history["_year_numeric"] = pd.to_numeric(history["Year"], errors="coerce")
+    table = history[
+        (history["_year_numeric"] == current_year)
+        & (history["Round"].astype(str).str.strip() == str(round_name))
+    ].copy()
+    if table.empty:
+        return pd.DataFrame(columns=expected)
+    table["_pick_sort"] = pd.to_numeric(table["Pick"], errors="coerce")
+    table = table.sort_values("_pick_sort", na_position="last").reset_index(drop=True)
+    draft_times = ["10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM", "12:00 AM", "12:30 AM", "1:00 AM"]
+    if "Player" in table.columns:
+        player_times = table["Player"].astype(str).str.extract(r"(\d{1,2}:\d{2}\s*[AP]M)", expand=False)
+    else:
+        player_times = pd.Series([None] * table.shape[0])
+    table["Time Due (ET)"] = [
+        re.sub(r"\s+", " ", str(player_times.iloc[idx]).upper()).strip()
+        if idx < len(player_times) and pd.notna(player_times.iloc[idx])
+        else draft_times[idx % len(draft_times)]
+        for idx in range(table.shape[0])
+    ]
+    table["Slot"] = table["Team"].astype(str).str.strip()
+    table["Team"] = table["Slot"]
+    return table[["Pick", "Slot", "Team", "Time Due (ET)"]]
+
+
 def draft_clock_picks(round_df, draft_date):
     if round_df is None or round_df.empty:
         return None, None, "Board not loaded"
@@ -4555,13 +4585,11 @@ try {
   const doc = window.parent.document;
   function formatCountdown(ms) {
     if (ms <= 0) return 'Due now';
-    const totalMinutes = Math.floor(ms / 60000);
-    const days = Math.floor(totalMinutes / 1440);
-    const hours = Math.floor((totalMinutes % 1440) / 60);
-    const minutes = totalMinutes % 60;
-    if (days > 0) return `${days}d ${hours}h ${minutes}m until pick`;
-    if (hours > 0) return `${hours}h ${minutes}m until pick`;
-    return `${minutes}m until pick`;
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} left til pick`;
   }
   function syncDraftCountdowns() {
     doc.querySelectorAll('.sbc-countdown[data-target]').forEach((node) => {
@@ -4572,7 +4600,7 @@ try {
     });
   }
   syncDraftCountdowns();
-  setInterval(syncDraftCountdowns, 30000);
+  setInterval(syncDraftCountdowns, 1000);
 } catch (error) {}
 </script>
 """, height=0)
@@ -5639,8 +5667,8 @@ with tab10:
     for draft_tab, draft_year in zip(draft_year_tabs, draft_years):
         with draft_tab:
             if draft_year == current_year:
-                current_round_1 = safe_table_call(current_draft, standings, dp, "1st Round")
-                current_round_2 = safe_table_call(current_draft, standings, dp, "2nd Round")
+                current_round_1 = current_draft_from_history(dh, "1st Round")
+                current_round_2 = current_draft_from_history(dh, "2nd Round")
                 render_live_draft_room_header(current_round_1, current_round_2)
                 c1, c2 = st.columns(2)
                 with c1:
