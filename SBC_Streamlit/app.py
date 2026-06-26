@@ -213,6 +213,18 @@ def clean_cap_display(col, value):
         text = re.sub(r"(?i)(Traded-Player(?: Exception)?)(?:\s*#?\d+)$", r"\1", text).strip()
     return text
 
+def parse_money_input(value):
+    if is_blank_value(value):
+        return None
+    text = str(value).replace("$", "").replace(",", "").strip()
+    if text == "":
+        return None
+    try:
+        return int(float(text))
+    except (TypeError, ValueError):
+        return None
+
+
 def render_cap_table(data, columns=None, image_columns=None, money_columns=None, contract_colors=True, row_team=None):
     image_columns = set(image_columns or [])
     money_columns = set(money_columns or [])
@@ -6889,14 +6901,16 @@ with tab9:
             SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, TradeTeam))
             SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, TradeTeam))
             SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, TradeTeam))
-            CashOut = st.number_input(label="Cash Out:", min_value=110000, max_value=max_cash, placeholder="$0", value=None, step=10000, format="$%d")
+            CashOutText = st.text_input("Cash Out:", placeholder="$0")
+            CashOut = parse_money_input(CashOutText)
 
         with col2:
             render_trade_panel_header("Incoming Package", "Assets your organization receives", tone="green")
             SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, TradeTeam))
             SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, TradeTeam))
             SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, TradeTeam))
-            CashIn = st.number_input(label="Cash In:", min_value=110000, max_value=max_cash, placeholder="$0", value=None, step=10000, format="$%d")
+            CashInText = st.text_input("Cash In:", placeholder="$0")
+            CashIn = parse_money_input(CashInText)
 
         submitted = st.form_submit_button("Submit")
 
