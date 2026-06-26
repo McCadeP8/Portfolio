@@ -564,6 +564,90 @@ def render_trade_asset_chips(title, items, empty_text, tone="blue"):
     """)
 
 
+def team_from_logo(logo):
+    for team, info in team_info.items():
+        if str(info.get("logo", "")) == str(logo):
+            return team
+    return ""
+
+
+def render_trade_team_mark(team):
+    if not team or team not in team_info:
+        return '<span class="sbc-trade-ledger-muted">League</span>'
+    visuals = team_visuals(team)
+    return (
+        f'<span class="sbc-trade-ledger-team" style="--trade-ledger-team:{escape(str(visuals["primary"]), quote=True)};--trade-ledger-font:{escape(str(visuals["font"]), quote=True)};">'
+        f'<img src="{escape(str(visuals["logo"]), quote=True)}" alt="{escape(str(team), quote=True)} logo" referrerpolicy="no-referrer">'
+        f'<strong>{escape(live_team_full_name(team))}</strong>'
+        f'</span>'
+    )
+
+
+def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, picks_in, exceptions_out, exceptions_in, cash_out, cash_in, incoming_salary, outgoing_salary, salary_delta, cap_after, roster_after):
+    rows = []
+    visuals = team_visuals(trade_team)
+
+    def add_row(side, asset_type, asset, team, amount="", detail=""):
+        side_class = "out" if side == "Outgoing" else "in" if side == "Incoming" else "math"
+        rows.append(f"""
+            <tr class="sbc-trade-ledger-row sbc-trade-ledger-{side_class}">
+                <td><span class="sbc-trade-side-pill">{escape(side)}</span></td>
+                <td>{escape(asset_type)}</td>
+                <td class="sbc-trade-ledger-asset">{asset}</td>
+                <td>{render_trade_team_mark(team)}</td>
+                <td class="sbc-trade-ledger-money">{escape(str(amount))}</td>
+                <td>{escape(str(detail))}</td>
+            </tr>
+        """)
+
+    for _, row in players_out.iterrows():
+        name = str(row.get("Player", ""))
+        pic = row.get(" ", "")
+        img = f'<img class="sbc-trade-player-img" src="{escape(str(pic), quote=True)}" alt="{escape(name, quote=True)}">' if not is_blank_value(pic) else '<span class="sbc-trade-player-img sbc-trade-player-empty"></span>'
+        add_row("Outgoing", "Player", f'<span class="sbc-trade-player">{img}<strong>{escape(name)}</strong></span>', trade_team, format_money(row.get(str(current_year), "")), row.get("Bird Rights", ""))
+
+    for _, row in players_in.iterrows():
+        name = str(row.get("Player", ""))
+        pic = row.get(" ", "")
+        team = team_from_logo(row.get("Team_logo", ""))
+        img = f'<img class="sbc-trade-player-img" src="{escape(str(pic), quote=True)}" alt="{escape(name, quote=True)}">' if not is_blank_value(pic) else '<span class="sbc-trade-player-img sbc-trade-player-empty"></span>'
+        add_row("Incoming", "Player", f'<span class="sbc-trade-player">{img}<strong>{escape(name)}</strong></span>', team, format_money(row.get(str(current_year), "")), row.get("Bird Rights", ""))
+
+    for pick in picks_out:
+        add_row("Outgoing", "Draft Pick", escape(str(pick)), trade_team, "", "Pick asset")
+    for pick in picks_in:
+        pick_team = str(pick).split(" ")[0] if pick else ""
+        add_row("Incoming", "Draft Pick", escape(str(pick)), pick_team if pick_team in team_info else "", "", "Pick asset")
+    for exception in exceptions_out:
+        add_row("Outgoing", "Exception", escape(str(exception)), trade_team, "", "Exception used")
+    for exception in exceptions_in:
+        add_row("Incoming", "Exception", escape(str(exception)), "", "", "Exception received/used")
+    if cash_out:
+        add_row("Outgoing", "Cash", "Cash Consideration", trade_team, format_money(cash_out), "Cash sent")
+    if cash_in:
+        add_row("Incoming", "Cash", "Cash Consideration", "", format_money(cash_in), "Cash received")
+
+    add_row("Trade Math", "Incoming Salary", "Total incoming player salary", "", format_money(incoming_salary), "")
+    add_row("Trade Math", "Outgoing Salary", "Total outgoing player salary", "", format_money(outgoing_salary), "")
+    add_row("Trade Math", "Net Salary", "Incoming minus outgoing salary", "", format_money(salary_delta), f"Projected cap total {format_money(cap_after)}")
+    add_row("Trade Math", "Players After", "Projected active roster count", trade_team, roster_after, "")
+
+    render_html(f"""
+        <section class="sbc-trade-ledger" style="--trade-ledger-primary:{escape(str(visuals["primary"]), quote=True)};--trade-ledger-secondary:{escape(str(visuals["secondary"]), quote=True)};--trade-ledger-text:{escape(str(visuals["text"]), quote=True)};">
+            <div class="sbc-trade-ledger-head">
+                <span>Transaction Ledger</span>
+                <em>{escape(live_team_full_name(trade_team))} trade sheet</em>
+            </div>
+            <div class="sbc-trade-ledger-wrap">
+                <table>
+                    <thead><tr><th>Side</th><th>Type</th><th>Asset</th><th>Team</th><th>Salary / Amount</th><th>Detail</th></tr></thead>
+                    <tbody>{''.join(rows)}</tbody>
+                </table>
+            </div>
+        </section>
+    """)
+
+
 def render_about_copy_card(title, body_html, accent="blue"):
     render_html(f"""
         <section class="sbc-about-copy-card sbc-about-feature-{accent}">
@@ -4728,7 +4812,15 @@ st.markdown(
     }}
 
     .sbc-trade-panel-green {{
-        --trade-primary: {LEAGUE_SECONDARY};
+        --trade-primary: #007a32;
+    }}
+
+    .sbc-trade-panel-gold {{
+        --trade-primary: #9f6f00;
+    }}
+
+    .sbc-trade-panel-red {{
+        --trade-primary: #b91c1c;
     }}
 
     .sbc-trade-panel-head img {{
@@ -4825,6 +4917,157 @@ st.markdown(
         border: 1px dashed rgba(23, 32, 42, 0.18);
     }}
 
+    div[data-baseweb="select"] > div {{
+        min-height: 3.35rem;
+        align-items: center;
+    }}
+
+    div[data-baseweb="select"] input {{
+        min-height: 2.1rem;
+    }}
+
+    .sbc-trade-ledger {{
+        overflow: hidden;
+        margin: 0.9rem 0 1rem;
+        border-radius: 8px;
+        border: 1px solid color-mix(in srgb, var(--trade-ledger-primary, var(--sbc-team-primary)) 20%, rgba(23, 32, 42, 0.12));
+        background: #ffffff;
+        box-shadow: 0 18px 42px rgba(18,25,38,0.09);
+    }}
+
+    .sbc-trade-ledger-head {{
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.82rem 0.95rem;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background: linear-gradient(135deg, color-mix(in srgb, var(--trade-ledger-primary, var(--sbc-team-primary)) 11%, #ffffff), color-mix(in srgb, var(--trade-ledger-secondary, var(--sbc-team-secondary)) 9%, #ffffff));
+    }}
+
+    .sbc-trade-ledger-head span {{
+        color: var(--sbc-ink);
+        font-size: 1.15rem;
+        font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-trade-ledger-head em {{
+        color: var(--sbc-muted);
+        font-size: 0.8rem;
+        font-style: normal;
+        font-weight: 850;
+    }}
+
+    .sbc-trade-ledger-wrap {{
+        overflow-x: auto;
+    }}
+
+    .sbc-trade-ledger table {{
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 56rem;
+    }}
+
+    .sbc-trade-ledger th {{
+        padding: 0.58rem 0.7rem;
+        background: #f7f9fc;
+        color: var(--sbc-muted);
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-align: left;
+        text-transform: uppercase;
+    }}
+
+    .sbc-trade-ledger td {{
+        padding: 0.55rem 0.7rem;
+        border-top: 1px solid rgba(23, 32, 42, 0.07);
+        color: var(--sbc-ink);
+        font-size: 0.84rem;
+        font-weight: 780;
+        vertical-align: middle;
+    }}
+
+    .sbc-trade-ledger-out {{
+        background: color-mix(in srgb, var(--trade-ledger-primary, var(--sbc-team-primary)) 5%, #ffffff);
+    }}
+
+    .sbc-trade-ledger-in {{
+        background: color-mix(in srgb, {LEAGUE_SECONDARY} 5%, #ffffff);
+    }}
+
+    .sbc-trade-ledger-math {{
+        background: #f8fafc;
+    }}
+
+    .sbc-trade-side-pill {{
+        display: inline-flex;
+        min-width: 5.7rem;
+        justify-content: center;
+        border-radius: 999px;
+        background: var(--trade-ledger-primary, var(--sbc-team-primary));
+        color: var(--trade-ledger-text, var(--sbc-team-text));
+        font-size: 0.72rem;
+        font-weight: 950;
+        padding: 0.26rem 0.5rem;
+    }}
+
+    .sbc-trade-ledger-in .sbc-trade-side-pill {{
+        background: #007a32;
+        color: #ffffff;
+    }}
+
+    .sbc-trade-ledger-math .sbc-trade-side-pill {{
+        background: #111827;
+        color: #ffffff;
+    }}
+
+    .sbc-trade-player,
+    .sbc-trade-ledger-team {{
+        display: inline-grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }}
+
+    .sbc-trade-player-img {{
+        width: 2.15rem;
+        height: 2.15rem;
+        border-radius: 999px;
+        object-fit: cover;
+        object-position: center 18%;
+        background: #111827;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 1px rgba(23, 32, 42, 0.14);
+    }}
+
+    .sbc-trade-ledger-team img {{
+        width: 1.9rem;
+        height: 1.9rem;
+        object-fit: contain;
+    }}
+
+    .sbc-trade-ledger-team strong {{
+        color: color-mix(in srgb, var(--trade-ledger-team) 72%, #111827 28%);
+        font-family: var(--trade-ledger-font), "Poppins", sans-serif;
+        font-size: 0.94rem;
+        font-weight: 950;
+        line-height: 1.05;
+    }}
+
+    .sbc-trade-ledger-money {{
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }}
+
+    .sbc-trade-ledger-muted {{
+        color: var(--sbc-muted);
+        font-size: 0.8rem;
+        font-weight: 800;
+    }}
+
     .sbc-award-card,
     .sbc-award-team-card {{
         overflow: hidden;
@@ -4888,8 +5131,9 @@ st.markdown(
         gap: 0.65rem;
         min-width: 0;
         border-radius: 8px;
-        background: rgba(255,255,255,0.78);
-        border: 1px solid rgba(23, 32, 42, 0.08);
+        background: linear-gradient(135deg, color-mix(in srgb, var(--award-row-color, var(--award-accent, {LEAGUE_PRIMARY})) 9%, #ffffff), color-mix(in srgb, var(--award-row-secondary, var(--award-accent, {LEAGUE_PRIMARY})) 5%, #ffffff));
+        border: 1px solid color-mix(in srgb, var(--award-row-color, var(--award-accent, {LEAGUE_PRIMARY})) 20%, rgba(23, 32, 42, 0.08));
+        border-left: 4px solid var(--award-row-color, var(--award-accent, {LEAGUE_PRIMARY}));
         padding: 0.48rem;
     }}
 
@@ -4916,6 +5160,7 @@ st.markdown(
     .sbc-award-player strong {{
         display: block;
         color: var(--sbc-ink);
+        font-family: var(--award-row-font), "Poppins", sans-serif;
         font-size: 0.9rem;
         font-weight: 950;
         line-height: 1.1;
@@ -4955,6 +5200,28 @@ st.markdown(
         max-height: 8rem;
         object-fit: contain;
         filter: drop-shadow(0 10px 18px rgba(18,25,38,0.16));
+    }}
+
+    .sbc-award-team-spotlight {{
+        display: grid;
+        place-items: center;
+        gap: 0.72rem;
+        text-align: center;
+    }}
+
+    .sbc-award-team-spotlight img {{
+        width: min(7.5rem, 56%);
+        height: 7.5rem;
+        object-fit: contain;
+        filter: drop-shadow(0 12px 20px rgba(18,25,38,0.16));
+    }}
+
+    .sbc-award-team-spotlight strong {{
+        color: color-mix(in srgb, var(--award-team-color, {LEAGUE_PRIMARY}) 78%, #111827 22%);
+        font-family: var(--award-team-font), "Poppins", sans-serif;
+        font-size: clamp(1.2rem, 2.6vw, 2.1rem);
+        font-weight: 950;
+        line-height: 1;
     }}
 
     .sbc-award-team-footer {{
@@ -6244,24 +6511,33 @@ with tab8:
 
     '''
 with tab9:
-    render_trade_hero(SelectedTeam)
+    if "_sbc_trade_team" not in st.session_state:
+        st.session_state["_sbc_trade_team"] = SelectedTeam if SelectedTeam in Teams else "Vegas"
+    TradeTeam = st.selectbox(
+        "Trade Machine Team",
+        options=Teams,
+        index=Teams.index(st.session_state.get("_sbc_trade_team", "Vegas")) if st.session_state.get("_sbc_trade_team", "Vegas") in Teams else Teams.index("Vegas"),
+        key="_sbc_trade_team",
+    )
+    trade_visuals = team_visuals(TradeTeam)
+    render_trade_hero(TradeTeam)
 
     with st.form("team_selection_form"):
-        render_trade_panel_header("Build The Deal", f"{SelectedTeam} {nickname} transaction worksheet", SelectedTeam)
+        render_trade_panel_header("Build The Deal", f"{live_team_full_name(TradeTeam)} transaction worksheet", TradeTeam)
         col1, col2 = st.columns(2)
     
         with col1:
-            render_trade_panel_header("Outgoing Package", "Assets leaving your organization", SelectedTeam, "blue")
-            SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, SelectedTeam))
-            SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, SelectedTeam))
-            SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, SelectedTeam))
+            render_trade_panel_header("Outgoing Package", "Assets leaving your organization", TradeTeam, "blue")
+            SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, TradeTeam))
+            SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, TradeTeam))
+            SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, TradeTeam))
             CashOut = st.number_input(label="Cash Out:", min_value = 110000, max_value= max_cash, placeholder = "None", value = None)
 
         with col2:
             render_trade_panel_header("Incoming Package", "Assets your organization receives", tone="green")
-            SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, SelectedTeam))
-            SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, SelectedTeam))
-            SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, SelectedTeam))
+            SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, TradeTeam))
+            SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, TradeTeam))
+            SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, TradeTeam))
             CashIn = st.number_input(label="Cash In:", min_value=110000, max_value=max_cash, placeholder = "None", value = None)
 
         submitted = st.form_submit_button("Submit")
@@ -6274,14 +6550,14 @@ with tab9:
         salary_delta = incoming_salary - outgoing_salary
         active_out = df[(df["Player"].isin(SelectedPlayersOut)) & (df["Type"] == "Active Players")].shape[0]
         active_in = df[(df["Player"].isin(SelectedPlayersIn)) & (df["Type"] == "Active Players")].shape[0]
-        roster_before = active_player_n(df, SelectedTeam)
+        roster_before = active_player_n(df, TradeTeam)
         roster_after = roster_before - active_out + active_in
-        cap_total_before = get_cap_total(df, exceptions, SelectedTeam)
+        cap_total_before = get_cap_total(df, exceptions, TradeTeam)
         cap_total_after = cap_total_before + salary_delta
         rendered_out = len(SelectedPlayersOut) + len(SelectedPicksOut) + len(SelectedExceptionOut) + (1 if CashOut else 0)
         rendered_in = len(SelectedPlayersIn) + len(SelectedPicksIn) + len(SelectedExceptionIn) + (1 if CashIn else 0)
 
-        render_trade_hero(SelectedTeam, rendered_out, rendered_in)
+        render_trade_hero(TradeTeam, rendered_out, rendered_in)
 
         render_html("""
             <div class="sbc-awards-section-head">
@@ -6301,57 +6577,24 @@ with tab9:
             roster_tone = "red" if roster_after < 12 or roster_after > 17 else ("gold" if roster_after >= 15 else "green")
             render_trade_summary_card("Roster After", roster_after, f"Started with {roster_before} active", roster_tone)
 
-        chip_cols = st.columns(2)
-        with chip_cols[0]:
-            render_trade_asset_chips("Outgoing Players", SelectedPlayersOut, "No outgoing players selected", "blue")
-            render_trade_asset_chips("Outgoing Picks", SelectedPicksOut, "No outgoing picks selected", "blue")
-            render_trade_asset_chips("Outgoing Exceptions / Cash", SelectedExceptionOut + ([f"Cash: {format_money(CashOut)}"] if CashOut else []), "No outgoing exceptions or cash", "gold")
-        with chip_cols[1]:
-            render_trade_asset_chips("Incoming Players", SelectedPlayersIn, "No incoming players selected", "green")
-            render_trade_asset_chips("Incoming Picks", SelectedPicksIn, "No incoming picks selected", "green")
-            render_trade_asset_chips("Incoming Exceptions / Cash", SelectedExceptionIn + ([f"Cash: {format_money(CashIn)}"] if CashIn else []), "No incoming exceptions or cash", "gold")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            render_trade_panel_header("Outgoing Detail", "Players, picks, exceptions, and cash leaving the building", SelectedTeam, "blue")
-            players_trade_out = players_out_table(df, pics, SelectedPlayersOut)
-            if players_trade_out.shape[0] > 0:
-                render_html('<div class="sbc-cap-eyebrow">Players Going Out</div>')
-                players_trade_out = (players_trade_out.style
-                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in players_trade_out.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(players_trade_out, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(" ")})
-
-            picks_trade_out = picks_out_table(dp, SelectedPicksOut)
-            if picks_trade_out.shape[0] > 0:
-                render_html('<div class="sbc-cap-eyebrow">Picks Going Out</div>')
-                st.dataframe(picks_trade_out, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
-
-            experiations_out = exceptions_out_table(exceptions, SelectedExceptionOut)
-            if experiations_out.shape[0] > 0:
-                render_html('<div class="sbc-cap-eyebrow">Exceptions Being Used</div>')
-                st.dataframe(experiations_out, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
-
-        with col2:
-            render_trade_panel_header("Incoming Detail", "Players, picks, exceptions, and cash entering the building", tone="green")
-            players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
-            if players_traded_in.shape[0] > 0:
-                render_html('<div class="sbc-cap-eyebrow">Players Coming In</div>')
-                players_traded_in = (players_traded_in.style
-                    .apply(lambda row: style_salaries(row, type_colors), axis=1)  
-                    .format({c: "${:,.0f}" for c in players_traded_in.columns if re.match(r"\d{4}", c)}))
-                st.dataframe(players_traded_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + columns_order, column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
-
-            picks_trade_in = picks_in_table(dp, SelectedPicksIn)
-            if picks_trade_in.shape[0] > 0:
-                render_html('<div class="sbc-cap-eyebrow">Picks Coming In</div>')
-                st.dataframe(picks_trade_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
-
-            experiations_in = exceptions_in_table(exceptions, SelectedExceptionIn)
-            if experiations_in.shape[0] > 0:
-                render_html('<div class="sbc-cap-eyebrow">Exceptions Being Used</div>')
-                st.dataframe(experiations_in, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"Team": st.column_config.ImageColumn(label="Team", width="small")})
+        players_trade_out = players_out_table(df, pics, SelectedPlayersOut)
+        players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
+        render_trade_asset_ledger(
+            TradeTeam,
+            players_trade_out,
+            players_traded_in,
+            SelectedPicksOut,
+            SelectedPicksIn,
+            SelectedExceptionOut,
+            SelectedExceptionIn,
+            CashOut,
+            CashIn,
+            incoming_salary,
+            outgoing_salary,
+            salary_delta,
+            cap_total_after,
+            roster_after,
+        )
 
         render_html("""
             <div class="sbc-awards-section-head">
@@ -6359,9 +6602,9 @@ with tab9:
                 <em>Roster and apron checks using the existing SBCFBL trade logic.</em>
             </div>
         """)
-        render_trade_panel_header("Roster Limit", "Active-player compliance after the transaction", SelectedTeam, "blue")
-        net_players_check(df, SelectedTeam, SelectedPlayersIn, SelectedPlayersOut)
-        render_trade_panel_header("Salary Limit", "Salary matching and exception checks", SelectedTeam, "gold")
+        render_trade_panel_header("Roster Limit", "Active-player compliance after the transaction", TradeTeam, "blue")
+        net_players_check(df, TradeTeam, SelectedPlayersIn, SelectedPlayersOut)
+        render_trade_panel_header("Salary Limit", "Salary matching and exception checks", TradeTeam, "gold")
         #salary_trade_check()
         #tpe_check()
         #bae_mle_check()
@@ -6369,18 +6612,18 @@ with tab9:
         #create_tpe_check()
         #new_trade_rest_check()
         #old_team_check()
-        render_trade_panel_header("Second Apron Checks", "Cash and sign-and-trade TPE restrictions", SelectedTeam, "red")
-        no_cash(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, CashOut)
-        tpe_st_check(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, SelectedExceptionOut)
+        render_trade_panel_header("Second Apron Checks", "Cash and sign-and-trade TPE restrictions", TradeTeam, "red")
+        no_cash(df, SelectedPlayersIn, SelectedPlayersOut, TradeTeam, base_cap, CashOut)
+        tpe_st_check(df, SelectedPlayersIn, SelectedPlayersOut, TradeTeam, base_cap, SelectedExceptionOut)
         #no_aggregation_check()
-        render_trade_panel_header("First Apron Checks", "BAE/MLE and salary-return restrictions", SelectedTeam, "gold")
-        no_bae_mle_check(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, SelectedExceptionOut)
-        under_100_percent_check(df, SelectedPlayersIn, SelectedPlayersOut, SelectedTeam, base_cap, SelectedExceptionOut)
-        render_trade_panel_header("Draft Pick Check", "Stepien and pick-trade review", SelectedTeam, "green")
+        render_trade_panel_header("First Apron Checks", "BAE/MLE and salary-return restrictions", TradeTeam, "gold")
+        no_bae_mle_check(df, SelectedPlayersIn, SelectedPlayersOut, TradeTeam, base_cap, SelectedExceptionOut)
+        under_100_percent_check(df, SelectedPlayersIn, SelectedPlayersOut, TradeTeam, base_cap, SelectedExceptionOut)
+        render_trade_panel_header("Draft Pick Check", "Stepien and pick-trade review", TradeTeam, "green")
         render_html('<div class="sbc-empty-state">Stepien validation hook is still under construction for the submitted deal.</div>')
         #stepien_check()
     elif submitted:
-        render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", SelectedTeam, "gold")
+        render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
 
 with tab10:
     render_html(f"""
@@ -6613,11 +6856,20 @@ def render_award_player_rows(data, compact=False):
         picture = row.get("Picture_Online", "")
         logo = row.get("logo", "")
         week = clean_pick_display(row.get("Week", ""))
-        week_html = f'<span class="sbc-award-week">{escape(str(week))}</span>' if week != "â€”" else ""
+        award_team = team_from_logo(logo)
+        team_style = ""
+        if award_team:
+            visuals = team_visuals(award_team)
+            team_style = (
+                f' style="--award-row-color:{escape(str(visuals["primary"]), quote=True)};'
+                f'--award-row-secondary:{escape(str(visuals["secondary"]), quote=True)};'
+                f'--award-row-font:{escape(str(visuals["font"]), quote=True)};"'
+            )
+        week_html = "" if is_blank_value(week) or str(week).strip() in ["-", "—", "â€”"] else f'<span class="sbc-award-week">{escape(str(week))}</span>'
         logo_html = f'<img class="sbc-award-mini-logo" src="{escape(str(logo), quote=True)}" alt="Team logo" referrerpolicy="no-referrer">' if not is_blank_value(logo) else ""
         img_html = f'<img class="sbc-award-headshot" src="{escape(str(picture), quote=True)}" alt="{escape(str(name), quote=True)}">' if not is_blank_value(picture) else '<div class="sbc-award-headshot sbc-award-headshot-empty"></div>'
         cards.append(f"""
-            <div class="sbc-award-player {'sbc-award-player-compact' if compact else ''}">
+            <div class="sbc-award-player {'sbc-award-player-compact' if compact else ''}"{team_style}>
                 {img_html}
                 <div>
                     {week_html}
@@ -6647,13 +6899,17 @@ def render_player_award(title, award, year, mode="single", tone="blue", compact=
 def render_team_award_card(title, award, year, tone="blue", feature=False):
     winner = team_award_winner(team_award_history, year, award)
     if winner in team_info:
-        wordmark = team_info[winner].get("wordmark", "")
-        mark = team_logo_name_mark(winner)
+        visuals = team_visuals(winner)
+        team_content = f"""
+            <div class="sbc-award-team-spotlight">
+                <img src="{escape(str(visuals["logo"]), quote=True)}" alt="{escape(live_team_full_name(winner), quote=True)} logo" referrerpolicy="no-referrer">
+                <strong style="--award-team-font:{escape(str(visuals["font"]), quote=True)};">{escape(live_team_full_name(winner))}</strong>
+            </div>
+        """
         color = team_color_for_name(winner)
         secondary = team_secondary_for_name(winner)
     else:
-        wordmark = "https://pbs.twimg.com/media/HCRpyEUaQAAPORi?format=png&name=medium"
-        mark = f'<span class="sbc-award-team-missing">{escape(str(winner))}</span>'
+        team_content = f'<span class="sbc-award-team-missing">{escape(str(winner))}</span>'
         color = LEAGUE_PRIMARY
         secondary = LEAGUE_SECONDARY
     render_html(f"""
@@ -6662,10 +6918,7 @@ def render_team_award_card(title, award, year, tone="blue", feature=False):
                 <span>{escape(title)}</span>
                 <em>{escape(str(year))}</em>
             </div>
-            <div class="sbc-award-wordmark-wrap">
-                <img class="sbc-award-wordmark" src="{escape(str(wordmark), quote=True)}" alt="{escape(str(winner), quote=True)} wordmark" referrerpolicy="no-referrer">
-            </div>
-            <div class="sbc-award-team-footer">{mark}</div>
+            <div class="sbc-award-wordmark-wrap">{team_content}</div>
         </section>
     """)
 

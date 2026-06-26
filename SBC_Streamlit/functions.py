@@ -13,10 +13,16 @@ from itertools import combinations
 import requests
 import json
 import altair as alt
+import unicodedata
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
 
 def safe_team_info(team, field, default=""):
     return team_info.get(str(team), {}).get(field, default)
+
+def normalize_player_key(value):
+    text = "" if pd.isna(value) else str(value)
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    return " ".join(text.lower().replace(".", "").replace("'", "").split())
 
 @st.cache_data(ttl=86400)
 def get_data() -> pd.DataFrame:
@@ -1406,11 +1412,17 @@ def send_discord_message(DISCORD_WEBHOOK_URL: str, message: str):
 def get_single_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str) -> pd.DataFrame:
     df = df[df["Award"] == Award]
     df = df[df["Year"] == Year]
-    df = df.merge(df2, how="left", left_on="Winner", right_on="name")
+    df = df.copy()
+    df2 = df2.copy()
+    df4 = df4.copy()
+    df["_player_key"] = df["Winner"].apply(normalize_player_key)
+    df2["_player_key"] = df2["name"].apply(normalize_player_key)
+    df4["_player_key"] = df4["Player"].apply(normalize_player_key)
+    df = df.merge(df2, how="left", on="_player_key")
     df3 = df3[df3["Year"] == Year]
     df3 = df3[df3["period"] == df3["period"].max()]
     df = df.merge(df3, how="left", left_on="fantraxId", right_on="id")
-    df = df.merge(df4, how="left", left_on="Winner", right_on="Player")
+    df = df.merge(df4, how="left", on="_player_key")
     def get_team_logo(team_name, team_info):
         for city, info in team_info.items():
             full_name = f"{city} {info['nickname']}"
@@ -1435,11 +1447,17 @@ def get_team_award(df: pd.DataFrame, Year: int, Award: str) -> str:
 def get_all_stars_award(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, Year: int, Award: str) -> pd.DataFrame:
     df = df[df["Award"] == Award]
     df = df[df["Year"] == Year]
-    df = df.merge(df2, how="left", left_on="Winner", right_on="name")
+    df = df.copy()
+    df2 = df2.copy()
+    df4 = df4.copy()
+    df["_player_key"] = df["Winner"].apply(normalize_player_key)
+    df2["_player_key"] = df2["name"].apply(normalize_player_key)
+    df4["_player_key"] = df4["Player"].apply(normalize_player_key)
+    df = df.merge(df2, how="left", on="_player_key")
     df3 = df3[df3["Year"] == Year]
     df3 = df3[df3["period"] == df3["period"].max()]
     df = df.merge(df3, how="left", left_on="fantraxId", right_on="id")
-    df = df.merge(df4, how="left", left_on="Winner", right_on="Player")
+    df = df.merge(df4, how="left", on="_player_key")
     def get_team_logo(team_name, team_info):
         for city, info in team_info.items():
             full_name = f"{city} {info['nickname']}"
@@ -1465,11 +1483,17 @@ def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame
     lambda x: " ".join([x.split()[0], x.split()[-1]]))
     df = df[df["Award_clean"] == Award]
     df = df[df["Year"] == Year]
-    df = df.merge(df2, how="left", left_on="Winner", right_on="name")
+    df = df.copy()
+    df2 = df2.copy()
+    df4 = df4.copy()
+    df["_player_key"] = df["Winner"].apply(normalize_player_key)
+    df2["_player_key"] = df2["name"].apply(normalize_player_key)
+    df4["_player_key"] = df4["Player"].apply(normalize_player_key)
+    df = df.merge(df2, how="left", on="_player_key")
     df3 = df3[df3["Year"] == Year]
     df3 = df3[df3["period"] == df3["period"].max()]
     df = df.merge(df3, how="left", left_on="fantraxId", right_on="id")
-    df = df.merge(df4, how="left", left_on="Winner", right_on="Player")
+    df = df.merge(df4, how="left", on="_player_key")
     def get_team_logo(team_name, team_info):
         for city, info in team_info.items():
             full_name = f"{city} {info['nickname']}"
