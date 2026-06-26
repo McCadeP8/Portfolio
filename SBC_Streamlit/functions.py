@@ -22,7 +22,15 @@ def safe_team_info(team, field, default=""):
 def normalize_player_key(value):
     text = "" if pd.isna(value) else str(value)
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    return " ".join(text.lower().replace(".", "").replace("'", "").split())
+    text = " ".join(text.lower().replace(".", "").replace("'", "").split())
+    replacements = {
+        "alperun sengun": "alperen sengun",
+        "alex sarr": "alexandre sarr",
+    }
+    text = replacements.get(text, text)
+    suffixes = {"jr", "sr", "ii", "iii", "iv", "v"}
+    parts = [part for part in text.split() if part not in suffixes]
+    return " ".join(parts)
 
 @st.cache_data(ttl=86400)
 def get_data() -> pd.DataFrame:
@@ -490,6 +498,7 @@ def dead_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
     df = df.rename(columns={col: col[1:] for col in year_cols})
+    df["Bird Rights"] = ""
     df = df.sort_values(str(current_year), ascending=False)
     return df
 
