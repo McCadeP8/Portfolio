@@ -95,6 +95,7 @@ LEAGUE_PRIMARY = "#09438E"
 LEAGUE_SECONDARY = "#009C3D"
 LEAGUE_FONT = "Bungee"
 DRAFT_SILHOUETTE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='48' fill='%23111827'/%3E%3Ccircle cx='48' cy='35' r='17' fill='%23f8fafc'/%3E%3Cpath d='M18 83c4-20 17-31 30-31s26 11 30 31' fill='%23f8fafc'/%3E%3C/svg%3E"
+DRAFT_HISTORY_CSV_URL = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1546613902"
 
 st.set_page_config(
     page_title="SBC Cap Sheets",
@@ -115,6 +116,11 @@ def load_optional_data(label, loader):
     except Exception as exc:
         st.warning(f"{label} could not be loaded right now: {exc}")
         return pd.DataFrame()
+
+
+def load_live_draft_history():
+    # Manual draft-board refresh bypasses the cached draft history loader.
+    return pd.read_csv(f"{DRAFT_HISTORY_CSV_URL}&refresh={datetime.now().timestamp()}")
 
 
 def ensure_columns(data, columns):
@@ -920,15 +926,20 @@ def render_current_draft_table(data, title, icon, description):
     rows = []
     for _, row in data.iterrows():
         slot_team = clean_pick_display(row.get("Slot", ""))
+        player_name = clean_draft_player(row.get("Player", ""))
+        player_picture = row.get("Picture_Online", "")
+        player_img = player_picture if not is_blank_value(player_picture) else DRAFT_SILHOUETTE
+        player_label = player_name if player_name else f'{row.get("Time Due (ET)", "")} (ET)'
+        player_class = "" if player_name else " sbc-draft-player-pending"
         row_color = team_color_for_name(slot_team) if slot_team in team_info else ""
         row_style = f' style="--draft-row-color:{escape(str(row_color), quote=True)};"' if row_color else ""
         rows.append(f"""
             <tr{row_style}>
                 <td class="sbc-draft-pick-no"><span>{escape(str(row.get("Pick", "")))}</span></td>
                 <td class="sbc-draft-team-cell sbc-draft-slot-cell">{render_draft_team_wordmark(slot_team, include_nickname=True)}</td>
-                <td class="sbc-draft-player-cell sbc-draft-player-pending">
-                    <img src="{DRAFT_SILHOUETTE}" alt="">
-                    <strong>{escape(str(row.get("Time Due (ET)", "")))} (ET)</strong>
+                <td class="sbc-draft-player-cell{player_class}">
+                    <img src="{escape(str(player_img), quote=True)}" alt="">
+                    <strong>{escape(str(player_label))}</strong>
                 </td>
             </tr>
         """)
@@ -945,8 +956,19 @@ def render_current_draft_table(data, title, icon, description):
     """)
 
 
-def current_draft_from_history(draft_history, round_name):
-    expected = ["Pick", "Slot", "Team", "Time Due (ET)"]
+def clean_draft_player(value):
+    if is_blank_value(value):
+        return ""
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    if text in ["-", "\u2014"]:
+        return ""
+    if re.fullmatch(r"\d{1,2}:\d{2}\s*[AP]M(?:\s*\(?ET\)?)?", text, flags=re.IGNORECASE):
+        return ""
+    return text
+
+
+def current_draft_from_history(draft_history, round_name, pictures=None):
+    expected = ["Pick", "Slot", "Team", "Player", "Picture_Online", "Time Due (ET)"]
     if draft_history is None or draft_history.empty or not {"Year", "Round", "Pick", "Team"}.issubset(draft_history.columns):
         return pd.DataFrame(columns=expected)
     history = draft_history.copy()
@@ -970,15 +992,30 @@ def current_draft_from_history(draft_history, round_name):
         else draft_times[idx % len(draft_times)]
         for idx in range(table.shape[0])
     ]
+    table["Player"] = table["Player"].apply(clean_draft_player) if "Player" in table.columns else ""
+    if "Picture_Online" in table.columns:
+        table = table.drop(columns=["Picture_Online"])
+    if pictures is not None and not pictures.empty and {"Player", "Picture_Online"}.issubset(pictures.columns):
+        picture_lookup = pictures[["Player", "Picture_Online"]].drop_duplicates("Player")
+        table = table.merge(picture_lookup, how="left", on="Player")
+    else:
+        table["Picture_Online"] = ""
     table["Slot"] = table["Team"].astype(str).str.strip()
     table["Team"] = table["Slot"]
-    return table[["Pick", "Slot", "Team", "Time Due (ET)"]]
+    return table[expected]
 
 
 def draft_clock_picks(round_df, draft_date):
     if round_df is None or round_df.empty:
         return None, None, "Board not loaded"
     now_et = datetime.now(ZoneInfo("America/New_York"))
+    clean_df = round_df.reset_index(drop=True).copy()
+    if "Player" in clean_df.columns:
+        drafted_mask = clean_df["Player"].apply(clean_draft_player).astype(bool)
+        undrafted_df = clean_df[~drafted_mask].reset_index(drop=True)
+        if undrafted_df.empty:
+            return clean_df.iloc[-1], None, "Draft complete"
+        return undrafted_df.iloc[0], undrafted_df.iloc[1] if undrafted_df.shape[0] > 1 else None, "On the clock"
     if now_et.date() < draft_date:
         on_clock = round_df.iloc[0]
         on_deck = round_df.iloc[1] if round_df.shape[0] > 1 else None
@@ -995,7 +1032,6 @@ def draft_clock_picks(round_df, draft_date):
             active_idx = idx
         else:
             break
-    clean_df = round_df.reset_index(drop=True)
     on_clock = clean_df.iloc[active_idx]
     on_deck = clean_df.iloc[active_idx + 1] if active_idx + 1 < clean_df.shape[0] else None
     return on_clock, on_deck, "On the clock"
@@ -6970,6 +7006,18 @@ with tab10:
         </div>
         """)
 
+    refresh_col, _ = st.columns([1, 5])
+    with refresh_col:
+        if st.button("Update draft board", key="sbc_update_live_draft_board", width="stretch"):
+            refreshed_dh = load_optional_data("Live draft board", load_live_draft_history)
+            if not refreshed_dh.empty:
+                st.session_state["_sbc_live_draft_history"] = refreshed_dh
+            st.session_state["_sbc_live_draft_last_refresh"] = datetime.now(ZoneInfo("America/New_York")).strftime("%I:%M:%S %p ET")
+    live_dh = st.session_state.get("_sbc_live_draft_history", dh)
+    last_refresh = st.session_state.get("_sbc_live_draft_last_refresh")
+    if last_refresh:
+        st.caption(f"Last live draft refresh: {last_refresh}")
+
     draft_years = []
     for year in [current_year, 2025, 2024, 2023, 2022, 2021]:
         if year not in draft_years:
@@ -6978,8 +7026,8 @@ with tab10:
     for draft_tab, draft_year in zip(draft_year_tabs, draft_years):
         with draft_tab:
             if draft_year == current_year:
-                current_round_1 = current_draft_from_history(dh, "1st Round")
-                current_round_2 = current_draft_from_history(dh, "2nd Round")
+                current_round_1 = current_draft_from_history(live_dh, "1st Round", pics)
+                current_round_2 = current_draft_from_history(live_dh, "2nd Round", pics)
                 render_live_draft_room_header(current_round_1, current_round_2)
                 c1, c2 = st.columns(2)
                 with c1:
@@ -6998,12 +7046,12 @@ with tab10:
                 c1, c2 = st.columns(2)
                 with c1:
                     render_draft_history_table(
-                        safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"),
+                        safe_table_call(past_draft, df, pics, live_dh, draft_year, "1st Round"),
                         f"{draft_year} Round 1",
                         "First-round selections and current team context.")
                 with c2:
                     render_draft_history_table(
-                        safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"),
+                        safe_table_call(past_draft, df, pics, live_dh, draft_year, "2nd Round"),
                         f"{draft_year} Round 2",
                         "Second-round selections and current team context.")
     _legacy_tab10 = r'''
