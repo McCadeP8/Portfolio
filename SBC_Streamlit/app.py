@@ -7008,12 +7008,14 @@ with tab10:
 
     refresh_col, _ = st.columns([1, 5])
     with refresh_col:
-        if st.button("Update draft board", key="sbc_update_live_draft_board", width="stretch"):
+        if st.button("Update draft board", key="sbc_update_live_draft_board", use_container_width=True):
             refreshed_dh = load_optional_data("Live draft board", load_live_draft_history)
             if not refreshed_dh.empty:
                 st.session_state["_sbc_live_draft_history"] = refreshed_dh
             st.session_state["_sbc_live_draft_last_refresh"] = datetime.now(ZoneInfo("America/New_York")).strftime("%I:%M:%S %p ET")
-    live_dh = st.session_state.get("_sbc_live_draft_history", dh)
+    live_dh = st.session_state.get("_sbc_live_draft_history")
+    if not isinstance(live_dh, pd.DataFrame):
+        live_dh = dh
     last_refresh = st.session_state.get("_sbc_live_draft_last_refresh")
     if last_refresh:
         st.caption(f"Last live draft refresh: {last_refresh}")
