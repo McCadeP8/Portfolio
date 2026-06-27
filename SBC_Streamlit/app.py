@@ -266,8 +266,9 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
             if col in money_columns or str(col).isdigit():
                 value_html = escape(str(format_money(value)))
                 cell_classes.append("sbc-money-cell")
-            elif col in image_columns and str(value).strip():
-                url = escape(str(value), quote=True)
+            elif col in image_columns and (not is_blank_value(value) or col != "Team_logo"):
+                image_value = DRAFT_SILHOUETTE if col != "Team_logo" and is_blank_value(value) else value
+                url = escape(str(image_value), quote=True)
                 value_html = f'<img class="sbc-table-img" src="{url}" alt="" referrerpolicy="no-referrer">'
                 cell_classes.append("sbc-image-cell")
             else:
@@ -363,8 +364,9 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
                 cell_classes.append("sbc-money-cell")
                 if str(col).isdigit():
                     cell_classes.append("sbc-year-col")
-            elif col in image_columns and str(value).strip():
-                url = escape(str(value), quote=True)
+            elif col in image_columns and (not is_blank_value(value) or col != "Team_logo"):
+                image_value = DRAFT_SILHOUETTE if col != "Team_logo" and is_blank_value(value) else value
+                url = escape(str(image_value), quote=True)
                 image_class = "sbc-team-logo-img" if col == "Team_logo" else "sbc-table-img"
                 value_html = f'<img class="{image_class}" src="{url}" alt="" referrerpolicy="no-referrer">'
                 cell_classes.extend(["sbc-image-cell", "sbc-image-col"])
