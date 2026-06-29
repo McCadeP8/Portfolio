@@ -1062,7 +1062,7 @@ def draft_target_iso(row, draft_date):
     return datetime.combine(draft_date, target_time, ZoneInfo("America/New_York")).isoformat()
 
 
-def render_draft_clock_card(row, label, draft_date):
+def retired_render_draft_clock_card(row, label, draft_date):
     if row is None:
         return """
             <div class="sbc-live-draft-card">
@@ -1088,26 +1088,9 @@ def render_draft_clock_card(row, label, draft_date):
     """
 
 
-def render_live_draft_room_header(round_1_df, round_2_df):
-    round_1_date = date(2026, 6, 27)
-    round_2_date = date(2026, 6, 28)
-    now_et = datetime.now(ZoneInfo("America/New_York"))
-    active_df = round_2_df if now_et.date() >= round_2_date else round_1_df
-    active_date = round_2_date if now_et.date() >= round_2_date else round_1_date
-    active_row, deck_row, status = draft_clock_picks(active_df, active_date)
-    render_html(f"""
-        <section class="sbc-live-draft-room">
-            <div>
-                <div class="sbc-live-draft-kicker">Live Draft Room</div>
-                <div class="sbc-live-draft-title">2026 SBCFBL Draft</div>
-                <div class="sbc-live-draft-dates">Round 1: Saturday, June 27th / Round 2: Sunday, June 28th</div>
-            </div>
-            <div class="sbc-live-draft-cards">
-                {render_draft_clock_card(active_row, status, active_date)}
-                {render_draft_clock_card(deck_row, "On deck", active_date)}
-            </div>
-        </section>
-        """)
+def retired_render_live_draft_room_header(round_1_df, round_2_df):
+    # Retired after the 2026 draft. Keep the hook for next year's reactivation.
+    return None
 
 
 def render_draft_history_table(data, title, description):
@@ -4589,7 +4572,7 @@ st.markdown(
         font-variant-numeric: tabular-nums;
     }}
 
-    .sbc-live-draft-room {{
+    .sbc-retired-live-draft-room {{
         display: grid;
         grid-template-columns: minmax(18rem, 1fr) minmax(27rem, 1.25fr);
         gap: 1rem;
