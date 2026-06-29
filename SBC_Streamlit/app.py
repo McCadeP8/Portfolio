@@ -7008,20 +7008,6 @@ with tab10:
         </div>
         """)
 
-    refresh_col, _ = st.columns([1, 5])
-    with refresh_col:
-        if st.button("Update draft board", key="sbc_update_live_draft_board", use_container_width=True):
-            refreshed_dh = load_optional_data("Live draft board", load_live_draft_history)
-            if not refreshed_dh.empty:
-                st.session_state["_sbc_live_draft_history"] = refreshed_dh
-            st.session_state["_sbc_live_draft_last_refresh"] = datetime.now(ZoneInfo("America/New_York")).strftime("%I:%M:%S %p ET")
-    live_dh = st.session_state.get("_sbc_live_draft_history")
-    if not isinstance(live_dh, pd.DataFrame):
-        live_dh = dh
-    last_refresh = st.session_state.get("_sbc_live_draft_last_refresh")
-    if last_refresh:
-        st.caption(f"Last live draft refresh: {last_refresh}")
-
     draft_years = []
     for year in [current_year, 2025, 2024, 2023, 2022, 2021]:
         if year not in draft_years:
@@ -7030,32 +7016,28 @@ with tab10:
     for draft_tab, draft_year in zip(draft_year_tabs, draft_years):
         with draft_tab:
             if draft_year == current_year:
-                current_round_1 = current_draft_from_history(live_dh, "1st Round", pics)
-                current_round_2 = current_draft_from_history(live_dh, "2nd Round", pics)
-                render_live_draft_room_header(current_round_1, current_round_2)
-                c1, c2 = st.columns(2)
-                with c1:
-                    render_current_draft_table(
-                        current_round_1,
-                        f"{draft_year} Round 1",
-                        "1",
-                        "Saturday, June 27th.")
-                with c2:
-                    render_current_draft_table(
-                        current_round_2,
-                        f"{draft_year} Round 2",
-                        "2",
-                        "Sunday, June 28th.")
-            else:
+                # Live draft room retired after the 2026 draft; render as historical results.
                 c1, c2 = st.columns(2)
                 with c1:
                     render_draft_history_table(
-                        safe_table_call(past_draft, df, pics, live_dh, draft_year, "1st Round"),
+                        safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"),
                         f"{draft_year} Round 1",
                         "First-round selections and current team context.")
                 with c2:
                     render_draft_history_table(
-                        safe_table_call(past_draft, df, pics, live_dh, draft_year, "2nd Round"),
+                        safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"),
+                        f"{draft_year} Round 2",
+                        "Second-round selections and current team context.")
+            else:
+                c1, c2 = st.columns(2)
+                with c1:
+                    render_draft_history_table(
+                        safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"),
+                        f"{draft_year} Round 1",
+                        "First-round selections and current team context.")
+                with c2:
+                    render_draft_history_table(
+                        safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"),
                         f"{draft_year} Round 2",
                         "Second-round selections and current team context.")
     _legacy_tab10 = r'''
