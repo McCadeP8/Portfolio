@@ -11,6 +11,7 @@ import json
 import math
 from datetime import datetime, date, time
 from html import escape
+from pathlib import Path
 from textwrap import dedent
 from zoneinfo import ZoneInfo
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
@@ -97,7 +98,8 @@ LEAGUE_FONT = "Bungee"
 DRAFT_SILHOUETTE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='48' fill='%23111827'/%3E%3Ccircle cx='48' cy='35' r='17' fill='%23f8fafc'/%3E%3Cpath d='M18 83c4-20 17-31 30-31s26 11 30 31' fill='%23f8fafc'/%3E%3C/svg%3E"
 DRAFT_HISTORY_CSV_URL = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1546613902"
 FREE_AGENCY_PASSWORD = "VovEmUmawrlcreMuzEtR"
-FREE_AGENT_BIDS_PATH = "free_agent_bids.csv"
+APP_DIR = Path(__file__).resolve().parent
+FREE_AGENT_BIDS_PATH = APP_DIR / "free_agent_bids.csv"
 FREE_AGENCY_LEAGUE_VIEW_URL = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1031971950"
 
 FREE_AGENCY_TEAM_CODES = {
@@ -517,6 +519,7 @@ def load_free_agency_bids(path=FREE_AGENT_BIDS_PATH):
     if raw.shape[0] < 3:
         return pd.DataFrame()
 
+    # Qualtrics exports with technical QID headers, then display labels, then import ids.
     labels = [str(col).strip() for col in raw.iloc[0].tolist()]
     data = raw.iloc[2:].copy().reset_index(drop=True)
     data.columns = labels
@@ -534,6 +537,8 @@ def load_free_agency_bids(path=FREE_AGENT_BIDS_PATH):
             bid_columns.append((col, match.group(2).strip(), match.group(1)))
     salary_cols = {player: col for col, player, kind in bid_columns if kind == "Salary"}
     year_cols = {player: col for col, player, kind in bid_columns if kind == "Years"}
+    if not salary_cols:
+        return pd.DataFrame()
 
     records = []
     for _, row in data.iterrows():
@@ -670,12 +675,47 @@ def render_free_agency_rfa_status(value):
     text = clean_pick_display(value)
     status = str(text).strip().lower()
     if status == "restricted":
-        return '<span class="sbc-fa-status sbc-fa-status-restricted">Restricted</span>'
+        return '<span class="sbc-fa-status sbc-fa-status-restricted">RFA</span>'
     if status == "unrestricted":
-        return '<span class="sbc-fa-status sbc-fa-status-unrestricted">Unrestricted</span>'
+        return '<span class="sbc-fa-status sbc-fa-status-unrestricted">UFA</span>'
     if is_blank_value(value):
         return '<span class="sbc-fa-muted">Unknown</span>'
     return f'<span class="sbc-fa-muted">{escape(str(text))}</span>'
+
+
+def free_agency_player_picture_lookup():
+    if not isinstance(pics, pd.DataFrame) or not {"Player", "Picture_Online"}.issubset(pics.columns):
+        return {}
+    clean_pics = pics[["Player", "Picture_Online"]].drop_duplicates("Player")
+    return {
+        free_agency_player_key(row["Player"]): row["Picture_Online"]
+        for _, row in clean_pics.iterrows()
+        if not is_blank_value(row.get("Player", ""))
+    }
+
+
+def render_free_agency_player_cell(player, picture_lookup):
+    player_name = clean_pick_display(player)
+    picture = picture_lookup.get(free_agency_player_key(player_name), DRAFT_SILHOUETTE)
+    if is_blank_value(picture):
+        picture = DRAFT_SILHOUETTE
+    return f"""
+        <span class="sbc-fa-player-wrap">
+            <img class="sbc-fa-player-img" src="{escape(str(picture), quote=True)}" alt="{escape(str(player_name), quote=True)}">
+            <strong>{escape(str(player_name))}</strong>
+        </span>
+    """
+
+
+def render_free_agency_status_cell(old_team_value, rfa_value):
+    old_team = free_agency_team_key(old_team_value)
+    if old_team:
+        logo = team_logo_for_name(old_team)
+        team_label = live_team_full_name(old_team)
+        logo_html = f'<img class="sbc-fa-status-logo" src="{escape(str(logo), quote=True)}" alt="{escape(str(team_label), quote=True)} logo" referrerpolicy="no-referrer">' if logo else ""
+    else:
+        logo_html = '<span class="sbc-fa-status-logo sbc-fa-status-logo-empty"></span>'
+    return f'<span class="sbc-fa-status-wrap">{logo_html}{render_free_agency_rfa_status(rfa_value)}</span>'
 
 
 def render_free_agency_number(value, money=False):
@@ -695,6 +735,7 @@ def render_free_agency_league_table(data):
         render_html('<div class="sbc-empty-state">Free agency league table is not available yet.</div>')
         return
     rows = []
+    picture_lookup = free_agency_player_picture_lookup()
     for _, row in data.iterrows():
         player = clean_pick_display(row.get("Player", ""))
         old_team = free_agency_team_key(row.get("OldTeam", ""))
@@ -702,9 +743,8 @@ def render_free_agency_league_table(data):
         row_style = f' style="--fa-row-color:{escape(str(row_color), quote=True)};"' if row_color else ""
         rows.append(f"""
             <tr{row_style}>
-                <td>{render_free_agency_team_badge(row.get("OldTeam", ""), empty_text="None")}</td>
-                <td class="sbc-fa-player"><strong>{escape(str(player))}</strong></td>
-                <td>{render_free_agency_rfa_status(row.get("RFA", ""))}</td>
+                <td>{render_free_agency_status_cell(row.get("OldTeam", ""), row.get("RFA", ""))}</td>
+                <td class="sbc-fa-player">{render_free_agency_player_cell(player, picture_lookup)}</td>
                 <td>{render_free_agency_day(row.get("DayR", ""))}</td>
                 <td>{render_free_agency_day(row.get("DayS", ""))}</td>
                 <td class="sbc-fa-number">{render_free_agency_number(row.get("Offers", ""))}</td>
@@ -747,6 +787,21 @@ def render_free_agency_league_table(data):
             .sbc-fa-table tr[style*="--fa-row-color"] td:first-child {{
                 border-left: 0.3rem solid var(--fa-row-color);
             }}
+            .sbc-fa-player-wrap {{
+                display: inline-flex;
+                align-items: center;
+                gap: 0.55rem;
+                min-width: 0;
+            }}
+            .sbc-fa-player-img {{
+                width: 2.2rem;
+                height: 2.2rem;
+                object-fit: cover;
+                border-radius: 999px;
+                background: #111827;
+                border: 1px solid rgba(23, 32, 42, 0.12);
+                flex: 0 0 auto;
+            }}
             .sbc-fa-player strong {{
                 color: var(--sbc-ink);
                 font-size: 0.95rem;
@@ -773,11 +828,29 @@ def render_free_agency_league_table(data):
                 display: inline-flex;
                 align-items: center;
                 min-height: 1.65rem;
-                padding: 0.15rem 0.55rem;
+                padding: 0.15rem 0.6rem;
                 border-radius: 999px;
                 font-size: 0.78rem;
                 font-weight: 950;
                 white-space: nowrap;
+            }}
+            .sbc-fa-status-wrap {{
+                display: inline-flex;
+                align-items: center;
+                gap: 0.45rem;
+                white-space: nowrap;
+            }}
+            .sbc-fa-status-logo {{
+                width: 2rem;
+                height: 2rem;
+                object-fit: contain;
+                border-radius: 999px;
+                background: #ffffff;
+                border: 1px solid rgba(23, 32, 42, 0.12);
+                padding: 0.12rem;
+            }}
+            .sbc-fa-status-logo-empty {{
+                background: color-mix(in srgb, {LEAGUE_PRIMARY} 8%, #ffffff);
             }}
             .sbc-fa-status-restricted {{
                 background: color-mix(in srgb, #CFFFFF 72%, #ffffff);
@@ -798,11 +871,10 @@ def render_free_agency_league_table(data):
             <table class="sbc-fa-table">
                 <thead>
                     <tr>
-                        <th>Old Team</th>
+                        <th>Status</th>
                         <th>Player</th>
-                        <th>RFA</th>
                         <th>Released</th>
-                        <th>Signs</th>
+                        <th>Signing Day</th>
                         <th>Offers</th>
                         <th>High Bid</th>
                         <th>Yrs</th>
