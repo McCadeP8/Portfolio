@@ -96,6 +96,75 @@ LEAGUE_SECONDARY = "#009C3D"
 LEAGUE_FONT = "Bungee"
 DRAFT_SILHOUETTE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='48' fill='%23111827'/%3E%3Ccircle cx='48' cy='35' r='17' fill='%23f8fafc'/%3E%3Cpath d='M18 83c4-20 17-31 30-31s26 11 30 31' fill='%23f8fafc'/%3E%3C/svg%3E"
 DRAFT_HISTORY_CSV_URL = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1546613902"
+FREE_AGENCY_PASSWORD = "VovEmUmawrlcreMuzEtR"
+FREE_AGENT_BIDS_PATH = "free_agent_bids.csv"
+FREE_AGENCY_LEAGUE_VIEW_URL = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1031971950"
+
+FREE_AGENCY_TEAM_CODES = {
+    "CruKEvubububRaSlPLBr": "Albuquerque",
+    "XEWROnikohlbrUprujIV": "Anaheim",
+    "prLbruWrIChaXlmLqeha": "Anchorage",
+    "pajUchopHiSpuMokLYEd": "Austin",
+    "muqicuzlstlbrIkEkokU": "Baltimore",
+    "KimlPiFRipLpiCuphETr": "Birmingham",
+    "sWlchUbUbRlsigudRObR": "Boise",
+    "koplfUglzinoThiwaspi": "Buffalo",
+    "cicIbawijoyOsTecetho": "Cincinnati",
+    "hEylzEcrichupRoJavuP": "Columbus",
+    "spejuxLRedeYitrlBrlj": "Des Moines",
+    "fafrlvUfathuyicichld": "El Paso",
+    "tlZlbeRoCrlchosutuWo": "Honolulu",
+    "phAdrUpUflNUgesOchIF": "Jacksonville",
+    "boPhiCriWAKUfephlJlc": "Kentucky",
+    "CRLSlpRlbrLQlcHlqaho": "Lansing",
+    "SeTriphuKusPlpriJeth": "Lincoln",
+    "faCHaswocrlsiVlYuplR": "Little Rock",
+    "hespatRlBEwOrLSwatRa": "Manchester",
+    "maqataxlxIclpRujUPHL": "Nashville",
+    "PhOzithIdrUflZuCoprU": "Pittsburgh",
+    "hOMaSepexeGEniGiswOd": "Providence",
+    "bLmlrLXeThiyaboBLziG": "San Diego",
+    "yeprIQlcHaxuSWePrIsW": "San Jose",
+    "niFasiwewoVowlplkihi": "Seattle",
+    "DroxUswebudofethOPrl": "St. Louis",
+    "qOtrExicohuBRacoquca": "Tampa Bay",
+    "cltroxUsToswojikubit": "Tulsa",
+    "tuthUsajudrowIbesopr": "Vancouver",
+    "VovEmUmawrlcreMuzEtR": "Vegas",
+    "TyF4LNkBNtAkEB4It2Hg": "Albuquerque",
+    "FcLJLFN7i8QQiLYTzKWo": "Anaheim",
+    "dGrUraAPmcqhK0m6ARWh": "Anchorage",
+    "ZSHHRH81oj8sMcEdoY1l": "Austin",
+    "D1B6j2xcdgHQPMdF4QOq": "Baltimore",
+    "bxVOCQ1S5Q8pPrEU57xc": "Birmingham",
+    "BxVOCQ1S5Q8pPrEU57xc": "Birmingham",
+    "I6Pg736WoKYeVeI6U4e1": "Boise",
+    "5162yikwsApWCLrX4UJs": "Buffalo",
+    "jMYWLR2XrzlL7I4rmUOU": "Cincinnati",
+    "rdQy1hcby0rS88x8ZNFz": "Columbus",
+    "foRQTbf7X7sPzwToUqAy": "Des Moines",
+    "MJ41zvbgwrKeZoTB7BWS": "El Paso",
+    "HMUEn4W03Foc41CAECZm": "Honolulu",
+    "45voC1imU3u8KP5dUwsf": "Jacksonville",
+    "84F4QNW03LX2AI0s02dy": "Kentucky",
+    "cFUiAg0LIxSESHeKgN1B": "Lansing",
+    "VoCm4cWh5PZm9VehkM4x": "Lincoln",
+    "bEvPh9hsVSyir9NSr6tA": "Little Rock",
+    "BzyHZbJO6jiPO80dACaC": "Manchester",
+    "aU1nz37NW5o0JIHilRH7": "Nashville",
+    "t5xL0w4jV8TpJwYGpjbx": "Pittsburgh",
+    "ZsszJyXaxCGg5E8vAb86": "Providence",
+    "ZsszJyXaxCGg5E8vAb96": "Providence",
+    "R0v8umk3ZaNp6OXaPYnB": "San Diego",
+    "MQwfNLhUakQ13r7Ft1M4": "San Jose",
+    "jsY6XYU5mzjSk7laetU3": "Seattle",
+    "A8FpUrhgzTRMN1IOK4O9": "St. Louis",
+    "NPme2qXwpi0LBcY73EFF": "Tampa Bay",
+    "iIwpWRN1I9fkcvki1y8N": "Tulsa",
+    " iIwpWRN1I9fkcvki1y8": "Tulsa",
+    "BMro1UdTd6X488MU7ket": "Vancouver",
+    "M8n43ZSLcJGCfWeF0RFn": "Vegas",
+}
 
 st.set_page_config(
     page_title="SBC Cap Sheets",
@@ -394,6 +463,324 @@ def safe_table_call(fn, *args, **kwargs):
         return fn(*args, **kwargs)
     except Exception:
         return pd.DataFrame()
+
+
+def parse_free_agency_money(value):
+    if is_blank_value(value):
+        return None
+    text = str(value).replace("$", "").replace(",", "").strip()
+    if text == "":
+        return None
+    try:
+        amount = float(text)
+    except ValueError:
+        return None
+    if "." in text and amount < 1000:
+        amount *= 1000000
+    return int(round(amount))
+
+
+def parse_free_agency_years(value):
+    if is_blank_value(value):
+        return 1
+    text = str(value).strip().lower()
+    if text == "max":
+        return 5
+    try:
+        return max(1, min(5, int(float(text))))
+    except ValueError:
+        return 1
+
+
+def free_agency_team_from_code(value):
+    code = "" if is_blank_value(value) else str(value)
+    return FREE_AGENCY_TEAM_CODES.get(code, FREE_AGENCY_TEAM_CODES.get(code.strip(), code.strip()))
+
+
+def clean_free_agency_player(value):
+    text = "" if is_blank_value(value) else str(value)
+    return re.sub(r"\s+", " ", text.replace("_", " ")).strip()
+
+
+def free_agency_player_key(value):
+    text = clean_free_agency_player(value).lower()
+    text = re.sub(r"[.'’]", "", text)
+    parts = [part for part in text.split() if part not in {"jr", "sr", "ii", "iii", "iv", "v"}]
+    return " ".join(parts)
+
+
+def load_free_agency_bids(path=FREE_AGENT_BIDS_PATH):
+    try:
+        raw = pd.read_csv(path, dtype=str, keep_default_na=False)
+    except Exception:
+        return pd.DataFrame()
+    if raw.shape[0] < 3:
+        return pd.DataFrame()
+
+    labels = [str(col).strip() for col in raw.iloc[0].tolist()]
+    data = raw.iloc[2:].copy().reset_index(drop=True)
+    data.columns = labels
+
+    recorded_col = "Recorded Date"
+    team_col = "Team Code"
+    response_col = "Response ID"
+    comments_cols = [col for col in data.columns if "notes" in str(col).lower() or str(col).strip() == "QID8"]
+    comments_col = comments_cols[0] if comments_cols else None
+
+    bid_columns = []
+    for col in data.columns[19:]:
+        match = re.search(r" - (Salary|Years) - (.*?) - ", str(col))
+        if match:
+            bid_columns.append((col, match.group(2).strip(), match.group(1)))
+    salary_cols = {player: col for col, player, kind in bid_columns if kind == "Salary"}
+    year_cols = {player: col for col, player, kind in bid_columns if kind == "Years"}
+
+    records = []
+    for _, row in data.iterrows():
+        recorded = row.get(recorded_col, "")
+        team_code = row.get(team_col, "")
+        team = free_agency_team_from_code(team_code)
+        comments = row.get(comments_col, "") if comments_col else ""
+        response_id = row.get(response_col, "")
+        for player, salary_col in salary_cols.items():
+            salary_raw = row.get(salary_col, "")
+            years_raw = row.get(year_cols.get(player, ""), "")
+            if is_blank_value(salary_raw) and is_blank_value(years_raw):
+                continue
+            records.append({
+                "Recorded Date": recorded,
+                "Timestamp": pd.to_datetime(recorded, errors="coerce"),
+                "Team Code": team_code,
+                "Team": team,
+                "Player": clean_free_agency_player(player),
+                "Salary": parse_free_agency_money(salary_raw) or 1,
+                "Years": parse_free_agency_years(years_raw),
+                "Comments": comments,
+                "Response ID": response_id,
+            })
+
+    bids = pd.DataFrame(records)
+    if bids.empty:
+        return bids
+    return bids.sort_values(["Timestamp", "Team", "Player"], na_position="last").reset_index(drop=True)
+
+
+def active_free_agency_bids(bids, signed_players=None, available_players=None):
+    if bids is None or bids.empty:
+        return pd.DataFrame()
+    signed_set = {free_agency_player_key(player) for player in (signed_players or []) if str(player).strip()}
+    active = bids.copy()
+    active["_player_key"] = active["Player"].apply(free_agency_player_key)
+    if signed_set:
+        active = active[~active["_player_key"].isin(signed_set)]
+
+    available_set = {free_agency_player_key(player) for player in (available_players or []) if str(player).strip()}
+    overlap = set(active["_player_key"]).intersection(available_set)
+    if available_set and overlap:
+        active = active[active["_player_key"].isin(available_set)]
+
+    active = active.sort_values(["Timestamp", "Team", "Player"], na_position="last")
+    active = active.groupby(["Team", "Player"], as_index=False, group_keys=False).tail(1)
+    active = active.sort_values(["Timestamp", "Team", "Player"], na_position="last")
+    active = active.groupby("Team", as_index=False, group_keys=False).tail(20)
+    active = active.sort_values(["Team", "Timestamp", "Player"], ascending=[True, False, True], na_position="last")
+    return active.drop(columns=["_player_key"], errors="ignore").reset_index(drop=True)
+
+
+def free_agency_submission_summary(bids, active_bids):
+    if bids is None or bids.empty:
+        return pd.DataFrame(columns=["Team", "Last Bid Timestamp", "Active Bids"])
+    latest = bids.groupby("Team", as_index=False)["Timestamp"].max().rename(columns={"Timestamp": "Last Bid Timestamp"})
+    counts = active_bids.groupby("Team", as_index=False).size().rename(columns={"size": "Active Bids"}) if active_bids is not None and not active_bids.empty else pd.DataFrame(columns=["Team", "Active Bids"])
+    summary = latest.merge(counts, on="Team", how="left")
+    summary["Active Bids"] = summary["Active Bids"].fillna(0).astype(int)
+    return summary.sort_values("Last Bid Timestamp", ascending=False).head(30).reset_index(drop=True)
+
+
+def free_agency_team_snapshot():
+    cap_table = safe_table_call(overall_cap_table, df, exceptions, base_cap)
+    if cap_table.empty:
+        return pd.DataFrame()
+    cols = ["Team", "Active Players", "Cap Space", "Tax Space", "Hard Cap", "Apron 1 Space", "Apron 2 Space"]
+    snapshot = cap_table[[col for col in cols if col in cap_table.columns]].copy()
+    exception_rows = exceptions.copy() if isinstance(exceptions, pd.DataFrame) else pd.DataFrame()
+    if not exception_rows.empty and {"Team", "Player", "Y" + str(current_year)}.issubset(exception_rows.columns):
+        mle = exception_rows[exception_rows["Player"].astype(str).str.contains("Mid-Level|Bi-Annual", case=False, na=False)].copy()
+        mle["Amount"] = pd.to_numeric(mle["Y" + str(current_year)], errors="coerce").fillna(0)
+        mle_summary = mle.groupby("Team").apply(
+            lambda group: ", ".join(
+                f"{row['Player']} ({format_money(row['Amount'])})"
+                for _, row in group.iterrows()
+                if row["Amount"] > 0
+            )
+        ).reset_index(name="MLE / BAE Status")
+        snapshot = snapshot.merge(mle_summary, on="Team", how="left")
+    if "MLE / BAE Status" not in snapshot.columns:
+        snapshot["MLE / BAE Status"] = ""
+    snapshot["MLE / BAE Status"] = snapshot["MLE / BAE Status"].replace("", "None listed")
+    return snapshot
+
+
+@st.cache_data(ttl=300)
+def load_free_agency_league_view():
+    try:
+        table = pd.read_csv(FREE_AGENCY_LEAGUE_VIEW_URL)
+    except Exception:
+        return pd.DataFrame()
+    expected = ["Player", "RFA", "DayR", "DayS", "Offers", "High Bid", "Yrs", "Team"]
+    for col in expected:
+        if col not in table.columns:
+            table[col] = ""
+    return table[expected].copy()
+
+
+def free_agency_team_key(value):
+    if is_blank_value(value):
+        return ""
+    text = clean_pick_display(value)
+    if text in team_info:
+        return text
+    for team, info in team_info.items():
+        nickname = str(info.get("nickname", ""))
+        if str(text).startswith(team) or (nickname and nickname in str(text)):
+            return team
+    return ""
+
+
+def render_free_agency_team_badge(value, empty_text="Open"):
+    if is_blank_value(value):
+        return f'<span class="sbc-fa-muted">{escape(empty_text)}</span>'
+    text = clean_pick_display(value)
+    if str(text).strip().lower() in ["no", "none", "nan"]:
+        return '<span class="sbc-fa-no">No</span>'
+    team = free_agency_team_key(text)
+    if team:
+        return render_draft_team_wordmark(team, empty_text=empty_text, include_nickname=True)
+    return f'<span class="sbc-fa-muted">{escape(str(text))}</span>'
+
+
+def render_free_agency_day(value):
+    if is_blank_value(value):
+        return '<span class="sbc-fa-muted">Pending</span>'
+    text = clean_pick_display(value)
+    return f'<span class="sbc-fa-day">{escape(str(text))}</span>'
+
+
+def render_free_agency_number(value, money=False):
+    if is_blank_value(value):
+        return "$0" if money else "0"
+    amount = parse_money_input(value)
+    if money:
+        return format_money(amount or 0)
+    try:
+        return str(int(float(str(value).replace(",", ""))))
+    except ValueError:
+        return escape(str(value))
+
+
+def render_free_agency_league_table(data):
+    if data is None or data.empty:
+        render_html('<div class="sbc-empty-state">Free agency league table is not available yet.</div>')
+        return
+    rows = []
+    for _, row in data.iterrows():
+        player = clean_pick_display(row.get("Player", ""))
+        rfa_team = free_agency_team_key(row.get("RFA", ""))
+        row_color = team_color_for_name(rfa_team) if rfa_team in team_info else ""
+        row_style = f' style="--fa-row-color:{escape(str(row_color), quote=True)};"' if row_color else ""
+        rows.append(f"""
+            <tr{row_style}>
+                <td class="sbc-fa-player"><strong>{escape(str(player))}</strong></td>
+                <td>{render_free_agency_team_badge(row.get("RFA", ""), empty_text="No")}</td>
+                <td>{render_free_agency_day(row.get("DayR", ""))}</td>
+                <td>{render_free_agency_day(row.get("DayS", ""))}</td>
+                <td class="sbc-fa-number">{render_free_agency_number(row.get("Offers", ""))}</td>
+                <td class="sbc-fa-number">{render_free_agency_number(row.get("High Bid", ""), money=True)}</td>
+                <td class="sbc-fa-number">{render_free_agency_number(row.get("Yrs", ""))}</td>
+                <td>{render_free_agency_team_badge(row.get("Team", ""), empty_text="Unsigned")}</td>
+            </tr>
+        """)
+    render_html(f"""
+        <style>
+            .sbc-fa-table-wrap {{
+                overflow-x: auto;
+                border: 1px solid rgba(23, 32, 42, 0.12);
+                border-radius: 8px;
+                background: #ffffff;
+                box-shadow: 0 14px 34px rgba(18, 25, 38, 0.06);
+            }}
+            .sbc-fa-table {{
+                width: 100%;
+                border-collapse: collapse;
+                min-width: 58rem;
+            }}
+            .sbc-fa-table th {{
+                background: color-mix(in srgb, {LEAGUE_PRIMARY} 9%, #ffffff);
+                color: {LEAGUE_PRIMARY};
+                font-size: 0.74rem;
+                font-weight: 950;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                text-align: left;
+                padding: 0.75rem 0.8rem;
+                border-bottom: 1px solid rgba(23, 32, 42, 0.12);
+                white-space: nowrap;
+            }}
+            .sbc-fa-table td {{
+                padding: 0.65rem 0.8rem;
+                border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+                vertical-align: middle;
+            }}
+            .sbc-fa-table tr[style*="--fa-row-color"] td:first-child {{
+                border-left: 0.3rem solid var(--fa-row-color);
+            }}
+            .sbc-fa-player strong {{
+                color: var(--sbc-ink);
+                font-size: 0.95rem;
+            }}
+            .sbc-fa-number {{
+                font-weight: 900;
+                font-variant-numeric: tabular-nums;
+                text-align: right;
+                white-space: nowrap;
+            }}
+            .sbc-fa-day {{
+                display: inline-flex;
+                align-items: center;
+                min-height: 1.65rem;
+                padding: 0.15rem 0.5rem;
+                border-radius: 999px;
+                background: color-mix(in srgb, {LEAGUE_SECONDARY} 11%, #ffffff);
+                color: color-mix(in srgb, {LEAGUE_SECONDARY} 82%, #111827);
+                font-size: 0.78rem;
+                font-weight: 900;
+                white-space: nowrap;
+            }}
+            .sbc-fa-no,
+            .sbc-fa-muted {{
+                color: var(--sbc-muted);
+                font-size: 0.82rem;
+                font-weight: 850;
+            }}
+        </style>
+        <div class="sbc-fa-table-wrap">
+            <table class="sbc-fa-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>RFA</th>
+                        <th>Released</th>
+                        <th>Signs</th>
+                        <th>Offers</th>
+                        <th>High Bid</th>
+                        <th>Yrs</th>
+                        <th>Team</th>
+                    </tr>
+                </thead>
+                <tbody>{''.join(rows)}</tbody>
+            </table>
+        </div>
+    """)
 
 
 def team_logo_for_name(team):
@@ -5887,7 +6274,8 @@ if selected_team_changed and SelectedTeam == "Honolulu":
 if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
 
-team_hub_tab, league_hub_tab, tab9, tab10, tab11, tab12, tab13 = st.tabs([
+free_agency_tab, team_hub_tab, league_hub_tab, tab9, tab10, tab11, tab12, tab13 = st.tabs([
+    "Free Agency",
     "🏢 Team Hub",
     "🏟️ League Hub",
     "🔁 Trade Machine",
@@ -5943,6 +6331,84 @@ try {
 } catch (error) {}
 </script>
 """, height=0)
+
+with free_agency_tab:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{current_year-1}-{str(current_year)[-2:]} League Office</div>
+                    <div class="sbc-draft-heading">Free Agency</div>
+                    <div class="sbc-draft-subcopy">A commissioner workbench for bid intake, active offers, team timing, cap context, and exception status.</div>
+                </div>
+            </div>
+        </div>
+        """)
+
+    fa_league_tab, fa_commish_tab = st.tabs(["League View", "Commish View"])
+    with fa_league_tab:
+        fa_league_view = load_free_agency_league_view()
+        render_html('<div class="sbc-section-label">Free Agency Board</div>')
+        render_free_agency_league_table(fa_league_view)
+
+    with fa_commish_tab:
+        commish_key = st.text_input("Commissioner key", type="password", key="sbc_free_agency_commish_key")
+        if commish_key != FREE_AGENCY_PASSWORD:
+            render_html('<div class="sbc-empty-state">Enter the commissioner key to view free agency controls.</div>')
+        else:
+            fa_bids = load_free_agency_bids()
+            if fa_bids.empty:
+                render_html('<div class="sbc-empty-state">No free agent bids are available from free_agent_bids.csv.</div>')
+            else:
+                signed_text = st.text_area(
+                    "Signed players to exclude",
+                    placeholder="One player per line. This is temporary until the signing tracker is wired in.",
+                    key="sbc_free_agency_signed_players",
+                )
+                signed_players = [line.strip() for line in signed_text.splitlines() if line.strip()]
+                available_players = []
+                if "all_free_agents_df" in globals() and isinstance(all_free_agents_df, pd.DataFrame) and "Player" in all_free_agents_df.columns:
+                    available_players = all_free_agents_df["Player"].tolist()
+                fa_active_bids = active_free_agency_bids(fa_bids, signed_players=signed_players, available_players=available_players)
+                fa_submission_summary = free_agency_submission_summary(fa_bids, fa_active_bids)
+                fa_team_snapshot = free_agency_team_snapshot()
+
+                render_html('<div class="sbc-section-label">Team Submission Status</div>')
+                st.dataframe(
+                    fa_submission_summary,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "Last Bid Timestamp": st.column_config.DatetimeColumn(format="YYYY-MM-DD h:mm a"),
+                    },
+                )
+
+                render_html('<div class="sbc-section-label">Active Bids</div>')
+                active_cols = ["Team", "Player", "Salary", "Years", "Timestamp", "Comments"]
+                active_display = fa_active_bids[active_cols].copy() if not fa_active_bids.empty else pd.DataFrame(columns=active_cols)
+                st.dataframe(
+                    active_display,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "Salary": st.column_config.NumberColumn(format="$%d"),
+                        "Timestamp": st.column_config.DatetimeColumn(format="YYYY-MM-DD h:mm a"),
+                    },
+                )
+
+                render_html('<div class="sbc-section-label">Team Cap And Exception Snapshot</div>')
+                st.dataframe(
+                    fa_team_snapshot,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "Cap Space": st.column_config.NumberColumn(format="$%d"),
+                        "Tax Space": st.column_config.NumberColumn(format="$%d"),
+                        "Apron 1 Space": st.column_config.NumberColumn(format="$%d"),
+                        "Apron 2 Space": st.column_config.NumberColumn(format="$%d"),
+                    },
+                )
 
 with team_hub_tab:
     picker_col, _ = st.columns([1.15, 3.85], vertical_alignment="bottom")
