@@ -40,7 +40,7 @@ def get_data() -> pd.DataFrame:
         salary_col = "Y" + str(year)
         type_col = "Type" + str(year)
         if salary_col not in df.columns:
-            df[salary_col] = 0
+            df[salary_col] = pd.NA
         if type_col not in df.columns:
             df[type_col] = ""
     return df
@@ -259,10 +259,17 @@ def style_salaries(row, type_colors):
                     styles[i] = f"background-color: {color}; color: black;"
     return styles
 
+def active_roster_mask(df: pd.DataFrame) -> pd.Series:
+    mask = df['Type'] == 'Active Players'
+    type_col = "Type" + str(current_year)
+    if type_col in df.columns:
+        mask = mask & ~df[type_col].isin(["Unrestricted", "Restricted"])
+    return mask
+
 def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
-    df = df[df['Type'] == 'Active Players']
+    df = df[active_roster_mask(df)]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
@@ -341,7 +348,7 @@ def exception_table(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
 
 def active_player_n(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
-    df = df[df['Type'] == 'Active Players']
+    df = df[active_roster_mask(df)]
     return df.shape[0]
 
 def inactive_player_n(df: pd.DataFrame, SelectedTeam: str) -> float:
@@ -397,14 +404,33 @@ def luxury_fee(df: pd.DataFrame, SelectedTeam: str, base_cap: pd.DataFrame) -> f
     df = df[df['Team'] == SelectedTeam]
     tax_number = get_tax_total(df, SelectedTeam)
     tax_number = tax_number-current_luxury_tax
-    repeater_penalty = base_cap["Tax2022"].iloc[0] + base_cap["Tax2023"].iloc[0] + base_cap["Tax2024"].iloc[0] + base_cap["Tax2025"].iloc[0]
-    repeater_penalty = True if repeater_penalty >= 3 else False
+    repeater_penalty = is_repeater_tax_team(base_cap, SelectedTeam)
     tax_amount = tax_amount_calc(tax_number, repeater_penalty)
     tax_amount = tax_amount/league_ratio
     base_cap = base_cap[base_cap['Team'] == SelectedTeam]
     rate = base_cap["Rate"].iloc[0]
     tax_amount = tax_amount*rate
     return tax_amount
+
+def is_repeater_tax_team(base_cap: pd.DataFrame, SelectedTeam: str) -> bool:
+    team_base = base_cap[base_cap['Team'] == SelectedTeam]
+    if team_base.empty:
+        return False
+    tax_cols = [f"Tax{year}" for year in range(current_year - 4, current_year)]
+    paid_years = 0
+    for col in tax_cols:
+        if col in team_base.columns:
+            paid_years += pd.to_numeric(team_base[col], errors="coerce").fillna(0).iloc[0]
+    return paid_years >= 3
+
+def has_second_apron_penalty(base_cap: pd.DataFrame, SelectedTeam: str) -> bool:
+    team_base = base_cap[base_cap['Team'] == SelectedTeam]
+    if team_base.empty:
+        return False
+    apron_col = f"ApronTwo{current_year - 1}"
+    if apron_col not in team_base.columns:
+        return False
+    return pd.to_numeric(team_base[apron_col], errors="coerce").fillna(0).iloc[0] > 0
 
 def tax_amount_calc(fee: float, repeater: bool) -> float:
     penalty_false = [1.0, 0.25, 2.25, 1.25]
@@ -476,7 +502,7 @@ def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
 
 def active_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
-    df = df[df['Type'] == 'Active Players']
+    df = df[active_roster_mask(df)]
     df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
@@ -579,8 +605,10 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
         "Hard Cap": [team_hard_cap(base_cap, team) for team in team_info.keys()],
         "Apron 1 Space": [current_apron_1 - get_tax_total(df, team) for team in team_info.keys()],
         "Apron 2 Space": [current_apron_2 - get_tax_total(df, team) for team in team_info.keys()],
+        "Second Apron Penalty": ["Yes" if has_second_apron_penalty(base_cap, team) else "" for team in team_info.keys()],
         "Base Fee": [base_fee(df, team, base_cap) for team in team_info.keys()],
         "Luxury Fee": [luxury_fee(df, team, base_cap) for team in team_info.keys()],
+        "Luxury Fee Type": ["Repeater" if is_repeater_tax_team(base_cap, team) else "Standard" for team in team_info.keys()],
         "Balance": [net_fee(df, team, base_cap) for team in team_info.keys()],
         "Amount Paid": [amount_paid(base_cap, team) for team in team_info.keys()]})
     return df
@@ -943,10 +971,10 @@ def exceptions_out_table(df: pd.DataFrame, selected_players: list[str]) -> pd.Da
 
 def net_players_check(df: pd.DataFrame, SelectedTeam: str, selected_players_in: list[str], selected_players_out: list[str]) -> float:
     n_in = df[df['Player'].isin(selected_players_in)]
-    n_in = n_in[df['Type'] == "Active Players"]
+    n_in = n_in[active_roster_mask(n_in)]
     n_in = len(n_in)
     n_out = df[df['Player'].isin(selected_players_out)]
-    n_out = n_out[df['Type'] == "Active Players"]
+    n_out = n_out[active_roster_mask(n_out)]
     n_out = len(n_out)
     current_players = active_player_n(df, SelectedTeam)
     current_players = current_players-n_out+n_in

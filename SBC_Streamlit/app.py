@@ -1696,8 +1696,10 @@ def render_trade_rule_checks(trade_team, selected_players_in, selected_players_o
         cash_value = 0.0
 
     current_players = active_player_n(df, trade_team)
-    active_in = df[(df["Player"].isin(selected_players_in)) & (df["Type"] == "Active Players")].shape[0]
-    active_out = df[(df["Player"].isin(selected_players_out)) & (df["Type"] == "Active Players")].shape[0]
+    current_type_col = "Type" + str(current_year)
+    active_status = (df["Type"] == "Active Players") & ~df[current_type_col].isin(["Unrestricted", "Restricted"])
+    active_in = df[(df["Player"].isin(selected_players_in)) & active_status].shape[0]
+    active_out = df[(df["Player"].isin(selected_players_out)) & active_status].shape[0]
     roster_after = current_players - active_out + active_in
     if roster_after > 17:
         render_trade_rule_card("Roster Limit", "block", f"Roster would reach {roster_after}. Cut at least {roster_after - 17} player(s) to comply.")
@@ -1814,7 +1816,12 @@ def render_overview_table(data):
                 important = (col == "Apron 1 Space" and hard_cap == "First Apron") or (col == "Apron 2 Space" and hard_cap == "Second Apron")
                 formatted = f"${numeric:,.2f}" if col in cents_cols else format_money(value)
                 important_class = " sbc-overview-important-money" if important else ""
-                cells.append(f'<td class="sbc-overview-money sbc-money-{tone}{important_class}">{escape(str(formatted))}</td>')
+                if col == "Luxury Fee" and row.get("Luxury Fee Type") == "Repeater":
+                    cells.append(f'<td class="sbc-overview-money sbc-money-{tone}{important_class}"><span>{escape(str(formatted))}</span><em class="sbc-overview-fee-pill">Repeater</em></td>')
+                elif col == "Apron 2 Space" and row.get("Second Apron Penalty") == "Yes":
+                    cells.append(f'<td class="sbc-overview-money sbc-money-{tone}{important_class}"><span>{escape(str(formatted))}</span><em class="sbc-overview-fee-pill">A2 Penalty</em></td>')
+                else:
+                    cells.append(f'<td class="sbc-overview-money sbc-money-{tone}{important_class}">{escape(str(formatted))}</td>')
             elif col == "Active Players":
                 try:
                     active_n = int(float(value))
@@ -5217,6 +5224,20 @@ st.markdown(
 
     .sbc-money-good {{ color: #1f5f34 !important; }}
     .sbc-money-bad {{ color: #8d2424 !important; }}
+    .sbc-overview-fee-pill {{
+        display: inline-flex;
+        margin-left: 0.35rem;
+        padding: 0.05rem 0.35rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, #8d2424 10%, #ffffff);
+        color: #8d2424;
+        font-size: 0.62rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        vertical-align: middle;
+    }}
     .sbc-overview-important-money {{
         background: color-mix(in srgb, #c7a731 24%, #ffffff) !important;
         box-shadow: inset 0 0 0 2px rgba(199, 167, 49, 0.38);
@@ -6981,16 +7002,16 @@ with tab1:
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric(label = "Salary Cap", value = current_salary_cap, delta = "10.0%", delta_color = "normal", help = "Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border = True, format = "dollar")
+        st.metric(label = "Salary Cap", value = current_salary_cap, delta = "7.0%", delta_color = "normal", help = "Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border = True, format = "dollar")
     
     with col2:
-        st.metric(label = "Luxury Tax", value = current_luxury_tax, delta = "10.0%", delta_color = "normal", help = "Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border = True, format = "dollar")
+        st.metric(label = "Luxury Tax", value = current_luxury_tax, delta = "7.0%", delta_color = "normal", help = "Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border = True, format = "dollar")
     
     with col3:
-        st.metric(label = "Apron #1", value = current_apron_1, delta = "10.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
+        st.metric(label = "Apron #1", value = current_apron_1, delta = "7.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
     
     with col4:
-        st.metric(label = "Apron #2", value = current_apron_2, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
+        st.metric(label = "Apron #2", value = current_apron_2, delta = "7.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
 
     col1, col2 = st.columns([1, 4])
 
@@ -7101,13 +7122,13 @@ with tab1:
     render_html('<div class="sbc-section-label">League Thresholds</div>')
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label="Salary Cap", value=current_salary_cap, delta="10.0%", delta_color="normal", help="Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border=True, format="dollar")
+        st.metric(label="Salary Cap", value=current_salary_cap, delta="7.0%", delta_color="normal", help="Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border=True, format="dollar")
     with col2:
-        st.metric(label="Luxury Tax", value=current_luxury_tax, delta="10.0%", delta_color="normal", help="Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border=True, format="dollar")
+        st.metric(label="Luxury Tax", value=current_luxury_tax, delta="7.0%", delta_color="normal", help="Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border=True, format="dollar")
     with col3:
-        st.metric(label="Apron #1", value=current_apron_1, delta="10.0%", delta_color="normal", help="Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border=True, format="dollar")
+        st.metric(label="Apron #1", value=current_apron_1, delta="7.0%", delta_color="normal", help="Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border=True, format="dollar")
     with col4:
-        st.metric(label="Apron #2", value=current_apron_2, delta="10.0%", delta_color="normal", help="Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade-related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border=True, format="dollar")
+        st.metric(label="Apron #2", value=current_apron_2, delta="7.0%", delta_color="normal", help="Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade-related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border=True, format="dollar")
 
     render_html('<div class="sbc-section-label">Team Snapshot</div>')
     snap1, snap2, snap3 = st.columns([1, 1, 2])
@@ -7862,16 +7883,16 @@ with tab8:
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric(label = "Salary Cap", value = current_salary_cap, delta = "10.0%", delta_color = "normal", help = "Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border = True, format = "dollar")
+        st.metric(label = "Salary Cap", value = current_salary_cap, delta = "7.0%", delta_color = "normal", help = "Teams can pay player salaries up to this amount with no exceptions applied, and must maintain a payroll of at least 90% of this figure over the season.", border = True, format = "dollar")
     
     with col2:
-        st.metric(label = "Luxury Tax", value = current_luxury_tax, delta = "10.0%", delta_color = "normal", help = "Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border = True, format = "dollar")
+        st.metric(label = "Luxury Tax", value = current_luxury_tax, delta = "7.0%", delta_color = "normal", help = "Teams exceeding this threshold incur a financial penalty, which increases with the amount over the limit and becomes significantly harsher for repeat offenders over multiple seasons.", border = True, format = "dollar")
     
     with col3:
-        st.metric(label = "Apron #1", value = current_apron_1, delta = "10.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
+        st.metric(label = "Apron #1", value = current_apron_1, delta = "7.0%", delta_color = "normal", help = "Teams above this level face strict roster limits, including bans on sign-and-trades, restricted use of exceptions, limits on salary matching in trades, and loss of certain traded-player exceptions; doing so hard-caps the team at this level for the entire season.", border = True, format = "dollar")
     
     with col4:
-        st.metric(label = "Apron #2", value = current_apron_2, delta = "10.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
+        st.metric(label = "Apron #2", value = current_apron_2, delta = "7.0%", delta_color = "normal", help = "Teams above this threshold cannot use the mid-level exception, combine player salaries in trades, include cash in trades, or use sign-and-trade–related mechanisms to acquire players; doing so hard-caps the team at this level for the entire season. Additionally there are draft pick penalties if over the second apron for an extended period of time.", border = True, format = "dollar")
 
     render_html('<div class="sbc-section-label">Organization Ledger</div>')
     overall_cap_df = overall_cap_table(df, exceptions, base_cap)
@@ -7951,8 +7972,10 @@ with tab9:
         outgoing_salary = current_year_salary_for_players(df, SelectedPlayersOut)
         incoming_salary = current_year_salary_for_players(df, SelectedPlayersIn)
         salary_delta = incoming_salary - outgoing_salary
-        active_out = df[(df["Player"].isin(SelectedPlayersOut)) & (df["Type"] == "Active Players")].shape[0]
-        active_in = df[(df["Player"].isin(SelectedPlayersIn)) & (df["Type"] == "Active Players")].shape[0]
+        current_type_col = "Type" + str(current_year)
+        active_status = (df["Type"] == "Active Players") & ~df[current_type_col].isin(["Unrestricted", "Restricted"])
+        active_out = df[(df["Player"].isin(SelectedPlayersOut)) & active_status].shape[0]
+        active_in = df[(df["Player"].isin(SelectedPlayersIn)) & active_status].shape[0]
         roster_before = active_player_n(df, TradeTeam)
         roster_after = roster_before - active_out + active_in
         cap_total_before = get_cap_total(df, exceptions, TradeTeam)
@@ -8001,10 +8024,7 @@ with tab10:
         </div>
         """)
 
-    draft_years = []
-    for year in [current_year, 2025, 2024, 2023, 2022, 2021]:
-        if year not in draft_years:
-            draft_years.append(year)
+    draft_years = list(range(current_year, 2020, -1))
     draft_year_tabs = st.tabs([str(year) for year in draft_years])
     for draft_tab, draft_year in zip(draft_year_tabs, draft_years):
         with draft_tab:
