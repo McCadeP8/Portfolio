@@ -798,7 +798,10 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
             player_bids = active_bids[active_bids["Player"].apply(free_agency_player_key) == key].copy()
         else:
             player_bids = pd.DataFrame()
-        leader = player_bids.sort_values(["Salary", "Years", "Timestamp"], ascending=[False, False, True], na_position="last").head(1)
+        if player_bids.empty or not {"Salary", "Years", "Timestamp"}.issubset(player_bids.columns):
+            leader = pd.DataFrame()
+        else:
+            leader = player_bids.sort_values(["Salary", "Years", "Timestamp"], ascending=[False, False, True], na_position="last").head(1)
         leader_team = leader.iloc[0]["Team"] if not leader.empty else ""
         leader_salary = leader.iloc[0]["Salary"] if not leader.empty else 0
         leader_years = leader.iloc[0]["Years"] if not leader.empty else 1
