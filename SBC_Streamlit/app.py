@@ -627,7 +627,7 @@ def load_free_agency_league_view():
         table = pd.read_csv(FREE_AGENCY_LEAGUE_VIEW_URL)
     except Exception:
         return pd.DataFrame()
-    expected = ["Player", "RFA", "DayR", "DayS", "Offers", "High Bid", "Yrs", "Team"]
+    expected = ["OldTeam", "Player", "RFA", "DayR", "DayS", "Offers", "High Bid", "Yrs", "Team"]
     for col in expected:
         if col not in table.columns:
             table[col] = ""
@@ -666,6 +666,18 @@ def render_free_agency_day(value):
     return f'<span class="sbc-fa-day">{escape(str(text))}</span>'
 
 
+def render_free_agency_rfa_status(value):
+    text = clean_pick_display(value)
+    status = str(text).strip().lower()
+    if status == "restricted":
+        return '<span class="sbc-fa-status sbc-fa-status-restricted">Restricted</span>'
+    if status == "unrestricted":
+        return '<span class="sbc-fa-status sbc-fa-status-unrestricted">Unrestricted</span>'
+    if is_blank_value(value):
+        return '<span class="sbc-fa-muted">Unknown</span>'
+    return f'<span class="sbc-fa-muted">{escape(str(text))}</span>'
+
+
 def render_free_agency_number(value, money=False):
     if is_blank_value(value):
         return "$0" if money else "0"
@@ -685,13 +697,14 @@ def render_free_agency_league_table(data):
     rows = []
     for _, row in data.iterrows():
         player = clean_pick_display(row.get("Player", ""))
-        rfa_team = free_agency_team_key(row.get("RFA", ""))
-        row_color = team_color_for_name(rfa_team) if rfa_team in team_info else ""
+        old_team = free_agency_team_key(row.get("OldTeam", ""))
+        row_color = team_color_for_name(old_team) if old_team in team_info else ""
         row_style = f' style="--fa-row-color:{escape(str(row_color), quote=True)};"' if row_color else ""
         rows.append(f"""
             <tr{row_style}>
+                <td>{render_free_agency_team_badge(row.get("OldTeam", ""), empty_text="None")}</td>
                 <td class="sbc-fa-player"><strong>{escape(str(player))}</strong></td>
-                <td>{render_free_agency_team_badge(row.get("RFA", ""), empty_text="No")}</td>
+                <td>{render_free_agency_rfa_status(row.get("RFA", ""))}</td>
                 <td>{render_free_agency_day(row.get("DayR", ""))}</td>
                 <td>{render_free_agency_day(row.get("DayS", ""))}</td>
                 <td class="sbc-fa-number">{render_free_agency_number(row.get("Offers", ""))}</td>
@@ -756,6 +769,24 @@ def render_free_agency_league_table(data):
                 font-weight: 900;
                 white-space: nowrap;
             }}
+            .sbc-fa-status {{
+                display: inline-flex;
+                align-items: center;
+                min-height: 1.65rem;
+                padding: 0.15rem 0.55rem;
+                border-radius: 999px;
+                font-size: 0.78rem;
+                font-weight: 950;
+                white-space: nowrap;
+            }}
+            .sbc-fa-status-restricted {{
+                background: color-mix(in srgb, #CFFFFF 72%, #ffffff);
+                color: #0f766e;
+            }}
+            .sbc-fa-status-unrestricted {{
+                background: color-mix(in srgb, #D9D2E9 72%, #ffffff);
+                color: #6d28d9;
+            }}
             .sbc-fa-no,
             .sbc-fa-muted {{
                 color: var(--sbc-muted);
@@ -767,6 +798,7 @@ def render_free_agency_league_table(data):
             <table class="sbc-fa-table">
                 <thead>
                     <tr>
+                        <th>Old Team</th>
                         <th>Player</th>
                         <th>RFA</th>
                         <th>Released</th>
@@ -6274,12 +6306,12 @@ if selected_team_changed and SelectedTeam == "Honolulu":
 if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
 
-free_agency_tab, team_hub_tab, league_hub_tab, tab9, tab10, tab11, tab12, tab13 = st.tabs([
-    "Free Agency",
+team_hub_tab, league_hub_tab, tab9, tab10, free_agency_tab, tab11, tab12, tab13 = st.tabs([
     "🏢 Team Hub",
     "🏟️ League Hub",
     "🔁 Trade Machine",
     "📚 Drafts",
+    "🧾 Free Agency",
     "⭐ Awards",
     "📖 About",
     "✅ Data Checks"])
@@ -6346,7 +6378,7 @@ with free_agency_tab:
         </div>
         """)
 
-    fa_league_tab, fa_commish_tab = st.tabs(["League View", "Commish View"])
+    fa_league_tab, fa_commish_tab = st.tabs(["🌐 League View", "🔐 Commish View"])
     with fa_league_tab:
         fa_league_view = load_free_agency_league_view()
         render_html('<div class="sbc-section-label">Free Agency Board</div>')
@@ -6354,7 +6386,7 @@ with free_agency_tab:
 
     with fa_commish_tab:
         commish_key = st.text_input("Commissioner key", type="password", key="sbc_free_agency_commish_key")
-        if commish_key != FREE_AGENCY_PASSWORD:
+        if commish_key.strip() != FREE_AGENCY_PASSWORD:
             render_html('<div class="sbc-empty-state">Enter the commissioner key to view free agency controls.</div>')
         else:
             fa_bids = load_free_agency_bids()
