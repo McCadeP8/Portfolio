@@ -724,7 +724,7 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
         team_audit = team_audit.merge(last_bids, on="Team", how="left")
     else:
         team_audit["Last Bid"] = pd.NaT
-    team_audit = team_audit.sort_values(["Last Bid", "_team_order"], ascending=[False, True], na_position="last")
+    team_audit = team_audit.sort_values("_team_order")
     over_20 = team_audit[team_audit["Active Bids"] > 20]
 
     cards = []
