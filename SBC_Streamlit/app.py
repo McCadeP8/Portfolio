@@ -179,6 +179,9 @@ def load_required_data(label, loader):
     except KeyError as exc:
         st.error(f"{label} is missing an expected field: {exc}")
         st.stop()
+    except Exception as exc:
+        st.error(f"{label} could not be loaded right now: {type(exc).__name__}: {exc}")
+        st.stop()
 
 
 def load_optional_data(label, loader):
@@ -714,7 +717,6 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view):
 
     team_counts = active_bids.groupby("Team", as_index=False).size().rename(columns={"size": "Active Bids"})
     over_20 = team_counts[team_counts["Active Bids"] > 20]
-    excluded_latest_20 = excluded_bids[excluded_bids.get("_bid_status", pd.Series(dtype=str)) == "Outside latest 20"] if excluded_bids is not None and not excluded_bids.empty and "_bid_status" in excluded_bids.columns else pd.DataFrame()
 
     cards = []
     picture_lookup = free_agency_player_picture_lookup()

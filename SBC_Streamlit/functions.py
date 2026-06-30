@@ -42,7 +42,7 @@ def get_data() -> pd.DataFrame:
 def get_pictures() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1180190150"
     df = pd.read_csv(csv_url)
-    df = df.drop(columns=["Picture"])
+    df = df.drop(columns=["Picture"], errors="ignore")
     return df
 
 @st.cache_data()
