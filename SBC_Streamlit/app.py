@@ -971,7 +971,7 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
             }}
             .sbc-fa-team-audit-grid {{
                 display: grid;
-                grid-template-columns: repeat(5, minmax(0, 1fr));
+                grid-template-columns: repeat(3, minmax(0, 1fr));
                 gap: 0.5rem;
                 margin-bottom: 1rem;
             }}
@@ -1029,7 +1029,7 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
             }}
             @media (max-width: 1200px) {{
                 .sbc-fa-team-audit-grid {{
-                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
                 }}
             }}
             @media (max-width: 760px) {{
