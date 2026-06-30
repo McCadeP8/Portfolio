@@ -364,7 +364,14 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
         """)
 
 def is_blank_value(value):
-    if value is None or value == "":
+    if value is None:
+        return True
+    try:
+        if pd.isna(value):
+            return True
+    except (TypeError, ValueError):
+        pass
+    if value == "":
         return True
     try:
         return float(value) != float(value)
