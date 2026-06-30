@@ -17,10 +17,10 @@ else:
 
 columns_order = [str(current_year + i) for i in range(7)]
 
-current_salary_cap = 165472290
-current_luxury_tax = 201047650
-current_apron_1 = 209661150
-current_apron_2 = 222371680
+current_salary_cap = 164961000
+current_luxury_tax = 200428000
+current_apron_1 = 209015000
+current_apron_2 = 221686000
 tax_bracket_increment = 6082950
 league_ratio = ceil(current_salary_cap/60000000)*1000000
 max_cash = 8521480
