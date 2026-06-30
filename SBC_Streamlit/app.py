@@ -1063,6 +1063,138 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
     """)
 
 
+def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids):
+    team = free_agency_team_from_code(team)
+    team_all = all_bids[all_bids["Team"] == team].copy() if all_bids is not None and not all_bids.empty and "Team" in all_bids.columns else pd.DataFrame()
+    if team_all.empty:
+        render_html(f"""
+            <div class="sbc-empty-state">
+                {render_free_agency_team_badge(team, empty_text="Your team")} does not have any bids in the current file yet.
+            </div>
+        """)
+        return
+
+    active_team = active_bids[active_bids["Team"] == team].copy() if active_bids is not None and not active_bids.empty and "Team" in active_bids.columns else pd.DataFrame()
+    excluded_team = excluded_bids[excluded_bids["Team"] == team].copy() if excluded_bids is not None and not excluded_bids.empty and "Team" in excluded_bids.columns else pd.DataFrame()
+
+    active_keys = {}
+    if not active_team.empty:
+        active_ranked = active_team.sort_values(["Timestamp", "Player"], ascending=[False, True], na_position="last").reset_index(drop=True)
+        for idx, bid in active_ranked.iterrows():
+            active_keys[(free_agency_player_key(bid.get("Player", "")), str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))] = idx + 1
+    excluded_status = {}
+    if not excluded_team.empty:
+        for _, bid in excluded_team.iterrows():
+            key = (free_agency_player_key(bid.get("Player", "")), str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))
+            excluded_status.setdefault(key, str(bid.get("_bid_status", "Inactive")))
+
+    rows = []
+    ordered = team_all.sort_values(["Timestamp", "Player"], ascending=[False, True], na_position="last")
+    for _, bid in ordered.iterrows():
+        key = (free_agency_player_key(bid.get("Player", "")), str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))
+        active_rank = active_keys.get(key)
+        status = f"Active #{active_rank}" if active_rank else excluded_status.get(key, "Inactive")
+        row_class = "sbc-fa-my-bid-active" if active_rank else "sbc-fa-my-bid-inactive"
+        rows.append(f"""
+            <div class="sbc-fa-my-bid-row {row_class}">
+                <span class="sbc-fa-my-bid-status">{escape(status)}</span>
+                <strong>{escape(str(bid.get("Player", "")))}</strong>
+                <span>{escape(str(format_money(bid.get("Salary", 0))))}</span>
+                <span>{escape(str(bid.get("Years", 1)))} yr</span>
+                <span>{escape(format_free_agency_timestamp(bid.get("Timestamp")))}</span>
+                <em>{escape(str(bid.get("Comments", "")))}</em>
+            </div>
+        """)
+
+    render_html(f"""
+        <style>
+            .sbc-fa-my-bids-head {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                margin-bottom: 0.75rem;
+                padding: 0.8rem 0.9rem;
+                border: 1px solid rgba(23, 32, 42, 0.12);
+                border-radius: 8px;
+                background: #ffffff;
+            }}
+            .sbc-fa-my-bids-head strong {{
+                color: var(--sbc-ink);
+                font-size: 1rem;
+            }}
+            .sbc-fa-my-bids-head span {{
+                color: var(--sbc-muted);
+                font-size: 0.82rem;
+                font-weight: 850;
+            }}
+            .sbc-fa-my-bids-list {{
+                display: grid;
+                gap: 0.35rem;
+            }}
+            .sbc-fa-my-bid-row {{
+                display: grid;
+                grid-template-columns: 6.4rem minmax(12rem, 1.4fr) 7rem 4rem 8rem minmax(8rem, 1fr);
+                gap: 0.6rem;
+                align-items: center;
+                padding: 0.55rem 0.65rem;
+                border-radius: 8px;
+                border: 1px solid rgba(23, 32, 42, 0.1);
+                background: #ffffff;
+                font-size: 0.83rem;
+            }}
+            .sbc-fa-my-bid-active {{
+                background: color-mix(in srgb, {LEAGUE_SECONDARY} 9%, #ffffff);
+                border-color: color-mix(in srgb, {LEAGUE_SECONDARY} 24%, rgba(23, 32, 42, 0.1));
+            }}
+            .sbc-fa-my-bid-inactive {{
+                background: #f3f4f6;
+                color: #6b7280;
+                opacity: 0.72;
+            }}
+            .sbc-fa-my-bid-status {{
+                display: inline-flex;
+                justify-content: center;
+                padding: 0.18rem 0.45rem;
+                border-radius: 999px;
+                background: rgba(17, 24, 39, 0.08);
+                font-size: 0.72rem;
+                font-weight: 950;
+                white-space: nowrap;
+            }}
+            .sbc-fa-my-bid-active .sbc-fa-my-bid-status {{
+                background: color-mix(in srgb, {LEAGUE_SECONDARY} 18%, #ffffff);
+                color: color-mix(in srgb, {LEAGUE_SECONDARY} 80%, #111827);
+            }}
+            .sbc-fa-my-bid-row strong,
+            .sbc-fa-my-bid-row span {{
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }}
+            .sbc-fa-my-bid-row em {{
+                color: inherit;
+                font-style: normal;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }}
+            @media (max-width: 760px) {{
+                .sbc-fa-my-bids-head,
+                .sbc-fa-my-bid-row {{
+                    display: grid;
+                    grid-template-columns: 1fr;
+                }}
+            }}
+        </style>
+        <div class="sbc-fa-my-bids-head">
+            <strong>{render_free_agency_team_badge(team, empty_text="Your team")}</strong>
+            <span>{active_team.shape[0]} active bids / {team_all.shape[0]} total bids in file</span>
+        </div>
+        <div class="sbc-fa-my-bids-list">{''.join(rows)}</div>
+    """)
+
+
 def free_agency_team_snapshot():
     cap_table = safe_table_call(overall_cap_table, df, exceptions, base_cap)
     if cap_table.empty:
@@ -6932,7 +7064,7 @@ with free_agency_tab:
         </div>
         """)
 
-    fa_league_tab, fa_commish_tab = st.tabs(["🌐 League View", "🔐 Commish View"])
+    fa_league_tab, fa_my_bids_tab, fa_commish_tab = st.tabs(["🌐 League View", "🔎 My Bids", "🔐 Commish View"])
     with fa_league_tab:
         fa_league_view = load_free_agency_league_view()
         render_html(f"""
@@ -6962,6 +7094,19 @@ with free_agency_tab:
         """)
         render_html('<div class="sbc-section-label">Free Agency Board</div>')
         render_free_agency_league_table(fa_league_view)
+
+    with fa_my_bids_tab:
+        team_key = st.text_input("Team code", type="password", key="sbc_free_agency_team_bid_key")
+        my_team = free_agency_team_from_code(team_key.strip())
+        if my_team not in team_info:
+            render_html('<div class="sbc-empty-state">Enter your team code to view your submitted free agency bids.</div>')
+        else:
+            fa_bids = load_free_agency_bids()
+            available_players = []
+            if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
+                available_players = fa_league_view["Player"].tolist()
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, available_players=available_players)
+            render_free_agency_my_bids(my_team, fa_bids, fa_active_bids, fa_excluded_bids)
 
     with fa_commish_tab:
         commish_key = st.text_input("Commissioner key", type="password", key="sbc_free_agency_commish_key")
