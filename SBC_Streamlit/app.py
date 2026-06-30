@@ -574,6 +574,29 @@ def load_free_agency_bids(path=FREE_AGENT_BIDS_PATH):
     return bids.sort_values(["Timestamp", "Team", "Player"], na_position="last").reset_index(drop=True)
 
 
+def load_free_agency_bid_players(path=FREE_AGENT_BIDS_PATH):
+    try:
+        raw = pd.read_csv(path, dtype=str, keep_default_na=False)
+    except Exception:
+        return []
+    if raw.empty:
+        return []
+
+    labels = [str(col).strip() for col in raw.iloc[0].tolist()]
+    players = []
+    seen = set()
+    for col in labels[19:]:
+        match = re.search(r" - Salary - (.*?) - ", str(col))
+        if not match:
+            continue
+        player = clean_free_agency_player(match.group(1))
+        key = free_agency_player_key(player)
+        if player and key not in seen:
+            players.append(player)
+            seen.add(key)
+    return players
+
+
 def active_free_agency_bids(bids, signed_players=None, available_players=None):
     if bids is None or bids.empty:
         return pd.DataFrame()
@@ -668,6 +691,22 @@ def free_agency_due_text(day_value):
     return f"{due.strftime('%b')} {due.day}" if hasattr(due, "strftime") else str(day_value), due.normalize() <= today_ts
 
 
+def free_agency_bird_rights_lookup():
+    if not isinstance(df, pd.DataFrame) or df.empty or "Player" not in df.columns or "BirdRights" not in df.columns:
+        return {}
+    rows = df[["Player", "Team", "BirdRights"]].copy()
+    rows["_player_key"] = rows["Player"].apply(free_agency_player_key)
+    lookup = {}
+    for _, row in rows.iterrows():
+        key = row["_player_key"]
+        team = str(row.get("Team", "")).strip()
+        rights = row.get("BirdRights", "")
+        if key and not is_blank_value(rights):
+            lookup[(key, team)] = rights
+            lookup.setdefault((key, ""), rights)
+    return lookup
+
+
 def format_free_agency_timestamp(value):
     if pd.isna(value):
         return ""
@@ -697,26 +736,48 @@ def render_commish_bid_rows(player_bids):
     return "".join(rows)
 
 
-def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all_bids=None):
-    if active_bids is None or active_bids.empty:
-        render_html('<div class="sbc-empty-state">No active bids are available after applying commissioner rules.</div>')
+def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all_bids=None, bid_players=None):
+    league_lookup = free_agency_league_lookup(league_view)
+    if active_bids is not None and not active_bids.empty:
+        active_counts = active_bids.groupby("Player").size().rename("Active Bids").reset_index()
+        salary_highs = active_bids.groupby("Player")["Salary"].max().rename("High Bid").reset_index()
+        player_queue = active_counts.merge(salary_highs, on="Player", how="left")
+    else:
+        player_source = list(bid_players or [])
+        if isinstance(league_view, pd.DataFrame) and "Player" in league_view.columns:
+            player_source.extend(league_view["Player"].tolist())
+        player_queue = pd.DataFrame({"Player": [clean_free_agency_player(player) for player in player_source if not is_blank_value(player)]})
+        if not player_queue.empty:
+            player_queue["_player_key"] = player_queue["Player"].apply(free_agency_player_key)
+            player_queue = player_queue.drop_duplicates(subset=["_player_key"]).drop(columns=["_player_key"])
+        player_queue["Active Bids"] = 0
+        player_queue["High Bid"] = 0
+    if player_queue.empty:
+        render_html('<div class="sbc-empty-state">No free agency players are available from the league sheet or bid file.</div>')
         return
 
-    league_lookup = free_agency_league_lookup(league_view)
-    active_counts = active_bids.groupby("Player").size().rename("Active Bids").reset_index()
-    salary_highs = active_bids.groupby("Player")["Salary"].max().rename("High Bid").reset_index()
-    player_queue = active_counts.merge(salary_highs, on="Player", how="left")
     player_queue["_player_key"] = player_queue["Player"].apply(free_agency_player_key)
     player_queue["DayS"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("DayS", ""))
     player_queue["DayR"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("DayR", ""))
     player_queue["RFA"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("RFA", ""))
     player_queue["OldTeam"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("OldTeam", ""))
+    bird_lookup = free_agency_bird_rights_lookup()
+    player_queue["BirdRights"] = player_queue.apply(
+        lambda row: league_lookup.get(row["_player_key"], {}).get("BirdRights", "")
+        or league_lookup.get(row["_player_key"], {}).get("Bird Rights", "")
+        or bird_lookup.get((row["_player_key"], free_agency_team_key(row.get("OldTeam", ""))), "")
+        or bird_lookup.get((row["_player_key"], ""), ""),
+        axis=1,
+    )
     player_queue["_days_due"] = player_queue["DayS"].apply(lambda value: free_agency_due_text(value)[1])
     player_queue["_five_plus"] = player_queue["Active Bids"] >= 5
     player_queue["_action"] = player_queue["_days_due"] | player_queue["_five_plus"]
     player_queue = player_queue.sort_values(["_action", "_days_due", "_five_plus", "High Bid", "Player"], ascending=[False, False, False, False, True])
 
-    team_counts = active_bids.groupby("Team", as_index=False).size().rename(columns={"size": "Active Bids"})
+    if active_bids is not None and not active_bids.empty:
+        team_counts = active_bids.groupby("Team", as_index=False).size().rename(columns={"size": "Active Bids"})
+    else:
+        team_counts = pd.DataFrame(columns=["Team", "Active Bids"])
     team_order = pd.DataFrame({"Team": list(team_info.keys()), "_team_order": range(len(team_info))})
     team_audit = team_order.merge(team_counts, on="Team", how="left")
     team_audit["Active Bids"] = team_audit["Active Bids"].fillna(0).astype(int)
@@ -733,7 +794,10 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
     for _, player_row in player_queue.iterrows():
         player = player_row["Player"]
         key = player_row["_player_key"]
-        player_bids = active_bids[active_bids["Player"].apply(free_agency_player_key) == key].copy()
+        if active_bids is not None and not active_bids.empty:
+            player_bids = active_bids[active_bids["Player"].apply(free_agency_player_key) == key].copy()
+        else:
+            player_bids = pd.DataFrame()
         leader = player_bids.sort_values(["Salary", "Years", "Timestamp"], ascending=[False, False, True], na_position="last").head(1)
         leader_team = leader.iloc[0]["Team"] if not leader.empty else ""
         leader_salary = leader.iloc[0]["Salary"] if not leader.empty else 0
@@ -755,6 +819,7 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
                             {render_free_agency_status_cell(player_row.get("OldTeam", ""), player_row.get("RFA", ""))}
                             <span>{escape(str(player_row.get("DayR", "")))} release</span>
                             <span>{escape(day_s_label or "No signing day")}</span>
+                            <span>{escape(str(player_row.get("BirdRights", "") or "No Bird Rights"))}</span>
                         </div>
                     </div>
                     <div class="sbc-fa-commish-callout">
@@ -6872,20 +6937,18 @@ with free_agency_tab:
             render_html('<div class="sbc-empty-state">Enter the commissioner key to view free agency controls.</div>')
         else:
             fa_bids = load_free_agency_bids()
-            if fa_bids.empty:
-                render_html('<div class="sbc-empty-state">No free agent bids are available from free_agent_bids.csv.</div>')
-            else:
-                signed_text = st.text_area(
-                    "Signed players to exclude",
-                    placeholder="One player per line. This is temporary until the signing tracker is wired in.",
-                    key="sbc_free_agency_signed_players",
-                )
-                signed_players = [line.strip() for line in signed_text.splitlines() if line.strip()]
-                available_players = []
-                if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
-                    available_players = fa_league_view["Player"].tolist()
-                fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players)
-                render_free_agency_commish_desk(fa_active_bids, fa_excluded_bids, fa_league_view, all_bids=fa_bids)
+            fa_bid_players = load_free_agency_bid_players()
+            signed_text = st.text_area(
+                "Signed players to exclude",
+                placeholder="One player per line. This is temporary until the signing tracker is wired in.",
+                key="sbc_free_agency_signed_players",
+            )
+            signed_players = [line.strip() for line in signed_text.splitlines() if line.strip()]
+            available_players = []
+            if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
+                available_players = fa_league_view["Player"].tolist()
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players)
+            render_free_agency_commish_desk(fa_active_bids, fa_excluded_bids, fa_league_view, all_bids=fa_bids, bid_players=fa_bid_players)
 
 with team_hub_tab:
     picker_col, _ = st.columns([1.15, 3.85], vertical_alignment="bottom")
