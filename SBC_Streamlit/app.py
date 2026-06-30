@@ -625,11 +625,12 @@ def active_free_agency_bids(bids, signed_players=None, available_players=None):
     return active.drop(columns=["_player_key"], errors="ignore").reset_index(drop=True)
 
 
-def free_agency_bid_audit(bids, signed_players=None, available_players=None):
+def free_agency_bid_audit(bids, signed_players=None, available_players=None, released_players=None):
     if bids is None or bids.empty:
         return pd.DataFrame(), pd.DataFrame()
     signed_set = {free_agency_player_key(player) for player in (signed_players or []) if str(player).strip()}
     available_set = {free_agency_player_key(player) for player in (available_players or []) if str(player).strip()}
+    released_set = {free_agency_player_key(player) for player in (released_players or []) if str(player).strip()}
     work = bids.copy()
     work["_player_key"] = work["Player"].apply(free_agency_player_key)
     work["_bid_status"] = "Active"
@@ -638,6 +639,11 @@ def free_agency_bid_audit(bids, signed_players=None, available_players=None):
     overlap = set(work["_player_key"]).intersection(available_set)
     if available_set and overlap:
         work.loc[~work["_player_key"].isin(available_set), "_bid_status"] = "Not in free-agent pool"
+    if released_set:
+        unreleased_mask = ~work["_player_key"].isin(released_set)
+        if available_set:
+            unreleased_mask = unreleased_mask & work["_player_key"].isin(available_set)
+        work.loc[(work["_bid_status"] == "Active") & unreleased_mask, "_bid_status"] = "Not Yet Released"
 
     eligible = work[work["_bid_status"] == "Active"].copy()
     eligible = eligible.sort_values(["Team", "_player_key", "Timestamp", "Player"], ascending=[True, True, False, True], na_position="last")
@@ -679,6 +685,17 @@ def free_agency_league_lookup(league_view):
         for _, row in league_view.iterrows()
         if not is_blank_value(row.get("Player", ""))
     }
+
+
+def free_agency_released_players(league_view, release_month=7, release_day=1):
+    if league_view is None or league_view.empty or "Player" not in league_view.columns or "DayR" not in league_view.columns:
+        return []
+    released = []
+    for _, row in league_view.iterrows():
+        release_date = parse_free_agency_day(row.get("DayR", ""))
+        if not pd.isna(release_date) and release_date.month == release_month and release_date.day == release_day:
+            released.append(row.get("Player", ""))
+    return released
 
 
 def parse_free_agency_day(value):
@@ -7105,7 +7122,8 @@ with free_agency_tab:
             available_players = []
             if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
                 available_players = fa_league_view["Player"].tolist()
-            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, available_players=available_players)
+            released_players = free_agency_released_players(fa_league_view)
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, available_players=available_players, released_players=released_players)
             render_free_agency_my_bids(my_team, fa_bids, fa_active_bids, fa_excluded_bids)
 
     with fa_commish_tab:
@@ -7124,7 +7142,8 @@ with free_agency_tab:
             available_players = []
             if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
                 available_players = fa_league_view["Player"].tolist()
-            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players)
+            released_players = free_agency_released_players(fa_league_view)
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, released_players=released_players)
             render_free_agency_commish_desk(fa_active_bids, fa_excluded_bids, fa_league_view, all_bids=fa_bids, bid_players=fa_bid_players)
 
 with team_hub_tab:
