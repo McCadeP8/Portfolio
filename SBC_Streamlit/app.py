@@ -1825,8 +1825,6 @@ def render_overview_table(data):
                 important_class = " sbc-overview-important-money" if important else ""
                 if col == "Luxury Fee" and row.get("Luxury Fee Type") == "Repeater":
                     cells.append(f'<td class="sbc-overview-money sbc-money-{tone}{important_class}"><span>{escape(str(formatted))}</span><em class="sbc-overview-fee-pill">Repeater</em></td>')
-                elif col == "Apron 2 Space" and row.get("Second Apron Penalty") == "Yes":
-                    cells.append(f'<td class="sbc-overview-money sbc-money-{tone}{important_class}"><span>{escape(str(formatted))}</span><em class="sbc-overview-fee-pill">A2 Penalty</em></td>')
                 else:
                     cells.append(f'<td class="sbc-overview-money sbc-money-{tone}{important_class}">{escape(str(formatted))}</td>')
             elif col == "Active Players":

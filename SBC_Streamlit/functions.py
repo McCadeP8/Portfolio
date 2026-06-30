@@ -423,15 +423,6 @@ def is_repeater_tax_team(base_cap: pd.DataFrame, SelectedTeam: str) -> bool:
             paid_years += pd.to_numeric(team_base[col], errors="coerce").fillna(0).iloc[0]
     return paid_years >= 3
 
-def has_second_apron_penalty(base_cap: pd.DataFrame, SelectedTeam: str) -> bool:
-    team_base = base_cap[base_cap['Team'] == SelectedTeam]
-    if team_base.empty:
-        return False
-    apron_col = f"ApronTwo{current_year - 1}"
-    if apron_col not in team_base.columns:
-        return False
-    return pd.to_numeric(team_base[apron_col], errors="coerce").fillna(0).iloc[0] > 0
-
 def tax_amount_calc(fee: float, repeater: bool) -> float:
     penalty_false = [1.0, 0.25, 2.25, 1.25]
     penalty_true = [3.0, 0.25, 2.25, 1.25]
@@ -605,7 +596,6 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
         "Hard Cap": [team_hard_cap(base_cap, team) for team in team_info.keys()],
         "Apron 1 Space": [current_apron_1 - get_tax_total(df, team) for team in team_info.keys()],
         "Apron 2 Space": [current_apron_2 - get_tax_total(df, team) for team in team_info.keys()],
-        "Second Apron Penalty": ["Yes" if has_second_apron_penalty(base_cap, team) else "" for team in team_info.keys()],
         "Base Fee": [base_fee(df, team, base_cap) for team in team_info.keys()],
         "Luxury Fee": [luxury_fee(df, team, base_cap) for team in team_info.keys()],
         "Luxury Fee Type": ["Repeater" if is_repeater_tax_team(base_cap, team) else "Standard" for team in team_info.keys()],
