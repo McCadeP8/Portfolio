@@ -36,6 +36,13 @@ def normalize_player_key(value):
 def get_data() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
     df = pd.read_csv(csv_url)
+    for year in columns_order:
+        salary_col = "Y" + str(year)
+        type_col = "Type" + str(year)
+        if salary_col not in df.columns:
+            df[salary_col] = 0
+        if type_col not in df.columns:
+            df[type_col] = ""
     return df
 
 @st.cache_data()
@@ -77,8 +84,11 @@ def get_all_time_rosters() -> pd.DataFrame:
 
 @st.cache_data(ttl=86400)
 def get_fantrax_roster(year, period) -> pd.DataFrame:
+    league_id = league_ids.get(year)
+    if not league_id:
+        return pd.DataFrame()
     all_rosters_list = []    
-    roster_url = f"https://www.fantrax.com/fxea/general/getTeamRosters?leagueId={league_ids.get(year)}&period={period}"
+    roster_url = f"https://www.fantrax.com/fxea/general/getTeamRosters?leagueId={league_id}&period={period}"
     headers = {'Cookie': 'JSESSIONID='}
     response = requests.get(roster_url, headers=headers)
     if response.status_code == 200:
@@ -105,6 +115,7 @@ def get_fantrax_players() -> pd.DataFrame:
     roster_url = "https://www.fantrax.com/fxea/general/getPlayerIds?sport=NBA"
     headers = {'Cookie': 'JSESSIONID='}
     response = requests.get(roster_url, headers=headers)
+    players_df = pd.DataFrame(columns=["name", "fantraxId"])
     if response.status_code == 200:
         data = json.loads(response.text)
         players_list = []
@@ -131,7 +142,10 @@ def get_standings() -> pd.DataFrame:
 
 @st.cache_data()
 def get_fantrax_matchups(year) -> pd.DataFrame:
-    roster_url = f"https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId={league_ids.get(year)}"
+    league_id = league_ids.get(year)
+    if not league_id:
+        return pd.DataFrame()
+    roster_url = f"https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId={league_id}"
     headers = {'Cookie': 'JSESSIONID='}
     response = requests.get(roster_url, headers=headers)
     if response.status_code == 200:
@@ -182,10 +196,13 @@ def current_matchup_period() -> float:
     return int(df2["Period"].iloc[-1])
 
 def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
+    league_id = league_ids.get(year)
+    if not league_id:
+        return pd.DataFrame()
     session = requests.Session()
     session.headers.update({"Content-Type": "application/json", "Cookie": "JSESSIONID=YOUR_REAL_SESSION_ID"})
-    payload = {"msgs": [{"method": "getLiveScoringStats","data": {"sppId": "-1", "teamId": "ALL", "period": period, "date": "2026-01-30", "viewType": "2", "playerViewType": "1", "newView": False}}, {"method": "getScoresSummaryData", "data": {}}]}
-    response = session.post("https://www.fantrax.com/fxpa/req", params={"leagueId": league_ids.get(year)}, json=payload)
+    payload = {"msgs": [{"method": "getLiveScoringStats","data": {"sppId": "-1", "teamId": "ALL", "period": period, "date": today.isoformat(), "viewType": "2", "playerViewType": "1", "newView": False}}, {"method": "getScoresSummaryData", "data": {}}]}
+    response = session.post("https://www.fantrax.com/fxpa/req", params={"leagueId": league_id}, json=payload)
     if response.status_code == 200:
         data = response.json()
         scoring_categories = ['Team', 'GP', 'MP', 'TS%', '2PTM', '2PTA', '2PT%', '3PTM', '3PTA', '3PT%', 'FTM', 'FTA', 'FT%', 'PTS', 'OREB', 'DREB', 'AST', 'ST', 'BLK', 'TO', '+/-']
