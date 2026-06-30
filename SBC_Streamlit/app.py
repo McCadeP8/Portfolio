@@ -101,6 +101,7 @@ FREE_AGENCY_PASSWORD = "VovEmUmawrlcreMuzEtR"
 APP_DIR = Path(__file__).resolve().parent
 FREE_AGENT_BIDS_PATH = APP_DIR / "free_agent_bids.csv"
 FREE_AGENCY_LEAGUE_VIEW_URL = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1031971950"
+FREE_AGENCY_SURVEY_URL = "https://qfreeaccountssjc1.az1.qualtrics.com/jfe/form/SV_0ia5Die66G0LD14"
 
 FREE_AGENCY_TEAM_CODES = {
     "CruKEvubububRaSlPLBr": "Albuquerque",
@@ -6837,6 +6838,31 @@ with free_agency_tab:
     fa_league_tab, fa_commish_tab = st.tabs(["🌐 League View", "🔐 Commish View"])
     with fa_league_tab:
         fa_league_view = load_free_agency_league_view()
+        render_html(f"""
+            <style>
+                .sbc-fa-league-note {{
+                    margin: 0 0 0.85rem;
+                    padding: 0.7rem 0.85rem;
+                    border: 1px solid color-mix(in srgb, {LEAGUE_SECONDARY} 24%, rgba(23, 32, 42, 0.12));
+                    border-left: 0.32rem solid {LEAGUE_SECONDARY};
+                    border-radius: 8px;
+                    background: color-mix(in srgb, {LEAGUE_SECONDARY} 7%, #ffffff);
+                    color: var(--sbc-ink);
+                    font-size: 0.92rem;
+                    font-weight: 800;
+                }}
+                .sbc-fa-league-note a {{
+                    color: {LEAGUE_PRIMARY};
+                    font-weight: 950;
+                    text-decoration: none;
+                    border-bottom: 1px solid currentColor;
+                }}
+            </style>
+            <div class="sbc-fa-league-note">
+                Ready to make an offer? Submit free agency bids through the
+                <a href="{FREE_AGENCY_SURVEY_URL}" target="_blank" rel="noopener noreferrer">SBCFBL Free Agency Survey</a>.
+            </div>
+        """)
         render_html('<div class="sbc-section-label">Free Agency Board</div>')
         render_free_agency_league_table(fa_league_view)
 
