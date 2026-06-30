@@ -584,12 +584,47 @@ def active_free_agency_bids(bids, signed_players=None, available_players=None):
     if available_set and overlap:
         active = active[active["_player_key"].isin(available_set)]
 
-    active = active.sort_values(["Timestamp", "Team", "Player"], na_position="last")
-    active = active.groupby(["Team", "Player"], as_index=False, group_keys=False).tail(1)
-    active = active.sort_values(["Timestamp", "Team", "Player"], na_position="last")
-    active = active.groupby("Team", as_index=False, group_keys=False).tail(20)
+    active = active.sort_values(["Team", "Player", "Timestamp"], ascending=[True, True, False], na_position="last")
+    active = active.groupby(["Team", "Player"], as_index=False, group_keys=False).head(1)
     active = active.sort_values(["Team", "Timestamp", "Player"], ascending=[True, False, True], na_position="last")
+    active = active.groupby("Team", as_index=False, group_keys=False).head(20)
     return active.drop(columns=["_player_key"], errors="ignore").reset_index(drop=True)
+
+
+def free_agency_bid_audit(bids, signed_players=None, available_players=None):
+    if bids is None or bids.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    signed_set = {free_agency_player_key(player) for player in (signed_players or []) if str(player).strip()}
+    available_set = {free_agency_player_key(player) for player in (available_players or []) if str(player).strip()}
+    work = bids.copy()
+    work["_player_key"] = work["Player"].apply(free_agency_player_key)
+    work["_bid_status"] = "Active"
+    if signed_set:
+        work.loc[work["_player_key"].isin(signed_set), "_bid_status"] = "Signed player"
+    overlap = set(work["_player_key"]).intersection(available_set)
+    if available_set and overlap:
+        work.loc[~work["_player_key"].isin(available_set), "_bid_status"] = "Not in free-agent pool"
+
+    eligible = work[work["_bid_status"] == "Active"].copy()
+    eligible = eligible.sort_values(["Team", "Player", "Timestamp"], ascending=[True, True, False], na_position="last")
+    eligible["_team_player_rank"] = eligible.groupby(["Team", "Player"]).cumcount() + 1
+    eligible.loc[eligible["_team_player_rank"] > 1, "_bid_status"] = "Replaced by newer player bid"
+
+    latest = eligible[eligible["_bid_status"] == "Active"].copy()
+    latest = latest.sort_values(["Team", "Timestamp", "Player"], ascending=[True, False, True], na_position="last")
+    latest["_team_active_rank"] = latest.groupby("Team").cumcount() + 1
+    latest.loc[latest["_team_active_rank"] > 20, "_bid_status"] = "Outside latest 20"
+
+    audit = pd.concat([
+        work[work["_bid_status"] != "Active"],
+        eligible[eligible["_bid_status"] != "Active"],
+        latest,
+    ], ignore_index=True)
+    active = latest[latest["_bid_status"] == "Active"].drop(columns=["_player_key", "_team_player_rank", "_team_active_rank", "_bid_status"], errors="ignore")
+    excluded = audit[audit["_bid_status"] != "Active"].drop(columns=["_player_key"], errors="ignore")
+    active = active.sort_values(["Player", "Salary", "Years", "Timestamp"], ascending=[True, False, False, True], na_position="last").reset_index(drop=True)
+    excluded = excluded.sort_values(["Team", "Player", "Timestamp"], ascending=[True, True, False], na_position="last").reset_index(drop=True)
+    return active, excluded
 
 
 def free_agency_submission_summary(bids, active_bids):
@@ -600,6 +635,295 @@ def free_agency_submission_summary(bids, active_bids):
     summary = latest.merge(counts, on="Team", how="left")
     summary["Active Bids"] = summary["Active Bids"].fillna(0).astype(int)
     return summary.sort_values("Last Bid Timestamp", ascending=False).head(30).reset_index(drop=True)
+
+
+def free_agency_league_lookup(league_view):
+    if league_view is None or league_view.empty or "Player" not in league_view.columns:
+        return {}
+    return {
+        free_agency_player_key(row.get("Player", "")): row.to_dict()
+        for _, row in league_view.iterrows()
+        if not is_blank_value(row.get("Player", ""))
+    }
+
+
+def parse_free_agency_day(value):
+    if is_blank_value(value):
+        return pd.NaT
+    text = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", str(value), flags=re.IGNORECASE)
+    if not re.search(r"\b\d{4}\b", text):
+        text = f"{text} {current_year}"
+    return pd.to_datetime(text, errors="coerce")
+
+
+def free_agency_due_text(day_value):
+    due = parse_free_agency_day(day_value)
+    if pd.isna(due):
+        return "", False
+    today_ts = pd.Timestamp(date.today())
+    return f"{due.strftime('%b')} {due.day}" if hasattr(due, "strftime") else str(day_value), due.normalize() <= today_ts
+
+
+def format_free_agency_timestamp(value):
+    if pd.isna(value):
+        return ""
+    try:
+        ts = pd.to_datetime(value)
+        return f"{ts.strftime('%b')} {ts.day}, {ts.strftime('%I:%M %p').lstrip('0')}"
+    except Exception:
+        return str(value)
+
+
+def render_commish_bid_rows(player_bids):
+    if player_bids is None or player_bids.empty:
+        return '<div class="sbc-fa-empty-mini">No active bids.</div>'
+    rows = []
+    ordered = player_bids.sort_values(["Salary", "Years", "Timestamp", "Team"], ascending=[False, False, True, True], na_position="last")
+    for rank, (_, bid) in enumerate(ordered.iterrows(), start=1):
+        rows.append(f"""
+            <div class="sbc-fa-bid-row {'sbc-fa-bid-row-leader' if rank == 1 else ''}">
+                <span class="sbc-fa-bid-rank">{rank}</span>
+                <span class="sbc-fa-bid-team">{render_free_agency_team_badge(bid.get("Team", ""), empty_text="Unknown")}</span>
+                <span class="sbc-fa-bid-money">{escape(str(format_money(bid.get("Salary", 0))))}</span>
+                <span class="sbc-fa-bid-years">{escape(str(bid.get("Years", 1)))} yr</span>
+                <span class="sbc-fa-bid-time">{escape(format_free_agency_timestamp(bid.get("Timestamp")))}</span>
+                <span class="sbc-fa-bid-comment">{escape(str(bid.get("Comments", "")))}</span>
+            </div>
+        """)
+    return "".join(rows)
+
+
+def render_free_agency_commish_desk(active_bids, excluded_bids, league_view):
+    if active_bids is None or active_bids.empty:
+        render_html('<div class="sbc-empty-state">No active bids are available after applying commissioner rules.</div>')
+        return
+
+    league_lookup = free_agency_league_lookup(league_view)
+    active_counts = active_bids.groupby("Player").size().rename("Active Bids").reset_index()
+    salary_highs = active_bids.groupby("Player")["Salary"].max().rename("High Bid").reset_index()
+    player_queue = active_counts.merge(salary_highs, on="Player", how="left")
+    player_queue["_player_key"] = player_queue["Player"].apply(free_agency_player_key)
+    player_queue["DayS"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("DayS", ""))
+    player_queue["DayR"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("DayR", ""))
+    player_queue["RFA"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("RFA", ""))
+    player_queue["OldTeam"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("OldTeam", ""))
+    player_queue["_days_due"] = player_queue["DayS"].apply(lambda value: free_agency_due_text(value)[1])
+    player_queue["_five_plus"] = player_queue["Active Bids"] >= 5
+    player_queue["_action"] = player_queue["_days_due"] | player_queue["_five_plus"]
+    player_queue = player_queue.sort_values(["_action", "_days_due", "_five_plus", "High Bid", "Player"], ascending=[False, False, False, False, True])
+
+    team_counts = active_bids.groupby("Team", as_index=False).size().rename(columns={"size": "Active Bids"})
+    over_20 = team_counts[team_counts["Active Bids"] > 20]
+    excluded_latest_20 = excluded_bids[excluded_bids.get("_bid_status", pd.Series(dtype=str)) == "Outside latest 20"] if excluded_bids is not None and not excluded_bids.empty and "_bid_status" in excluded_bids.columns else pd.DataFrame()
+
+    cards = []
+    picture_lookup = free_agency_player_picture_lookup()
+    for _, player_row in player_queue.iterrows():
+        player = player_row["Player"]
+        key = player_row["_player_key"]
+        player_bids = active_bids[active_bids["Player"].apply(free_agency_player_key) == key].copy()
+        leader = player_bids.sort_values(["Salary", "Years", "Timestamp"], ascending=[False, False, True], na_position="last").head(1)
+        leader_team = leader.iloc[0]["Team"] if not leader.empty else ""
+        leader_salary = leader.iloc[0]["Salary"] if not leader.empty else 0
+        leader_years = leader.iloc[0]["Years"] if not leader.empty else 1
+        day_s_label, day_s_due = free_agency_due_text(player_row.get("DayS", ""))
+        reasons = []
+        if day_s_due:
+            reasons.append("Signing day reached")
+        if player_row["Active Bids"] >= 5:
+            reasons.append("5+ active bids")
+        if not reasons:
+            reasons.append("Monitor")
+        cards.append(f"""
+            <section class="sbc-fa-commish-card {'sbc-fa-commish-action' if player_row['_action'] else ''}">
+                <div class="sbc-fa-commish-top">
+                    <div>
+                        <div class="sbc-fa-commish-player">{render_free_agency_player_cell(player, picture_lookup)}</div>
+                        <div class="sbc-fa-commish-meta">
+                            {render_free_agency_status_cell(player_row.get("OldTeam", ""), player_row.get("RFA", ""))}
+                            <span>{escape(str(player_row.get("DayR", "")))} release</span>
+                            <span>{escape(day_s_label or "No signing day")}</span>
+                        </div>
+                    </div>
+                    <div class="sbc-fa-commish-callout">
+                        <span>{escape(" / ".join(reasons))}</span>
+                        <strong>{escape(str(player_row["Active Bids"]))} bids</strong>
+                    </div>
+                </div>
+                <div class="sbc-fa-commish-leader">
+                    <span>Leader</span>
+                    <strong>{render_free_agency_team_badge(leader_team, empty_text="None")}</strong>
+                    <em>{escape(str(format_money(leader_salary)))} / {escape(str(leader_years))} yr</em>
+                </div>
+                <div class="sbc-fa-bid-list">
+                    {render_commish_bid_rows(player_bids)}
+                </div>
+            </section>
+        """)
+
+    team_rows = []
+    for _, row in team_counts.sort_values(["Active Bids", "Team"], ascending=[False, True]).iterrows():
+        team_rows.append(f"""
+            <div class="sbc-fa-team-audit {'sbc-fa-team-audit-bad' if row['Active Bids'] > 20 else ''}">
+                {render_free_agency_team_badge(row.get("Team", ""), empty_text="Unknown")}
+                <strong>{int(row["Active Bids"])}/20</strong>
+            </div>
+        """)
+
+    render_html(f"""
+        <style>
+            .sbc-fa-commish-grid {{
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 0.85rem;
+            }}
+            .sbc-fa-commish-card {{
+                border: 1px solid rgba(23, 32, 42, 0.12);
+                border-left: 0.35rem solid color-mix(in srgb, {LEAGUE_PRIMARY} 38%, #ffffff);
+                border-radius: 8px;
+                background: #ffffff;
+                padding: 0.9rem;
+                box-shadow: 0 10px 28px rgba(18, 25, 38, 0.055);
+            }}
+            .sbc-fa-commish-action {{
+                border-left-color: {LEAGUE_SECONDARY};
+                background: linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, {LEAGUE_SECONDARY} 6%, #ffffff) 100%);
+            }}
+            .sbc-fa-commish-top {{
+                display: flex;
+                justify-content: space-between;
+                gap: 1rem;
+                align-items: flex-start;
+            }}
+            .sbc-fa-commish-player .sbc-fa-player-img {{
+                width: 2.65rem;
+                height: 2.65rem;
+            }}
+            .sbc-fa-commish-player strong {{
+                font-size: 1.05rem;
+            }}
+            .sbc-fa-commish-meta {{
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.45rem;
+                align-items: center;
+                margin-top: 0.45rem;
+                color: var(--sbc-muted);
+                font-size: 0.78rem;
+                font-weight: 850;
+            }}
+            .sbc-fa-commish-callout {{
+                text-align: right;
+                min-width: 8.5rem;
+            }}
+            .sbc-fa-commish-callout span {{
+                display: block;
+                color: {LEAGUE_SECONDARY};
+                font-size: 0.72rem;
+                font-weight: 950;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }}
+            .sbc-fa-commish-callout strong {{
+                color: var(--sbc-ink);
+                font-size: 1.25rem;
+            }}
+            .sbc-fa-commish-leader {{
+                display: flex;
+                gap: 0.7rem;
+                align-items: center;
+                margin: 0.8rem 0;
+                padding: 0.55rem 0.65rem;
+                border-radius: 8px;
+                background: color-mix(in srgb, {LEAGUE_PRIMARY} 6%, #ffffff);
+            }}
+            .sbc-fa-commish-leader > span {{
+                color: var(--sbc-muted);
+                font-size: 0.72rem;
+                font-weight: 950;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }}
+            .sbc-fa-commish-leader em {{
+                margin-left: auto;
+                color: var(--sbc-ink);
+                font-style: normal;
+                font-weight: 950;
+                font-variant-numeric: tabular-nums;
+            }}
+            .sbc-fa-bid-list {{
+                display: grid;
+                gap: 0.3rem;
+            }}
+            .sbc-fa-bid-row {{
+                display: grid;
+                grid-template-columns: 2rem minmax(11rem, 1.2fr) 7rem 4rem 8rem minmax(8rem, 1fr);
+                gap: 0.55rem;
+                align-items: center;
+                padding: 0.42rem 0.55rem;
+                border-radius: 8px;
+                background: rgba(248, 250, 252, 0.9);
+                font-size: 0.82rem;
+            }}
+            .sbc-fa-bid-row-leader {{
+                background: color-mix(in srgb, {LEAGUE_SECONDARY} 10%, #ffffff);
+                outline: 1px solid color-mix(in srgb, {LEAGUE_SECONDARY} 22%, rgba(23, 32, 42, 0.12));
+            }}
+            .sbc-fa-bid-rank,
+            .sbc-fa-bid-money,
+            .sbc-fa-bid-years {{
+                font-weight: 950;
+                font-variant-numeric: tabular-nums;
+            }}
+            .sbc-fa-bid-time,
+            .sbc-fa-bid-comment {{
+                color: var(--sbc-muted);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }}
+            .sbc-fa-team-audit-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+                gap: 0.5rem;
+                margin-bottom: 1rem;
+            }}
+            .sbc-fa-team-audit {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.6rem;
+                border: 1px solid rgba(23, 32, 42, 0.1);
+                border-radius: 8px;
+                padding: 0.45rem 0.55rem;
+                background: #ffffff;
+            }}
+            .sbc-fa-team-audit strong {{
+                font-weight: 950;
+                font-variant-numeric: tabular-nums;
+            }}
+            .sbc-fa-team-audit-bad {{
+                border-color: #dc2626;
+                background: #fff5f5;
+            }}
+            @media (max-width: 760px) {{
+                .sbc-fa-commish-top,
+                .sbc-fa-commish-leader {{
+                    display: grid;
+                }}
+                .sbc-fa-commish-callout {{
+                    text-align: left;
+                }}
+                .sbc-fa-bid-row {{
+                    grid-template-columns: 2rem 1fr;
+                }}
+            }}
+        </style>
+        <div class="sbc-section-label">Team Bid Audit</div>
+        <div class="sbc-fa-team-audit-grid">{''.join(team_rows)}</div>
+        <div class="sbc-section-label">Signing Desk</div>
+        <div class="sbc-fa-commish-grid">{''.join(cards)}</div>
+    """)
 
 
 def free_agency_team_snapshot():
@@ -6472,47 +6796,10 @@ with free_agency_tab:
                 )
                 signed_players = [line.strip() for line in signed_text.splitlines() if line.strip()]
                 available_players = []
-                if "all_free_agents_df" in globals() and isinstance(all_free_agents_df, pd.DataFrame) and "Player" in all_free_agents_df.columns:
-                    available_players = all_free_agents_df["Player"].tolist()
-                fa_active_bids = active_free_agency_bids(fa_bids, signed_players=signed_players, available_players=available_players)
-                fa_submission_summary = free_agency_submission_summary(fa_bids, fa_active_bids)
-                fa_team_snapshot = free_agency_team_snapshot()
-
-                render_html('<div class="sbc-section-label">Team Submission Status</div>')
-                st.dataframe(
-                    fa_submission_summary,
-                    width="stretch",
-                    hide_index=True,
-                    column_config={
-                        "Last Bid Timestamp": st.column_config.DatetimeColumn(format="YYYY-MM-DD h:mm a"),
-                    },
-                )
-
-                render_html('<div class="sbc-section-label">Active Bids</div>')
-                active_cols = ["Team", "Player", "Salary", "Years", "Timestamp", "Comments"]
-                active_display = fa_active_bids[active_cols].copy() if not fa_active_bids.empty else pd.DataFrame(columns=active_cols)
-                st.dataframe(
-                    active_display,
-                    width="stretch",
-                    hide_index=True,
-                    column_config={
-                        "Salary": st.column_config.NumberColumn(format="$%d"),
-                        "Timestamp": st.column_config.DatetimeColumn(format="YYYY-MM-DD h:mm a"),
-                    },
-                )
-
-                render_html('<div class="sbc-section-label">Team Cap And Exception Snapshot</div>')
-                st.dataframe(
-                    fa_team_snapshot,
-                    width="stretch",
-                    hide_index=True,
-                    column_config={
-                        "Cap Space": st.column_config.NumberColumn(format="$%d"),
-                        "Tax Space": st.column_config.NumberColumn(format="$%d"),
-                        "Apron 1 Space": st.column_config.NumberColumn(format="$%d"),
-                        "Apron 2 Space": st.column_config.NumberColumn(format="$%d"),
-                    },
-                )
+                if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
+                    available_players = fa_league_view["Player"].tolist()
+                fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players)
+                render_free_agency_commish_desk(fa_active_bids, fa_excluded_bids, fa_league_view)
 
 with team_hub_tab:
     picker_col, _ = st.columns([1.15, 3.85], vertical_alignment="bottom")
