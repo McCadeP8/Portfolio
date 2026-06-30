@@ -991,10 +991,11 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
                 gap: 0.45rem;
                 min-width: 0;
             }}
-            .sbc-fa-team-audit .sbc-draft-team {{
+            .sbc-fa-team-audit .sbc-draft-team-mark {{
                 min-width: 0;
             }}
-            .sbc-fa-team-audit .sbc-draft-team-name {{
+            .sbc-fa-team-audit .sbc-draft-team-wordmark {{
+                font-family: var(--draft-team-font), "Poppins", "Segoe UI", sans-serif;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
