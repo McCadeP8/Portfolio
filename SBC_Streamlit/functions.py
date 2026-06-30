@@ -266,6 +266,18 @@ def active_roster_mask(df: pd.DataFrame) -> pd.Series:
         mask = mask & ~df[type_col].isin(["Unrestricted", "Restricted"])
     return mask
 
+def contract_salary_mask(df: pd.DataFrame) -> pd.Series:
+    type_col = "Type" + str(current_year)
+    if type_col not in df.columns:
+        return pd.Series(False, index=df.index)
+    contract_types = ["Guaranteed", "Unguaranteed", "Non-Guaranteed", "Team"]
+    return df[type_col].isin(contract_types)
+
+def cap_space_exception_mask(exceptions_df: pd.DataFrame) -> pd.Series:
+    exception_name = exceptions_df["Player"].astype(str)
+    excluded = exception_name.str.contains("Mid-Level|Bi-Annual|Minimum|MLE|BAE", case=False, na=False)
+    return ~excluded
+
 def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
@@ -361,7 +373,7 @@ def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: s
     df = df[df['Team'] == SelectedTeam]
     player_total = df["Y" + str(current_year)].sum()
     exceptions_df = exceptions_df[exceptions_df['Team'] == SelectedTeam]
-    exceptions_df = exceptions_df[exceptions_df['Player'] != 'Minimum']
+    exceptions_df = exceptions_df[cap_space_exception_mask(exceptions_df)]
     exceptions_total = exceptions_df["Y" + str(current_year)].sum()
     total_cap = player_total + exceptions_total
     ap = 12-active_player_n(df, SelectedTeam)
@@ -372,6 +384,7 @@ def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: s
 
 def get_tax_total(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
+    df = df[contract_salary_mask(df)]
     player_total = df["Y" + str(current_year)].sum()
     return player_total
 
