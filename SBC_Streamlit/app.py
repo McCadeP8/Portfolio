@@ -1863,10 +1863,12 @@ def render_overview_table(data):
 def render_payout_cards(cards):
     card_html = []
     for label, value, note in cards:
+        payout_value = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+        payout_display = f"${payout_value:,.2f}" if not pd.isna(payout_value) else format_money(value)
         card_html.append(f"""
             <div class="sbc-payout-card">
                 <div class="sbc-payout-label">{escape(str(label))}</div>
-                <div class="sbc-payout-value">{escape(str(format_money(value)))}</div>
+                <div class="sbc-payout-value">{escape(str(payout_display))}</div>
                 <div class="sbc-payout-note">{escape(str(note))}</div>
             </div>
         """)
