@@ -56,8 +56,11 @@ def get_pictures() -> pd.DataFrame:
 def get_exceptions(ttl=86400) -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1620818587"
     df = pd.read_csv(csv_url)
-    df = df[["Team", "Player", "Y" + str(current_year), "BirdRights"]]
-    return df
+    current_salary_col = "Y" + str(current_year)
+    for col in ["Team", "Player", current_salary_col, "BirdRights"]:
+        if col not in df.columns:
+            df[col] = 0 if col == current_salary_col else ""
+    return df[["Team", "Player", current_salary_col, "BirdRights"]]
 
 @st.cache_data(ttl=86400)
 def get_base_cap() -> pd.DataFrame:
