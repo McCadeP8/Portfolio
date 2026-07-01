@@ -133,6 +133,7 @@ FREE_AGENCY_TEAM_CODES = {
     "qOtrExicohuBRacoquca": "Tampa Bay",
     "cltroxUsToswojikubit": "Tulsa",
     "tuthUsajudrowIbesopr": "Vancouver",
+    "tuthUsajudrowlbesopr": "Vancouver",
     "VovEmUmawrlcreMuzEtR": "Vegas",
     "TyF4LNkBNtAkEB4It2Hg": "Albuquerque",
     "FcLJLFN7i8QQiLYTzKWo": "Anaheim",
