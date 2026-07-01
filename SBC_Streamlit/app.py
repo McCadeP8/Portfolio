@@ -625,14 +625,16 @@ def active_free_agency_bids(bids, signed_players=None, available_players=None):
     return active.drop(columns=["_player_key"], errors="ignore").reset_index(drop=True)
 
 
-def free_agency_bid_audit(bids, signed_players=None, available_players=None, released_players=None):
+def free_agency_bid_audit(bids, signed_players=None, available_players=None, released_players=None, league_view=None):
     if bids is None or bids.empty:
         return pd.DataFrame(), pd.DataFrame()
     signed_set = {free_agency_player_key(player) for player in (signed_players or []) if str(player).strip()}
     available_set = {free_agency_player_key(player) for player in (available_players or []) if str(player).strip()}
     released_set = {free_agency_player_key(player) for player in (released_players or []) if str(player).strip()}
+    league_lookup = free_agency_league_lookup(league_view)
     work = bids.copy()
     work["_player_key"] = work["Player"].apply(free_agency_player_key)
+    work["_sign_order_sort"] = work["_player_key"].map(lambda key: parse_free_agency_sign_order(league_lookup.get(key, {}).get("SignOrder", "")))
     work["_bid_status"] = "Active"
     if signed_set:
         work.loc[work["_player_key"].isin(signed_set), "_bid_status"] = "Signed player"
@@ -651,7 +653,7 @@ def free_agency_bid_audit(bids, signed_players=None, available_players=None, rel
     eligible.loc[eligible["_team_player_rank"] > 1, "_bid_status"] = "Replaced by newer player bid"
 
     latest = eligible[eligible["_bid_status"] == "Active"].copy()
-    latest = latest.sort_values(["Team", "Timestamp", "Player"], ascending=[True, False, True], na_position="last")
+    latest = latest.sort_values(["Team", "_sign_order_sort", "Timestamp", "Player"], ascending=[True, True, False, True], na_position="last")
     latest["_team_active_rank"] = latest.groupby("Team").cumcount() + 1
     latest.loc[latest["_team_active_rank"] > 20, "_bid_status"] = "Outside latest 20"
 
@@ -662,8 +664,8 @@ def free_agency_bid_audit(bids, signed_players=None, available_players=None, rel
     ], ignore_index=True)
     active = latest[latest["_bid_status"] == "Active"].drop(columns=["_player_key", "_team_player_rank", "_team_active_rank", "_bid_status"], errors="ignore")
     excluded = audit[audit["_bid_status"] != "Active"].drop(columns=["_player_key"], errors="ignore")
-    active = active.sort_values(["Player", "Salary", "Years", "Timestamp"], ascending=[True, False, False, True], na_position="last").reset_index(drop=True)
-    excluded = excluded.sort_values(["Team", "Player", "Timestamp"], ascending=[True, True, False], na_position="last").reset_index(drop=True)
+    active = active.sort_values(["_sign_order_sort", "Player", "Salary", "Years", "Timestamp"], ascending=[True, True, False, False, True], na_position="last").drop(columns=["_sign_order_sort"], errors="ignore").reset_index(drop=True)
+    excluded = excluded.sort_values(["Team", "_sign_order_sort", "Player", "Timestamp"], ascending=[True, True, True, False], na_position="last").drop(columns=["_sign_order_sort"], errors="ignore").reset_index(drop=True)
     return active, excluded
 
 
@@ -1131,10 +1133,12 @@ def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids, leagu
 
     active_team = active_bids[active_bids["Team"] == team].copy() if active_bids is not None and not active_bids.empty and "Team" in active_bids.columns else pd.DataFrame()
     excluded_team = excluded_bids[excluded_bids["Team"] == team].copy() if excluded_bids is not None and not excluded_bids.empty and "Team" in excluded_bids.columns else pd.DataFrame()
+    league_lookup = free_agency_league_lookup(league_view)
 
     active_keys = {}
     if not active_team.empty:
-        active_ranked = active_team.sort_values(["Timestamp", "Player"], ascending=[False, True], na_position="last").reset_index(drop=True)
+        active_team["_sign_order_sort"] = active_team["Player"].map(lambda player: parse_free_agency_sign_order(league_lookup.get(free_agency_player_key(player), {}).get("SignOrder", "")))
+        active_ranked = active_team.sort_values(["_sign_order_sort", "Timestamp", "Player"], ascending=[True, False, True], na_position="last").reset_index(drop=True)
         for idx, bid in active_ranked.iterrows():
             active_keys[(free_agency_player_key(bid.get("Player", "")), str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))] = idx + 1
     excluded_status = {}
@@ -1143,16 +1147,23 @@ def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids, leagu
             key = (free_agency_player_key(bid.get("Player", "")), str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))
             excluded_status.setdefault(key, str(bid.get("_bid_status", "Inactive")))
 
-    league_lookup = free_agency_league_lookup(league_view)
     rows = []
     display_rows = []
     for _, bid in team_all.iterrows():
-        key = (free_agency_player_key(bid.get("Player", "")), str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))
+        player_key = free_agency_player_key(bid.get("Player", ""))
+        key = (player_key, str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))
         active_rank = active_keys.get(key)
-        display_rows.append((active_rank is None, bid.get("Timestamp"), bid.get("Player", ""), active_rank, excluded_status.get(key, "Inactive"), bid))
-    display_rows = sorted(display_rows, key=lambda item: pd.Timestamp.min if pd.isna(item[1]) else item[1], reverse=True)
-    display_rows = sorted(display_rows, key=lambda item: item[0])
-    for is_inactive, _, _, active_rank, inactive_status, bid in display_rows:
+        sign_order_sort = parse_free_agency_sign_order(league_lookup.get(player_key, {}).get("SignOrder", ""))
+        display_rows.append((active_rank is None, bid.get("Timestamp"), bid.get("Player", ""), active_rank, excluded_status.get(key, "Inactive"), bid, sign_order_sort))
+
+    def my_bid_sort_key(item):
+        timestamp = pd.to_datetime(item[1], errors="coerce")
+        timestamp_sort = -timestamp.timestamp() if not pd.isna(timestamp) else math.inf
+        active_sort = item[3] if item[3] else math.inf
+        return (item[0], active_sort, item[6], timestamp_sort, str(item[2]))
+
+    display_rows = sorted(display_rows, key=my_bid_sort_key)
+    for is_inactive, _, _, active_rank, inactive_status, bid, _ in display_rows:
         status = f"Active #{active_rank}" if active_rank else inactive_status
         row_class = "sbc-fa-my-bid-inactive" if is_inactive else "sbc-fa-my-bid-active"
         rows.append(f"""
@@ -1405,7 +1416,16 @@ def render_free_agency_league_table(data):
         return
     rows = []
     picture_lookup = free_agency_player_picture_lookup()
-    for _, row in data.iterrows():
+    display_data = data.copy()
+    display_data["_signing_day_sort"] = display_data["DayS"].apply(parse_free_agency_day) if "DayS" in display_data.columns else pd.NaT
+    display_data["_release_day_sort"] = display_data["DayR"].apply(parse_free_agency_day) if "DayR" in display_data.columns else pd.NaT
+    display_data["_sign_order_sort"] = display_data["SignOrder"].apply(parse_free_agency_sign_order) if "SignOrder" in display_data.columns else math.inf
+    display_data = display_data.sort_values(
+        ["_signing_day_sort", "_release_day_sort", "_sign_order_sort", "Player"],
+        ascending=[True, True, True, True],
+        na_position="last",
+    )
+    for _, row in display_data.iterrows():
         player = clean_pick_display(row.get("Player", ""))
         old_team = free_agency_team_key(row.get("OldTeam", ""))
         row_color = team_color_for_name(old_team) if old_team in team_info else ""
@@ -7199,7 +7219,7 @@ with free_agency_tab:
             if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
                 available_players = fa_league_view["Player"].tolist()
             released_players = free_agency_released_players(fa_league_view)
-            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, available_players=available_players, released_players=released_players)
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, available_players=available_players, released_players=released_players, league_view=fa_league_view)
             render_free_agency_my_bids(my_team, fa_bids, fa_active_bids, fa_excluded_bids, fa_league_view)
 
     with fa_commish_tab:
@@ -7219,7 +7239,7 @@ with free_agency_tab:
             if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
                 available_players = fa_league_view["Player"].tolist()
             released_players = free_agency_released_players(fa_league_view)
-            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, released_players=released_players)
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, released_players=released_players, league_view=fa_league_view)
             render_free_agency_commish_desk(fa_active_bids, fa_excluded_bids, fa_league_view, all_bids=fa_bids, bid_players=fa_bid_players)
 
 with team_hub_tab:

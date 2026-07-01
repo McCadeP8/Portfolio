@@ -10,65 +10,107 @@ from functions import get_matchup_stats, get_fantrax_roster, send_discord_messag
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 
+def notify(message: str):
+    print(message)
+    if not DISCORD_WEBHOOK_URL:
+        return
+    try:
+        send_discord_message(DISCORD_WEBHOOK_URL, message)
+    except Exception as exc:
+        print(f"Discord notification failed: {exc}")
+
+
 def get_all_team_stats_history() -> pd.DataFrame:
-    df_old = pd.read_parquet("all_team_stats_history.parquet")
-    df_old = df_old[df_old["Year"] != current_year]
+    history = pd.read_parquet("all_team_stats_history.parquet")
     all_dates = pd.read_parquet("all_time_scores.parquet")
     all_dates = all_dates[all_dates["Year"] == current_year]
     all_dates = (all_dates[["Year", "Period"]].drop_duplicates().reset_index(drop=True))
+    if all_dates.empty:
+        notify(f"Skipped get_all_team_stats_history: no {current_year} periods found in all_time_scores.parquet")
+        return history
+
     dfs = []
     for i, row in enumerate(all_dates.itertuples(index=False), start=1):
         year = int(row.Year)
         period = int(row.Period)
         df = get_matchup_stats(year, period)
+        if df is None or df.empty:
+            notify(f"Skipped team stats for {year} period {period}: Fantrax returned no data")
+            continue
         df["Year"] = year
         df["Period"] = period
         dfs.append(df)
+    if not dfs:
+        notify(f"Skipped get_all_team_stats_history: no Fantrax team stats were available for {current_year}")
+        return history
+
+    df_old = history[history["Year"] != current_year]
     final_df = pd.concat(dfs, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
     final_df["Created"] = pd.Timestamp.now()
     final_df.to_parquet("all_team_stats_history.parquet", index=False)
-    send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_team_stats_history")
+    notify("Completed run of get_all_team_stats_history")
     today = datetime.now().date()
     april_15 = datetime(today.year, 4, 15).date()
     if today > april_15:
-        send_discord_message(DISCORD_WEBHOOK_URL, "Turn back on Roster Count")
+        notify("Turn back on Roster Count")
 
 def get_all_time_rosters_history() -> pd.DataFrame:
-    df_old = pd.read_parquet("all_time_rosters_history.parquet")
-    df_old = df_old[df_old["Year"] != current_year]
+    history = pd.read_parquet("all_time_rosters_history.parquet")
     csv_url = ("https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429")
     df = pd.read_csv(csv_url)
     df = df[df["Year"] == current_year]
     df = (df[["games", "Year"]].drop_duplicates().reset_index(drop=True))
+    if df.empty:
+        notify(f"Skipped get_all_time_rosters_history: no {current_year} roster periods found in the schedule sheet")
+        return history
+
     all_rosters = []
     for i, row in df.iterrows():
         year = row["Year"]
         games = row["games"]
         df2 = get_fantrax_roster(year, games)
+        if df2 is None or df2.empty:
+            notify(f"Skipped roster snapshot for {year} period {games}: Fantrax returned no roster data")
+            continue
         df2["Year"] = year
         cols = ["id", "position", "status", "team_name", "period", "Year"]
         df2 = df2[[c for c in cols if c in df2.columns]]
         all_rosters.append(df2)
+    if not all_rosters:
+        notify(f"Skipped get_all_time_rosters_history: no Fantrax roster data was available for {current_year}")
+        return history
+
+    df_old = history[history["Year"] != current_year]
     final_df = pd.concat(all_rosters, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
     final_df["Created"] = pd.Timestamp.now()
     final_df.to_parquet("all_time_rosters_history.parquet", index=False)
-    send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_rosters_history")
+    notify("Completed run of get_all_time_rosters_history")
 
 def get_all_time_scores() -> pd.DataFrame:
     df = pd.read_parquet("all_time_scores.parquet")
     df_old = df[df["Year"] != current_year]
     df = df[df["Year"] == current_year]
+    if df.empty:
+        notify(f"Skipped get_all_time_scores: no {current_year} games found in all_time_scores.parquet")
+        return pd.concat([df_old, df], ignore_index=True)
+
     for (year, period), group in df.groupby(["Year", "Period"]):
         year = int(year)
         period = int(period)
         stats_df = get_matchup_stats(year, period)
+        if stats_df is None or stats_df.empty:
+            notify(f"Skipped score update for {year} period {period}: Fantrax returned no team stats")
+            continue
         for idx in group.index:
             team_a = df.at[idx, "TeamA"]
             team_b = df.at[idx, "TeamB"]
-            team_a_score, team_b_score = get_matchup_score(team_a, team_b, stats_df)
-            team_a_score, team_b_score = get_matchup_score(team_a, team_b, stats_df)
+            try:
+                team_a_score, team_b_score = get_matchup_score(team_a, team_b, stats_df)
+            except ValueError as exc:
+                notify(f"Skipped score update for {team_a} vs {team_b}, {year} period {period}: {exc}")
+                continue
             df.at[idx, "TeamAScore"] = team_a_score
             df.at[idx, "TeamBScore"] = team_b_score
     def get_conference(team_name):
@@ -85,7 +127,7 @@ def get_all_time_scores() -> pd.DataFrame:
     df.loc[df['Type'] != 'Regular Season', 'DivisionGame'] = False
     df = pd.concat([df_old, df], ignore_index=True)        
     df.to_parquet("all_time_scores.parquet", index=False)
-    send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_scores")
+    notify("Completed run of get_all_time_scores")
 
 def get_all_time_standings() -> pd.DataFrame:
     df2 = pd.read_parquet("all_time_standings.parquet")
@@ -93,6 +135,10 @@ def get_all_time_standings() -> pd.DataFrame:
     df = df[df["Year"] == current_year]
     df_old = df2[df2["Year"] != current_year]
     df2 = df2[df2["Year"] == current_year]
+    if df.empty or df2.empty:
+        notify(f"Skipped get_all_time_standings: missing {current_year} scores or standings seed rows")
+        return pd.concat([df_old, df2], ignore_index=True)
+
     df["Winner"] = df["TeamA"].where(df["TeamAScore"] > df["TeamBScore"], df["TeamB"])
     df["Loser"] = df["TeamA"].where(df["TeamBScore"] >= df["TeamAScore"], df["TeamB"])
     total_wins = df[df['Type'] == 'Regular Season'].groupby(['Year', 'Period', 'Winner']).size().reset_index(name='Total')
@@ -146,10 +192,10 @@ def get_all_time_standings() -> pd.DataFrame:
     df = pd.concat([df_old, df2], ignore_index=True)        
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=243607559"
     df3 = pd.read_csv(csv_url)
-    df = df.drop(columns=["Playoff Seed", "IST Seed"])
+    df = df.drop(columns=["Playoff Seed", "IST Seed"], errors="ignore")
     df = df.merge(df3, on=["Year", "Team"], how="left")
     df.to_parquet("all_time_standings.parquet", index=False)
-    send_discord_message(DISCORD_WEBHOOK_URL, "Completed run of get_all_time_standings")
+    notify("Completed run of get_all_time_standings")
 
 def add_game_to_schedule(game_dict):
     df = pd.read_parquet("all_time_scores.parquet")
@@ -178,8 +224,9 @@ def add_game_to_schedule(game_dict):
 #     "ConferenceGame": np.nan,
 # })
 
-get_all_team_stats_history()
-get_all_time_rosters_history()
-get_all_time_scores()
-get_all_time_standings()
+if __name__ == "__main__":
+    get_all_team_stats_history()
+    get_all_time_rosters_history()
+    get_all_time_scores()
+    get_all_time_standings()
 
