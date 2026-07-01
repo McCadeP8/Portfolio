@@ -296,7 +296,7 @@ def overseas_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) ->
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
-    df = df[df["Type" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
+    df = df[contract_salary_mask(df)]
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
     cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
@@ -366,7 +366,7 @@ def active_player_n(df: pd.DataFrame, SelectedTeam: str) -> float:
 def inactive_player_n(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Type'] == 'Non-Active Players']
-    df = df[df["Type" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
+    df = df[contract_salary_mask(df)]
     return df.shape[0]
 
 def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: str) -> float:
@@ -521,7 +521,7 @@ def active_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
 def inactive_players_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Type'] == 'Non-Active Players']
-    df = df[df["Type" + str(current_year)].isin(['Guaranteed', 'Unguaranteed'])]
+    df = df[contract_salary_mask(df)]
     df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
