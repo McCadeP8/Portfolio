@@ -669,6 +669,18 @@ def free_agency_bid_audit(bids, signed_players=None, available_players=None, rel
     return active, excluded
 
 
+def free_agency_bid_status_label(value):
+    labels = {
+        "Signed player": "Signed",
+        "Not in free-agent pool": "Not FA",
+        "Not Yet Released": "Locked",
+        "Replaced by newer player bid": "Old bid",
+        "Outside latest 20": "Cut",
+        "Inactive": "Inactive",
+    }
+    return labels.get(str(value), str(value))
+
+
 def free_agency_submission_summary(bids, active_bids):
     if bids is None or bids.empty:
         return pd.DataFrame(columns=["Team", "Last Bid Timestamp", "Active Bids"])
@@ -776,6 +788,71 @@ def render_commish_bid_rows(player_bids):
             </div>
         """)
     return "".join(rows)
+
+
+def render_free_agency_response_audit(all_bids):
+    if all_bids is None or all_bids.empty or not {"Response ID", "Team Code", "Team"}.issubset(all_bids.columns):
+        return """
+            <div class="sbc-fa-response-audit sbc-fa-response-audit-clear">
+                <strong>Response Audit</strong>
+                <span>No bid responses are available to check.</span>
+            </div>
+        """
+
+    responses = all_bids.copy()
+    responses["_code_trimmed"] = responses["Team Code"].astype(str).str.strip()
+    responses["_known_team"] = responses["Team"].isin(team_info.keys())
+    responses["_code_has_spaces"] = responses["Team Code"].astype(str) != responses["_code_trimmed"]
+    responses["_code_blank"] = responses["_code_trimmed"].eq("")
+    response_rows = (
+        responses.groupby(["Response ID", "Team Code", "Team"], dropna=False)
+        .agg(
+            Timestamp=("Timestamp", "max"),
+            Bids=("Player", "size"),
+            KnownTeam=("_known_team", "first"),
+            CodeHasSpaces=("_code_has_spaces", "first"),
+            CodeBlank=("_code_blank", "first"),
+        )
+        .reset_index()
+    )
+    response_rows["Issue"] = ""
+    response_rows.loc[~response_rows["KnownTeam"], "Issue"] = "Unknown code"
+    response_rows.loc[response_rows["CodeBlank"], "Issue"] = "Blank code"
+    response_rows.loc[response_rows["KnownTeam"] & response_rows["CodeHasSpaces"], "Issue"] = "Extra spaces"
+    issues = response_rows[response_rows["Issue"] != ""].sort_values(["Timestamp", "Response ID"], ascending=[False, True])
+
+    if issues.empty:
+        return f"""
+            <div class="sbc-fa-response-audit sbc-fa-response-audit-clear">
+                <strong>Response Audit</strong>
+                <span>{response_rows.shape[0]} responses checked. No team-code issues found.</span>
+            </div>
+        """
+
+    rows = []
+    for _, row in issues.head(12).iterrows():
+        rows.append(f"""
+            <div class="sbc-fa-response-row">
+                <span class="sbc-fa-response-issue">{escape(str(row.get("Issue", "")))}</span>
+                <strong>{escape(str(row.get("Team", "") or "Unknown"))}</strong>
+                <span>{escape(str(row.get("Response ID", "")))}</span>
+                <span>{escape(format_free_agency_timestamp(row.get("Timestamp")))}</span>
+                <code>{escape(str(row.get("Team Code", "")))}</code>
+                <em>{int(row.get("Bids", 0))} bids</em>
+            </div>
+        """)
+    more = issues.shape[0] - min(issues.shape[0], 12)
+    more_text = f"<span>{more} more issues not shown.</span>" if more > 0 else ""
+    return f"""
+        <div class="sbc-fa-response-audit">
+            <div class="sbc-fa-response-head">
+                <strong>Response Audit</strong>
+                <span>{issues.shape[0]} response-code issues found</span>
+                {more_text}
+            </div>
+            <div class="sbc-fa-response-list">{''.join(rows)}</div>
+        </div>
+    """
 
 
 def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all_bids=None, bid_players=None):
@@ -906,8 +983,81 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
             </div>
         """)
 
+    response_audit_html = render_free_agency_response_audit(all_bids)
     render_html(f"""
         <style>
+            .sbc-fa-response-audit {{
+                margin-bottom: 1rem;
+                border: 1px solid rgba(23, 32, 42, 0.12);
+                border-left: 0.35rem solid #dc2626;
+                border-radius: 8px;
+                background: #ffffff;
+                box-shadow: 0 10px 28px rgba(18, 25, 38, 0.055);
+                padding: 0.75rem;
+            }}
+            .sbc-fa-response-audit-clear {{
+                border-left-color: {LEAGUE_SECONDARY};
+                background: color-mix(in srgb, {LEAGUE_SECONDARY} 6%, #ffffff);
+                display: flex;
+                justify-content: space-between;
+                gap: 0.75rem;
+            }}
+            .sbc-fa-response-audit strong {{
+                color: var(--sbc-ink);
+                font-weight: 950;
+            }}
+            .sbc-fa-response-audit span,
+            .sbc-fa-response-audit em {{
+                color: var(--sbc-muted);
+                font-size: 0.78rem;
+                font-style: normal;
+                font-weight: 850;
+            }}
+            .sbc-fa-response-head {{
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.55rem;
+                margin-bottom: 0.55rem;
+            }}
+            .sbc-fa-response-list {{
+                display: grid;
+                gap: 0.35rem;
+            }}
+            .sbc-fa-response-row {{
+                display: grid;
+                grid-template-columns: 6.5rem minmax(8rem, 0.8fr) minmax(9rem, 1fr) 8rem minmax(10rem, 1.2fr) 4rem;
+                align-items: center;
+                gap: 0.55rem;
+                border-radius: 8px;
+                background: #f8fafc;
+                padding: 0.45rem 0.55rem;
+                min-width: 0;
+            }}
+            .sbc-fa-response-row code {{
+                overflow: hidden;
+                color: #111827;
+                font-size: 0.74rem;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }}
+            .sbc-fa-response-row > span,
+            .sbc-fa-response-row strong {{
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }}
+            .sbc-fa-response-issue {{
+                display: inline-flex;
+                justify-content: center;
+                border-radius: 999px;
+                background: #fee2e2;
+                color: #991b1b !important;
+                padding: 0.18rem 0.45rem;
+                font-size: 0.68rem !important;
+                font-weight: 950 !important;
+                text-transform: uppercase;
+            }}
             .sbc-fa-commish-grid {{
                 display: grid;
                 grid-template-columns: minmax(0, 1fr);
@@ -1111,8 +1261,12 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
                 .sbc-fa-bid-row {{
                     grid-template-columns: 2rem 1fr;
                 }}
+                .sbc-fa-response-row {{
+                    grid-template-columns: 1fr;
+                }}
             }}
         </style>
+        {response_audit_html}
         <div class="sbc-section-label">Team Bid Audit</div>
         <div class="sbc-fa-team-audit-grid">{''.join(team_rows)}</div>
         <div class="sbc-section-label">Signing Desk</div>
@@ -1145,7 +1299,7 @@ def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids, leagu
     if not excluded_team.empty:
         for _, bid in excluded_team.iterrows():
             key = (free_agency_player_key(bid.get("Player", "")), str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))
-            excluded_status.setdefault(key, str(bid.get("_bid_status", "Inactive")))
+            excluded_status.setdefault(key, free_agency_bid_status_label(bid.get("_bid_status", "Inactive")))
 
     rows = []
     display_rows = []
