@@ -1318,21 +1318,16 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
 def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids, league_view=None):
     team = free_agency_team_from_code(team)
     team_all = all_bids[all_bids["Team"] == team].copy() if all_bids is not None and not all_bids.empty and "Team" in all_bids.columns else pd.DataFrame()
-    signed_set = {free_agency_player_key(player) for player in free_agency_signed_players(league_view)}
-    if signed_set and not team_all.empty and "Player" in team_all.columns:
-        team_all = team_all[~team_all["Player"].apply(free_agency_player_key).isin(signed_set)].copy()
     if team_all.empty:
         render_html(f"""
             <div class="sbc-empty-state">
-                {render_free_agency_team_badge(team, empty_text="Your team")} does not have any unsigned-player bids in the current file.
+                {render_free_agency_team_badge(team, empty_text="Your team")} does not have any bids in the current file yet.
             </div>
         """)
         return
 
     active_team = active_bids[active_bids["Team"] == team].copy() if active_bids is not None and not active_bids.empty and "Team" in active_bids.columns else pd.DataFrame()
     excluded_team = excluded_bids[excluded_bids["Team"] == team].copy() if excluded_bids is not None and not excluded_bids.empty and "Team" in excluded_bids.columns else pd.DataFrame()
-    if signed_set and not excluded_team.empty and "Player" in excluded_team.columns:
-        excluded_team = excluded_team[~excluded_team["Player"].apply(free_agency_player_key).isin(signed_set)].copy()
     league_lookup = free_agency_league_lookup(league_view)
 
     active_keys = {}
@@ -1668,6 +1663,16 @@ def render_free_agency_years_pill(value):
     return f'<span class="sbc-fa-years-pill sbc-fa-years-{years}">{years}</span>'
 
 
+def render_free_agency_contract_pill(years_value, salary_value):
+    try:
+        years = max(0, int(float(str(years_value).replace(",", ""))))
+    except (TypeError, ValueError):
+        years = 0
+    salary = parse_money_input(salary_value) or 0
+    year_text = "year" if years == 1 else "years"
+    return f'<span class="sbc-fa-contract-pill">{escape(str(years))} {year_text} starting at {escape(str(format_money(salary)))}</span>'
+
+
 def render_free_agency_signed_team(team_value):
     team = free_agency_team_key(team_value)
     if not team:
@@ -1742,12 +1747,8 @@ def render_free_agency_league_table(data):
         signed_cards.append(f"""
             <article class="sbc-fa-signing-card" style="--signed-team-color:{escape(str(color), quote=True)};--signed-team-secondary:{escape(str(secondary), quote=True)};">
                 <div class="sbc-fa-signing-player">{render_free_agency_player_cell(player, picture_lookup)}</div>
-                <div class="sbc-fa-signing-arrow">SIGNED</div>
                 {render_free_agency_signed_team(row.get("Team", ""))}
-                <div class="sbc-fa-signing-meta">
-                    {render_free_agency_high_bid_pill(row.get("High Bid", ""))}
-                    {render_free_agency_years_pill(row.get("Yrs", ""))}
-                </div>
+                {render_free_agency_contract_pill(row.get("Yrs", ""), row.get("High Bid", ""))}
             </article>
         """)
     signed_section = ""
@@ -1761,58 +1762,67 @@ def render_free_agency_league_table(data):
         <style>
             .sbc-fa-signing-grid {{
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-                gap: 0.75rem;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.6rem;
                 margin-bottom: 1rem;
             }}
             .sbc-fa-signing-card {{
                 display: grid;
-                grid-template-columns: minmax(0, 1fr);
-                gap: 0.55rem;
+                grid-template-columns: minmax(10rem, 1fr) minmax(11rem, 1.1fr) auto;
+                align-items: center;
+                gap: 0.65rem;
                 border-radius: 8px;
                 border: 1px solid color-mix(in srgb, var(--signed-team-color) 28%, rgba(23, 32, 42, 0.12));
                 border-left: 0.4rem solid var(--signed-team-color);
                 background: linear-gradient(135deg, color-mix(in srgb, var(--signed-team-color) 13%, #ffffff), color-mix(in srgb, var(--signed-team-secondary) 10%, #ffffff));
-                box-shadow: 0 16px 34px rgba(18, 25, 38, 0.09);
-                padding: 0.85rem;
+                box-shadow: 0 10px 24px rgba(18, 25, 38, 0.075);
+                min-height: 5.4rem;
+                padding: 0.62rem 0.72rem;
                 overflow: hidden;
             }}
             .sbc-fa-signing-card .sbc-fa-player-img {{
-                width: 3.1rem;
-                height: 3.1rem;
+                width: 2.7rem;
+                height: 2.7rem;
             }}
             .sbc-fa-signing-card .sbc-fa-player strong {{
-                font-size: 1.05rem;
-            }}
-            .sbc-fa-signing-arrow {{
-                color: color-mix(in srgb, var(--signed-team-color) 82%, #111827);
-                font-size: 0.68rem;
-                font-weight: 950;
-                letter-spacing: 0.12em;
+                font-size: 0.96rem;
             }}
             .sbc-fa-signed-team {{
                 display: grid;
-                grid-template-columns: 3.6rem minmax(0, 1fr);
+                grid-template-columns: 2.9rem minmax(0, 1fr);
                 align-items: center;
-                gap: 0.72rem;
+                gap: 0.55rem;
                 color: color-mix(in srgb, var(--signed-team-color) 82%, #111827);
+                min-width: 0;
             }}
             .sbc-fa-signed-team img {{
-                width: 3.6rem;
-                height: 3.6rem;
+                width: 2.9rem;
+                height: 2.9rem;
                 object-fit: contain;
                 filter: drop-shadow(0 10px 16px rgba(18,25,38,0.16));
             }}
             .sbc-fa-signed-team strong {{
                 font-family: var(--signed-team-font), "Poppins", sans-serif;
-                font-size: clamp(1.35rem, 2.4vw, 2.2rem);
+                font-size: clamp(1.05rem, 1.7vw, 1.55rem);
                 font-weight: 950;
                 line-height: 0.95;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }}
-            .sbc-fa-signing-meta {{
-                display: flex;
-                gap: 0.4rem;
-                flex-wrap: wrap;
+            .sbc-fa-contract-pill {{
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 1.75rem;
+                border-radius: 999px;
+                background: rgba(255,255,255,0.76);
+                border: 1px solid color-mix(in srgb, var(--signed-team-color) 22%, rgba(23, 32, 42, 0.12));
+                color: color-mix(in srgb, var(--signed-team-color) 78%, #111827);
+                font-size: 0.76rem;
+                font-weight: 950;
+                font-variant-numeric: tabular-nums;
+                padding: 0.18rem 0.58rem;
+                white-space: nowrap;
             }}
             .sbc-fa-table-wrap {{
                 overflow-x: auto;
@@ -1989,6 +1999,16 @@ def render_free_agency_league_table(data):
                 color: var(--sbc-muted);
                 font-size: 0.82rem;
                 font-weight: 850;
+            }}
+            @media (max-width: 980px) {{
+                .sbc-fa-signing-grid {{
+                    grid-template-columns: 1fr;
+                }}
+            }}
+            @media (max-width: 680px) {{
+                .sbc-fa-signing-card {{
+                    grid-template-columns: 1fr;
+                }}
             }}
         </style>
         {signed_section}
