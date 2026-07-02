@@ -654,9 +654,31 @@ def free_agency_bid_audit(bids, signed_players=None, available_players=None, rel
     eligible.loc[eligible["_team_player_rank"] > 1, "_bid_status"] = "Replaced by newer player bid"
 
     latest = eligible[eligible["_bid_status"] == "Active"].copy()
-    latest = latest.sort_values(["Team", "_sign_order_sort", "Timestamp", "Player"], ascending=[True, True, False, True], na_position="last")
-    latest["_team_active_rank"] = latest.groupby("Team").cumcount() + 1
-    latest.loc[latest["_team_active_rank"] > 20, "_bid_status"] = "Outside latest 20"
+    latest["_team_active_rank"] = pd.NA
+    ranked_teams = []
+    for _, team_bids in latest.groupby("Team", dropna=False):
+        team_bids = team_bids.sort_values(["Timestamp", "Player"], ascending=[False, True], na_position="last").copy()
+        if team_bids.shape[0] > 20:
+            cutoff_timestamp = team_bids.iloc[19]["Timestamp"]
+            if pd.isna(cutoff_timestamp):
+                latest_window = team_bids.copy()
+            else:
+                latest_window = team_bids[team_bids["Timestamp"] >= cutoff_timestamp].copy()
+            older_window = team_bids.drop(index=latest_window.index).copy()
+            if latest_window.shape[0] > 20:
+                latest_window = latest_window.sort_values(["_sign_order_sort", "Timestamp", "Player"], ascending=[True, False, True], na_position="last").copy()
+                keep_window = latest_window.head(20).copy()
+                trim_window = latest_window.iloc[20:].copy()
+                trim_window["_bid_status"] = "Outside latest 20"
+                older_window["_bid_status"] = "Outside latest 20"
+                team_bids = pd.concat([keep_window, trim_window, older_window], ignore_index=True)
+            else:
+                older_window["_bid_status"] = "Outside latest 20"
+                team_bids = pd.concat([latest_window, older_window], ignore_index=True)
+        team_bids = team_bids.sort_values(["Timestamp", "Player"], ascending=[False, True], na_position="last").copy()
+        team_bids["_team_active_rank"] = range(1, team_bids.shape[0] + 1)
+        ranked_teams.append(team_bids)
+    latest = pd.concat(ranked_teams, ignore_index=True) if ranked_teams else latest
 
     audit = pd.concat([
         work[work["_bid_status"] != "Active"],
@@ -1315,7 +1337,16 @@ def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids, leagu
         timestamp = pd.to_datetime(item[1], errors="coerce")
         timestamp_sort = -timestamp.timestamp() if not pd.isna(timestamp) else math.inf
         active_sort = item[3] if item[3] else math.inf
-        return (item[0], active_sort, item[6], timestamp_sort, str(item[2]))
+        status_priority = {
+            "Cut": 1,
+            "Old bid": 2,
+            "Signed": 3,
+            "Locked": 4,
+            "Not FA": 5,
+            "Inactive": 6,
+        }
+        inactive_sort = status_priority.get(str(item[4]), 9)
+        return (0 if item[3] else inactive_sort, active_sort, item[6], timestamp_sort, str(item[2]))
 
     display_rows = sorted(display_rows, key=my_bid_sort_key)
     for is_inactive, _, _, active_rank, inactive_status, bid, _ in display_rows:
@@ -1548,7 +1579,18 @@ def render_free_agency_bird_rights_pill(value):
     text = clean_pick_display(value)
     if is_blank_value(text):
         return ""
-    return f'<span class="sbc-fa-bird-rights">{escape(str(text))}</span>'
+    status = str(text).strip().lower()
+    if "non" in status:
+        status_class = "sbc-fa-bird-non"
+    elif "early" in status:
+        status_class = "sbc-fa-bird-early"
+    elif status in {"no", "none", "nan", "n/a"} or "no bird" in status:
+        status_class = "sbc-fa-bird-none"
+    elif "bird" in status or "full" in status:
+        status_class = "sbc-fa-bird-full"
+    else:
+        status_class = "sbc-fa-bird-other"
+    return f'<span class="sbc-fa-bird-rights {status_class}">{escape(str(text))}</span>'
 
 
 def render_free_agency_status_cell(old_team_value, rfa_value, bird_rights_value=""):
@@ -1743,11 +1785,29 @@ def render_free_agency_league_table(data):
                 min-height: 1.65rem;
                 padding: 0.15rem 0.5rem;
                 border-radius: 999px;
-                background: color-mix(in srgb, #facc15 28%, #ffffff);
-                color: #854d0e;
                 font-size: 0.72rem;
                 font-weight: 950;
                 white-space: nowrap;
+            }}
+            .sbc-fa-bird-full {{
+                background: color-mix(in srgb, #16a34a 18%, #ffffff);
+                color: #166534;
+            }}
+            .sbc-fa-bird-early {{
+                background: color-mix(in srgb, #2563eb 16%, #ffffff);
+                color: #1d4ed8;
+            }}
+            .sbc-fa-bird-non {{
+                background: color-mix(in srgb, #f97316 18%, #ffffff);
+                color: #9a3412;
+            }}
+            .sbc-fa-bird-none {{
+                background: #f3f4f6;
+                color: #6b7280;
+            }}
+            .sbc-fa-bird-other {{
+                background: color-mix(in srgb, #facc15 28%, #ffffff);
+                color: #854d0e;
             }}
             .sbc-fa-no,
             .sbc-fa-muted {{
