@@ -735,14 +735,24 @@ def free_agency_released_players(league_view, release_month=7, release_day=1):
     return released
 
 
+def is_free_agency_signed_team_value(value):
+    if is_blank_value(value):
+        return False
+    text = str(value).strip()
+    if text.lower() in {"unsigned", "open", "none", "nan", "nat", "false"}:
+        return False
+    if text in {"-", "—", "–", "â€”"}:
+        return False
+    return True
+
+
 def free_agency_signed_players(league_view):
     if league_view is None or league_view.empty or not {"Player", "Team"}.issubset(league_view.columns):
         return []
     signed = []
     for _, row in league_view.iterrows():
         player = row.get("Player", "")
-        team = clean_pick_display(row.get("Team", ""))
-        if not is_blank_value(player) and not is_blank_value(team) and str(team).strip().lower() not in {"unsigned", "open", "none", "nan"}:
+        if not is_blank_value(player) and is_free_agency_signed_team_value(row.get("Team", "")):
             signed.append(player)
     return signed
 
@@ -1699,7 +1709,7 @@ def render_free_agency_league_table(data):
     picture_lookup = free_agency_player_picture_lookup()
     bird_lookup = free_agency_bird_rights_lookup()
     display_data = data.copy()
-    signed_mask = display_data["Team"].apply(lambda value: not is_blank_value(value) and str(clean_pick_display(value)).strip().lower() not in {"unsigned", "open", "none", "nan"}) if "Team" in display_data.columns else pd.Series(False, index=display_data.index)
+    signed_mask = display_data["Team"].apply(is_free_agency_signed_team_value) if "Team" in display_data.columns else pd.Series(False, index=display_data.index)
     signed_data = display_data[signed_mask].copy()
     display_data = display_data[~signed_mask].copy()
     display_data["_signing_day_sort"] = display_data["DayS"].apply(parse_free_agency_day) if "DayS" in display_data.columns else pd.NaT
