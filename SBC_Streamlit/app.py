@@ -1542,7 +1542,16 @@ def render_free_agency_player_cell(player, picture_lookup):
     """
 
 
-def render_free_agency_status_cell(old_team_value, rfa_value):
+def render_free_agency_bird_rights_pill(value):
+    if is_blank_value(value):
+        return ""
+    text = clean_pick_display(value)
+    if is_blank_value(text):
+        return ""
+    return f'<span class="sbc-fa-bird-rights">{escape(str(text))}</span>'
+
+
+def render_free_agency_status_cell(old_team_value, rfa_value, bird_rights_value=""):
     old_team = free_agency_team_key(old_team_value)
     if old_team:
         logo = team_logo_for_name(old_team)
@@ -1550,7 +1559,7 @@ def render_free_agency_status_cell(old_team_value, rfa_value):
         logo_html = f'<img class="sbc-fa-status-logo" src="{escape(str(logo), quote=True)}" alt="{escape(str(team_label), quote=True)} logo" referrerpolicy="no-referrer">' if logo else ""
     else:
         logo_html = '<span class="sbc-fa-status-logo sbc-fa-status-logo-empty"></span>'
-    return f'<span class="sbc-fa-status-wrap">{logo_html}{render_free_agency_rfa_status(rfa_value)}</span>'
+    return f'<span class="sbc-fa-status-wrap">{logo_html}{render_free_agency_rfa_status(rfa_value)}{render_free_agency_bird_rights_pill(bird_rights_value)}</span>'
 
 
 def render_free_agency_number(value, money=False):
@@ -1571,6 +1580,7 @@ def render_free_agency_league_table(data):
         return
     rows = []
     picture_lookup = free_agency_player_picture_lookup()
+    bird_lookup = free_agency_bird_rights_lookup()
     display_data = data.copy()
     display_data["_signing_day_sort"] = display_data["DayS"].apply(parse_free_agency_day) if "DayS" in display_data.columns else pd.NaT
     display_data["_release_day_sort"] = display_data["DayR"].apply(parse_free_agency_day) if "DayR" in display_data.columns else pd.NaT
@@ -1582,12 +1592,19 @@ def render_free_agency_league_table(data):
     )
     for _, row in display_data.iterrows():
         player = clean_pick_display(row.get("Player", ""))
+        player_key = free_agency_player_key(player)
         old_team = free_agency_team_key(row.get("OldTeam", ""))
+        bird_rights = (
+            row.get("BirdRights", "")
+            or row.get("Bird Rights", "")
+            or bird_lookup.get((player_key, old_team), "")
+            or bird_lookup.get((player_key, ""), "")
+        )
         row_color = team_color_for_name(old_team) if old_team in team_info else ""
         row_style = f' style="--fa-row-color:{escape(str(row_color), quote=True)};"' if row_color else ""
         rows.append(f"""
             <tr{row_style}>
-                <td>{render_free_agency_status_cell(row.get("OldTeam", ""), row.get("RFA", ""))}</td>
+                <td>{render_free_agency_status_cell(row.get("OldTeam", ""), row.get("RFA", ""), bird_rights)}</td>
                 <td class="sbc-fa-player">{render_free_agency_player_cell(player, picture_lookup)}</td>
                 <td>{render_free_agency_day(row.get("DayR", ""))}</td>
                 <td>{render_free_agency_day(row.get("DayS", ""))}</td>
@@ -1610,7 +1627,7 @@ def render_free_agency_league_table(data):
             .sbc-fa-table {{
                 width: 100%;
                 border-collapse: collapse;
-                min-width: 62rem;
+                min-width: 66rem;
             }}
             .sbc-fa-table th {{
                 background: color-mix(in srgb, {LEAGUE_PRIMARY} 9%, #ffffff);
@@ -1719,6 +1736,18 @@ def render_free_agency_league_table(data):
             .sbc-fa-status-unrestricted {{
                 background: color-mix(in srgb, #D9D2E9 72%, #ffffff);
                 color: #6d28d9;
+            }}
+            .sbc-fa-bird-rights {{
+                display: inline-flex;
+                align-items: center;
+                min-height: 1.65rem;
+                padding: 0.15rem 0.5rem;
+                border-radius: 999px;
+                background: color-mix(in srgb, #facc15 28%, #ffffff);
+                color: #854d0e;
+                font-size: 0.72rem;
+                font-weight: 950;
+                white-space: nowrap;
             }}
             .sbc-fa-no,
             .sbc-fa-muted {{
