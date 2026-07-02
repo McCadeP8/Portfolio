@@ -735,6 +735,18 @@ def free_agency_released_players(league_view, release_month=7, release_day=1):
     return released
 
 
+def free_agency_signed_players(league_view):
+    if league_view is None or league_view.empty or not {"Player", "Team"}.issubset(league_view.columns):
+        return []
+    signed = []
+    for _, row in league_view.iterrows():
+        player = row.get("Player", "")
+        team = clean_pick_display(row.get("Team", ""))
+        if not is_blank_value(player) and not is_blank_value(team) and str(team).strip().lower() not in {"unsigned", "open", "none", "nan"}:
+            signed.append(player)
+    return signed
+
+
 def parse_free_agency_day(value):
     if is_blank_value(value):
         return pd.NaT
@@ -880,6 +892,7 @@ def render_free_agency_response_audit(all_bids):
 
 def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all_bids=None, bid_players=None):
     league_lookup = free_agency_league_lookup(league_view)
+    signed_set = {free_agency_player_key(player) for player in free_agency_signed_players(league_view)}
     if active_bids is not None and not active_bids.empty:
         active_counts = active_bids.groupby("Player").size().rename("Active Bids").reset_index()
         salary_highs = active_bids.groupby("Player")["Salary"].max().rename("High Bid").reset_index()
@@ -899,6 +912,11 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
         return
 
     player_queue["_player_key"] = player_queue["Player"].apply(free_agency_player_key)
+    if signed_set:
+        player_queue = player_queue[~player_queue["_player_key"].isin(signed_set)].copy()
+    if player_queue.empty:
+        render_html('<div class="sbc-empty-state">All listed free agents have signed or no unsigned players are available.</div>')
+        return
     player_queue["DayS"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("DayS", ""))
     player_queue["DayR"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("DayR", ""))
     player_queue["RFA"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("RFA", ""))
@@ -1300,16 +1318,21 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
 def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids, league_view=None):
     team = free_agency_team_from_code(team)
     team_all = all_bids[all_bids["Team"] == team].copy() if all_bids is not None and not all_bids.empty and "Team" in all_bids.columns else pd.DataFrame()
+    signed_set = {free_agency_player_key(player) for player in free_agency_signed_players(league_view)}
+    if signed_set and not team_all.empty and "Player" in team_all.columns:
+        team_all = team_all[~team_all["Player"].apply(free_agency_player_key).isin(signed_set)].copy()
     if team_all.empty:
         render_html(f"""
             <div class="sbc-empty-state">
-                {render_free_agency_team_badge(team, empty_text="Your team")} does not have any bids in the current file yet.
+                {render_free_agency_team_badge(team, empty_text="Your team")} does not have any unsigned-player bids in the current file.
             </div>
         """)
         return
 
     active_team = active_bids[active_bids["Team"] == team].copy() if active_bids is not None and not active_bids.empty and "Team" in active_bids.columns else pd.DataFrame()
     excluded_team = excluded_bids[excluded_bids["Team"] == team].copy() if excluded_bids is not None and not excluded_bids.empty and "Team" in excluded_bids.columns else pd.DataFrame()
+    if signed_set and not excluded_team.empty and "Player" in excluded_team.columns:
+        excluded_team = excluded_team[~excluded_team["Player"].apply(free_agency_player_key).isin(signed_set)].copy()
     league_lookup = free_agency_league_lookup(league_view)
 
     active_keys = {}
@@ -1616,14 +1639,64 @@ def render_free_agency_number(value, money=False):
         return escape(str(value))
 
 
+def render_free_agency_offer_pill(value):
+    try:
+        amount = max(0, min(4, int(float(str(value).replace(",", "")))))
+    except (TypeError, ValueError):
+        amount = 0
+    return f'<span class="sbc-fa-offer-pill sbc-fa-offer-{amount}">{amount}</span>'
+
+
+def render_free_agency_high_bid_pill(value):
+    amount = parse_money_input(value) or 0
+    if amount <= 0:
+        level = "zero"
+    elif amount >= current_salary_cap * 0.25:
+        level = "max"
+    elif amount >= current_salary_cap * 0.12:
+        level = "mid"
+    else:
+        level = "low"
+    return f'<span class="sbc-fa-high-pill sbc-fa-high-{level}">{escape(str(format_money(amount)))}</span>'
+
+
+def render_free_agency_years_pill(value):
+    try:
+        years = max(0, min(5, int(float(str(value).replace(",", "")))))
+    except (TypeError, ValueError):
+        years = 0
+    return f'<span class="sbc-fa-years-pill sbc-fa-years-{years}">{years}</span>'
+
+
+def render_free_agency_signed_team(team_value):
+    team = free_agency_team_key(team_value)
+    if not team:
+        return render_free_agency_team_badge(team_value, empty_text="Signed")
+    logo = team_logo_for_name(team)
+    color = team_color_for_name(team)
+    secondary = team_secondary_for_name(team)
+    font = team_font_for_name(team)
+    label = live_team_full_name(team)
+    return f"""
+        <span class="sbc-fa-signed-team" style="--signed-team-color:{escape(str(color), quote=True)};--signed-team-secondary:{escape(str(secondary), quote=True)};--signed-team-font:{escape(str(font), quote=True)};">
+            <img src="{escape(str(logo), quote=True)}" alt="{escape(str(label), quote=True)} logo" referrerpolicy="no-referrer">
+            <strong>{escape(str(label))}</strong>
+        </span>
+    """
+
+
 def render_free_agency_league_table(data):
     if data is None or data.empty:
         render_html('<div class="sbc-empty-state">Free agency league table is not available yet.</div>')
         return
     rows = []
+    signed_cards = []
     picture_lookup = free_agency_player_picture_lookup()
     bird_lookup = free_agency_bird_rights_lookup()
     display_data = data.copy()
+    signed_mask = display_data["Team"].apply(lambda value: not is_blank_value(value) and str(clean_pick_display(value)).strip().lower() not in {"unsigned", "open", "none", "nan"}) if "Team" in display_data.columns else pd.Series(False, index=display_data.index)
+    signed_data = display_data[signed_mask].copy()
+    display_data = display_data[~signed_mask].copy()
     display_data["_signing_day_sort"] = display_data["DayS"].apply(parse_free_agency_day) if "DayS" in display_data.columns else pd.NaT
     display_data["_release_day_sort"] = display_data["DayR"].apply(parse_free_agency_day) if "DayR" in display_data.columns else pd.NaT
     display_data["_sign_order_sort"] = display_data["SignOrder"].apply(parse_free_agency_sign_order) if "SignOrder" in display_data.columns else math.inf
@@ -1651,14 +1724,96 @@ def render_free_agency_league_table(data):
                 <td>{render_free_agency_day(row.get("DayR", ""))}</td>
                 <td>{render_free_agency_day(row.get("DayS", ""))}</td>
                 <td>{render_free_agency_sign_order(row.get("SignOrder", ""))}</td>
-                <td class="sbc-fa-number">{render_free_agency_number(row.get("Offers", ""))}</td>
-                <td class="sbc-fa-number">{render_free_agency_number(row.get("High Bid", ""), money=True)}</td>
-                <td class="sbc-fa-number">{render_free_agency_number(row.get("Yrs", ""))}</td>
+                <td class="sbc-fa-number">{render_free_agency_offer_pill(row.get("Offers", ""))}</td>
+                <td class="sbc-fa-number">{render_free_agency_high_bid_pill(row.get("High Bid", ""))}</td>
+                <td class="sbc-fa-number">{render_free_agency_years_pill(row.get("Yrs", ""))}</td>
                 <td>{render_free_agency_team_badge(row.get("Team", ""), empty_text="Unsigned")}</td>
             </tr>
         """)
+
+    signed_data["_signing_day_sort"] = signed_data["DayS"].apply(parse_free_agency_day) if "DayS" in signed_data.columns else pd.NaT
+    signed_data["_sign_order_sort"] = signed_data["SignOrder"].apply(parse_free_agency_sign_order) if "SignOrder" in signed_data.columns else math.inf
+    signed_data = signed_data.sort_values(["_signing_day_sort", "_sign_order_sort", "Player"], ascending=[True, True, True], na_position="last")
+    for _, row in signed_data.iterrows():
+        player = clean_pick_display(row.get("Player", ""))
+        signing_team = free_agency_team_key(row.get("Team", ""))
+        color = team_color_for_name(signing_team) if signing_team in team_info else LEAGUE_PRIMARY
+        secondary = team_secondary_for_name(signing_team) if signing_team in team_info else LEAGUE_SECONDARY
+        signed_cards.append(f"""
+            <article class="sbc-fa-signing-card" style="--signed-team-color:{escape(str(color), quote=True)};--signed-team-secondary:{escape(str(secondary), quote=True)};">
+                <div class="sbc-fa-signing-player">{render_free_agency_player_cell(player, picture_lookup)}</div>
+                <div class="sbc-fa-signing-arrow">SIGNED</div>
+                {render_free_agency_signed_team(row.get("Team", ""))}
+                <div class="sbc-fa-signing-meta">
+                    {render_free_agency_high_bid_pill(row.get("High Bid", ""))}
+                    {render_free_agency_years_pill(row.get("Yrs", ""))}
+                </div>
+            </article>
+        """)
+    signed_section = ""
+    if signed_cards:
+        signed_section = f"""
+            <div class="sbc-section-label">Signed Players</div>
+            <div class="sbc-fa-signing-grid">{''.join(signed_cards)}</div>
+            <div class="sbc-section-label">Available Players</div>
+        """
     render_html(f"""
         <style>
+            .sbc-fa-signing-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+                gap: 0.75rem;
+                margin-bottom: 1rem;
+            }}
+            .sbc-fa-signing-card {{
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                gap: 0.55rem;
+                border-radius: 8px;
+                border: 1px solid color-mix(in srgb, var(--signed-team-color) 28%, rgba(23, 32, 42, 0.12));
+                border-left: 0.4rem solid var(--signed-team-color);
+                background: linear-gradient(135deg, color-mix(in srgb, var(--signed-team-color) 13%, #ffffff), color-mix(in srgb, var(--signed-team-secondary) 10%, #ffffff));
+                box-shadow: 0 16px 34px rgba(18, 25, 38, 0.09);
+                padding: 0.85rem;
+                overflow: hidden;
+            }}
+            .sbc-fa-signing-card .sbc-fa-player-img {{
+                width: 3.1rem;
+                height: 3.1rem;
+            }}
+            .sbc-fa-signing-card .sbc-fa-player strong {{
+                font-size: 1.05rem;
+            }}
+            .sbc-fa-signing-arrow {{
+                color: color-mix(in srgb, var(--signed-team-color) 82%, #111827);
+                font-size: 0.68rem;
+                font-weight: 950;
+                letter-spacing: 0.12em;
+            }}
+            .sbc-fa-signed-team {{
+                display: grid;
+                grid-template-columns: 3.6rem minmax(0, 1fr);
+                align-items: center;
+                gap: 0.72rem;
+                color: color-mix(in srgb, var(--signed-team-color) 82%, #111827);
+            }}
+            .sbc-fa-signed-team img {{
+                width: 3.6rem;
+                height: 3.6rem;
+                object-fit: contain;
+                filter: drop-shadow(0 10px 16px rgba(18,25,38,0.16));
+            }}
+            .sbc-fa-signed-team strong {{
+                font-family: var(--signed-team-font), "Poppins", sans-serif;
+                font-size: clamp(1.35rem, 2.4vw, 2.2rem);
+                font-weight: 950;
+                line-height: 0.95;
+            }}
+            .sbc-fa-signing-meta {{
+                display: flex;
+                gap: 0.4rem;
+                flex-wrap: wrap;
+            }}
             .sbc-fa-table-wrap {{
                 overflow-x: auto;
                 border: 1px solid rgba(23, 32, 42, 0.12);
@@ -1716,6 +1871,26 @@ def render_free_agency_league_table(data):
                 text-align: right;
                 white-space: nowrap;
             }}
+            .sbc-fa-offer-pill,
+            .sbc-fa-high-pill,
+            .sbc-fa-years-pill {{
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 1.65rem;
+                min-width: 2.35rem;
+                padding: 0.15rem 0.55rem;
+                border-radius: 999px;
+                font-size: 0.78rem;
+                font-weight: 950;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap;
+            }}
+            .sbc-fa-offer-0, .sbc-fa-years-0, .sbc-fa-high-zero {{ background: #f3f4f6; color: #6b7280; }}
+            .sbc-fa-offer-1, .sbc-fa-years-1, .sbc-fa-high-low {{ background: color-mix(in srgb, #2563eb 14%, #ffffff); color: #1d4ed8; }}
+            .sbc-fa-offer-2, .sbc-fa-years-2 {{ background: color-mix(in srgb, #16a34a 16%, #ffffff); color: #166534; }}
+            .sbc-fa-offer-3, .sbc-fa-years-3, .sbc-fa-high-mid {{ background: color-mix(in srgb, #facc15 30%, #ffffff); color: #854d0e; }}
+            .sbc-fa-offer-4, .sbc-fa-years-4, .sbc-fa-years-5, .sbc-fa-high-max {{ background: color-mix(in srgb, #dc2626 14%, #ffffff); color: #991b1b; }}
             .sbc-fa-day {{
                 display: inline-flex;
                 align-items: center;
@@ -1816,6 +1991,7 @@ def render_free_agency_league_table(data):
                 font-weight: 850;
             }}
         </style>
+        {signed_section}
         <div class="sbc-fa-table-wrap">
             <table class="sbc-fa-table">
                 <thead>
@@ -7463,7 +7639,8 @@ with free_agency_tab:
             if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
                 available_players = fa_league_view["Player"].tolist()
             released_players = free_agency_released_players(fa_league_view)
-            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, available_players=available_players, released_players=released_players, league_view=fa_league_view)
+            signed_players = free_agency_signed_players(fa_league_view)
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, released_players=released_players, league_view=fa_league_view)
             render_free_agency_my_bids(my_team, fa_bids, fa_active_bids, fa_excluded_bids, fa_league_view)
 
     with fa_commish_tab:
@@ -7479,6 +7656,7 @@ with free_agency_tab:
                 key="sbc_free_agency_signed_players",
             )
             signed_players = [line.strip() for line in signed_text.splitlines() if line.strip()]
+            signed_players.extend(free_agency_signed_players(fa_league_view))
             available_players = []
             if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
                 available_players = fa_league_view["Player"].tolist()
