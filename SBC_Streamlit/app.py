@@ -1339,6 +1339,7 @@ def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids, leagu
     active_team = active_bids[active_bids["Team"] == team].copy() if active_bids is not None and not active_bids.empty and "Team" in active_bids.columns else pd.DataFrame()
     excluded_team = excluded_bids[excluded_bids["Team"] == team].copy() if excluded_bids is not None and not excluded_bids.empty and "Team" in excluded_bids.columns else pd.DataFrame()
     league_lookup = free_agency_league_lookup(league_view)
+    signed_set = {free_agency_player_key(player) for player in free_agency_signed_players(league_view)}
 
     active_keys = {}
     if not active_team.empty:
@@ -1357,9 +1358,10 @@ def render_free_agency_my_bids(team, all_bids, active_bids, excluded_bids, leagu
     for _, bid in team_all.iterrows():
         player_key = free_agency_player_key(bid.get("Player", ""))
         key = (player_key, str(bid.get("Response ID", "")), format_free_agency_timestamp(bid.get("Timestamp")))
-        active_rank = active_keys.get(key)
+        active_rank = None if player_key in signed_set else active_keys.get(key)
         sign_order_sort = parse_free_agency_sign_order(league_lookup.get(player_key, {}).get("SignOrder", ""))
-        display_rows.append((active_rank is None, bid.get("Timestamp"), bid.get("Player", ""), active_rank, excluded_status.get(key, "Inactive"), bid, sign_order_sort))
+        inactive_status = "Signed" if player_key in signed_set else excluded_status.get(key, "Inactive")
+        display_rows.append((active_rank is None, bid.get("Timestamp"), bid.get("Player", ""), active_rank, inactive_status, bid, sign_order_sort))
 
     def my_bid_sort_key(item):
         timestamp = pd.to_datetime(item[1], errors="coerce")
