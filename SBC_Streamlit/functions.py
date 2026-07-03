@@ -329,11 +329,14 @@ def free_agent_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df["Type" + str(current_year + year_offset)].isin(['Unrestricted', 'Restricted'])]
+    if "BirdRights" not in df.columns:
+        df["BirdRights"] = ""
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
-    cols_to_keep = ['Picture_Online','Player'] + year_cols + type_cols_keep
+    cols_to_keep = ['Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={'BirdRights': 'Bird Rights'})
     df = df.rename(columns={col: col[1:] for col in year_cols})
     df = df.sort_values(str(current_year + year_offset), ascending=False)
     return df
@@ -581,12 +584,15 @@ def retired_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
 def all_free_agents(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df["Type" + str(current_year + year_offset)].isin(['Unrestricted', 'Restricted'])]
+    if "BirdRights" not in df.columns:
+        df["BirdRights"] = ""
     df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     year_cols = ["Y" + year for year in columns_order]
     type_cols_keep = ["Type" + year for year in columns_order]
-    cols_to_keep = ['Team_logo', 'Picture_Online','Player'] + year_cols + type_cols_keep
+    cols_to_keep = ['Team_logo', 'Picture_Online','Player','BirdRights'] + year_cols + type_cols_keep
     df = df[cols_to_keep].copy()
     df = df.rename(columns={'Picture_Online': ' '})
+    df = df.rename(columns={'BirdRights': 'Bird Rights'})
     df = df.rename(columns={col: col[1:] for col in year_cols})
     df = df.sort_values(str(current_year + year_offset), ascending=False)
     return df

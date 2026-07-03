@@ -7802,7 +7802,7 @@ with tab1:
             free_agent_player_df = (free_agent_player_df.style
                 .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                 .format({c: "${:,.0f}" for c in free_agent_player_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + [str(current_year+ year_offset)], column_config={" ": st.column_config.ImageColumn(" ")})
+            st.dataframe(free_agent_player_df, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_order=[" ", "Player"] + [str(current_year+ year_offset), "Bird Rights"], column_config={" ": st.column_config.ImageColumn(" ")})
 
     with col3:
         restricted_df = trade_restrictions(df, pics, SelectedTeam)
@@ -7923,7 +7923,7 @@ with tab1:
         render_html('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>')
         free_agent_player_df = free_agent_players(df, pics, SelectedTeam)
         if free_agent_player_df.shape[0] > 0:
-            render_cap_table(free_agent_player_df, columns=[" ", "Player"] + [str(current_year+ year_offset)], image_columns=[" "], row_team=SelectedTeam)
+            render_cap_table(free_agent_player_df, columns=[" ", "Player"] + [str(current_year+ year_offset), "Bird Rights"], image_columns=[" "], row_team=SelectedTeam)
         else:
             render_html('<div class="sbc-empty-state">No upcoming free agents are currently listed for this team.</div>')
 
@@ -8338,7 +8338,7 @@ with tab6:
     asset1, asset2 = st.columns([1.1, 0.9])
     with asset1:
         render_html('<div class="sbc-cap-eyebrow">Upcoming Free Agents</div>')
-        render_cap_table(all_free_agents_df, columns=["Team_logo", " ", "Player"] + [str(current_year + year_offset)], image_columns=["Team_logo", " "])
+        render_cap_table(all_free_agents_df, columns=["Team_logo", " ", "Player"] + [str(current_year + year_offset), "Bird Rights"], image_columns=["Team_logo", " "])
     with asset2:
         render_html('<div class="sbc-cap-eyebrow">Trade Restrictions</div>')
         render_cap_table(trade_restrictins_all_df, columns=["Team_logo", " ", "Player", "Trade Restriction"], image_columns=["Team_logo", " "], contract_colors=False)
@@ -8400,7 +8400,7 @@ with tab6:
             all_free_agents_df = (all_free_agents_df.style
                 .apply(lambda row: style_salaries(row, type_colors), axis=1)  
                 .format({c: "${:,.0f}" for c in all_free_agents_df.columns if re.match(r"\d{4}", c)}))
-            st.dataframe(all_free_agents_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + [str(current_year+ year_offset)], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
+            st.dataframe(all_free_agents_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player"] + [str(current_year+ year_offset), "Bird Rights"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
     with col2:
         draft_all_df = draft_rights_all(df, pics)
