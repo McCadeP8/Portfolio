@@ -724,13 +724,14 @@ def free_agency_league_lookup(league_view):
     }
 
 
-def free_agency_released_players(league_view, release_month=7, release_day=1):
+def free_agency_released_players(league_view, release_month=7, release_days=(1, 5)):
     if league_view is None or league_view.empty or "Player" not in league_view.columns or "DayR" not in league_view.columns:
         return []
+    release_days = {int(day) for day in ([release_days] if isinstance(release_days, int) else release_days)}
     released = []
     for _, row in league_view.iterrows():
         release_date = parse_free_agency_day(row.get("DayR", ""))
-        if not pd.isna(release_date) and release_date.month == release_month and release_date.day == release_day:
+        if not pd.isna(release_date) and release_date.month == release_month and release_date.day in release_days:
             released.append(row.get("Player", ""))
     return released
 
