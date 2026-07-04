@@ -503,6 +503,7 @@ def trade_restrictions(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) 
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Team'] == SelectedTeam]
     df = df[df['Trade.Restriction'].notna()]
+    df = df[df['Trade.Restriction'] != "Retired"]
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[['Picture_Online','Player','Trade.Restriction']]
     df = df.rename(columns={'Picture_Online': ' '})
@@ -600,6 +601,7 @@ def all_free_agents(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
 def trade_restrictions_all(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
     df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
     df = df[df['Trade.Restriction'].notna()]
+    df = df[df['Trade.Restriction'] != "Retired"]
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df["Team_logo"] = df["Team"].map(lambda t: team_info.get(t, {}).get("logo", ""))
     df = df[['Team_logo', 'Picture_Online','Player','Trade.Restriction']]
