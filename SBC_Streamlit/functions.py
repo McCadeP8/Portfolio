@@ -278,7 +278,8 @@ def contract_salary_mask(df: pd.DataFrame) -> pd.Series:
 
 def cap_space_exception_mask(exceptions_df: pd.DataFrame) -> pd.Series:
     exception_name = exceptions_df["Player"].astype(str)
-    excluded = exception_name.str.contains("Mid-Level|Bi-Annual|Minimum|MLE|BAE", case=False, na=False)
+    normalized_name = exception_name.str.lower().str.replace(r"[^a-z0-9]+", "", regex=True)
+    excluded = normalized_name.str.contains("midlevel|mle|biannual|bae|minimum", na=False)
     return ~excluded
 
 def active_players(df: pd.DataFrame, pics: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
