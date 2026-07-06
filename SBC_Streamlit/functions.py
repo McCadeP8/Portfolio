@@ -1583,7 +1583,7 @@ def get_short_term_awards(df: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame
     df["Week"] = pd.Categorical(df["Week"], categories=["November", "December", "January", "February", "March"] +[f"Week {i}" for i in range(1, 39)],ordered=True)
     df = df.sort_values("Week")
     return df
-
+ # f
 def img_to_base64(path: str) -> str:
     try:
         data = Path(path).read_bytes()
