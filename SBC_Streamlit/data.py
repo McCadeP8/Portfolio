@@ -23,8 +23,8 @@ current_apron_1 = 209015000
 current_apron_2 = 221686000
 tax_bracket_increment = 6064000
 league_ratio = ceil(current_salary_cap/60000000)*1000000
-max_cash = 8521480
-minimum_sal = 1361971
+max_cash = 8495000
+minimum_sal = 1357763
 max_minimum = 3888544
 league_id = "xna4w7nnmona530f"
 
