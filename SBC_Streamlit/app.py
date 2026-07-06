@@ -2518,6 +2518,8 @@ def render_overview_table(data):
                 except (TypeError, ValueError):
                     pass
                 tone = "good" if numeric >= 0 else "bad"
+                if col == "Amount Paid" and numeric == 0:
+                    tone = "bad"
                 important = (col == "Apron 1 Space" and hard_cap == "First Apron") or (col == "Apron 2 Space" and hard_cap == "Second Apron")
                 formatted = f"${numeric:,.2f}" if col in cents_cols else format_money(value)
                 important_class = " sbc-overview-important-money" if important else ""

@@ -676,6 +676,8 @@ def style_overall_cap(row):
         elif col == "Balance":
             color = "green" if value > -0.005 else "red"
             styles[i] = f"color: {color};"
+        elif col == "Amount Paid" and value == 0:
+            styles[i] = "color: red;"
     return styles
 
 def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:

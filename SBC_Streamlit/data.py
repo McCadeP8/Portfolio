@@ -25,7 +25,7 @@ tax_bracket_increment = 6064000
 league_ratio = ceil(current_salary_cap/60000000)*1000000
 max_cash = 8495000
 minimum_sal = 1357763
-max_minimum = 3888544
+max_minimum = 3876529
 league_id = "xna4w7nnmona530f"
 
 
