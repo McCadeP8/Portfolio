@@ -1752,16 +1752,44 @@ def render_free_agency_league_table(data):
     signed_data["_signing_day_sort"] = signed_data["DayS"].apply(parse_free_agency_day) if "DayS" in signed_data.columns else pd.NaT
     signed_data["_sign_order_sort"] = signed_data["SignOrder"].apply(parse_free_agency_sign_order) if "SignOrder" in signed_data.columns else math.inf
     signed_data = signed_data.sort_values(["_signing_day_sort", "_sign_order_sort", "Player"], ascending=[True, True, True], na_position="last")
-    for _, row in signed_data.iterrows():
-        player = clean_pick_display(row.get("Player", ""))
-        signing_team = free_agency_team_key(row.get("Team", ""))
+    signed_data["_team_sort"] = signed_data["Team"].apply(lambda value: free_agency_team_key(value) or clean_pick_display(value)) if "Team" in signed_data.columns else ""
+    signed_data = signed_data.sort_values(["_team_sort", "_signing_day_sort", "_sign_order_sort", "Player"], ascending=[True, True, True, True], na_position="last")
+    signed_groups = {
+        str(team_value): team_signings.copy()
+        for team_value, team_signings in signed_data.groupby("_team_sort", sort=False, dropna=False)
+        if not is_blank_value(team_value)
+    }
+    signed_team_order = list(Teams)
+    signed_team_order.extend(team for team in signed_groups if team not in signed_team_order)
+    for team_value in signed_team_order:
+        team_signings = signed_groups.get(str(team_value), pd.DataFrame())
+        signing_team = free_agency_team_key(team_value)
+        team_display = signing_team or clean_pick_display(team_value)
         color = team_color_for_name(signing_team) if signing_team in team_info else LEAGUE_PRIMARY
         secondary = team_secondary_for_name(signing_team) if signing_team in team_info else LEAGUE_SECONDARY
+        signing_rows = []
+        if team_signings.empty:
+            signing_rows.append('<div class="sbc-fa-no-signings">No signings</div>')
+        else:
+            team_signings = team_signings.sort_values(["_signing_day_sort", "_sign_order_sort", "Player"], ascending=[True, True, True], na_position="last")
+            for _, row in team_signings.iterrows():
+                player = clean_pick_display(row.get("Player", ""))
+                signing_rows.append(f"""
+                    <div class="sbc-fa-signing-row">
+                        <div class="sbc-fa-signing-player">{render_free_agency_player_cell(player, picture_lookup)}</div>
+                        <div class="sbc-fa-signing-meta">
+                            {render_free_agency_sign_order(row.get("SignOrder", ""))}
+                            {render_free_agency_contract_pill(row.get("Yrs", ""), row.get("High Bid", ""))}
+                        </div>
+                    </div>
+                """)
         signed_cards.append(f"""
             <article class="sbc-fa-signing-card" style="--signed-team-color:{escape(str(color), quote=True)};--signed-team-secondary:{escape(str(secondary), quote=True)};">
-                <div class="sbc-fa-signing-player">{render_free_agency_player_cell(player, picture_lookup)}</div>
-                {render_free_agency_signed_team(row.get("Team", ""))}
-                {render_free_agency_contract_pill(row.get("Yrs", ""), row.get("High Bid", ""))}
+                <div class="sbc-fa-signing-team-head">
+                    {render_free_agency_signed_team(team_display)}
+                    <span>{team_signings.shape[0]} signing{'s' if team_signings.shape[0] != 1 else ''}</span>
+                </div>
+                <div class="sbc-fa-signing-list">{''.join(signing_rows)}</div>
             </article>
         """)
     signed_section = ""
@@ -1781,9 +1809,8 @@ def render_free_agency_league_table(data):
             }}
             .sbc-fa-signing-card {{
                 display: grid;
-                grid-template-columns: minmax(10rem, 1fr) minmax(11rem, 1.1fr) auto;
-                align-items: center;
-                gap: 0.65rem;
+                gap: 0.6rem;
+                align-content: start;
                 border-radius: 8px;
                 border: 1px solid color-mix(in srgb, var(--signed-team-color) 28%, rgba(23, 32, 42, 0.12));
                 border-left: 0.4rem solid var(--signed-team-color);
@@ -1792,6 +1819,58 @@ def render_free_agency_league_table(data):
                 min-height: 5.4rem;
                 padding: 0.62rem 0.72rem;
                 overflow: hidden;
+            }}
+            .sbc-fa-signing-team-head {{
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                align-items: center;
+                gap: 0.75rem;
+                padding-bottom: 0.52rem;
+                border-bottom: 1px solid color-mix(in srgb, var(--signed-team-color) 18%, rgba(23, 32, 42, 0.1));
+            }}
+            .sbc-fa-signing-team-head > span {{
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 1.65rem;
+                border-radius: 999px;
+                background: rgba(255,255,255,0.72);
+                border: 1px solid color-mix(in srgb, var(--signed-team-color) 22%, rgba(23, 32, 42, 0.12));
+                color: color-mix(in srgb, var(--signed-team-color) 78%, #111827);
+                font-size: 0.74rem;
+                font-weight: 950;
+                padding: 0.15rem 0.55rem;
+                white-space: nowrap;
+            }}
+            .sbc-fa-signing-list {{
+                display: grid;
+                gap: 0.42rem;
+            }}
+            .sbc-fa-signing-row {{
+                display: grid;
+                grid-template-columns: minmax(10rem, 1fr) auto;
+                align-items: center;
+                gap: 0.65rem;
+                min-width: 0;
+            }}
+            .sbc-fa-signing-meta {{
+                display: inline-flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 0.35rem;
+                min-width: 0;
+            }}
+            .sbc-fa-no-signings {{
+                min-height: 2.7rem;
+                display: flex;
+                align-items: center;
+                border-radius: 8px;
+                background: rgba(255,255,255,0.48);
+                border: 1px dashed color-mix(in srgb, var(--signed-team-color) 24%, rgba(23, 32, 42, 0.14));
+                color: var(--sbc-muted);
+                font-size: 0.82rem;
+                font-weight: 900;
+                padding: 0.42rem 0.58rem;
             }}
             .sbc-fa-signing-card .sbc-fa-player-img {{
                 width: 2.7rem;
@@ -2019,8 +2098,13 @@ def render_free_agency_league_table(data):
                 }}
             }}
             @media (max-width: 680px) {{
-                .sbc-fa-signing-card {{
+                .sbc-fa-signing-team-head,
+                .sbc-fa-signing-row {{
                     grid-template-columns: 1fr;
+                }}
+                .sbc-fa-signing-meta {{
+                    justify-content: flex-start;
+                    flex-wrap: wrap;
                 }}
             }}
         </style>
