@@ -4246,19 +4246,25 @@ def bracket_seed_lookup(standings_df, selected_year, selected_period):
     return lookup
 
 
+def bracket_team_label(team):
+    if is_blank_value(team):
+        return "-"
+    return TEAM_ABBREVIATIONS.get(str(team), str(team))
+
+
 def render_history_bracket_team(team, winner, seed_lookup):
     team = clean_pick_display(team)
     info = team_info.get(team, {})
     logo = info.get("logo", "")
     color = info.get("bg", LEAGUE_PRIMARY)
     secondary = info.get("bg2", LEAGUE_SECONDARY)
+    seed_color = LEAGUE_SECONDARY if info.get("conf") == "West" else LEAGUE_PRIMARY
     is_winner = team == winner
     return f"""
-        <div class="sbc-bracket-team {'sbc-bracket-team-winner' if is_winner else ''}" style="--bracket-team-color:{escape(str(color), quote=True)};--bracket-team-secondary:{escape(str(secondary), quote=True)};">
+        <div class="sbc-bracket-team {'sbc-bracket-team-winner' if is_winner else ''}" style="--bracket-team-color:{escape(str(color), quote=True)};--bracket-team-secondary:{escape(str(secondary), quote=True)};--bracket-seed-color:{escape(str(seed_color), quote=True)};">
             <span class="sbc-bracket-seed">{escape(history_team_seed(team, seed_lookup))}</span>
             <img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
-            <strong>{escape(live_team_full_name(team))}</strong>
-            <span class="sbc-bracket-advance">{'ADV' if is_winner else ''}</span>
+            <strong title="{escape(live_team_full_name(team), quote=True)}">{escape(bracket_team_label(team))}</strong>
         </div>
     """
 
@@ -4298,18 +4304,12 @@ def render_history_bracket_matchup(row, seed_lookup):
     team_b = clean_pick_display(row.get("TeamB", ""))
     winner = history_game_winner(row)
     winner_info = team_info.get(winner, {})
-    winner_logo = winner_info.get("logo", "")
     winner_color = winner_info.get("bg", LEAGUE_PRIMARY)
     return f"""
         <article class="sbc-bracket-matchup" style="--bracket-winner-color:{escape(str(winner_color), quote=True)};">
             <div class="sbc-bracket-matchup-inner">
                 {render_history_bracket_team(team_a, winner, seed_lookup)}
                 {render_history_bracket_team(team_b, winner, seed_lookup)}
-            </div>
-            <div class="sbc-bracket-winner">
-                <span>Advancing</span>
-                {'<img src="' + escape(str(winner_logo), quote=True) + '" alt="' + escape(live_team_full_name(winner), quote=True) + ' logo">' if winner else ''}
-                <strong>{escape(live_team_full_name(winner)) if winner else 'TBD'}</strong>
             </div>
         </article>
     """
@@ -4326,17 +4326,24 @@ def render_history_bracket(games, title, empty_text, seed_lookup=None):
     bracket["_game_sort"] = pd.to_numeric(bracket.get("Game_ID", pd.Series(range(bracket.shape[0]))), errors="coerce").fillna(0)
     bracket = bracket.sort_values(["_type_sort", "_round_sort", "Period", "_game_sort", "TeamA", "TeamB"])
 
-    columns = []
+    round_blocks = []
     for (type_name, round_name), round_games in bracket.groupby(["Type", "Round"], sort=False, dropna=False):
         round_label = clean_pick_display(round_name)
         if str(type_name) == "Play-In" and "play" not in str(round_label).lower():
             round_label = f"Play-In - {round_label}"
+        periods = pd.to_numeric(round_games["Period"], errors="coerce").dropna().astype(int).tolist() if "Period" in round_games.columns else []
+        if not periods:
+            period_label = ""
+        elif min(periods) == max(periods):
+            period_label = f"P{min(periods)}"
+        else:
+            period_label = f"P{min(periods)}-P{max(periods)}"
         cards = "".join(render_history_bracket_matchup(row, seed_lookup) for _, row in round_games.iterrows())
-        columns.append(f"""
+        round_blocks.append(f"""
             <section class="sbc-bracket-round">
                 <div class="sbc-bracket-round-head">
                     <span>{escape(str(round_label))}</span>
-                    <em>{round_games.shape[0]} game{'s' if round_games.shape[0] != 1 else ''}</em>
+                    <em>{escape(period_label)}</em>
                 </div>
                 <div class="sbc-bracket-games">{cards}</div>
             </section>
@@ -4351,11 +4358,16 @@ def render_history_bracket(games, title, empty_text, seed_lookup=None):
     if champion:
         champion_html = f"""
             <aside class="sbc-bracket-champion" style="--champion-color:{escape(str(champion_color), quote=True)};--champion-secondary:{escape(str(champion_secondary), quote=True)};">
-                <span>Champion Crowned</span>
+                <span>Champion</span>
                 <img src="{escape(str(champion_logo), quote=True)}" alt="{escape(live_team_full_name(champion), quote=True)} logo">
                 <strong>{escape(live_team_full_name(champion))}</strong>
             </aside>
         """
+    split_at = math.ceil(len(round_blocks) / 2)
+    left_blocks = round_blocks[:split_at]
+    right_blocks = list(reversed(round_blocks[split_at:]))
+    if not right_blocks and len(left_blocks) > 1:
+        right_blocks = [left_blocks.pop()]
 
     render_html(f"""
         <section class="sbc-bracket-panel">
@@ -4364,8 +4376,9 @@ def render_history_bracket(games, title, empty_text, seed_lookup=None):
                 <em>{bracket.shape[0]} game path</em>
             </div>
             <div class="sbc-bracket-stage">
-                <div class="sbc-bracket-scroll">{''.join(columns)}</div>
+                <div class="sbc-bracket-side sbc-bracket-side-left">{''.join(left_blocks)}</div>
                 {champion_html}
+                <div class="sbc-bracket-side sbc-bracket-side-right">{''.join(right_blocks)}</div>
             </div>
         </section>
     """)
@@ -6214,18 +6227,24 @@ st.markdown(
 
     .sbc-bracket-stage {{
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.28fr);
-        gap: 0.85rem;
+        grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.22fr) minmax(0, 1fr);
+        gap: 0.9rem;
+        align-items: center;
         padding: 0.9rem;
     }}
 
-    .sbc-bracket-scroll {{
+    .sbc-bracket-side {{
         display: grid;
         grid-auto-flow: column;
-        grid-auto-columns: minmax(16rem, 1fr);
-        gap: 1.15rem;
+        grid-auto-columns: minmax(10.5rem, 1fr);
+        gap: 0.9rem;
+        align-items: center;
         overflow-x: auto;
-        padding: 0.2rem 0.35rem 0.75rem 0.1rem;
+        padding: 0.2rem 0.25rem 0.75rem;
+    }}
+
+    .sbc-bracket-side-right {{
+        justify-content: end;
     }}
 
     .sbc-bracket-round {{
@@ -6236,14 +6255,25 @@ st.markdown(
         min-width: 0;
     }}
 
-    .sbc-bracket-round:not(:last-child)::after {{
+    .sbc-bracket-side-left .sbc-bracket-round:not(:last-child)::after {{
         content: "";
         position: absolute;
         top: 50%;
-        right: -0.85rem;
-        width: 0.85rem;
+        right: -0.7rem;
+        width: 0.7rem;
         height: 2px;
         background: linear-gradient(90deg, color-mix(in srgb, {LEAGUE_PRIMARY} 55%, transparent), color-mix(in srgb, {LEAGUE_SECONDARY} 70%, transparent));
+        transform: translateY(-50%);
+    }}
+
+    .sbc-bracket-side-right .sbc-bracket-round:not(:last-child)::before {{
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: -0.7rem;
+        width: 0.7rem;
+        height: 2px;
+        background: linear-gradient(270deg, color-mix(in srgb, {LEAGUE_PRIMARY} 55%, transparent), color-mix(in srgb, {LEAGUE_SECONDARY} 70%, transparent));
         transform: translateY(-50%);
     }}
 
@@ -6292,10 +6322,15 @@ st.markdown(
         content: "";
         position: absolute;
         top: 50%;
-        right: -0.58rem;
-        width: 0.58rem;
+        right: -0.46rem;
+        width: 0.46rem;
         height: 2px;
         background: color-mix(in srgb, var(--bracket-winner-color) 68%, rgba(23,32,42,0.12));
+    }}
+
+    .sbc-bracket-side-right .sbc-bracket-matchup::after {{
+        right: auto;
+        left: -0.46rem;
     }}
 
     .sbc-bracket-matchup-inner {{
@@ -6305,14 +6340,14 @@ st.markdown(
 
     .sbc-bracket-team {{
         display: grid;
-        grid-template-columns: 2rem 2.45rem minmax(0, 1fr) 2.2rem;
+        grid-template-columns: 1.6rem 2rem minmax(0, 1fr);
         align-items: center;
-        gap: 0.52rem;
-        min-height: 3.9rem;
-        border-left: 0.35rem solid var(--bracket-team-color);
+        gap: 0.38rem;
+        min-height: 3.05rem;
+        border-left: 0.28rem solid var(--bracket-team-color);
         border-bottom: 1px solid rgba(23,32,42,0.07);
         background: linear-gradient(90deg, color-mix(in srgb, var(--bracket-team-color) 8%, #ffffff), #ffffff 64%);
-        padding: 0.52rem 0.62rem 0.52rem 0.48rem;
+        padding: 0.4rem 0.48rem 0.4rem 0.36rem;
     }}
 
     .sbc-bracket-team:last-child {{
@@ -6328,19 +6363,20 @@ st.markdown(
     .sbc-bracket-seed {{
         display: grid;
         place-items: center;
-        width: 1.75rem;
-        height: 1.75rem;
+        width: 1.38rem;
+        height: 1.38rem;
         border-radius: 999px;
-        background: #111827;
+        background: var(--bracket-seed-color);
+        border: 1px solid color-mix(in srgb, var(--bracket-seed-color) 72%, #ffffff);
         color: #ffffff;
-        font-size: 0.72rem;
+        font-size: 0.64rem;
         font-weight: 950;
         font-variant-numeric: tabular-nums;
     }}
 
     .sbc-bracket-team img {{
-        width: 2.35rem;
-        height: 2.35rem;
+        width: 1.95rem;
+        height: 1.95rem;
         object-fit: contain;
         filter: drop-shadow(0 6px 10px rgba(18,25,38,0.13));
     }}
@@ -6348,51 +6384,9 @@ st.markdown(
     .sbc-bracket-team strong {{
         overflow: hidden;
         color: var(--sbc-ink);
-        font-size: 0.86rem;
+        font-size: 0.82rem;
         font-weight: 950;
         line-height: 1.06;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }}
-
-    .sbc-bracket-advance {{
-        color: color-mix(in srgb, var(--bracket-team-color) 80%, #111827);
-        font-size: 0.64rem;
-        font-weight: 950;
-        letter-spacing: 0.05em;
-        text-align: right;
-    }}
-
-    .sbc-bracket-winner {{
-        display: grid;
-        grid-template-columns: auto 1.8rem minmax(0, 1fr);
-        align-items: center;
-        gap: 0.45rem;
-        border-top: 1px solid rgba(23,32,42,0.08);
-        background: color-mix(in srgb, var(--bracket-winner-color) 12%, #ffffff);
-        color: color-mix(in srgb, var(--bracket-winner-color) 80%, #111827);
-        padding: 0.42rem 0.58rem;
-    }}
-
-    .sbc-bracket-winner span {{
-        font-size: 0.58rem;
-        font-weight: 950;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        white-space: nowrap;
-    }}
-
-    .sbc-bracket-winner img {{
-        width: 1.65rem;
-        height: 1.65rem;
-        object-fit: contain;
-    }}
-
-    .sbc-bracket-winner strong {{
-        overflow: hidden;
-        color: inherit;
-        font-size: 0.72rem;
-        font-weight: 950;
         text-overflow: ellipsis;
         white-space: nowrap;
     }}
@@ -6440,6 +6434,11 @@ st.markdown(
     @media (max-width: 980px) {{
         .sbc-bracket-stage {{
             grid-template-columns: 1fr;
+        }}
+
+        .sbc-bracket-side {{
+            grid-auto-flow: row;
+            grid-auto-columns: unset;
         }}
 
         .sbc-bracket-champion {{
@@ -6631,10 +6630,10 @@ st.markdown(
         width: 2.15rem;
         height: 2.15rem;
         border-radius: 999px;
-        background: #ffffff;
-        border: 1px solid color-mix(in srgb, var(--standings-accent) 35%, rgba(23, 32, 42, 0.14));
+        background: var(--standings-accent);
+        border: 1px solid color-mix(in srgb, var(--standings-accent) 70%, #ffffff);
         box-shadow: 0 4px 10px rgba(18, 25, 38, 0.08);
-        color: color-mix(in srgb, var(--standings-accent) 78%, #111827);
+        color: #ffffff;
         font-weight: 950;
     }}
 
