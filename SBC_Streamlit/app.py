@@ -929,7 +929,6 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
         render_html('<div class="sbc-empty-state">All listed free agents have signed or no unsigned players are available.</div>')
         return
     player_queue["DayS"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("DayS", ""))
-    player_queue["DayR"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("DayR", ""))
     player_queue["RFA"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("RFA", ""))
     player_queue["OldTeam"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("OldTeam", ""))
     player_queue["SignOrder"] = player_queue["_player_key"].map(lambda key: league_lookup.get(key, {}).get("SignOrder", ""))
@@ -998,7 +997,6 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
                         <div class="sbc-fa-commish-meta">
                             {render_free_agency_status_cell(player_row.get("OldTeam", ""), player_row.get("RFA", ""))}
                             {render_free_agency_sign_order(player_row.get("SignOrder", ""))}
-                            <span>{escape(str(player_row.get("DayR", "")))} release</span>
                             <span>{escape(day_s_label or "No signing day")}</span>
                             <span>{escape(str(player_row.get("BirdRights", "") or "No Bird Rights"))}</span>
                         </div>
@@ -7757,9 +7755,8 @@ with free_agency_tab:
             available_players = []
             if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
                 available_players = fa_league_view["Player"].tolist()
-            released_players = free_agency_released_players(fa_league_view)
             signed_players = free_agency_signed_players(fa_league_view)
-            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, released_players=released_players, league_view=fa_league_view)
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, league_view=fa_league_view)
             render_free_agency_my_bids(my_team, fa_bids, fa_active_bids, fa_excluded_bids, fa_league_view)
 
     with fa_commish_tab:
@@ -7779,8 +7776,7 @@ with free_agency_tab:
             available_players = []
             if isinstance(fa_league_view, pd.DataFrame) and "Player" in fa_league_view.columns:
                 available_players = fa_league_view["Player"].tolist()
-            released_players = free_agency_released_players(fa_league_view)
-            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, released_players=released_players, league_view=fa_league_view)
+            fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, league_view=fa_league_view)
             render_free_agency_commish_desk(fa_active_bids, fa_excluded_bids, fa_league_view, all_bids=fa_bids, bid_players=fa_bid_players)
 
 with team_hub_tab:
