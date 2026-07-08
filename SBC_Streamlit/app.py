@@ -4185,6 +4185,170 @@ def render_ist_standings(standings_df, selected_year, selected_period):
     render_html('<div class="sbc-section-label">Tournament Snapshot</div>')
     render_html(f'<div class="sbc-standings-layout">{"".join(panels)}</div>')
 
+
+def schedule_year_options_for_history():
+    if all_time_schedule is None or all_time_schedule.empty or "Year" not in all_time_schedule.columns:
+        return [current_year]
+    years = sorted(all_time_schedule["Year"].dropna().astype(int).unique().tolist())
+    return years or [current_year]
+
+
+def latest_period_for_year(selected_year, fallback=99):
+    if all_time_schedule is None or all_time_schedule.empty or not {"Year", "Period"}.issubset(all_time_schedule.columns):
+        return fallback
+    periods = all_time_schedule[all_time_schedule["Year"] == selected_year]["Period"].dropna()
+    if periods.empty:
+        return fallback
+    return int(periods.max())
+
+
+def history_round_rank(value):
+    text = str(clean_pick_display(value)).lower()
+    rank_map = [
+        ("group", 0),
+        ("play-in", 1),
+        ("play in", 1),
+        ("quarter", 2),
+        ("first", 2),
+        ("semifinal", 3),
+        ("semi", 3),
+        ("conference", 4),
+        ("final", 5),
+        ("champ", 6),
+    ]
+    for needle, rank in rank_map:
+        if needle in text:
+            return rank
+    return 9
+
+
+def history_game_winner(row):
+    score_a = score_numeric(row.get("TeamAScore", row.get("TeamA_Score", "")))
+    score_b = score_numeric(row.get("TeamBScore", row.get("TeamB_Score", "")))
+    if score_a == 0 and score_b == 0:
+        return ""
+    return row.get("TeamA", "") if score_a >= score_b else row.get("TeamB", "")
+
+
+def render_history_matchup_card(row):
+    team_a = clean_pick_display(row.get("TeamA", ""))
+    team_b = clean_pick_display(row.get("TeamB", ""))
+    score_a = row.get("TeamAScore", row.get("TeamA_Score", ""))
+    score_b = row.get("TeamBScore", row.get("TeamB_Score", ""))
+    winner = history_game_winner(row)
+    period_label = f'P{escape(str(row.get("Period", "")))}' if not is_blank_value(row.get("Period", "")) else ""
+    rows = []
+    for team, score in [(team_a, score_a), (team_b, score_b)]:
+        info = team_info.get(team, {})
+        logo = info.get("logo", "")
+        color = info.get("bg", LEAGUE_PRIMARY)
+        rows.append(f"""
+            <div class="sbc-history-game-team {'sbc-history-game-winner' if team == winner else ''}" style="--history-team-color:{escape(str(color), quote=True)};">
+                <img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
+                <strong>{escape(live_team_full_name(team))}</strong>
+                <b>{escape(format_score_value(score))}</b>
+            </div>
+        """)
+    return f"""
+        <article class="sbc-history-game-card">
+            <div class="sbc-history-game-top">
+                <span>{escape(str(row.get("Round", row.get("Type", ""))))}</span>
+                <em>{period_label}</em>
+            </div>
+            {''.join(rows)}
+        </article>
+    """
+
+
+def render_history_bracket(games, title, empty_text):
+    if games is None or games.empty:
+        render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
+        return
+    bracket = games.copy()
+    bracket["_type_sort"] = bracket["Type"].map({"Play-In": 0, "Playoffs": 1, "In-Season Tournament": 0}).fillna(9)
+    bracket["_round_sort"] = bracket["Round"].apply(history_round_rank)
+    bracket["_game_sort"] = pd.to_numeric(bracket.get("Game_ID", pd.Series(range(bracket.shape[0]))), errors="coerce").fillna(0)
+    bracket = bracket.sort_values(["_type_sort", "_round_sort", "Period", "_game_sort", "TeamA", "TeamB"])
+
+    columns = []
+    for (type_name, round_name), round_games in bracket.groupby(["Type", "Round"], sort=False, dropna=False):
+        round_label = clean_pick_display(round_name)
+        if str(type_name) == "Play-In" and "play" not in str(round_label).lower():
+            round_label = f"Play-In - {round_label}"
+        cards = "".join(render_history_matchup_card(row) for _, row in round_games.iterrows())
+        columns.append(f"""
+            <section class="sbc-history-bracket-round">
+                <div class="sbc-history-bracket-round-head">
+                    <span>{escape(str(round_label))}</span>
+                    <em>{round_games.shape[0]} game{'s' if round_games.shape[0] != 1 else ''}</em>
+                </div>
+                <div class="sbc-history-bracket-games">{cards}</div>
+            </section>
+        """)
+
+    render_html(f"""
+        <section class="sbc-history-bracket-panel">
+            <div class="sbc-history-bracket-head">
+                <span>{escape(title)}</span>
+                <em>{bracket.shape[0]} bracket game{'s' if bracket.shape[0] != 1 else ''}</em>
+            </div>
+            <div class="sbc-history-bracket-scroll">{''.join(columns)}</div>
+        </section>
+    """)
+
+
+def render_ist_conference_history_panel(selected_year, selected_period, conference):
+    grouped = ist_group_tables(selected_year, selected_period)
+    sections = []
+    for group_name in [f"{conference} A", f"{conference} B", f"{conference} C"]:
+        table = grouped.get(group_name)
+        if table is None or table.empty:
+            continue
+        rows = []
+        for idx, row in table.iterrows():
+            tier = {"winner": "playoff", "wildcard": "playin"}.get(row.get("Tier", "out"), "lottery")
+            rows.append(f"""
+                <tr class="sbc-standings-{tier}">
+                    <td class="sbc-standings-rank"><span>{idx + 1}</span></td>
+                    <td class="sbc-standings-team">
+                        <img src="{escape(str(row.get("Logo", "")), quote=True)}" alt="{escape(str(row.get("FullTeam", "")), quote=True)} logo">
+                        <strong>{escape(str(row.get("FullTeam", "")))}</strong>
+                    </td>
+                    <td>{escape(str(row.get("Record", "")))}</td>
+                    <td>{escape(str(row.get("PointDiffDisplay", "")))}</td>
+                </tr>
+            """)
+        sections.append(f'<tr class="sbc-standings-group-row"><td colspan="4">{escape(group_name)}</td></tr>{"".join(rows)}')
+    if not sections:
+        render_html(f'<div class="sbc-empty-state">No {escape(conference)} tournament standings are available for this year.</div>')
+        return
+    render_html(f"""
+        <section class="sbc-standings-panel">
+            <div class="sbc-standings-head">
+                <span>{escape(conference)} Groups</span>
+                <em>{escape(str(selected_year))}</em>
+            </div>
+            <div class="sbc-standings-table-wrap">
+                <table class="sbc-standings-table sbc-ist-standings-table">
+                    <thead><tr><th>Rank</th><th>Team</th><th>Record</th><th>Diff</th></tr></thead>
+                    <tbody>{''.join(sections)}</tbody>
+                </table>
+            </div>
+        </section>
+    """)
+
+
+def render_under_construction(title, body):
+    render_html(f"""
+        <section class="sbc-under-construction">
+            <div class="sbc-under-icon">...</div>
+            <div>
+                <strong>{escape(title)}</strong>
+                <span>{escape(body)}</span>
+            </div>
+        </section>
+    """)
+
 st.markdown(
     f"""
     <style>
@@ -5774,6 +5938,211 @@ st.markdown(
 
     .sbc-score-winner b {{
         color: var(--sbc-ink);
+    }}
+
+    .sbc-history-layout {{
+        display: grid;
+        grid-template-columns: minmax(18rem, 0.95fr) minmax(28rem, 1.65fr) minmax(18rem, 0.95fr);
+        gap: 0.9rem;
+        align-items: start;
+        margin: 0.5rem 0 1.2rem;
+    }}
+
+    .sbc-history-bracket-panel {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 24%, rgba(23, 32, 42, 0.12));
+        border-radius: 8px;
+        background: rgba(255,255,255,0.96);
+        box-shadow: 0 16px 38px rgba(18, 25, 38, 0.085);
+    }}
+
+    .sbc-history-bracket-head {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        background: linear-gradient(90deg, {LEAGUE_PRIMARY}, color-mix(in srgb, {LEAGUE_PRIMARY} 72%, {LEAGUE_SECONDARY}));
+        color: #ffffff;
+        padding: 0.75rem 0.85rem;
+    }}
+
+    .sbc-history-bracket-head span {{
+        font-size: 1.02rem;
+        font-weight: 950;
+    }}
+
+    .sbc-history-bracket-head em {{
+        color: rgba(255,255,255,0.78);
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-history-bracket-scroll {{
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(13.5rem, 1fr);
+        gap: 0.7rem;
+        overflow-x: auto;
+        padding: 0.75rem;
+    }}
+
+    .sbc-history-bracket-round {{
+        display: grid;
+        align-content: start;
+        gap: 0.55rem;
+        min-width: 0;
+    }}
+
+    .sbc-history-bracket-round-head {{
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        min-height: 2.2rem;
+        align-items: center;
+        border-radius: 8px;
+        background: color-mix(in srgb, {LEAGUE_PRIMARY} 9%, #ffffff);
+        color: {LEAGUE_PRIMARY};
+        padding: 0.45rem 0.55rem;
+    }}
+
+    .sbc-history-bracket-round-head span,
+    .sbc-history-bracket-round-head em {{
+        overflow: hidden;
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.05em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-history-bracket-games {{
+        display: grid;
+        gap: 0.48rem;
+    }}
+
+    .sbc-history-game-card {{
+        overflow: hidden;
+        border: 1px solid rgba(23, 32, 42, 0.1);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 8px 18px rgba(18,25,38,0.055);
+    }}
+
+    .sbc-history-game-top {{
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        background: #111827;
+        color: #ffffff;
+        padding: 0.38rem 0.5rem;
+    }}
+
+    .sbc-history-game-top span,
+    .sbc-history-game-top em {{
+        overflow: hidden;
+        font-size: 0.58rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-history-game-top em {{
+        color: rgba(255,255,255,0.66);
+    }}
+
+    .sbc-history-game-team {{
+        display: grid;
+        grid-template-columns: 1.85rem minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.46rem;
+        border-left: 0.28rem solid var(--history-team-color);
+        border-bottom: 1px solid rgba(23,32,42,0.07);
+        background: linear-gradient(90deg, color-mix(in srgb, var(--history-team-color) 8%, #ffffff), #ffffff 62%);
+        min-height: 3.2rem;
+        padding: 0.42rem 0.5rem 0.42rem 0.4rem;
+    }}
+
+    .sbc-history-game-team:last-child {{
+        border-bottom: none;
+    }}
+
+    .sbc-history-game-winner {{
+        background: linear-gradient(90deg, color-mix(in srgb, var(--history-team-color) 21%, #ffffff), #ffffff 64%);
+    }}
+
+    .sbc-history-game-team img {{
+        width: 1.8rem;
+        height: 1.8rem;
+        object-fit: contain;
+    }}
+
+    .sbc-history-game-team strong {{
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.74rem;
+        font-weight: 950;
+        line-height: 1.08;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-history-game-team b {{
+        color: var(--sbc-ink);
+        font-size: 1.05rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-under-construction {{
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 0.8rem;
+        border: 1px solid color-mix(in srgb, {LEAGUE_SECONDARY} 24%, rgba(23, 32, 42, 0.12));
+        border-left: 0.4rem solid {LEAGUE_SECONDARY};
+        border-radius: 8px;
+        background: color-mix(in srgb, {LEAGUE_SECONDARY} 7%, #ffffff);
+        box-shadow: 0 12px 28px rgba(18,25,38,0.065);
+        margin: 0.5rem 0 1rem;
+        padding: 0.85rem 0.95rem;
+    }}
+
+    .sbc-under-icon {{
+        display: grid;
+        place-items: center;
+        width: 2.4rem;
+        height: 2.4rem;
+        border-radius: 999px;
+        background: {LEAGUE_SECONDARY};
+        color: #ffffff;
+        font-weight: 950;
+        letter-spacing: 0.03em;
+    }}
+
+    .sbc-under-construction strong,
+    .sbc-under-construction span {{
+        display: block;
+    }}
+
+    .sbc-under-construction strong {{
+        color: var(--sbc-ink);
+        font-size: 0.98rem;
+        font-weight: 950;
+    }}
+
+    .sbc-under-construction span {{
+        color: var(--sbc-muted);
+        font-size: 0.84rem;
+        font-weight: 800;
     }}
 
     .sbc-standings-layout {{
@@ -7785,19 +8154,30 @@ with team_hub_tab:
         render_html('<div class="sbc-picker-eyebrow">Team View</div>')
         st.selectbox("Choose your team", Teams, key="_sbc_selected_team")
 
-    tab1, tab2, tab3, tab4 = st.tabs([
-        f"💰 {SelectedTeam} Cap",
-        f"🏀 {SelectedTeam} Picks",
-        f"📊 {SelectedTeam} Live",
-        f"🗓️ {SelectedTeam} Schedule"])
+    tab1, tab2, tab3, tab4, team_history_tab = st.tabs([
+        f"{SelectedTeam} Cap",
+        f"{SelectedTeam} Picks",
+        f"{SelectedTeam} Live",
+        f"{SelectedTeam} Schedule",
+        f"{SelectedTeam} History"])
 
 with league_hub_tab:
-    tab8, tab5, standings_tab, tab6, tab7 = st.tabs([
-        "🏆 Overview",
-        "🏟️ Scoreboard",
-        "📈 Standings",
-        "👥 Players",
-        "🎯 Draft Picks"])
+    tab8, tab5, standings_tab, tab6, tab7, league_history_tab = st.tabs([
+        "Overview",
+        "Scoreboard",
+        "Standings",
+        "Players",
+        "Draft Picks",
+        "History"])
+
+    with league_history_tab:
+        league_history_scoreboard_tab, league_history_playoffs_tab, league_history_ist_tab, league_history_player_stats_tab, league_history_awards_tab, league_history_draft_tab = st.tabs([
+            "Scoreboard",
+            "Playoff Bracket",
+            "In-Season Tournament",
+            "Player Stats",
+            "Awards",
+            "Draft History"])
 
 with tab1:
     _legacy_tab1 = r'''
@@ -8295,6 +8675,24 @@ with tab4:
         st.metric(label="Total Flights", value=num_flights, help="Number of flights taken this season (legs with distance > 0).", border=True)
     render_team_travel_map(schedule_raw, SelectedTeam, SelectedScheduleYear)
 
+with team_history_tab:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-team-branded">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">Franchise Archive</div>
+                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} History</div>
+                    <div class="sbc-draft-subcopy">A future home for franchise records, season finishes, postseason paths, award winners, and draft memories.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    render_under_construction(
+        f"{SelectedTeam} History is under construction",
+        "This tab is parked here now so the Team Hub has a clean place for franchise archive work later."
+    )
+
 with tab5:
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
@@ -8308,9 +8706,9 @@ with tab5:
             </div>
         </div>
         """)
-    SelectedYear2 = st.selectbox("Select Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
+    SelectedYear2 = current_year
     period_options2 = schedule_period_options(all_time_schedule, SelectedYear2)
-    SelectedPeriod2 = st.selectbox("Select Period", options=period_options2, index=current_period_index(period_options2))
+    SelectedPeriod2 = st.selectbox("Select Period", options=period_options2, index=current_period_index(period_options2), key="league_current_scoreboard_period")
 
     scoreboard_schedule = all_time_schedule[
         (all_time_schedule["Year"] == SelectedYear2)
@@ -8325,6 +8723,113 @@ with tab5:
 
     render_html('<div class="sbc-section-label">All Scores</div>')
     render_scoreboard_cards(live_stats_total_scores)
+
+with league_history_scoreboard_tab:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">League History</div>
+                    <div class="sbc-draft-heading">Historical Scoreboard</div>
+                    <div class="sbc-draft-subcopy">Look up any saved matchup window across regular season, Cup, play-in, and playoff records.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    history_years = schedule_year_options_for_history()
+    default_history_year = current_year if current_year in history_years else history_years[-1]
+    HistoryScoreYear = st.selectbox("History Year", options=history_years, index=history_years.index(default_history_year), key="league_history_scoreboard_year")
+    history_period_options = schedule_period_options(all_time_schedule, HistoryScoreYear)
+    HistoryScorePeriod = st.selectbox("History Period", options=history_period_options, index=current_period_index(history_period_options), key="league_history_scoreboard_period")
+    history_schedule = all_time_schedule[
+        (all_time_schedule["Year"] == HistoryScoreYear)
+        & (all_time_schedule["Period"] == HistoryScorePeriod)
+    ]
+    if history_schedule.empty:
+        history_scores = pd.DataFrame()
+    else:
+        with st.spinner("Loading historical matchups..."):
+            history_live_stats = get_matchup_stats(HistoryScoreYear, HistoryScorePeriod)
+            history_scores = get_weekly_scores_df(HistoryScoreYear, HistoryScorePeriod, all_time_schedule, history_live_stats, standings)
+    render_html('<div class="sbc-section-label">Historical Scores</div>')
+    render_scoreboard_cards(history_scores)
+
+with league_history_playoffs_tab:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">League History</div>
+                    <div class="sbc-draft-heading">Playoff Bracket</div>
+                    <div class="sbc-draft-subcopy">Final conference standings around an NBA-style play-in and playoff bracket built from saved game results.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    playoff_years = schedule_year_options_for_history()
+    default_playoff_year = current_year if current_year in playoff_years else playoff_years[-1]
+    PlayoffHistoryYear = st.selectbox("Playoff Year", options=playoff_years, index=playoff_years.index(default_playoff_year), key="league_history_playoff_year")
+    playoff_period = latest_period_for_year(PlayoffHistoryYear)
+    playoff_games = all_time_schedule[
+        (all_time_schedule["Year"] == PlayoffHistoryYear)
+        & (all_time_schedule["Type"].astype(str).isin(["Play-In", "Playoffs"]))
+    ].copy()
+    render_html('<div class="sbc-section-label">Playoff Picture</div>')
+    left_col, middle_col, right_col = st.columns([1.05, 1.65, 1.05])
+    with left_col:
+        render_conference_standings(standings, PlayoffHistoryYear, playoff_period, "West")
+    with middle_col:
+        render_history_bracket(playoff_games, f"{PlayoffHistoryYear} Play-In and Playoffs", "No play-in or playoff games are available for this year.")
+    with right_col:
+        render_conference_standings(standings, PlayoffHistoryYear, playoff_period, "East")
+
+with league_history_ist_tab:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">League History</div>
+                    <div class="sbc-draft-heading">In-Season Tournament</div>
+                    <div class="sbc-draft-subcopy">Cup group tables on the wings with knockout games in the middle.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    ist_years = schedule_year_options_for_history()
+    default_ist_year = current_year if current_year in ist_years else ist_years[-1]
+    ISTHistoryYear = st.selectbox("Tournament Year", options=ist_years, index=ist_years.index(default_ist_year), key="league_history_ist_year")
+    ist_period = latest_period_for_year(ISTHistoryYear)
+    ist_games = all_time_schedule[
+        (all_time_schedule["Year"] == ISTHistoryYear)
+        & (all_time_schedule["Type"].astype(str) == "In-Season Tournament")
+        & (~all_time_schedule["Round"].astype(str).str.contains("Group", case=False, na=False))
+    ].copy()
+    render_html('<div class="sbc-section-label">Cup Bracket</div>')
+    left_col, middle_col, right_col = st.columns([1.05, 1.65, 1.05])
+    with left_col:
+        render_ist_conference_history_panel(ISTHistoryYear, ist_period, "West")
+    with middle_col:
+        render_history_bracket(ist_games, f"{ISTHistoryYear} SBCFBL Cup Knockout", "No Cup knockout games are available for this year.")
+    with right_col:
+        render_ist_conference_history_panel(ISTHistoryYear, ist_period, "East")
+
+with league_history_player_stats_tab:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">League History</div>
+                    <div class="sbc-draft-heading">Player Stats</div>
+                    <div class="sbc-draft-subcopy">A future home for historical player leaderboards, season peaks, and postseason stat archives.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    render_under_construction("Player Stats are under construction", "The History tab is ready for this section when the stat archive design is next.")
 
 with standings_tab:
     render_html(f"""
@@ -8814,7 +9319,7 @@ with tab9:
     elif submitted:
         render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
 
-with tab10:
+with league_history_draft_tab:
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -9003,6 +9508,22 @@ with tab10:
     '''
 
 
+with tab10:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">Moved</div>
+                    <div class="sbc-draft-heading">Draft History</div>
+                    <div class="sbc-draft-subcopy">Historical draft boards now live in League Hub > History > Draft History.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    render_under_construction("Draft History moved to League History", "Use League Hub > History > Draft History for the full historical draft room.")
+
+
 def award_year_filter(table, year):
     if table is None or table.empty or "Year" not in table.columns:
         return pd.DataFrame()
@@ -9156,7 +9677,7 @@ def render_check_card(title, description, check_df):
             st.dataframe(check_df, width="stretch", hide_index=True)
 
 
-with tab11:
+with league_history_awards_tab:
     award_year_options = list(range(current_year, 2020, -1))
     award_year_tabs = st.tabs([str(year) for year in award_year_options])
     for award_tab, AwardYears in zip(award_year_tabs, award_year_options):
@@ -9402,6 +9923,21 @@ with tab11:
         st.dataframe(ECPOW, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     '''
+
+with tab11:
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">Moved</div>
+                    <div class="sbc-draft-heading">Awards</div>
+                    <div class="sbc-draft-subcopy">The awards gallery now lives in League Hub > History > Awards.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    render_under_construction("Awards moved to League History", "Use League Hub > History > Awards for champions, trophies, all-league teams, and recurring honors.")
 
 with tab12:
     render_html(f"""
