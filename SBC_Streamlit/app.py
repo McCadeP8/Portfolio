@@ -4315,6 +4315,129 @@ def render_history_bracket_matchup(row, seed_lookup):
     """
 
 
+def bracket_period_label(games):
+    if games is None or games.empty or "Period" not in games.columns:
+        return ""
+    periods = pd.to_numeric(games["Period"], errors="coerce").dropna().astype(int).tolist()
+    if not periods:
+        return ""
+    return f"P{min(periods)}" if min(periods) == max(periods) else f"P{min(periods)}-P{max(periods)}"
+
+
+def bracket_game_conference(row):
+    team_a = str(row.get("TeamA", ""))
+    team_b = str(row.get("TeamB", ""))
+    conf_a = team_info.get(team_a, {}).get("conf", "")
+    conf_b = team_info.get(team_b, {}).get("conf", "")
+    if conf_a and conf_a == conf_b:
+        return conf_a
+    return "Finals"
+
+
+def playoff_round_bucket(row):
+    type_name = str(row.get("Type", ""))
+    round_name = str(row.get("Round", "")).lower()
+    if type_name == "Play-In":
+        return "playin"
+    if bracket_game_conference(row) == "Finals":
+        return "finals"
+    if "quarter" in round_name or "first" in round_name:
+        return "first"
+    if "semi" in round_name:
+        return "semi"
+    if "final" in round_name or "champ" in round_name:
+        return "conf_final"
+    return "first"
+
+
+def render_bracket_empty(label="TBD"):
+    return f"""
+        <article class="sbc-bracket-matchup sbc-bracket-matchup-empty">
+            <div class="sbc-bracket-matchup-inner">
+                <div class="sbc-bracket-team"><span class="sbc-bracket-seed">-</span><strong>{escape(label)}</strong></div>
+                <div class="sbc-bracket-team"><span class="sbc-bracket-seed">-</span><strong>{escape(label)}</strong></div>
+            </div>
+        </article>
+    """
+
+
+def render_playoff_bracket_column(games, title, seed_lookup, minimum_slots=0):
+    if games is None:
+        games = pd.DataFrame()
+    games = games.copy()
+    if not games.empty:
+        games["_game_sort"] = pd.to_numeric(games.get("Game_ID", pd.Series(range(games.shape[0]))), errors="coerce").fillna(0)
+        games = games.sort_values(["Period", "_game_sort", "TeamA", "TeamB"])
+    cards = [render_history_bracket_matchup(row, seed_lookup) for _, row in games.iterrows()]
+    while len(cards) < minimum_slots:
+        cards.append(render_bracket_empty())
+    return f"""
+        <section class="sbc-nba-bracket-column">
+            <div class="sbc-nba-bracket-column-head">
+                <span>{escape(title)}</span>
+                <em>{escape(bracket_period_label(games))}</em>
+            </div>
+            <div class="sbc-bracket-games">{''.join(cards)}</div>
+        </section>
+    """
+
+
+def render_playoff_bracket(games, title, empty_text, seed_lookup=None):
+    if games is None or games.empty:
+        render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
+        return
+    seed_lookup = seed_lookup or {}
+    bracket = games.copy()
+    bracket["_bucket"] = bracket.apply(playoff_round_bucket, axis=1)
+    bracket["_conference"] = bracket.apply(bracket_game_conference, axis=1)
+    bracket["_game_sort"] = pd.to_numeric(bracket.get("Game_ID", pd.Series(range(bracket.shape[0]))), errors="coerce").fillna(0)
+    champion_game = bracket[bracket["_bucket"] == "finals"].sort_values(["Period", "_game_sort"], na_position="last").tail(1)
+    champion = history_game_winner(champion_game.iloc[0]) if not champion_game.empty else ""
+    champion_info = team_info.get(champion, {})
+    champion_logo = champion_info.get("logo", "")
+    champion_color = champion_info.get("bg", LEAGUE_PRIMARY)
+    champion_secondary = champion_info.get("bg2", LEAGUE_SECONDARY)
+    champion_html = f"""
+        <aside class="sbc-bracket-champion" style="--champion-color:{escape(str(champion_color), quote=True)};--champion-secondary:{escape(str(champion_secondary), quote=True)};">
+            <span>Champion</span>
+            {'<img src="' + escape(str(champion_logo), quote=True) + '" alt="' + escape(live_team_full_name(champion), quote=True) + ' logo">' if champion else ''}
+            <strong>{escape(live_team_full_name(champion)) if champion else 'TBD'}</strong>
+        </aside>
+    """
+
+    def conf_games(conference, bucket):
+        return bracket[(bracket["_conference"] == conference) & (bracket["_bucket"] == bucket)].copy()
+
+    finals_games = bracket[bracket["_bucket"] == "finals"].copy()
+    west_html = "".join([
+        render_playoff_bracket_column(conf_games("West", "playin"), "West Play-In", seed_lookup, minimum_slots=2),
+        render_playoff_bracket_column(conf_games("West", "first"), "West First Round", seed_lookup, minimum_slots=4),
+        render_playoff_bracket_column(conf_games("West", "semi"), "West Semifinals", seed_lookup, minimum_slots=2),
+        render_playoff_bracket_column(conf_games("West", "conf_final"), "West Final", seed_lookup, minimum_slots=1),
+    ])
+    east_html = "".join([
+        render_playoff_bracket_column(conf_games("East", "conf_final"), "East Final", seed_lookup, minimum_slots=1),
+        render_playoff_bracket_column(conf_games("East", "semi"), "East Semifinals", seed_lookup, minimum_slots=2),
+        render_playoff_bracket_column(conf_games("East", "first"), "East First Round", seed_lookup, minimum_slots=4),
+        render_playoff_bracket_column(conf_games("East", "playin"), "East Play-In", seed_lookup, minimum_slots=2),
+    ])
+    finals_html = render_playoff_bracket_column(finals_games, "Finals", seed_lookup, minimum_slots=1)
+
+    render_html(f"""
+        <section class="sbc-bracket-panel sbc-nba-bracket-panel">
+            <div class="sbc-bracket-head">
+                <span>{escape(title)}</span>
+                <em>NBA-style path</em>
+            </div>
+            <div class="sbc-nba-bracket">
+                <div class="sbc-nba-bracket-side sbc-nba-bracket-west">{west_html}</div>
+                <div class="sbc-nba-bracket-center">{finals_html}{champion_html}</div>
+                <div class="sbc-nba-bracket-side sbc-nba-bracket-east">{east_html}</div>
+            </div>
+        </section>
+    """)
+
+
 def render_history_bracket(games, title, empty_text, seed_lookup=None):
     if games is None or games.empty:
         render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
@@ -4420,6 +4543,78 @@ def render_ist_conference_history_panel(selected_year, selected_period, conferen
                     <thead><tr><th>Rank</th><th>Team</th><th>Record</th><th>Diff</th></tr></thead>
                     <tbody>{''.join(sections)}</tbody>
                 </table>
+            </div>
+        </section>
+    """)
+
+
+def ist_bracket_seed_lookup(selected_year, selected_period):
+    lookup = {}
+    grouped = ist_group_tables(selected_year, selected_period)
+    for conference in ["West", "East"]:
+        winners = []
+        wildcard = ""
+        for group_name in [f"{conference} A", f"{conference} B", f"{conference} C"]:
+            table = grouped.get(group_name)
+            if table is None or table.empty:
+                continue
+            winners.append(str(table.iloc[0].get("Team", "")))
+            wc_rows = table[table["Tier"].astype(str) == "wildcard"] if "Tier" in table.columns else pd.DataFrame()
+            if not wc_rows.empty:
+                wildcard = str(wc_rows.iloc[0].get("Team", ""))
+        for idx, team in enumerate(winners[:3], start=1):
+            if team:
+                lookup[team] = str(idx)
+        if wildcard:
+            lookup[wildcard] = "WC"
+    return lookup
+
+
+def render_ist_bracket(games, title, empty_text, seed_lookup=None):
+    if games is None or games.empty:
+        render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
+        return
+    seed_lookup = seed_lookup or {}
+    bracket = games.copy()
+    bracket["_conference"] = bracket.apply(bracket_game_conference, axis=1)
+    bracket["_round_sort"] = bracket["Round"].apply(history_round_rank)
+    bracket["_game_sort"] = pd.to_numeric(bracket.get("Game_ID", pd.Series(range(bracket.shape[0]))), errors="coerce").fillna(0)
+    bracket["_conf_sort"] = bracket["_conference"].map({"West": 0, "East": 1, "Finals": 2}).fillna(3)
+    bracket = bracket.sort_values(["_round_sort", "_conf_sort", "_game_sort", "TeamA", "TeamB"])
+    columns = []
+    for round_name, round_games in bracket.groupby("Round", sort=False, dropna=False):
+        west_games = round_games[round_games["_conference"] == "West"].copy()
+        east_games = round_games[round_games["_conference"] == "East"].copy()
+        finals_games = round_games[round_games["_conference"] == "Finals"].copy()
+        ordered_games = pd.concat([west_games, east_games, finals_games], ignore_index=True)
+        cards = "".join(render_history_bracket_matchup(row, seed_lookup) for _, row in ordered_games.iterrows())
+        columns.append(f"""
+            <section class="sbc-bracket-round sbc-ist-bracket-round">
+                <div class="sbc-bracket-round-head">
+                    <span>{escape(str(clean_pick_display(round_name)))}</span>
+                    <em>{escape(bracket_period_label(ordered_games))}</em>
+                </div>
+                <div class="sbc-bracket-games">{cards}</div>
+            </section>
+        """)
+    champion = history_game_winner(bracket.iloc[-1]) if not bracket.empty else ""
+    champion_info = team_info.get(champion, {})
+    champion_logo = champion_info.get("logo", "")
+    champion_color = champion_info.get("bg", LEAGUE_PRIMARY)
+    champion_secondary = champion_info.get("bg2", LEAGUE_SECONDARY)
+    render_html(f"""
+        <section class="sbc-bracket-panel sbc-ist-bracket-panel">
+            <div class="sbc-bracket-head">
+                <span>{escape(title)}</span>
+                <em>West top / East bottom</em>
+            </div>
+            <div class="sbc-ist-bracket-stage">
+                <div class="sbc-ist-bracket-flow">{''.join(columns)}</div>
+                <aside class="sbc-bracket-champion" style="--champion-color:{escape(str(champion_color), quote=True)};--champion-secondary:{escape(str(champion_secondary), quote=True)};">
+                    <span>Cup Winner</span>
+                    {'<img src="' + escape(str(champion_logo), quote=True) + '" alt="' + escape(live_team_full_name(champion), quote=True) + ' logo">' if champion else ''}
+                    <strong>{escape(live_team_full_name(champion)) if champion else 'TBD'}</strong>
+                </aside>
             </div>
         </section>
     """)
@@ -6443,6 +6638,182 @@ st.markdown(
 
         .sbc-bracket-champion {{
             min-height: 12rem;
+        }}
+    }}
+
+    .sbc-nba-bracket {{
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.22fr) minmax(0, 1fr);
+        gap: 0.85rem;
+        align-items: center;
+        padding: 0.9rem;
+    }}
+
+    .sbc-nba-bracket-side {{
+        display: grid;
+        grid-template-columns: repeat(4, minmax(8.8rem, 1fr));
+        gap: 0.72rem;
+        align-items: center;
+        min-width: 0;
+    }}
+
+    .sbc-nba-bracket-center {{
+        display: grid;
+        gap: 0.7rem;
+        align-items: center;
+        min-width: 0;
+    }}
+
+    .sbc-nba-bracket .sbc-nba-bracket-column {{
+        position: relative;
+        display: grid;
+        align-content: center;
+        gap: 0.55rem;
+        min-width: 0;
+    }}
+
+    .sbc-nba-bracket .sbc-nba-bracket-column:not(:last-child)::after {{
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: -0.62rem;
+        width: 0.62rem;
+        height: 2px;
+        background: rgba(255,255,255,0.7);
+        box-shadow: 0 0 0 1px color-mix(in srgb, {LEAGUE_SECONDARY} 50%, transparent);
+    }}
+
+    .sbc-nba-bracket-east .sbc-nba-bracket-column:not(:last-child)::after {{
+        right: auto;
+        left: -0.62rem;
+        box-shadow: 0 0 0 1px color-mix(in srgb, {LEAGUE_PRIMARY} 50%, transparent);
+    }}
+
+    .sbc-nba-bracket-column-head {{
+        display: grid;
+        gap: 0.1rem;
+        min-height: 2.2rem;
+        align-content: center;
+        border-radius: 6px;
+        background: rgba(17,24,39,0.92);
+        color: #ffffff;
+        padding: 0.42rem 0.5rem;
+        text-align: center;
+    }}
+
+    .sbc-nba-bracket-column-head span,
+    .sbc-nba-bracket-column-head em {{
+        overflow: hidden;
+        font-size: 0.58rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.05em;
+        line-height: 1;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-nba-bracket-column-head em {{
+        color: rgba(255,255,255,0.68);
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-games {{
+        gap: 0.42rem;
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-matchup {{
+        box-shadow: 0 7px 16px rgba(18,25,38,0.07);
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-matchup::after,
+    .sbc-ist-bracket-panel .sbc-bracket-matchup::after {{
+        right: -0.42rem;
+        width: 0.42rem;
+    }}
+
+    .sbc-nba-bracket-east .sbc-bracket-matchup::after {{
+        right: auto;
+        left: -0.42rem;
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-team,
+    .sbc-ist-bracket-panel .sbc-bracket-team {{
+        grid-template-columns: 1.35rem 1.72rem minmax(0, 1fr);
+        gap: 0.3rem;
+        min-height: 2.45rem;
+        padding: 0.3rem 0.4rem 0.3rem 0.28rem;
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-seed,
+    .sbc-ist-bracket-panel .sbc-bracket-seed {{
+        width: 1.16rem;
+        height: 1.16rem;
+        font-size: 0.58rem;
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-team img,
+    .sbc-ist-bracket-panel .sbc-bracket-team img {{
+        width: 1.65rem;
+        height: 1.65rem;
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-team strong,
+    .sbc-ist-bracket-panel .sbc-bracket-team strong {{
+        font-size: 0.76rem;
+        letter-spacing: 0.02em;
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-champion {{
+        min-height: 13rem;
+    }}
+
+    .sbc-ist-bracket-stage {{
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.2fr);
+        gap: 0.8rem;
+        align-items: center;
+        padding: 0.9rem;
+    }}
+
+    .sbc-ist-bracket-flow {{
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(10rem, 1fr);
+        gap: 0.8rem;
+        overflow-x: auto;
+        padding: 0.2rem 0.3rem 0.75rem 0.1rem;
+    }}
+
+    .sbc-ist-bracket-round {{
+        position: relative;
+        display: grid;
+        align-content: center;
+        gap: 0.55rem;
+    }}
+
+    .sbc-ist-bracket-round:not(:last-child)::after {{
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: -0.62rem;
+        width: 0.62rem;
+        height: 2px;
+        background: linear-gradient(90deg, color-mix(in srgb, {LEAGUE_SECONDARY} 55%, transparent), color-mix(in srgb, {LEAGUE_PRIMARY} 55%, transparent));
+        transform: translateY(-50%);
+    }}
+
+    @media (max-width: 1150px) {{
+        .sbc-nba-bracket {{
+            grid-template-columns: 1fr;
+        }}
+
+        .sbc-nba-bracket-side {{
+            grid-template-columns: repeat(2, minmax(9rem, 1fr));
+        }}
+
+        .sbc-ist-bracket-stage {{
+            grid-template-columns: 1fr;
         }}
     }}
 
@@ -9134,7 +9505,7 @@ with league_history_playoffs_tab:
     ].copy()
     playoff_seed_lookup = bracket_seed_lookup(standings, PlayoffHistoryYear, playoff_period)
     render_html('<div class="sbc-section-label">Playoff Bracket</div>')
-    render_history_bracket(playoff_games, f"{PlayoffHistoryYear} Play-In and Playoffs", "No play-in or playoff games are available for this year.", seed_lookup=playoff_seed_lookup)
+    render_playoff_bracket(playoff_games, f"{PlayoffHistoryYear} Play-In and Playoffs", "No play-in or playoff games are available for this year.", seed_lookup=playoff_seed_lookup)
     render_html('<div class="sbc-section-label">Final Standings Snapshot</div>')
     west_col, east_col = st.columns(2)
     with west_col:
@@ -9164,9 +9535,9 @@ with league_history_ist_tab:
         & (all_time_schedule["Type"].astype(str) == "In-Season Tournament")
         & (~all_time_schedule["Round"].astype(str).str.contains("Group", case=False, na=False))
     ].copy()
-    ist_seed_lookup = bracket_seed_lookup(standings, ISTHistoryYear, ist_period)
+    ist_seed_lookup = ist_bracket_seed_lookup(ISTHistoryYear, ist_period)
     render_html('<div class="sbc-section-label">Cup Bracket</div>')
-    render_history_bracket(ist_games, f"{ISTHistoryYear} SBCFBL Cup Knockout", "No Cup knockout games are available for this year.", seed_lookup=ist_seed_lookup)
+    render_ist_bracket(ist_games, f"{ISTHistoryYear} SBCFBL Cup Knockout", "No Cup knockout games are available for this year.", seed_lookup=ist_seed_lookup)
     render_html('<div class="sbc-section-label">Cup Group Standings</div>')
     west_col, east_col = st.columns(2)
     with west_col:
