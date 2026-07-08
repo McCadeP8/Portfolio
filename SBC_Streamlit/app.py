@@ -4103,7 +4103,7 @@ def render_conference_standings(standings_df, selected_year, selected_period, co
         """)
 
     render_html(f"""
-        <section class="sbc-standings-panel">
+        <section class="sbc-standings-panel sbc-standings-{escape(str(conference).lower())}">
             <div class="sbc-standings-head">
                 <span>{escape(conference)} Conference</span>
                 <em>Through Period {escape(str(selected_period))}</em>
@@ -4160,7 +4160,7 @@ def render_ist_standings(standings_df, selected_year, selected_period):
         if not sections:
             continue
         panels.append(f"""
-            <section class="sbc-standings-panel">
+            <section class="sbc-standings-panel sbc-standings-{escape(str(conference).lower())}">
                 <div class="sbc-standings-head">
                     <span>{conference} Groups</span>
                     <em>Through Period {escape(str(selected_period))}</em>
@@ -4230,6 +4230,39 @@ def history_game_winner(row):
     return row.get("TeamA", "") if score_a >= score_b else row.get("TeamB", "")
 
 
+def history_team_seed(team, seed_lookup):
+    seed = seed_lookup.get(str(team), "")
+    if is_blank_value(seed):
+        return "-"
+    return str(seed)
+
+
+def bracket_seed_lookup(standings_df, selected_year, selected_period):
+    lookup = {}
+    for conference in ["West", "East"]:
+        table = standings_snapshot(standings_df, selected_year, selected_period, conference)
+        for idx, row in table.iterrows():
+            lookup[str(row.get("Team", ""))] = idx + 1
+    return lookup
+
+
+def render_history_bracket_team(team, winner, seed_lookup):
+    team = clean_pick_display(team)
+    info = team_info.get(team, {})
+    logo = info.get("logo", "")
+    color = info.get("bg", LEAGUE_PRIMARY)
+    secondary = info.get("bg2", LEAGUE_SECONDARY)
+    is_winner = team == winner
+    return f"""
+        <div class="sbc-bracket-team {'sbc-bracket-team-winner' if is_winner else ''}" style="--bracket-team-color:{escape(str(color), quote=True)};--bracket-team-secondary:{escape(str(secondary), quote=True)};">
+            <span class="sbc-bracket-seed">{escape(history_team_seed(team, seed_lookup))}</span>
+            <img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
+            <strong>{escape(live_team_full_name(team))}</strong>
+            <span class="sbc-bracket-advance">{'ADV' if is_winner else ''}</span>
+        </div>
+    """
+
+
 def render_history_matchup_card(row):
     team_a = clean_pick_display(row.get("TeamA", ""))
     team_b = clean_pick_display(row.get("TeamB", ""))
@@ -4260,10 +4293,33 @@ def render_history_matchup_card(row):
     """
 
 
-def render_history_bracket(games, title, empty_text):
+def render_history_bracket_matchup(row, seed_lookup):
+    team_a = clean_pick_display(row.get("TeamA", ""))
+    team_b = clean_pick_display(row.get("TeamB", ""))
+    winner = history_game_winner(row)
+    winner_info = team_info.get(winner, {})
+    winner_logo = winner_info.get("logo", "")
+    winner_color = winner_info.get("bg", LEAGUE_PRIMARY)
+    return f"""
+        <article class="sbc-bracket-matchup" style="--bracket-winner-color:{escape(str(winner_color), quote=True)};">
+            <div class="sbc-bracket-matchup-inner">
+                {render_history_bracket_team(team_a, winner, seed_lookup)}
+                {render_history_bracket_team(team_b, winner, seed_lookup)}
+            </div>
+            <div class="sbc-bracket-winner">
+                <span>Advancing</span>
+                {'<img src="' + escape(str(winner_logo), quote=True) + '" alt="' + escape(live_team_full_name(winner), quote=True) + ' logo">' if winner else ''}
+                <strong>{escape(live_team_full_name(winner)) if winner else 'TBD'}</strong>
+            </div>
+        </article>
+    """
+
+
+def render_history_bracket(games, title, empty_text, seed_lookup=None):
     if games is None or games.empty:
         render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
         return
+    seed_lookup = seed_lookup or {}
     bracket = games.copy()
     bracket["_type_sort"] = bracket["Type"].map({"Play-In": 0, "Playoffs": 1, "In-Season Tournament": 0}).fillna(9)
     bracket["_round_sort"] = bracket["Round"].apply(history_round_rank)
@@ -4275,24 +4331,42 @@ def render_history_bracket(games, title, empty_text):
         round_label = clean_pick_display(round_name)
         if str(type_name) == "Play-In" and "play" not in str(round_label).lower():
             round_label = f"Play-In - {round_label}"
-        cards = "".join(render_history_matchup_card(row) for _, row in round_games.iterrows())
+        cards = "".join(render_history_bracket_matchup(row, seed_lookup) for _, row in round_games.iterrows())
         columns.append(f"""
-            <section class="sbc-history-bracket-round">
-                <div class="sbc-history-bracket-round-head">
+            <section class="sbc-bracket-round">
+                <div class="sbc-bracket-round-head">
                     <span>{escape(str(round_label))}</span>
                     <em>{round_games.shape[0]} game{'s' if round_games.shape[0] != 1 else ''}</em>
                 </div>
-                <div class="sbc-history-bracket-games">{cards}</div>
+                <div class="sbc-bracket-games">{cards}</div>
             </section>
         """)
 
+    champion = history_game_winner(bracket.iloc[-1]) if not bracket.empty else ""
+    champion_info = team_info.get(champion, {})
+    champion_logo = champion_info.get("logo", "")
+    champion_color = champion_info.get("bg", LEAGUE_PRIMARY)
+    champion_secondary = champion_info.get("bg2", LEAGUE_SECONDARY)
+    champion_html = ""
+    if champion:
+        champion_html = f"""
+            <aside class="sbc-bracket-champion" style="--champion-color:{escape(str(champion_color), quote=True)};--champion-secondary:{escape(str(champion_secondary), quote=True)};">
+                <span>Champion Crowned</span>
+                <img src="{escape(str(champion_logo), quote=True)}" alt="{escape(live_team_full_name(champion), quote=True)} logo">
+                <strong>{escape(live_team_full_name(champion))}</strong>
+            </aside>
+        """
+
     render_html(f"""
-        <section class="sbc-history-bracket-panel">
-            <div class="sbc-history-bracket-head">
+        <section class="sbc-bracket-panel">
+            <div class="sbc-bracket-head">
                 <span>{escape(title)}</span>
-                <em>{bracket.shape[0]} bracket game{'s' if bracket.shape[0] != 1 else ''}</em>
+                <em>{bracket.shape[0]} game path</em>
             </div>
-            <div class="sbc-history-bracket-scroll">{''.join(columns)}</div>
+            <div class="sbc-bracket-stage">
+                <div class="sbc-bracket-scroll">{''.join(columns)}</div>
+                {champion_html}
+            </div>
         </section>
     """)
 
@@ -4323,7 +4397,7 @@ def render_ist_conference_history_panel(selected_year, selected_period, conferen
         render_html(f'<div class="sbc-empty-state">No {escape(conference)} tournament standings are available for this year.</div>')
         return
     render_html(f"""
-        <section class="sbc-standings-panel">
+        <section class="sbc-standings-panel sbc-standings-{escape(str(conference).lower())}">
             <div class="sbc-standings-head">
                 <span>{escape(conference)} Groups</span>
                 <em>{escape(str(selected_year))}</em>
@@ -6102,6 +6176,277 @@ st.markdown(
         font-variant-numeric: tabular-nums;
     }}
 
+    .sbc-bracket-panel {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 28%, rgba(23, 32, 42, 0.12));
+        border-radius: 8px;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, {LEAGUE_PRIMARY} 8%, #ffffff), #ffffff 42%, color-mix(in srgb, {LEAGUE_SECONDARY} 7%, #ffffff));
+        box-shadow: 0 18px 44px rgba(18,25,38,0.095);
+        margin: 0.45rem 0 1.15rem;
+    }}
+
+    .sbc-bracket-head {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        background: linear-gradient(90deg, {LEAGUE_PRIMARY}, color-mix(in srgb, {LEAGUE_PRIMARY} 65%, {LEAGUE_SECONDARY}));
+        color: #ffffff;
+        padding: 0.85rem 1rem;
+    }}
+
+    .sbc-bracket-head span {{
+        font-size: 1.15rem;
+        font-weight: 950;
+        line-height: 1.05;
+    }}
+
+    .sbc-bracket-head em {{
+        color: rgba(255,255,255,0.74);
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-bracket-stage {{
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.28fr);
+        gap: 0.85rem;
+        padding: 0.9rem;
+    }}
+
+    .sbc-bracket-scroll {{
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(16rem, 1fr);
+        gap: 1.15rem;
+        overflow-x: auto;
+        padding: 0.2rem 0.35rem 0.75rem 0.1rem;
+    }}
+
+    .sbc-bracket-round {{
+        position: relative;
+        display: grid;
+        align-content: center;
+        gap: 0.85rem;
+        min-width: 0;
+    }}
+
+    .sbc-bracket-round:not(:last-child)::after {{
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: -0.85rem;
+        width: 0.85rem;
+        height: 2px;
+        background: linear-gradient(90deg, color-mix(in srgb, {LEAGUE_PRIMARY} 55%, transparent), color-mix(in srgb, {LEAGUE_SECONDARY} 70%, transparent));
+        transform: translateY(-50%);
+    }}
+
+    .sbc-bracket-round-head {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 2.45rem;
+        border-radius: 8px;
+        background: rgba(17,24,39,0.92);
+        color: #ffffff;
+        padding: 0.5rem 0.65rem;
+    }}
+
+    .sbc-bracket-round-head span,
+    .sbc-bracket-round-head em {{
+        overflow: hidden;
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-bracket-round-head em {{
+        color: rgba(255,255,255,0.7);
+    }}
+
+    .sbc-bracket-games {{
+        display: grid;
+        gap: 0.7rem;
+    }}
+
+    .sbc-bracket-matchup {{
+        position: relative;
+        border: 1px solid rgba(23,32,42,0.11);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 10px 24px rgba(18,25,38,0.075);
+    }}
+
+    .sbc-bracket-matchup::after {{
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: -0.58rem;
+        width: 0.58rem;
+        height: 2px;
+        background: color-mix(in srgb, var(--bracket-winner-color) 68%, rgba(23,32,42,0.12));
+    }}
+
+    .sbc-bracket-matchup-inner {{
+        overflow: hidden;
+        border-radius: 8px 8px 0 0;
+    }}
+
+    .sbc-bracket-team {{
+        display: grid;
+        grid-template-columns: 2rem 2.45rem minmax(0, 1fr) 2.2rem;
+        align-items: center;
+        gap: 0.52rem;
+        min-height: 3.9rem;
+        border-left: 0.35rem solid var(--bracket-team-color);
+        border-bottom: 1px solid rgba(23,32,42,0.07);
+        background: linear-gradient(90deg, color-mix(in srgb, var(--bracket-team-color) 8%, #ffffff), #ffffff 64%);
+        padding: 0.52rem 0.62rem 0.52rem 0.48rem;
+    }}
+
+    .sbc-bracket-team:last-child {{
+        border-bottom: none;
+    }}
+
+    .sbc-bracket-team-winner {{
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--bracket-team-color) 26%, #ffffff), #ffffff 62%),
+            linear-gradient(135deg, color-mix(in srgb, var(--bracket-team-secondary) 12%, transparent), transparent);
+    }}
+
+    .sbc-bracket-seed {{
+        display: grid;
+        place-items: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 999px;
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.72rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-bracket-team img {{
+        width: 2.35rem;
+        height: 2.35rem;
+        object-fit: contain;
+        filter: drop-shadow(0 6px 10px rgba(18,25,38,0.13));
+    }}
+
+    .sbc-bracket-team strong {{
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.86rem;
+        font-weight: 950;
+        line-height: 1.06;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-bracket-advance {{
+        color: color-mix(in srgb, var(--bracket-team-color) 80%, #111827);
+        font-size: 0.64rem;
+        font-weight: 950;
+        letter-spacing: 0.05em;
+        text-align: right;
+    }}
+
+    .sbc-bracket-winner {{
+        display: grid;
+        grid-template-columns: auto 1.8rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.45rem;
+        border-top: 1px solid rgba(23,32,42,0.08);
+        background: color-mix(in srgb, var(--bracket-winner-color) 12%, #ffffff);
+        color: color-mix(in srgb, var(--bracket-winner-color) 80%, #111827);
+        padding: 0.42rem 0.58rem;
+    }}
+
+    .sbc-bracket-winner span {{
+        font-size: 0.58rem;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-bracket-winner img {{
+        width: 1.65rem;
+        height: 1.65rem;
+        object-fit: contain;
+    }}
+
+    .sbc-bracket-winner strong {{
+        overflow: hidden;
+        color: inherit;
+        font-size: 0.72rem;
+        font-weight: 950;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-bracket-champion {{
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        gap: 0.55rem;
+        min-height: 100%;
+        border: 1px solid color-mix(in srgb, var(--champion-color) 34%, rgba(23,32,42,0.12));
+        border-radius: 8px;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--champion-color) 22%, #ffffff), color-mix(in srgb, var(--champion-secondary) 14%, #ffffff));
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65);
+        padding: 1rem;
+        text-align: center;
+    }}
+
+    .sbc-bracket-champion span {{
+        border-radius: 999px;
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.68rem;
+        font-weight: 950;
+        letter-spacing: 0.07em;
+        padding: 0.35rem 0.58rem;
+        text-transform: uppercase;
+    }}
+
+    .sbc-bracket-champion img {{
+        width: clamp(4.2rem, 8vw, 6.4rem);
+        height: clamp(4.2rem, 8vw, 6.4rem);
+        object-fit: contain;
+        filter: drop-shadow(0 12px 20px rgba(18,25,38,0.18));
+    }}
+
+    .sbc-bracket-champion strong {{
+        color: color-mix(in srgb, var(--champion-color) 78%, #111827);
+        font-size: clamp(1rem, 1.45vw, 1.45rem);
+        font-weight: 950;
+        line-height: 1.02;
+    }}
+
+    @media (max-width: 980px) {{
+        .sbc-bracket-stage {{
+            grid-template-columns: 1fr;
+        }}
+
+        .sbc-bracket-champion {{
+            min-height: 12rem;
+        }}
+    }}
+
     .sbc-under-construction {{
         display: grid;
         grid-template-columns: auto 1fr;
@@ -6154,10 +6499,22 @@ st.markdown(
 
     .sbc-standings-panel {{
         overflow: hidden;
-        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 22%, rgba(23, 32, 42, 0.12));
+        --standings-accent: var(--sbc-team-primary);
+        --standings-accent-2: var(--sbc-team-secondary);
+        border: 1px solid color-mix(in srgb, var(--standings-accent) 30%, rgba(23, 32, 42, 0.12));
         border-radius: 8px;
         background: #ffffff;
         box-shadow: 0 14px 34px rgba(18, 25, 38, 0.075);
+    }}
+
+    .sbc-standings-west {{
+        --standings-accent: {LEAGUE_SECONDARY};
+        --standings-accent-2: color-mix(in srgb, {LEAGUE_SECONDARY} 58%, #111827);
+    }}
+
+    .sbc-standings-east {{
+        --standings-accent: {LEAGUE_PRIMARY};
+        --standings-accent-2: color-mix(in srgb, {LEAGUE_PRIMARY} 70%, #111827);
     }}
 
     .sbc-standings-panel-wide {{
@@ -6170,7 +6527,7 @@ st.markdown(
         justify-content: space-between;
         gap: 0.8rem;
         border-bottom: 1px solid rgba(23, 32, 42, 0.08);
-        background: #111827;
+        background: linear-gradient(90deg, var(--standings-accent), var(--standings-accent-2));
         color: #ffffff;
         padding: 0.72rem 0.85rem;
     }}
@@ -6202,9 +6559,9 @@ st.markdown(
     }}
 
     .sbc-standings-table th {{
-        background: #f7f9fc;
+        background: color-mix(in srgb, var(--standings-accent) 13%, #ffffff);
         border-bottom: 1px solid rgba(23, 32, 42, 0.1);
-        color: var(--sbc-ink);
+        color: color-mix(in srgb, var(--standings-accent) 80%, #111827);
         font-size: 0.84rem;
         font-weight: 950;
         letter-spacing: 0.07em;
@@ -6240,7 +6597,7 @@ st.markdown(
 
     .sbc-standings-group-row td {{
         height: auto !important;
-        background: #111827 !important;
+        background: linear-gradient(90deg, var(--standings-accent), var(--standings-accent-2)) !important;
         color: #ffffff !important;
         font-size: 0.82rem !important;
         font-weight: 950 !important;
@@ -6251,7 +6608,7 @@ st.markdown(
     }}
 
     .sbc-standings-playoff td {{
-        background: color-mix(in srgb, #3f8f55 16%, #ffffff);
+        background: color-mix(in srgb, var(--standings-accent) 17%, #ffffff);
     }}
 
     .sbc-standings-playin td {{
@@ -6275,9 +6632,9 @@ st.markdown(
         height: 2.15rem;
         border-radius: 999px;
         background: #ffffff;
-        border: 1px solid rgba(23, 32, 42, 0.14);
+        border: 1px solid color-mix(in srgb, var(--standings-accent) 35%, rgba(23, 32, 42, 0.14));
         box-shadow: 0 4px 10px rgba(18, 25, 38, 0.08);
-        color: var(--sbc-ink);
+        color: color-mix(in srgb, var(--standings-accent) 78%, #111827);
         font-weight: 950;
     }}
 
@@ -8776,13 +9133,14 @@ with league_history_playoffs_tab:
         (all_time_schedule["Year"] == PlayoffHistoryYear)
         & (all_time_schedule["Type"].astype(str).isin(["Play-In", "Playoffs"]))
     ].copy()
-    render_html('<div class="sbc-section-label">Playoff Picture</div>')
-    left_col, middle_col, right_col = st.columns([1.05, 1.65, 1.05])
-    with left_col:
+    playoff_seed_lookup = bracket_seed_lookup(standings, PlayoffHistoryYear, playoff_period)
+    render_html('<div class="sbc-section-label">Playoff Bracket</div>')
+    render_history_bracket(playoff_games, f"{PlayoffHistoryYear} Play-In and Playoffs", "No play-in or playoff games are available for this year.", seed_lookup=playoff_seed_lookup)
+    render_html('<div class="sbc-section-label">Final Standings Snapshot</div>')
+    west_col, east_col = st.columns(2)
+    with west_col:
         render_conference_standings(standings, PlayoffHistoryYear, playoff_period, "West")
-    with middle_col:
-        render_history_bracket(playoff_games, f"{PlayoffHistoryYear} Play-In and Playoffs", "No play-in or playoff games are available for this year.")
-    with right_col:
+    with east_col:
         render_conference_standings(standings, PlayoffHistoryYear, playoff_period, "East")
 
 with league_history_ist_tab:
@@ -8807,13 +9165,14 @@ with league_history_ist_tab:
         & (all_time_schedule["Type"].astype(str) == "In-Season Tournament")
         & (~all_time_schedule["Round"].astype(str).str.contains("Group", case=False, na=False))
     ].copy()
+    ist_seed_lookup = bracket_seed_lookup(standings, ISTHistoryYear, ist_period)
     render_html('<div class="sbc-section-label">Cup Bracket</div>')
-    left_col, middle_col, right_col = st.columns([1.05, 1.65, 1.05])
-    with left_col:
+    render_history_bracket(ist_games, f"{ISTHistoryYear} SBCFBL Cup Knockout", "No Cup knockout games are available for this year.", seed_lookup=ist_seed_lookup)
+    render_html('<div class="sbc-section-label">Cup Group Standings</div>')
+    west_col, east_col = st.columns(2)
+    with west_col:
         render_ist_conference_history_panel(ISTHistoryYear, ist_period, "West")
-    with middle_col:
-        render_history_bracket(ist_games, f"{ISTHistoryYear} SBCFBL Cup Knockout", "No Cup knockout games are available for this year.")
-    with right_col:
+    with east_col:
         render_ist_conference_history_panel(ISTHistoryYear, ist_period, "East")
 
 with league_history_player_stats_tab:
