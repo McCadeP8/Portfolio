@@ -9013,13 +9013,11 @@ if selected_team_changed and SelectedTeam == "Honolulu":
 if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
 
-team_hub_tab, league_hub_tab, tab9, tab10, free_agency_tab, tab11, tab12, tab13 = st.tabs([
+team_hub_tab, league_hub_tab, tab9, free_agency_tab, tab12, tab13 = st.tabs([
     "🏢 Team Hub",
     "🏟️ League Hub",
     "🔁 Trade Machine",
-    "📚 Drafts",
     "🧾 Free Agency",
-    "⭐ Awards",
     "📖 About",
     "✅ Data Checks"])
 
@@ -9157,29 +9155,29 @@ with team_hub_tab:
         st.selectbox("Choose your team", Teams, key="_sbc_selected_team")
 
     tab1, tab2, tab3, tab4, team_history_tab = st.tabs([
-        f"{SelectedTeam} Cap",
-        f"{SelectedTeam} Picks",
-        f"{SelectedTeam} Live",
-        f"{SelectedTeam} Schedule",
-        f"{SelectedTeam} History"])
+        f"💰 {SelectedTeam} Cap",
+        f"📦 {SelectedTeam} Picks",
+        f"📡 {SelectedTeam} Live",
+        f"🗓️ {SelectedTeam} Schedule",
+        f"🏛️ {SelectedTeam} History"])
 
 with league_hub_tab:
     tab8, tab5, standings_tab, tab6, tab7, league_history_tab = st.tabs([
-        "Overview",
-        "Scoreboard",
-        "Standings",
-        "Players",
-        "Draft Picks",
-        "History"])
+        "🏠 Overview",
+        "📺 Scoreboard",
+        "📊 Standings",
+        "👥 Players",
+        "📦 Draft Picks",
+        "🏛️ History"])
 
     with league_history_tab:
         league_history_scoreboard_tab, league_history_playoffs_tab, league_history_ist_tab, league_history_player_stats_tab, league_history_awards_tab, league_history_draft_tab = st.tabs([
-            "Scoreboard",
-            "Playoff Bracket",
-            "In-Season Tournament",
-            "Player Stats",
-            "Awards",
-            "Draft History"])
+            "📺 Scoreboard",
+            "🏆 Playoff Bracket",
+            "🏅 In-Season Tournament",
+            "📈 Player Stats",
+            "⭐ Awards",
+            "📚 Draft History"])
 
 with tab1:
     _legacy_tab1 = r'''
@@ -10512,22 +10510,6 @@ with league_history_draft_tab:
     '''
 
 
-with tab10:
-    render_html(f"""
-        <div class="sbc-draft-hero sbc-league-hero">
-            <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
-                <div>
-                    <div class="sbc-draft-eyebrow">Moved</div>
-                    <div class="sbc-draft-heading">Draft History</div>
-                    <div class="sbc-draft-subcopy">Historical draft boards now live in League Hub > History > Draft History.</div>
-                </div>
-            </div>
-        </div>
-    """)
-    render_under_construction("Draft History moved to League History", "Use League Hub > History > Draft History for the full historical draft room.")
-
-
 def award_year_filter(table, year):
     if table is None or table.empty or "Year" not in table.columns:
         return pd.DataFrame()
@@ -10927,21 +10909,6 @@ with league_history_awards_tab:
         st.dataframe(ECPOW, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"logo": st.column_config.ImageColumn(label = "Team", width = "small"), "Picture_Online": st.column_config.ImageColumn(label = "", width = "small")})
 
     '''
-
-with tab11:
-    render_html(f"""
-        <div class="sbc-draft-hero sbc-league-hero">
-            <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
-                <div>
-                    <div class="sbc-draft-eyebrow">Moved</div>
-                    <div class="sbc-draft-heading">Awards</div>
-                    <div class="sbc-draft-subcopy">The awards gallery now lives in League Hub > History > Awards.</div>
-                </div>
-            </div>
-        </div>
-    """)
-    render_under_construction("Awards moved to League History", "Use League Hub > History > Awards for champions, trophies, all-league teams, and recurring honors.")
 
 with tab12:
     render_html(f"""
