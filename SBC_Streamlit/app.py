@@ -2324,6 +2324,11 @@ def team_from_logo(logo):
 
 
 def render_trade_team_mark(team):
+    owner_teams = team_names_from_list(team)
+    if len(owner_teams) > 1:
+        return render_team_logo_cluster(team)
+    if len(owner_teams) == 1:
+        team = owner_teams[0]
     if not team or team not in team_info:
         return '<span class="sbc-trade-ledger-muted">League</span>'
     visuals = team_visuals(team)
@@ -2335,7 +2340,60 @@ def render_trade_team_mark(team):
     )
 
 
-def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, picks_in, exceptions_out, exceptions_in, cash_out, cash_in, incoming_salary, outgoing_salary, salary_delta, cap_after, roster_after):
+def trade_pick_row_for_label(draft_picks, pick_label):
+    key = trade_pick_key_from_label(pick_label)
+    if key is None or draft_picks is None or draft_picks.empty:
+        return None
+    first_col = draft_picks["OGTeam"].astype(str).str.strip().eq(key[0])
+    year_col = pd.to_numeric(draft_picks["Year"], errors="coerce").fillna(-1).astype(int).eq(key[1])
+    round_col = draft_picks["Round"].astype(str).str.strip().eq(key[2])
+    matches = draft_picks[first_col & year_col & round_col]
+    if matches.empty:
+        return None
+    return matches.iloc[0]
+
+
+def trade_pick_owner_from_label(draft_picks, pick_label, fallback_team=""):
+    row = trade_pick_row_for_label(draft_picks, pick_label)
+    if row is None:
+        return fallback_team
+    owner_text = clean_pick_display(row.get("CurrentTeam", ""))
+    owners = team_names_from_list(owner_text)
+    return owner_text if owners else fallback_team
+
+
+def trade_pick_note_from_label(draft_picks, pick_label):
+    row = trade_pick_row_for_label(draft_picks, pick_label)
+    if row is None:
+        return ""
+    for col in ["Notes", "Explanation"]:
+        if col in row.index and not is_blank_value(row.get(col, "")):
+            return clean_pick_display(row.get(col, ""))
+    return ""
+
+
+def trade_commissioner_paragraph(trade_team, players_in, players_out, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien, apron):
+    overall_priority = {"block": 2, "watch": 1, "clear": 0}
+    overall_status = max([stepien["status"], apron["status"]], key=lambda item: overall_priority[item])
+    overall_label = {"clear": "Green", "watch": "Yellow", "block": "Red"}[overall_status]
+    status_word = {"clear": "approval-ready", "watch": "needs commissioner review", "block": "not approvable as submitted"}[overall_status]
+    player_out_text = ", ".join(players_out) if players_out else "no players"
+    player_in_text = ", ".join(players_in) if players_in else "no players"
+    pick_out_text = ", ".join(picks_out) if picks_out else "no picks"
+    pick_in_text = ", ".join(picks_in) if picks_in else "no picks"
+    exceptions_text = ", ".join(exceptions_out) if exceptions_out else "no exceptions"
+    return (
+        f"{live_team_full_name(trade_team)} proposes to send out {player_out_text} and {pick_out_text}, "
+        f"and receive {player_in_text} and {pick_in_text}. The trade changes team salary from "
+        f"{format_money(apron['tax_before'])} to {format_money(apron['tax_after'])}, with "
+        f"{format_money(apron['outgoing_salary'])} outgoing salary and {format_money(apron['incoming_salary'])} incoming salary. "
+        f"Roster count would be {roster_after}. Stepien review: {stepien['message']} "
+        f"Apron review: {' '.join(flag[2] for flag in apron['flags'])} Exceptions used: {exceptions_text}. "
+        f"Overall flag: {overall_label} ({status_word})."
+    )
+
+
+def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, picks_in, exceptions_out, exceptions_in, cash_out, cash_in, incoming_salary, outgoing_salary, salary_delta, cap_after, roster_after, stepien=None, apron=None):
     visuals = team_visuals(trade_team)
 
     def asset_row(asset_type, asset, team, amount="", detail=""):
@@ -2354,9 +2412,12 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
     incoming_rows = []
     outgoing_names = []
     incoming_names = []
+    player_out_names = []
+    player_in_names = []
     for _, row in players_out.iterrows():
         name = str(row.get("Player", ""))
         outgoing_names.append(name)
+        player_out_names.append(name)
         pic = row.get(" ", "")
         img = f'<img class="sbc-trade-player-img" src="{escape(str(pic), quote=True)}" alt="{escape(name, quote=True)}">' if not is_blank_value(pic) else '<span class="sbc-trade-player-img sbc-trade-player-empty"></span>'
         outgoing_rows.append(asset_row("Player", f'<span class="sbc-trade-player">{img}<strong>{escape(name)}</strong></span>', trade_team, format_money(row.get(str(current_year), "")), row.get("Bird Rights", "")))
@@ -2364,6 +2425,7 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
     for _, row in players_in.iterrows():
         name = str(row.get("Player", ""))
         incoming_names.append(name)
+        player_in_names.append(name)
         pic = row.get(" ", "")
         team = team_from_logo(row.get("Team_logo", ""))
         img = f'<img class="sbc-trade-player-img" src="{escape(str(pic), quote=True)}" alt="{escape(name, quote=True)}">' if not is_blank_value(pic) else '<span class="sbc-trade-player-img sbc-trade-player-empty"></span>'
@@ -2373,11 +2435,11 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
 
     for pick in picks_out:
         outgoing_names.append(str(pick))
-        outgoing_rows.append(asset_row("Draft Pick", escape(str(pick)), trade_team, "", "Pick asset"))
+        outgoing_rows.append(asset_row("Draft Pick", escape(str(pick)), trade_team, "", trade_pick_note_from_label(dp, pick)))
     for pick in picks_in:
-        pick_team = str(pick).split(" ")[0] if pick else ""
+        pick_team = trade_pick_owner_from_label(dp, pick)
         incoming_names.append(str(pick))
-        incoming_rows.append(asset_row("Draft Pick", escape(str(pick)), pick_team if pick_team in team_info else "", "", "Pick asset"))
+        incoming_rows.append(asset_row("Draft Pick", escape(str(pick)), pick_team, "", trade_pick_note_from_label(dp, pick)))
     for exception in exceptions_out:
         outgoing_names.append(str(exception))
         outgoing_rows.append(asset_row("Exception", escape(str(exception)), trade_team, "", "Exception used"))
@@ -2406,15 +2468,9 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
             return f"{clean[0]} and {clean[1]}"
         return f"{', '.join(clean[:-1])}, and {clean[-1]}"
 
-    roster_delta = roster_after - active_player_n(df, trade_team)
-    salary_phrase = "gain" if salary_delta > 0 else "savings" if salary_delta < 0 else "change"
-    roster_phrase = "gain" if roster_delta > 0 else "loss" if roster_delta < 0 else "change"
-    narrative = (
-        f"{live_team_full_name(trade_team)} is sending out {join_words(outgoing_names)} "
-        f"to acquire {join_words(incoming_names)}. The deal creates a net salary {salary_phrase} "
-        f"of {format_money(abs(salary_delta))}, moves the projected cap total to {format_money(cap_after)}, "
-        f"and results in a roster {roster_phrase} of {abs(roster_delta)} active player(s), leaving the roster at {roster_after}."
-    )
+    stepien = stepien or trade_stepien_review(dp, trade_team, picks_in, picks_out)
+    apron = apron or trade_apron_review(trade_team, player_in_names, player_out_names, exceptions_out, cash_out)
+    narrative = trade_commissioner_paragraph(trade_team, player_in_names, player_out_names, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien, apron)
 
     render_html(f"""
         <section class="sbc-trade-ledger sbc-trade-board" style="--trade-ledger-primary:{escape(str(visuals["primary"]), quote=True)};--trade-ledger-secondary:{escape(str(visuals["secondary"]), quote=True)};--trade-ledger-text:{escape(str(visuals["text"]), quote=True)};">
@@ -2594,55 +2650,6 @@ def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash
         "outgoing_salary": outgoing_salary,
         "existing_hard_cap": existing_hard_cap,
     }
-
-
-def render_trade_approval_receipt(trade_team, players_in, players_out, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien=None, apron=None):
-    stepien = stepien or trade_stepien_review(dp, trade_team, picks_in, picks_out)
-    apron = apron or trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash_out)
-    overall_priority = {"block": 2, "watch": 1, "clear": 0}
-    overall_status = max([stepien["status"], apron["status"]], key=lambda item: overall_priority[item])
-    overall_label = {"clear": "Green", "watch": "Yellow", "block": "Red"}[overall_status]
-    status_word = {"clear": "approval-ready", "watch": "needs commissioner review", "block": "not approvable as submitted"}[overall_status]
-    player_out_text = ", ".join(players_out) if players_out else "no players"
-    player_in_text = ", ".join(players_in) if players_in else "no players"
-    pick_out_text = ", ".join(picks_out) if picks_out else "no picks"
-    pick_in_text = ", ".join(picks_in) if picks_in else "no picks"
-    exceptions_text = ", ".join(exceptions_out) if exceptions_out else "no exceptions"
-    paragraph = (
-        f"{live_team_full_name(trade_team)} proposes to send out {player_out_text} and {pick_out_text}, "
-        f"and receive {player_in_text} and {pick_in_text}. The trade changes team salary from "
-        f"{format_money(apron['tax_before'])} to {format_money(apron['tax_after'])}, with "
-        f"{format_money(apron['outgoing_salary'])} outgoing salary and {format_money(apron['incoming_salary'])} incoming salary. "
-        f"Roster count would be {roster_after}. Stepien review: {stepien['message']} "
-        f"Apron review: {' '.join(flag[2] for flag in apron['flags'])} Exceptions used: {exceptions_text}. "
-        f"Overall flag: {overall_label} ({status_word})."
-    )
-    flag_cards = [
-        ("Stepien Rule", stepien["status"], stepien["message"]),
-        ("Apron / Hard Cap", apron["status"], " ".join(flag[2] for flag in apron["flags"])),
-    ]
-    cards_html = "".join(
-        f"""
-        <section class="sbc-trade-rule-card sbc-trade-rule-{escape(status)}">
-            <div class="sbc-trade-rule-status">{escape(status.upper())}</div>
-            <div>
-                <strong>{escape(title)}</strong>
-                <span>{escape(message)}</span>
-            </div>
-        </section>
-        """
-        for title, status, message in flag_cards
-    )
-    render_html(f"""
-        <section class="sbc-trade-receipt sbc-trade-receipt-{escape(overall_status)}">
-            <div class="sbc-trade-ledger-head">
-                <span>Commissioner Receipt</span>
-                <em>{escape(overall_label)} flag - {escape(status_word)}</em>
-            </div>
-            <div class="sbc-trade-rule-grid">{cards_html}</div>
-            <div class="sbc-trade-receipt-copy">{escape(paragraph)}</div>
-        </section>
-    """)
 
 
 def render_trade_rule_card(title, status, message):
@@ -8849,45 +8856,6 @@ st.markdown(
         margin-top: 0.12rem;
     }}
 
-    .sbc-trade-receipt {{
-        --receipt-color: #007a32;
-        overflow: hidden;
-        margin: 0.85rem 0 1rem;
-        border: 1px solid color-mix(in srgb, var(--receipt-color) 28%, rgba(23, 32, 42, 0.12));
-        border-top: 5px solid var(--receipt-color);
-        border-radius: 8px;
-        background: linear-gradient(135deg, color-mix(in srgb, var(--receipt-color) 8%, #ffffff), #ffffff 74%);
-        box-shadow: 0 16px 36px rgba(18, 25, 38, 0.085);
-    }}
-
-    .sbc-trade-receipt-clear {{ --receipt-color: #007a32; }}
-    .sbc-trade-receipt-watch {{ --receipt-color: #9f6f00; }}
-    .sbc-trade-receipt-block {{ --receipt-color: #b91c1c; }}
-
-    .sbc-trade-rule-grid {{
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.7rem;
-        padding: 0.85rem 0.9rem 0;
-    }}
-
-    .sbc-trade-rule-grid .sbc-trade-rule-card {{
-        margin-bottom: 0;
-        min-height: 100%;
-    }}
-
-    .sbc-trade-receipt-copy {{
-        margin: 0.85rem 0.9rem 0.95rem;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px dashed color-mix(in srgb, var(--receipt-color) 26%, rgba(23, 32, 42, 0.12));
-        color: #1f2937;
-        font-size: 0.94rem;
-        font-weight: 790;
-        line-height: 1.45;
-        padding: 0.85rem 0.95rem;
-    }}
-
     .sbc-award-card,
     .sbc-award-team-card {{
         overflow: hidden;
@@ -10644,18 +10612,6 @@ with tab9:
             </div>
         """)
         render_trade_rule_checks(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut)
-        render_trade_approval_receipt(
-            TradeTeam,
-            SelectedPlayersIn,
-            SelectedPlayersOut,
-            SelectedPicksIn,
-            SelectedPicksOut,
-            SelectedExceptionOut,
-            CashOut,
-            roster_after,
-            stepien_review,
-            apron_review,
-        )
     elif submitted:
         render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
 
