@@ -4389,7 +4389,7 @@ def history_title_counts(schedule_df, standings_df):
 
 def history_regular_season_h2h_matrix(schedule_df):
     games = history_completed_games(schedule_df, ["Regular Season"])
-    matrix = pd.DataFrame("-", index=Teams, columns=[team_abbrev_for_name(team) for team in Teams])
+    matrix = pd.DataFrame("-", index=Teams, columns=Teams)
     if games.empty:
         return matrix.reset_index(names="Team")
     records = {(a, b): [0, 0] for a in Teams for b in Teams if a != b}
@@ -4411,7 +4411,7 @@ def history_regular_season_h2h_matrix(schedule_df):
             if row_team == col_team:
                 continue
             wins, losses = records[(row_team, col_team)]
-            matrix.loc[row_team, team_abbrev_for_name(col_team)] = f"{wins}-{losses}"
+            matrix.loc[row_team, col_team] = f"{wins}-{losses}"
     return matrix.reset_index().rename(columns={"index": "Team"})
 
 
@@ -4539,6 +4539,69 @@ def render_history_overview_table(data, columns):
     """)
 
 
+def render_history_h2h_matrix(matrix):
+    if matrix is None or matrix.empty:
+        render_html('<div class="sbc-empty-state">No regular season head-to-head records are available yet.</div>')
+        return
+    teams = [team for team in matrix.columns if team != "Team" and team in team_info]
+    header_cells = ['<th class="sbc-h2h-corner">Team</th>']
+    for team in teams:
+        logo = team_logo_for_name(team)
+        header_cells.append(
+            f'<th class="sbc-h2h-logo-head" title="{escape(live_team_full_name(team), quote=True)}">'
+            f'<img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">'
+            f'</th>'
+        )
+    rows = []
+    for _, row in matrix.iterrows():
+        team = str(row.get("Team", ""))
+        logo = team_logo_for_name(team)
+        cells = [
+            f'<th class="sbc-h2h-row-head" title="{escape(live_team_full_name(team), quote=True)}">'
+            f'<img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">'
+            f'<span>{escape(team_abbrev_for_name(team))}</span></th>'
+        ]
+        for opp in teams:
+            value = str(row.get(opp, "-"))
+            cell_class = "sbc-h2h-self" if opp == team else ""
+            cells.append(f'<td class="{cell_class}">{escape(value)}</td>')
+        rows.append(f"<tr>{''.join(cells)}</tr>")
+    render_html(f"""
+        <div class="sbc-h2h-wrap">
+            <table class="sbc-h2h-table">
+                <thead><tr>{''.join(header_cells)}</tr></thead>
+                <tbody>{''.join(rows)}</tbody>
+            </table>
+        </div>
+    """)
+
+
+def render_history_all_time_stats_table(data):
+    if data is None or data.empty:
+        render_html('<div class="sbc-empty-state">No all-time team stat archive is available yet.</div>')
+        return
+    columns = ["Team", "GP", "MP", "TS%", "2PTM", "2PTA", "2PT%", "3PTM", "3PTA", "3PT%", "FTM", "FTA", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+    head = "".join(f"<th>{escape(str(col))}</th>" for col in columns)
+    rows = []
+    for idx, row in data.reset_index(drop=True).iterrows():
+        team = str(row.get("Team", ""))
+        cells = [
+            f'<td class="sbc-history-rank">{idx + 1}</td>',
+            f'<td class="sbc-history-stat-team">{render_draft_team_wordmark(team, include_nickname=False)}<em>{escape(live_team_full_name(team))}</em></td>',
+        ]
+        for col in columns[1:]:
+            cells.append(f'<td>{escape(str(row.get(col, "")))}</td>')
+        rows.append(f"<tr>{''.join(cells)}</tr>")
+    render_html(f"""
+        <div class="sbc-history-table-wrap sbc-history-stats-wrap">
+            <table class="sbc-history-overview-table sbc-history-stats-table">
+                <thead><tr><th>#</th>{head}</tr></thead>
+                <tbody>{''.join(rows)}</tbody>
+            </table>
+        </div>
+    """)
+
+
 def render_league_history_overview():
     regular_games = history_completed_games(all_time_schedule, ["Regular Season"])
     all_games = history_completed_games(all_time_schedule)
@@ -4579,16 +4642,10 @@ def render_league_history_overview():
     )
     render_html('<div class="sbc-awards-section-head"><span>Regular Season H2H Matrix</span><em>Cell is row team record against column team.</em></div>')
     h2h = history_regular_season_h2h_matrix(all_time_schedule)
-    if h2h.empty:
-        render_html('<div class="sbc-empty-state">No regular season head-to-head records are available yet.</div>')
-    else:
-        st.dataframe(h2h, width="stretch", height=650, hide_index=True)
+    render_history_h2h_matrix(h2h)
     render_html('<div class="sbc-awards-section-head"><span>All-Time Team Stats</span><em>Regular season totals by franchise; percentages are recalculated from makes and attempts.</em></div>')
     all_time_stats = history_all_time_team_stats_table(all_time_team_stats)
-    if all_time_stats.empty:
-        render_html('<div class="sbc-empty-state">No all-time team stat archive is available yet.</div>')
-    else:
-        st.dataframe(all_time_stats, width="stretch", height=650, hide_index=True)
+    render_history_all_time_stats_table(all_time_stats)
     render_html('<div class="sbc-awards-section-head"><span>Team Matchup Records</span><em>Single regular-season matchup highs by category.</em></div>')
     records = history_team_stat_records(all_time_team_stats, all_time_schedule)
     if records.empty:
@@ -7253,6 +7310,186 @@ st.markdown(
         min-width: 11.5rem;
     }}
 
+    .sbc-history-overview-table .sbc-draft-team-wordmark {{
+        font-family: var(--draft-team-font), "Poppins", "Segoe UI", sans-serif;
+        font-size: 0.86rem;
+    }}
+
+    .sbc-h2h-wrap {{
+        overflow: auto;
+        max-height: 44rem;
+        border: 1px solid rgba(23, 32, 42, 0.1);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.07);
+        margin-bottom: 1rem;
+    }}
+
+    .sbc-h2h-table {{
+        width: max-content;
+        min-width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        table-layout: fixed;
+    }}
+
+    .sbc-h2h-table th,
+    .sbc-h2h-table td {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.07);
+        border-right: 1px solid rgba(23, 32, 42, 0.06);
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-h2h-corner {{
+        position: sticky;
+        top: 0;
+        left: 0;
+        z-index: 5;
+        width: 4.15rem;
+        min-width: 4.15rem;
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.62rem;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        padding: 0.38rem 0.35rem;
+        text-transform: uppercase;
+    }}
+
+    .sbc-h2h-logo-head {{
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        width: 2.16rem;
+        min-width: 2.16rem;
+        height: 2.25rem;
+        background: linear-gradient(135deg, color-mix(in srgb, {LEAGUE_PRIMARY} 13%, #ffffff), color-mix(in srgb, {LEAGUE_SECONDARY} 9%, #ffffff));
+        padding: 0.22rem;
+        text-align: center;
+    }}
+
+    .sbc-h2h-logo-head img {{
+        width: 1.45rem;
+        height: 1.45rem;
+        object-fit: contain;
+        filter: drop-shadow(0 3px 6px rgba(18, 25, 38, 0.14));
+    }}
+
+    .sbc-h2h-row-head {{
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        display: grid;
+        grid-template-columns: 1.35rem 1fr;
+        align-items: center;
+        gap: 0.22rem;
+        width: 4.15rem;
+        min-width: 4.15rem;
+        background: #ffffff;
+        padding: 0.26rem 0.3rem;
+        text-align: left;
+    }}
+
+    .sbc-h2h-row-head img {{
+        width: 1.22rem;
+        height: 1.22rem;
+        object-fit: contain;
+    }}
+
+    .sbc-h2h-row-head span {{
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.58rem;
+        font-weight: 950;
+        line-height: 1;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-h2h-table td {{
+        width: 2.16rem;
+        min-width: 2.16rem;
+        background: rgba(255, 255, 255, 0.86);
+        color: #111827;
+        font-size: 0.62rem;
+        font-weight: 950;
+        padding: 0.32rem 0.18rem;
+        text-align: center;
+    }}
+
+    .sbc-h2h-table tr:nth-child(even) td,
+    .sbc-h2h-table tr:nth-child(even) .sbc-h2h-row-head {{
+        background: rgba(248, 250, 252, 0.92);
+    }}
+
+    .sbc-h2h-table td:not(.sbc-h2h-self):hover {{
+        background: color-mix(in srgb, {LEAGUE_SECONDARY} 18%, #ffffff);
+    }}
+
+    .sbc-h2h-self {{
+        background: #111827 !important;
+        color: rgba(255, 255, 255, 0.72) !important;
+    }}
+
+    .sbc-history-stats-wrap {{
+        max-height: 45rem;
+        overflow: auto;
+    }}
+
+    .sbc-history-stats-table {{
+        width: max-content;
+        min-width: 94rem;
+    }}
+
+    .sbc-history-stats-table th {{
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding: 0.5rem 0.48rem;
+        text-align: right;
+    }}
+
+    .sbc-history-stats-table th:nth-child(1),
+    .sbc-history-stats-table th:nth-child(2) {{
+        text-align: left;
+    }}
+
+    .sbc-history-stats-table td {{
+        padding: 0.42rem 0.48rem;
+        text-align: right;
+    }}
+
+    .sbc-history-stats-table td:nth-child(1),
+    .sbc-history-stats-table td:nth-child(2) {{
+        text-align: left;
+    }}
+
+    .sbc-history-rank {{
+        color: var(--sbc-muted) !important;
+        font-size: 0.68rem !important;
+        font-weight: 950 !important;
+        width: 2.3rem;
+    }}
+
+    .sbc-history-stat-team {{
+        min-width: 12rem;
+    }}
+
+    .sbc-history-stat-team .sbc-draft-team-mark {{
+        min-width: 0;
+    }}
+
+    .sbc-history-stat-team em {{
+        display: block;
+        color: var(--sbc-muted);
+        font-size: 0.58rem;
+        font-style: normal;
+        font-weight: 850;
+        line-height: 1.05;
+        margin: 0.1rem 0 0 2.5rem;
+        white-space: nowrap;
+    }}
+
     .sbc-history-game-team img {{
         width: 1.8rem;
         height: 1.8rem;
@@ -8445,7 +8682,7 @@ st.markdown(
     .sbc-draft-team-wordmark {{
         color: color-mix(in srgb, var(--draft-team-secondary) 72%, #111827 28%);
         display: inline-block;
-        font-family: "Poppins", "Segoe UI", sans-serif;
+        font-family: var(--draft-team-font), "Poppins", "Segoe UI", sans-serif;
         font-size: 0.9rem;
         font-weight: 950;
         line-height: 1.12;
