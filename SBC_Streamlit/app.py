@@ -2273,17 +2273,10 @@ def trade_sign_and_trade_options(data, trade_team=None, incoming=False):
     return data.loc[mask, "Player"].dropna().sort_values().tolist()
 
 
-def trade_salary_map(players, prefix):
-    salaries = {}
-    for player in players:
-        salaries[player] = st.number_input(
-            f"{player} S&T Salary",
-            min_value=0,
-            step=100000,
-            format="%d",
-            key=f"{prefix}_{player}",
-        )
-    return salaries
+def trade_single_salary_map(player, salary):
+    if not player:
+        return {}
+    return {player: float(salary or 0)}
 
 
 def trade_salary_total(salary_map):
@@ -2351,6 +2344,30 @@ def trade_salary_matching_review(outgoing_salary, incoming_salary, tax_before):
         "tpe": 0,
         "status": "block" if incoming_salary > max_incoming else "clear",
     }
+
+
+def trade_hard_cap_tile_labels(apron):
+    current = {
+        "First Apron": "Apron 1",
+        "Second Apron": "Apron 2",
+    }.get(apron.get("existing_hard_cap"), "None")
+    activated_limits = {limit for _, limit in apron.get("activated_hard_caps", [])}
+    if not activated_limits:
+        activated = "None"
+    elif activated_limits == {current_apron_1}:
+        activated = "Apron 1"
+    elif activated_limits == {current_apron_2}:
+        activated = "Apron 2"
+    else:
+        activated = "Apron 1 + 2"
+    effective_limit = apron.get("effective_hard_cap_limit")
+    if effective_limit == current_apron_1:
+        final = "Over Apron 1" if apron.get("tax_after", 0) > current_apron_1 else "Apron 1"
+    elif effective_limit == current_apron_2:
+        final = "Over Apron 2" if apron.get("tax_after", 0) > current_apron_2 else "Apron 2"
+    else:
+        final = "None"
+    return current, activated, final
 
 
 def render_trade_hero(team, outgoing_count=None, incoming_count=None):
@@ -2606,9 +2623,7 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
     narrative = trade_commissioner_paragraph(trade_team, player_in_names, player_out_names, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien, apron, salary_match)
     apron_status = apron.get("status", "clear")
     apron_tile_class = f"sbc-trade-apron-{escape(apron_status)}"
-    current_hard_cap = apron.get("current_hard_cap_label", "Currently not hard-capped")
-    activated_hard_cap = apron.get("activated_hard_cap_label", "No new hard cap is activated by this trade")
-    final_hard_cap = apron.get("effective_hard_cap_label", "End result: no hard cap")
+    current_hard_cap, activated_hard_cap, final_hard_cap = trade_hard_cap_tile_labels(apron)
     salary_match_class = f"sbc-trade-apron-{escape(salary_match.get('status', 'clear'))}"
 
     render_html(f"""
@@ -2633,7 +2648,7 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
                 <span><strong>{escape(format_money(outgoing_salary))}</strong><em>Outgoing Salary</em></span>
                 <span><strong>{escape(format_money(incoming_salary))}</strong><em>Incoming Salary</em></span>
                 <span><strong>{escape(format_money(salary_delta))}</strong><em>Net Salary</em></span>
-                <span class="{salary_match_class}"><strong>{escape(salary_match["label"])}</strong><em>{escape(salary_match["detail"])}</em></span>
+                <span class="{salary_match_class}"><strong>{escape(salary_match["label"])}</strong><em>Salary Match</em></span>
                 <span><strong>{escape(str(roster_after))}</strong><em>Players After</em></span>
                 <span class="{apron_tile_class}"><strong>{escape(current_hard_cap)}</strong><em>Current Hard Cap</em></span>
                 <span class="{apron_tile_class}"><strong>{escape(activated_hard_cap)}</strong><em>Activated</em></span>
@@ -10765,8 +10780,12 @@ with tab9:
         with col1:
             render_trade_panel_header("Outgoing Package", "Assets leaving your organization", TradeTeam, "blue")
             SelectedPlayersOut = st.multiselect("Outgoing Players:", trade_active_player_options(df, TradeTeam, incoming=False), placeholder="")
-            SelectedSignTradeOut = st.multiselect("Outgoing S&T Free Agents:", trade_sign_and_trade_options(df, TradeTeam, incoming=False), placeholder="")
-            SignTradeOutSalaries = trade_salary_map(SelectedSignTradeOut, "trade_st_out")
+            st_player_out, st_salary_out = st.columns([0.6, 0.4])
+            with st_player_out:
+                SelectedSignTradeOut = st.selectbox("Outgoing S&T Free Agent:", [""] + trade_sign_and_trade_options(df, TradeTeam, incoming=False), key="trade_st_out_player")
+            with st_salary_out:
+                SignTradeOutSalary = st.number_input("Signing Salary:", min_value=0, step=100000, format="%d", key="trade_st_out_salary")
+            SignTradeOutSalaries = trade_single_salary_map(SelectedSignTradeOut, SignTradeOutSalary)
             SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, TradeTeam), placeholder="")
             SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, TradeTeam), placeholder="")
             CashOutText = st.text_input("Cash Out:", placeholder="$0")
@@ -10775,8 +10794,12 @@ with tab9:
         with col2:
             render_trade_panel_header("Incoming Package", "Assets your organization receives", tone="green")
             SelectedPlayersIn = st.multiselect("Incoming Players:", trade_active_player_options(df, TradeTeam, incoming=True), placeholder="")
-            SelectedSignTradeIn = st.multiselect("Incoming S&T Free Agents:", trade_sign_and_trade_options(df, TradeTeam, incoming=True), placeholder="")
-            SignTradeInSalaries = trade_salary_map(SelectedSignTradeIn, "trade_st_in")
+            st_player_in, st_salary_in = st.columns([0.6, 0.4])
+            with st_player_in:
+                SelectedSignTradeIn = st.selectbox("Incoming S&T Free Agent:", [""] + trade_sign_and_trade_options(df, TradeTeam, incoming=True), key="trade_st_in_player")
+            with st_salary_in:
+                SignTradeInSalary = st.number_input("Signing Salary:", min_value=0, step=100000, format="%d", key="trade_st_in_salary")
+            SignTradeInSalaries = trade_single_salary_map(SelectedSignTradeIn, SignTradeInSalary)
             SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, TradeTeam), placeholder="")
             SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, TradeTeam), placeholder="")
             CashInText = st.text_input("Cash In:", placeholder="$0")
