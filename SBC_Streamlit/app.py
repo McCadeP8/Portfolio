@@ -16,7 +16,7 @@ from textwrap import dedent
 from zoneinfo import ZoneInfo
 from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
-from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, period, stat_to_scipId
+from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 
 def render_html(markup):
     markup = dedent(str(markup)).strip()
@@ -2458,6 +2458,189 @@ def trade_cap_type_after(players_in, players_out, trade_team):
     if team_total < current_apron_2:
         return "First"
     return "Second"
+
+
+def trade_pick_key_from_label(label):
+    text = clean_pick_display(label)
+    parts = str(text).rsplit(" ", 2)
+    if len(parts) < 3:
+        return None
+    og_team, year_text, round_text = parts
+    try:
+        year = int(float(str(year_text)))
+    except (TypeError, ValueError):
+        return None
+    return og_team.strip(), year, round_text.strip()
+
+
+def trade_pick_key_from_row(row):
+    try:
+        year = int(float(row.get("Year", 0)))
+    except (TypeError, ValueError):
+        return None
+    return str(row.get("OGTeam", "")).strip(), year, str(row.get("Round", "")).strip()
+
+
+def team_list_contains(value, team):
+    return team in [part.strip() for part in str(value).split(",")]
+
+
+def trade_truthy(value):
+    if isinstance(value, bool):
+        return value
+    if pd.isna(value):
+        return False
+    return str(value).strip().lower() in {"true", "1", "yes", "y"}
+
+
+def trade_stepien_review(draft_picks, trade_team, picks_in, picks_out):
+    future_years = list(range(current_year, current_year + 7))
+    firsts = draft_picks[draft_picks["Round"].astype(str).str.contains("1st", case=False, na=False)].copy()
+    outgoing_keys = {trade_pick_key_from_label(pick) for pick in picks_out}
+    incoming_keys = {trade_pick_key_from_label(pick) for pick in picks_in}
+    outgoing_keys.discard(None)
+    incoming_keys.discard(None)
+    coverage = {}
+    for _, row in firsts.iterrows():
+        key = trade_pick_key_from_row(row)
+        if key is None:
+            continue
+        if key in outgoing_keys:
+            continue
+        if key in incoming_keys:
+            coverage.setdefault(key[1], []).append(key)
+            continue
+        if trade_truthy(row.get("FullyOwned", False)) and team_list_contains(row.get("CurrentTeam", ""), trade_team):
+            coverage.setdefault(key[1], []).append(key)
+    for key in incoming_keys:
+        if key and "1st" in key[2]:
+            coverage.setdefault(key[1], []).append(key)
+    missing_years = [year for year in future_years if not coverage.get(year)]
+    broken_pairs = [(year, year + 1) for year in future_years[:-1] if year in missing_years and year + 1 in missing_years]
+    outgoing_firsts = [pick for pick in picks_out if (trade_pick_key_from_label(pick) or ("", 0, ""))[2].startswith("1st")]
+    if broken_pairs:
+        status = "block"
+        message = f"Projected first-round coverage has consecutive open years: {', '.join(f'{a}-{b}' for a, b in broken_pairs)}."
+    elif outgoing_firsts:
+        status = "watch"
+        message = f"{live_team_full_name(trade_team)} is trading {len(outgoing_firsts)} first-round pick(s), but still has first-round coverage in every rolling two-year window."
+    else:
+        status = "clear"
+        message = "No outgoing first-round picks, so the Stepien rule is not stressed."
+    covered_years = sorted(coverage)
+    return {
+        "status": status,
+        "message": message,
+        "covered_years": covered_years,
+        "missing_years": missing_years,
+        "broken_pairs": broken_pairs,
+    }
+
+
+def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash_out):
+    outgoing_salary = current_year_salary_for_players(df, players_out)
+    incoming_salary = current_year_salary_for_players(df, players_in)
+    tax_before = get_tax_total(df, trade_team)
+    tax_after = tax_before - outgoing_salary + incoming_salary
+    existing_hard_cap = team_hard_cap(base_cap, trade_team)
+    try:
+        cash_value = 0.0 if cash_out is None else float(cash_out)
+    except (TypeError, ValueError):
+        cash_value = 0.0
+    if math.isnan(cash_value):
+        cash_value = 0.0
+
+    flags = []
+    triggered_caps = []
+    if existing_hard_cap == "First Apron":
+        triggered_caps.append(("Existing First Apron hard cap", current_apron_1))
+    elif existing_hard_cap == "Second Apron":
+        triggered_caps.append(("Existing Second Apron hard cap", current_apron_2))
+
+    minimum_exception_used = any("Minimum" in str(exc) for exc in exceptions_out)
+    minimum_only_acquisition = minimum_exception_used and len(players_in) == 1 and len(players_out) == 0 and incoming_salary <= max_minimum
+    if incoming_salary > outgoing_salary and not minimum_only_acquisition:
+        triggered_caps.append(("Taking back more salary than sent out", current_apron_1))
+    if any("Bi-Annual" in str(exc) or "Mid-Level" in str(exc) for exc in exceptions_out):
+        triggered_caps.append(("Using BAE/MLE", current_apron_1))
+    if cash_value > 0:
+        triggered_caps.append(("Sending cash", current_apron_2))
+    if any("S&T" in str(exc) for exc in exceptions_out):
+        triggered_caps.append(("Using S&T-created TPE", current_apron_2))
+
+    for label, limit in triggered_caps:
+        if tax_after > limit:
+            flags.append(("block", label, f"Post-trade tax total would be {format_money(tax_after)}, above the {format_money(limit)} limit."))
+        elif not label.startswith("Existing"):
+            flags.append(("watch", label, f"This creates a hard-cap trigger, but the post-trade tax total stays below {format_money(limit)}."))
+
+    if tax_before >= current_apron_2 and len(players_out) > 1 and incoming_salary > 0:
+        flags.append(("block", "Second apron aggregation", "A team already above the second apron cannot aggregate multiple outgoing salaries in a trade."))
+    if tax_after >= current_apron_2 and cash_value > 0:
+        flags.append(("block", "Second apron cash", "A team above the second apron cannot send cash in a trade."))
+    if not flags:
+        flags.append(("clear", "Apron position", "No hard-cap or apron restriction is triggered by this proposal."))
+
+    priority = {"block": 2, "watch": 1, "clear": 0}
+    status = max((flag[0] for flag in flags), key=lambda item: priority[item])
+    return {
+        "status": status,
+        "flags": flags,
+        "tax_before": tax_before,
+        "tax_after": tax_after,
+        "incoming_salary": incoming_salary,
+        "outgoing_salary": outgoing_salary,
+        "existing_hard_cap": existing_hard_cap,
+    }
+
+
+def render_trade_approval_receipt(trade_team, players_in, players_out, picks_in, picks_out, exceptions_out, cash_out, roster_after):
+    stepien = trade_stepien_review(dp, trade_team, picks_in, picks_out)
+    apron = trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash_out)
+    overall_priority = {"block": 2, "watch": 1, "clear": 0}
+    overall_status = max([stepien["status"], apron["status"]], key=lambda item: overall_priority[item])
+    overall_label = {"clear": "Green", "watch": "Yellow", "block": "Red"}[overall_status]
+    status_word = {"clear": "approval-ready", "watch": "needs commissioner review", "block": "not approvable as submitted"}[overall_status]
+    player_out_text = ", ".join(players_out) if players_out else "no players"
+    player_in_text = ", ".join(players_in) if players_in else "no players"
+    pick_out_text = ", ".join(picks_out) if picks_out else "no picks"
+    pick_in_text = ", ".join(picks_in) if picks_in else "no picks"
+    exceptions_text = ", ".join(exceptions_out) if exceptions_out else "no exceptions"
+    paragraph = (
+        f"{live_team_full_name(trade_team)} proposes to send out {player_out_text} and {pick_out_text}, "
+        f"and receive {player_in_text} and {pick_in_text}. The trade changes team salary from "
+        f"{format_money(apron['tax_before'])} to {format_money(apron['tax_after'])}, with "
+        f"{format_money(apron['outgoing_salary'])} outgoing salary and {format_money(apron['incoming_salary'])} incoming salary. "
+        f"Roster count would be {roster_after}. Stepien review: {stepien['message']} "
+        f"Apron review: {' '.join(flag[2] for flag in apron['flags'])} Exceptions used: {exceptions_text}. "
+        f"Overall flag: {overall_label} ({status_word})."
+    )
+    flag_cards = [
+        ("Stepien Rule", stepien["status"], stepien["message"]),
+        ("Apron / Hard Cap", apron["status"], " ".join(flag[2] for flag in apron["flags"])),
+    ]
+    cards_html = "".join(
+        f"""
+        <section class="sbc-trade-rule-card sbc-trade-rule-{escape(status)}">
+            <div class="sbc-trade-rule-status">{escape(status.upper())}</div>
+            <div>
+                <strong>{escape(title)}</strong>
+                <span>{escape(message)}</span>
+            </div>
+        </section>
+        """
+        for title, status, message in flag_cards
+    )
+    render_html(f"""
+        <section class="sbc-trade-receipt sbc-trade-receipt-{escape(overall_status)}">
+            <div class="sbc-trade-ledger-head">
+                <span>Commissioner Receipt</span>
+                <em>{escape(overall_label)} flag - {escape(status_word)}</em>
+            </div>
+            <div class="sbc-trade-rule-grid">{cards_html}</div>
+            <div class="sbc-trade-receipt-copy">{escape(paragraph)}</div>
+        </section>
+    """)
 
 
 def render_trade_rule_card(title, status, message):
@@ -8571,6 +8754,45 @@ st.markdown(
         margin-top: 0.12rem;
     }}
 
+    .sbc-trade-receipt {{
+        --receipt-color: #007a32;
+        overflow: hidden;
+        margin: 0.85rem 0 1rem;
+        border: 1px solid color-mix(in srgb, var(--receipt-color) 28%, rgba(23, 32, 42, 0.12));
+        border-top: 5px solid var(--receipt-color);
+        border-radius: 8px;
+        background: linear-gradient(135deg, color-mix(in srgb, var(--receipt-color) 8%, #ffffff), #ffffff 74%);
+        box-shadow: 0 16px 36px rgba(18, 25, 38, 0.085);
+    }}
+
+    .sbc-trade-receipt-clear {{ --receipt-color: #007a32; }}
+    .sbc-trade-receipt-watch {{ --receipt-color: #9f6f00; }}
+    .sbc-trade-receipt-block {{ --receipt-color: #b91c1c; }}
+
+    .sbc-trade-rule-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+        padding: 0.85rem 0.9rem 0;
+    }}
+
+    .sbc-trade-rule-grid .sbc-trade-rule-card {{
+        margin-bottom: 0;
+        min-height: 100%;
+    }}
+
+    .sbc-trade-receipt-copy {{
+        margin: 0.85rem 0.9rem 0.95rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px dashed color-mix(in srgb, var(--receipt-color) 26%, rgba(23, 32, 42, 0.12));
+        color: #1f2937;
+        font-size: 0.94rem;
+        font-weight: 790;
+        line-height: 1.45;
+        padding: 0.85rem 0.95rem;
+    }}
+
     .sbc-award-card,
     .sbc-award-team-card {{
         overflow: hidden;
@@ -10317,7 +10539,16 @@ with tab9:
             </div>
         """)
         render_trade_rule_checks(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut)
-        render_html('<div class="sbc-empty-state">Stepien validation hook is still under construction for the submitted deal.</div>')
+        render_trade_approval_receipt(
+            TradeTeam,
+            SelectedPlayersIn,
+            SelectedPlayersOut,
+            SelectedPicksIn,
+            SelectedPicksOut,
+            SelectedExceptionOut,
+            CashOut,
+            roster_after,
+        )
     elif submitted:
         render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
 
