@@ -4409,11 +4409,11 @@ def render_bracket_empty(label="TBD"):
     """
 
 
-def render_playoff_playin_group(label, games, seed_lookup, show_head=False):
+def render_playoff_playin_group(label, games, seed_lookup, show_head=False, subtitle=""):
     cards = [render_history_bracket_matchup(row, seed_lookup, label_mode="logo", show_score=True) for _, row in games.iterrows()]
     if not cards:
         cards = [render_bracket_empty("")]
-    head_html = f'<div class="sbc-playin-group-head">{escape(label)}</div>' if show_head and label else ""
+    head_html = f'<div class="sbc-playin-group-head"><span>{escape(label)}</span><em>{escape(subtitle)}</em></div>' if show_head and label else ""
     return f"""
         <div class="sbc-playin-group">
             {head_html}
@@ -4439,18 +4439,21 @@ def render_playoff_bracket_column(games, title, seed_lookup, minimum_slots=0, bu
         cards = [
             render_playoff_playin_group("", top_games, seed_lookup),
             '<div class="sbc-playin-spacer"></div>',
-            render_playoff_playin_group(title, nine_ten_games, seed_lookup, show_head=True),
+            render_playoff_playin_group("Play-In Round 1", nine_ten_games, seed_lookup, show_head=True, subtitle=bracket_period_label(nine_ten_games)),
             render_playoff_playin_group("", seven_eight_games, seed_lookup),
         ]
+        title = "Play-In Round 2"
+        period_label = bracket_period_label(top_games)
     else:
         cards = [render_history_bracket_matchup(row, seed_lookup, label_mode="logo", show_score=True) for _, row in games.iterrows()]
+        period_label = bracket_period_label(games)
     while len(cards) < minimum_slots:
         cards.append(render_bracket_empty())
     return f"""
         <section class="sbc-nba-bracket-column">
             <div class="sbc-nba-bracket-column-head">
                 <span>{escape(title)}</span>
-                <em>{escape(bracket_period_label(games))}</em>
+                <em>{escape(period_label)}</em>
             </div>
             <div class="sbc-bracket-games">{''.join(cards)}</div>
         </section>
@@ -4485,18 +4488,18 @@ def render_playoff_bracket(games, title, empty_text, seed_lookup=None):
 
     finals_games = bracket[bracket["_bucket"] == "finals"].copy()
     west_html = "".join([
-        render_playoff_bracket_column(conf_games("West", "playin"), "West Play-In", seed_lookup, minimum_slots=4, bucket="playin"),
-        render_playoff_bracket_column(conf_games("West", "first"), "West First Round", seed_lookup, minimum_slots=4, bucket="first"),
-        render_playoff_bracket_column(conf_games("West", "semi"), "West Semifinals", seed_lookup, minimum_slots=2, bucket="semi"),
-        render_playoff_bracket_column(conf_games("West", "conf_final"), "West Final", seed_lookup, minimum_slots=1, bucket="conf_final"),
+        render_playoff_bracket_column(conf_games("West", "playin"), "Play-In Round 2", seed_lookup, minimum_slots=4, bucket="playin"),
+        render_playoff_bracket_column(conf_games("West", "first"), "First Round", seed_lookup, minimum_slots=4, bucket="first"),
+        render_playoff_bracket_column(conf_games("West", "semi"), "Semifinals", seed_lookup, minimum_slots=2, bucket="semi"),
+        render_playoff_bracket_column(conf_games("West", "conf_final"), "Conference Finals", seed_lookup, minimum_slots=1, bucket="conf_final"),
     ])
     east_html = "".join([
-        render_playoff_bracket_column(conf_games("East", "conf_final"), "East Final", seed_lookup, minimum_slots=1, bucket="conf_final"),
-        render_playoff_bracket_column(conf_games("East", "semi"), "East Semifinals", seed_lookup, minimum_slots=2, bucket="semi"),
-        render_playoff_bracket_column(conf_games("East", "first"), "East First Round", seed_lookup, minimum_slots=4, bucket="first"),
-        render_playoff_bracket_column(conf_games("East", "playin"), "East Play-In", seed_lookup, minimum_slots=4, bucket="playin"),
+        render_playoff_bracket_column(conf_games("East", "conf_final"), "Conference Finals", seed_lookup, minimum_slots=1, bucket="conf_final"),
+        render_playoff_bracket_column(conf_games("East", "semi"), "Semifinals", seed_lookup, minimum_slots=2, bucket="semi"),
+        render_playoff_bracket_column(conf_games("East", "first"), "First Round", seed_lookup, minimum_slots=4, bucket="first"),
+        render_playoff_bracket_column(conf_games("East", "playin"), "Play-In Round 2", seed_lookup, minimum_slots=4, bucket="playin"),
     ])
-    finals_html = render_playoff_bracket_column(finals_games, "Finals", seed_lookup, minimum_slots=1, bucket="finals")
+    finals_html = render_playoff_bracket_column(finals_games, "SBCFBL Finals", seed_lookup, minimum_slots=1, bucket="finals")
 
     render_html(f"""
         <section class="sbc-bracket-panel sbc-nba-bracket-panel">
@@ -4505,9 +4508,9 @@ def render_playoff_bracket(games, title, empty_text, seed_lookup=None):
                 <em>{escape(bracket_period_label(bracket))}</em>
             </div>
             <div class="sbc-nba-bracket">
-                <div class="sbc-nba-bracket-side sbc-nba-bracket-west">{west_html}</div>
+                <div class="sbc-nba-bracket-side sbc-nba-bracket-west"><div class="sbc-nba-conference-title">Western Conference</div>{west_html}</div>
                 <div class="sbc-nba-bracket-center">{finals_html}{champion_html}</div>
-                <div class="sbc-nba-bracket-side sbc-nba-bracket-east">{east_html}</div>
+                <div class="sbc-nba-bracket-side sbc-nba-bracket-east"><div class="sbc-nba-conference-title">Eastern Conference</div>{east_html}</div>
             </div>
         </section>
     """)
@@ -6750,8 +6753,8 @@ st.markdown(
 
     .sbc-nba-bracket {{
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(13.5rem, 0.3fr) minmax(0, 1fr);
-        gap: 0.65rem;
+        grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.22fr) minmax(0, 1fr);
+        gap: 0.9rem;
         align-items: stretch;
         min-height: 38rem;
         padding: 0.85rem;
@@ -6760,6 +6763,7 @@ st.markdown(
     .sbc-nba-bracket-side {{
         display: grid;
         grid-template-columns: repeat(4, minmax(8.35rem, 1fr));
+        grid-template-rows: auto 1fr;
         gap: 0.58rem;
         align-items: stretch;
         min-width: 0;
@@ -6769,7 +6773,25 @@ st.markdown(
         display: grid;
         gap: 0.7rem;
         align-items: center;
+        justify-items: center;
         min-width: 0;
+    }}
+
+    .sbc-nba-conference-title {{
+        grid-column: 1 / -1;
+        display: grid;
+        place-items: center;
+        min-height: 2.35rem;
+        border-radius: 8px;
+        background:
+            linear-gradient(90deg, color-mix(in srgb, {LEAGUE_SECONDARY} 90%, #111827), color-mix(in srgb, {LEAGUE_PRIMARY} 86%, #111827));
+        color: #ffffff;
+        font-size: 1.08rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-transform: uppercase;
+        box-shadow: 0 12px 22px rgba(18,25,38,0.12);
     }}
 
     .sbc-nba-bracket .sbc-nba-bracket-column {{
@@ -6781,14 +6803,7 @@ st.markdown(
     }}
 
     .sbc-nba-bracket .sbc-nba-bracket-column:not(:last-child)::after {{
-        content: "";
-        position: absolute;
-        top: 50%;
-        right: -0.58rem;
-        width: 0.58rem;
-        height: 2px;
-        background: rgba(17,24,39,0.82);
-        box-shadow: none;
+        display: none;
     }}
 
     .sbc-nba-bracket-east .sbc-nba-bracket-column:not(:last-child)::after {{
@@ -6836,10 +6851,8 @@ st.markdown(
         box-shadow: 0 7px 16px rgba(18,25,38,0.07);
     }}
 
-    .sbc-nba-bracket .sbc-bracket-matchup::after,
-    .sbc-ist-bracket-panel .sbc-bracket-matchup::after {{
-        right: -0.46rem;
-        width: 0.46rem;
+    .sbc-nba-bracket .sbc-bracket-matchup::after {{
+        display: none;
     }}
 
     .sbc-nba-bracket-east .sbc-bracket-matchup::after {{
@@ -6848,7 +6861,7 @@ st.markdown(
     }}
 
     .sbc-nba-bracket .sbc-bracket-matchup::after {{
-        background: rgba(17,24,39,0.82);
+        display: none;
     }}
 
     .sbc-nba-bracket-center .sbc-bracket-matchup::after,
@@ -6905,9 +6918,19 @@ st.markdown(
     }}
 
     .sbc-nba-bracket .sbc-bracket-champion {{
-        justify-self: stretch;
-        min-height: 13rem;
-        min-width: 13.5rem;
+        justify-self: center;
+        min-height: 15rem;
+        width: min(18rem, 132%);
+        min-width: 15rem;
+    }}
+
+    .sbc-nba-bracket-center .sbc-nba-bracket-column {{
+        justify-self: center;
+        width: min(8.65rem, 100%);
+    }}
+
+    .sbc-nba-bracket-center .sbc-bracket-games {{
+        width: 100%;
     }}
 
     .sbc-playin-group {{
@@ -6918,6 +6941,7 @@ st.markdown(
     .sbc-playin-group-head {{
         min-height: 2.2rem;
         display: grid;
+        gap: 0.08rem;
         place-items: center;
         border-radius: 6px;
         background: #111827;
@@ -6927,6 +6951,17 @@ st.markdown(
         letter-spacing: 0.06em;
         text-transform: uppercase;
         white-space: nowrap;
+    }}
+
+    .sbc-playin-group-head span,
+    .sbc-playin-group-head em {{
+        font-style: normal;
+        line-height: 1;
+    }}
+
+    .sbc-playin-group-head em {{
+        color: rgba(255,255,255,0.68);
+        font-size: 0.54rem;
     }}
 
     .sbc-playin-group-games {{
