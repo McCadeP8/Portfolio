@@ -2462,15 +2462,14 @@ def trade_cap_type_after(players_in, players_out, trade_team):
 
 def trade_pick_key_from_label(label):
     text = clean_pick_display(label)
-    parts = str(text).rsplit(" ", 2)
-    if len(parts) < 3:
+    match = re.match(r"^(?P<team>.+?)\s+(?P<year>\d{4}(?:\.\d+)?)\s+(?P<round>.+)$", str(text).strip())
+    if not match:
         return None
-    og_team, year_text, round_text = parts
     try:
-        year = int(float(str(year_text)))
+        year = int(float(match.group("year")))
     except (TypeError, ValueError):
         return None
-    return og_team.strip(), year, round_text.strip()
+    return match.group("team").strip(), year, match.group("round").strip()
 
 
 def trade_pick_key_from_row(row):
@@ -2517,7 +2516,10 @@ def trade_stepien_review(draft_picks, trade_team, picks_in, picks_out):
             coverage.setdefault(key[1], []).append(key)
     missing_years = [year for year in future_years if not coverage.get(year)]
     broken_pairs = [(year, year + 1) for year in future_years[:-1] if year in missing_years and year + 1 in missing_years]
-    outgoing_firsts = [pick for pick in picks_out if (trade_pick_key_from_label(pick) or ("", 0, ""))[2].startswith("1st")]
+    outgoing_firsts = [
+        pick for pick in picks_out
+        if "1st" in (trade_pick_key_from_label(pick) or ("", 0, ""))[2]
+    ]
     if broken_pairs:
         status = "block"
         message = f"Projected first-round coverage has consecutive open years: {', '.join(f'{a}-{b}' for a, b in broken_pairs)}."
@@ -2594,9 +2596,9 @@ def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash
     }
 
 
-def render_trade_approval_receipt(trade_team, players_in, players_out, picks_in, picks_out, exceptions_out, cash_out, roster_after):
-    stepien = trade_stepien_review(dp, trade_team, picks_in, picks_out)
-    apron = trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash_out)
+def render_trade_approval_receipt(trade_team, players_in, players_out, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien=None, apron=None):
+    stepien = stepien or trade_stepien_review(dp, trade_team, picks_in, picks_out)
+    apron = apron or trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash_out)
     overall_priority = {"block": 2, "watch": 1, "clear": 0}
     overall_status = max([stepien["status"], apron["status"]], key=lambda item: overall_priority[item])
     overall_label = {"clear": "Green", "watch": "Yellow", "block": "Red"}[overall_status]
@@ -8462,9 +8464,8 @@ st.markdown(
         min-height: 3.35rem;
     }}
 
-    div[data-testid="stForm"] div[data-baseweb="select"] [class*="placeholder"],
-    div[data-testid="stForm"] div[data-baseweb="select"] div[aria-hidden="true"] {{
-        color: #111827 !important;
+    div[data-testid="stForm"] div[data-baseweb="select"] [class*="placeholder"] {{
+        color: transparent !important;
         font-family: "Poppins", sans-serif !important;
         font-size: 0.78rem !important;
         font-weight: 850 !important;
@@ -10585,17 +10586,17 @@ with tab9:
     
         with col1:
             render_trade_panel_header("Outgoing Package", "Assets leaving your organization", TradeTeam, "blue")
-            SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, TradeTeam))
-            SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, TradeTeam))
-            SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, TradeTeam))
+            SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, TradeTeam), placeholder="")
+            SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, TradeTeam), placeholder="")
+            SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, TradeTeam), placeholder="")
             CashOutText = st.text_input("Cash Out:", placeholder="$0")
             CashOut = parse_money_input(CashOutText)
 
         with col2:
             render_trade_panel_header("Incoming Package", "Assets your organization receives", tone="green")
-            SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, TradeTeam))
-            SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, TradeTeam))
-            SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, TradeTeam))
+            SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, TradeTeam), placeholder="")
+            SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, TradeTeam), placeholder="")
+            SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, TradeTeam), placeholder="")
             CashInText = st.text_input("Cash In:", placeholder="$0")
             CashIn = parse_money_input(CashInText)
 
@@ -10617,6 +10618,8 @@ with tab9:
         cap_total_after = cap_total_before + salary_delta
         players_trade_out = players_out_table(df, pics, SelectedPlayersOut)
         players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
+        stepien_review = trade_stepien_review(dp, TradeTeam, SelectedPicksIn, SelectedPicksOut)
+        apron_review = trade_apron_review(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut)
         render_trade_asset_ledger(
             TradeTeam,
             players_trade_out,
@@ -10650,6 +10653,8 @@ with tab9:
             SelectedExceptionOut,
             CashOut,
             roster_after,
+            stepien_review,
+            apron_review,
         )
     elif submitted:
         render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
