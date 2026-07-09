@@ -4666,10 +4666,12 @@ def ist_game_sort_key(row, seed_lookup):
 
 def ist_bracket_round_label(round_name):
     label = str(clean_pick_display(round_name)).lower()
-    if "champ" in label or "final" in label:
-        return "SBC Cup"
+    if "quarter" in label:
+        return "Quarterfinals"
     if "semi" in label:
         return "Semifinals"
+    if "champ" in label or "final" in label:
+        return "SBCFBL Cup"
     return "Quarterfinals"
 
 
@@ -4717,7 +4719,7 @@ def render_ist_bracket(games, title, empty_text, seed_lookup=None):
             <div class="sbc-ist-bracket-stage">
                 <div class="sbc-ist-bracket-flow">{''.join(columns)}</div>
                 <aside class="sbc-bracket-champion" style="--champion-color:{escape(str(champion_color), quote=True)};--champion-secondary:{escape(str(champion_secondary), quote=True)};">
-                    <span>Cup Winner</span>
+                    <span>SBCFBL Cup Champion</span>
                     {'<img src="' + escape(str(champion_logo), quote=True) + '" alt="' + escape(live_team_full_name(champion), quote=True) + ' logo">' if champion else ''}
                     <strong>{escape(live_team_full_name(champion)) if champion else 'TBD'}</strong>
                 </aside>
@@ -6765,17 +6767,17 @@ st.markdown(
     .sbc-nba-bracket {{
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.24fr) minmax(0, 1fr);
-        gap: 0.75rem;
+        gap: 0.65rem;
         align-items: stretch;
         min-height: 38rem;
-        padding: 0.85rem;
+        padding: 0.85rem 0.65rem;
     }}
 
     .sbc-nba-bracket-side {{
         display: grid;
         grid-template-columns: repeat(4, minmax(8.35rem, 1fr));
         grid-template-rows: auto 1fr;
-        gap: 0.58rem;
+        gap: 0.54rem;
         align-items: stretch;
         min-width: 0;
     }}
@@ -6783,10 +6785,11 @@ st.markdown(
     .sbc-nba-bracket-center {{
         display: grid;
         gap: 0.85rem;
-        align-content: center;
+        align-content: start;
         justify-content: center;
         justify-items: center;
         min-width: 0;
+        padding-top: 2.89rem;
     }}
 
     .sbc-nba-conference-title {{
@@ -6823,14 +6826,7 @@ st.markdown(
     }}
 
     .sbc-nba-bracket .sbc-nba-bracket-column:not(:last-child)::after {{
-        content: "";
-        position: absolute;
-        top: 52%;
-        right: -0.58rem;
-        width: 0.58rem;
-        height: 2px;
-        background: rgba(17,24,39,0.72);
-        z-index: 0;
+        display: none;
     }}
 
     .sbc-nba-bracket-east .sbc-nba-bracket-column:not(:last-child)::after {{
@@ -6879,14 +6875,7 @@ st.markdown(
     }}
 
     .sbc-nba-bracket .sbc-bracket-matchup::after {{
-        content: "";
-        position: absolute;
-        top: 50%;
-        right: -0.52rem;
-        width: 0.52rem;
-        height: 2px;
-        background: rgba(17,24,39,0.76);
-        z-index: 0;
+        display: none;
     }}
 
     .sbc-nba-bracket-east .sbc-bracket-matchup::after {{
@@ -7072,23 +7061,21 @@ st.markdown(
         padding-right: 0.05rem;
     }}
 
+    .sbc-ist-bracket-panel .sbc-bracket-matchup::after {{
+        display: none;
+    }}
+
     .sbc-ist-bracket-round:not(:last-child)::after {{
-        content: "";
-        position: absolute;
-        top: 50%;
-        right: -0.62rem;
-        width: 0.62rem;
-        height: 2px;
-        background: linear-gradient(90deg, color-mix(in srgb, {LEAGUE_SECONDARY} 55%, transparent), color-mix(in srgb, {LEAGUE_PRIMARY} 55%, transparent));
-        transform: translateY(-50%);
+        display: none;
     }}
 
     .sbc-ist-bracket-round:nth-child(2) .sbc-bracket-games {{
-        padding-top: 3.8rem;
+        gap: 7.1rem;
+        padding-top: 3.35rem;
     }}
 
     .sbc-ist-bracket-round:nth-child(3) .sbc-bracket-games {{
-        padding-top: 8.15rem;
+        padding-top: 10rem;
     }}
 
     @media (max-width: 1150px) {{
