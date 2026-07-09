@@ -8309,7 +8309,8 @@ st.markdown(
     .sbc-trade-panel-head span {{
         display: block;
         color: var(--sbc-ink);
-        font-size: 1rem;
+        font-family: "Poppins", sans-serif;
+        font-size: 0.98rem;
         font-weight: 950;
         line-height: 1.1;
     }}
@@ -8317,9 +8318,10 @@ st.markdown(
     .sbc-trade-panel-head em {{
         display: block;
         color: var(--sbc-muted);
+        font-family: "Poppins", sans-serif;
         font-size: 0.78rem;
         font-style: normal;
-        font-weight: 800;
+        font-weight: 850;
     }}
 
     .sbc-trade-summary-card,
@@ -8394,29 +8396,121 @@ st.markdown(
         border: 1px dashed rgba(23, 32, 42, 0.18);
     }}
 
-    div[data-baseweb="select"] > div {{
-        min-height: 4.25rem;
+    div[data-testid="stForm"] {{
+        border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 14%, rgba(23, 32, 42, 0.12));
+        border-radius: 8px;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.82)),
+            color-mix(in srgb, {LEAGUE_SECONDARY} 4%, #ffffff);
+        box-shadow: 0 18px 44px rgba(18, 25, 38, 0.09);
+        padding: 1rem 1rem 0.95rem;
+        font-family: "Poppins", sans-serif;
+    }}
+
+    div[data-testid="stForm"] label,
+    div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {{
+        color: #111827 !important;
+        font-family: "Poppins", sans-serif !important;
+        font-size: 0.82rem !important;
+        font-weight: 900 !important;
+        letter-spacing: 0 !important;
+        line-height: 1.1 !important;
+        margin-bottom: 0.28rem !important;
+    }}
+
+    div[data-testid="stForm"] div[data-baseweb="select"] > div {{
+        min-height: 3.35rem;
         align-items: center;
+        border-color: rgba(23, 32, 42, 0.16) !important;
+        border-radius: 8px !important;
+        background: rgba(255, 255, 255, 0.92) !important;
+        box-shadow: 0 7px 18px rgba(18, 25, 38, 0.045);
     }}
 
-    div[data-baseweb="select"] input {{
-        min-height: 2.7rem;
-        line-height: 2.7rem;
+    div[data-testid="stForm"] div[data-baseweb="select"] > div:hover,
+    div[data-testid="stForm"] div[data-baseweb="select"] > div:focus-within {{
+        border-color: color-mix(in srgb, {LEAGUE_PRIMARY} 44%, rgba(23, 32, 42, 0.18)) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, {LEAGUE_PRIMARY} 10%, transparent), 0 9px 20px rgba(18, 25, 38, 0.055);
     }}
 
-    div[data-baseweb="select"] [data-baseweb="tag"] {{
-        min-height: 2.05rem;
+    div[data-testid="stForm"] div[data-baseweb="select"],
+    div[data-testid="stForm"] div[data-baseweb="select"] * {{
+        font-family: "Poppins", sans-serif !important;
+    }}
+
+    div[data-testid="stForm"] div[data-baseweb="select"] input {{
+        min-height: 2rem;
+        color: #111827 !important;
+        font-family: "Poppins", sans-serif !important;
+        font-size: 0.82rem !important;
+        font-weight: 800 !important;
+        line-height: 2rem;
+    }}
+
+    div[data-testid="stForm"] div[data-baseweb="select"] [data-baseweb="tag"] {{
+        min-height: 1.7rem;
         align-items: center;
+        border-radius: 999px;
+        background: color-mix(in srgb, {LEAGUE_PRIMARY} 12%, #ffffff);
+        color: {LEAGUE_PRIMARY};
+        font-family: "Poppins", sans-serif;
+        font-size: 0.78rem;
+        font-weight: 900;
     }}
 
-    div[data-baseweb="select"] [data-baseweb="select"] {{
-        min-height: 4.25rem;
+    div[data-testid="stForm"] div[data-baseweb="select"] [data-baseweb="select"] {{
+        min-height: 3.35rem;
     }}
 
-    div[data-baseweb="select"] [class*="placeholder"],
-    div[data-baseweb="select"] div[aria-hidden="true"] {{
-        line-height: 1.35 !important;
+    div[data-testid="stForm"] div[data-baseweb="select"] [class*="placeholder"],
+    div[data-testid="stForm"] div[data-baseweb="select"] div[aria-hidden="true"] {{
+        color: #111827 !important;
+        font-family: "Poppins", sans-serif !important;
+        font-size: 0.78rem !important;
+        font-weight: 850 !important;
+        line-height: 1.2 !important;
         white-space: normal;
+    }}
+
+    div[data-testid="stForm"] input[type="text"] {{
+        min-height: 2.7rem;
+        border-color: rgba(23, 32, 42, 0.18) !important;
+        border-radius: 8px !important;
+        background: rgba(255, 255, 255, 0.96) !important;
+        color: #111827 !important;
+        font-family: "Poppins", sans-serif !important;
+        font-size: 0.88rem !important;
+        font-weight: 850 !important;
+        box-shadow: 0 7px 18px rgba(18, 25, 38, 0.045);
+    }}
+
+    div[data-testid="stForm"] input[type="text"]:focus {{
+        border-color: color-mix(in srgb, {LEAGUE_PRIMARY} 44%, rgba(23, 32, 42, 0.18)) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, {LEAGUE_PRIMARY} 10%, transparent), 0 9px 20px rgba(18, 25, 38, 0.055) !important;
+    }}
+
+    div[data-testid="stForm"] input[type="text"]::placeholder {{
+        color: rgba(17, 24, 39, 0.36) !important;
+        font-weight: 800 !important;
+    }}
+
+    div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button {{
+        min-height: 2.75rem;
+        padding: 0.62rem 1.25rem;
+        border-radius: 8px;
+        border: 1px solid color-mix(in srgb, var(--trade-primary, {LEAGUE_PRIMARY}) 82%, #000 18%);
+        background: linear-gradient(135deg, var(--trade-primary, {LEAGUE_PRIMARY}), color-mix(in srgb, var(--trade-primary, {LEAGUE_PRIMARY}) 72%, #111827 28%));
+        color: #ffffff;
+        font-family: "Poppins", sans-serif;
+        font-size: 0.86rem;
+        font-weight: 900;
+        box-shadow: 0 12px 24px rgba(18, 25, 38, 0.16);
+    }}
+
+    div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button:hover {{
+        border-color: var(--trade-secondary, {LEAGUE_SECONDARY});
+        transform: translateY(-1px);
+        filter: brightness(1.03);
     }}
 
     .sbc-trade-ledger {{
@@ -9095,26 +9189,34 @@ st.markdown(
     }}
 
     div[data-testid="stForm"] {{
-        border: 1px solid var(--sbc-border);
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 14%, rgba(23, 32, 42, 0.12));
         border-radius: 8px;
-        background: #ffffff;
-        box-shadow: 0 12px 32px rgba(18, 25, 38, 0.07);
-        padding: 1rem;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.82)),
+            color-mix(in srgb, var(--sbc-team-secondary) 4%, #ffffff);
+        box-shadow: 0 18px 44px rgba(18, 25, 38, 0.09);
+        padding: 1rem 1rem 0.95rem;
+        font-family: "Poppins", sans-serif;
     }}
 
     .stButton > button,
     [data-testid="stFormSubmitButton"] button {{
+        min-height: 2.65rem;
+        padding: 0.58rem 1.18rem;
         border-radius: 8px;
         border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 82%, #000 18%);
-        background: var(--sbc-team-primary);
+        background: linear-gradient(135deg, var(--sbc-team-primary), color-mix(in srgb, var(--sbc-team-primary) 76%, #111827 24%));
         color: var(--sbc-team-text);
-        font-weight: 850;
-        box-shadow: 0 10px 26px rgba(18, 25, 38, 0.12);
+        font-family: "Poppins", sans-serif;
+        font-size: 0.86rem;
+        font-weight: 900;
+        box-shadow: 0 12px 24px rgba(18, 25, 38, 0.16);
     }}
 
     .stButton > button:hover,
     [data-testid="stFormSubmitButton"] button:hover {{
         border-color: var(--sbc-team-secondary);
+        transform: translateY(-1px);
         filter: brightness(1.03);
     }}
 
@@ -10497,7 +10599,7 @@ with tab9:
             CashInText = st.text_input("Cash In:", placeholder="$0")
             CashIn = parse_money_input(CashInText)
 
-        submitted = st.form_submit_button("Submit")
+        submitted = st.form_submit_button("Review Deal")
 
     trade_has_assets = bool(SelectedPicksIn or SelectedPicksOut or SelectedPlayersIn or SelectedPlayersOut or SelectedExceptionIn or SelectedExceptionOut or CashIn or CashOut)
 
