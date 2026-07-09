@@ -2247,6 +2247,112 @@ def current_year_salary_for_players(data, players):
     return data[data["Player"].isin(players)][f"Y{current_year}"].fillna(0).sum()
 
 
+def trade_active_player_options(data, trade_team=None, incoming=False):
+    if data is None or data.empty:
+        return []
+    type_col = f"Type{current_year}"
+    mask = data["Type"].eq("Active Players")
+    if type_col in data.columns:
+        mask = mask & ~data[type_col].isin(["Unrestricted", "Restricted", "Dead"])
+    if "Trade.Restriction" in data.columns:
+        mask = mask & (data["Trade.Restriction"].isna() | data["Trade.Restriction"].eq(""))
+    if trade_team:
+        mask = mask & (data["Team"].ne(trade_team) if incoming else data["Team"].eq(trade_team))
+    return data.loc[mask, "Player"].dropna().sort_values().tolist()
+
+
+def trade_sign_and_trade_options(data, trade_team=None, incoming=False):
+    if data is None or data.empty:
+        return []
+    type_col = f"Type{current_year}"
+    if type_col not in data.columns:
+        return []
+    mask = data[type_col].isin(["Unrestricted", "Restricted"])
+    if trade_team:
+        mask = mask & (data["Team"].ne(trade_team) if incoming else data["Team"].eq(trade_team))
+    return data.loc[mask, "Player"].dropna().sort_values().tolist()
+
+
+def trade_salary_map(players, prefix):
+    salaries = {}
+    for player in players:
+        salaries[player] = st.number_input(
+            f"{player} S&T Salary",
+            min_value=0,
+            step=100000,
+            format="%d",
+            key=f"{prefix}_{player}",
+        )
+    return salaries
+
+
+def trade_salary_total(salary_map):
+    return sum(float(value or 0) for value in salary_map.values())
+
+
+TRADE_MATCH_SMALL_OUTGOING_LIMIT = 8846000
+TRADE_MATCH_MID_OUTGOING_LIMIT = 35384000
+TRADE_MATCH_MID_PADDING = 9096000
+TRADE_MATCH_STANDARD_PADDING = 250000
+
+
+def trade_salary_matching_review(outgoing_salary, incoming_salary, tax_before):
+    outgoing_salary = float(outgoing_salary or 0)
+    incoming_salary = float(incoming_salary or 0)
+    if outgoing_salary <= 0 and incoming_salary > 0:
+        return {
+            "label": "No outgoing salary",
+            "detail": "Incoming salary needs an exception, cap room, minimum exception, or S&T structure.",
+            "max_incoming": 0,
+            "tpe": 0,
+            "status": "watch",
+        }
+    if incoming_salary < outgoing_salary:
+        tpe_amount = outgoing_salary - incoming_salary
+        return {
+            "label": "Taking back less salary",
+            "detail": f"Creates a trade exception of {format_money(tpe_amount)} if otherwise eligible.",
+            "max_incoming": outgoing_salary,
+            "tpe": tpe_amount,
+            "status": "clear",
+        }
+    if tax_before >= current_luxury_tax:
+        max_incoming = outgoing_salary * 1.25 + TRADE_MATCH_STANDARD_PADDING
+        return {
+            "label": "Always 125% + $250K",
+            "detail": f"Tax-team matching band. Max incoming salary: {format_money(max_incoming)}.",
+            "max_incoming": max_incoming,
+            "tpe": 0,
+            "status": "block" if incoming_salary > max_incoming else "clear",
+        }
+    if outgoing_salary <= TRADE_MATCH_SMALL_OUTGOING_LIMIT:
+        max_incoming = outgoing_salary * 2 + TRADE_MATCH_STANDARD_PADDING
+        return {
+            "label": "Up to $8.846M",
+            "detail": f"200% plus $250K. Max incoming salary: {format_money(max_incoming)}.",
+            "max_incoming": max_incoming,
+            "tpe": 0,
+            "status": "block" if incoming_salary > max_incoming else "clear",
+        }
+    if outgoing_salary <= TRADE_MATCH_MID_OUTGOING_LIMIT:
+        max_incoming = outgoing_salary + TRADE_MATCH_MID_PADDING
+        return {
+            "label": "$8.846M-$35.384M",
+            "detail": f"$9.096M padding. Max incoming salary: {format_money(max_incoming)}.",
+            "max_incoming": max_incoming,
+            "tpe": 0,
+            "status": "block" if incoming_salary > max_incoming else "clear",
+        }
+    max_incoming = outgoing_salary * 1.25 + TRADE_MATCH_STANDARD_PADDING
+    return {
+        "label": "$35.384M and up",
+        "detail": f"125% plus $250K. Max incoming salary: {format_money(max_incoming)}.",
+        "max_incoming": max_incoming,
+        "tpe": 0,
+        "status": "block" if incoming_salary > max_incoming else "clear",
+    }
+
+
 def render_trade_hero(team, outgoing_count=None, incoming_count=None):
     visuals = team_visuals(team)
     counts_html = ""
@@ -2371,7 +2477,7 @@ def trade_pick_note_from_label(draft_picks, pick_label):
     return ""
 
 
-def trade_commissioner_paragraph(trade_team, players_in, players_out, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien, apron):
+def trade_commissioner_paragraph(trade_team, players_in, players_out, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien, apron, salary_match=None):
     overall_priority = {"block": 2, "watch": 1, "clear": 0}
     overall_status = max([stepien["status"], apron["status"]], key=lambda item: overall_priority[item])
     overall_label = {"clear": "Green", "watch": "Yellow", "block": "Red"}[overall_status]
@@ -2381,19 +2487,23 @@ def trade_commissioner_paragraph(trade_team, players_in, players_out, picks_in, 
     pick_out_text = ", ".join(picks_out) if picks_out else "no picks"
     pick_in_text = ", ".join(picks_in) if picks_in else "no picks"
     exceptions_text = ", ".join(exceptions_out) if exceptions_out else "no exceptions"
+    salary_text = f"Salary matching: {salary_match['label']} - {salary_match['detail']} " if salary_match else ""
     return (
         f"{live_team_full_name(trade_team)} proposes to send out {player_out_text} and {pick_out_text}, "
         f"and receive {player_in_text} and {pick_in_text}. The trade changes team salary from "
         f"{format_money(apron['tax_before'])} to {format_money(apron['tax_after'])}, with "
         f"{format_money(apron['outgoing_salary'])} outgoing salary and {format_money(apron['incoming_salary'])} incoming salary. "
         f"Roster count would be {roster_after}. Stepien review: {stepien['message']} "
+        f"{salary_text}"
         f"Apron review: {apron.get('hard_cap_summary', ' '.join(flag[2] for flag in apron['flags']))} Exceptions used: {exceptions_text}. "
         f"Overall flag: {overall_label} ({status_word})."
     )
 
 
-def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, picks_in, exceptions_out, exceptions_in, cash_out, cash_in, incoming_salary, outgoing_salary, salary_delta, cap_after, roster_after, stepien=None, apron=None):
+def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, picks_in, exceptions_out, exceptions_in, cash_out, cash_in, incoming_salary, outgoing_salary, salary_delta, cap_after, roster_after, stepien=None, apron=None, sign_trade_out=None, sign_trade_in=None):
     visuals = team_visuals(trade_team)
+    sign_trade_out = sign_trade_out or {}
+    sign_trade_in = sign_trade_in or {}
 
     def asset_row(asset_type, asset, team, amount="", detail=""):
         detail_html = f'<em>{escape(str(detail))}</em>' if not is_blank_value(detail) else ""
@@ -2432,6 +2542,29 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
         if team:
             incoming_names[-1] = f"{name} from {live_team_full_name(team)}"
 
+    def sign_trade_row(player, amount, side):
+        row = df[df["Player"].eq(player)]
+        team = trade_team if side == "out" else (str(row.iloc[0].get("Team", "")) if not row.empty else "")
+        pic = ""
+        if not row.empty:
+            pic_row = pics[pics["Player"].eq(player)] if "Player" in pics.columns else pd.DataFrame()
+            if not pic_row.empty:
+                pic = pic_row.iloc[0].get("Picture_Online", "")
+        img = f'<img class="sbc-trade-player-img" src="{escape(str(pic), quote=True)}" alt="{escape(player, quote=True)}">' if not is_blank_value(pic) else '<span class="sbc-trade-player-img sbc-trade-player-empty"></span>'
+        return asset_row("S&T Player", f'<span class="sbc-trade-player">{img}<strong>{escape(player)}</strong></span>', team, format_money(amount), "Sign-and-trade salary")
+
+    for player, amount in sign_trade_out.items():
+        if amount:
+            outgoing_names.append(player)
+            player_out_names.append(player)
+            outgoing_rows.append(sign_trade_row(player, amount, "out"))
+
+    for player, amount in sign_trade_in.items():
+        if amount:
+            incoming_names.append(player)
+            player_in_names.append(player)
+            incoming_rows.append(sign_trade_row(player, amount, "in"))
+
     for pick in picks_out:
         outgoing_names.append(str(pick))
         outgoing_rows.append(asset_row("Draft Pick", escape(str(pick)), trade_team, "", trade_pick_note_from_label(dp, pick)))
@@ -2468,8 +2601,15 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
         return f"{', '.join(clean[:-1])}, and {clean[-1]}"
 
     stepien = stepien or trade_stepien_review(dp, trade_team, picks_in, picks_out)
-    apron = apron or trade_apron_review(trade_team, player_in_names, player_out_names, exceptions_out, cash_out)
-    narrative = trade_commissioner_paragraph(trade_team, player_in_names, player_out_names, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien, apron)
+    apron = apron or trade_apron_review(trade_team, player_in_names, player_out_names, exceptions_out, cash_out, trade_salary_total(sign_trade_in), trade_salary_total(sign_trade_out))
+    salary_match = trade_salary_matching_review(outgoing_salary, incoming_salary, apron.get("tax_before", 0))
+    narrative = trade_commissioner_paragraph(trade_team, player_in_names, player_out_names, picks_in, picks_out, exceptions_out, cash_out, roster_after, stepien, apron, salary_match)
+    apron_status = apron.get("status", "clear")
+    apron_tile_class = f"sbc-trade-apron-{escape(apron_status)}"
+    current_hard_cap = apron.get("current_hard_cap_label", "Currently not hard-capped")
+    activated_hard_cap = apron.get("activated_hard_cap_label", "No new hard cap is activated by this trade")
+    final_hard_cap = apron.get("effective_hard_cap_label", "End result: no hard cap")
+    salary_match_class = f"sbc-trade-apron-{escape(salary_match.get('status', 'clear'))}"
 
     render_html(f"""
         <section class="sbc-trade-ledger sbc-trade-board" style="--trade-ledger-primary:{escape(str(visuals["primary"]), quote=True)};--trade-ledger-secondary:{escape(str(visuals["secondary"]), quote=True)};--trade-ledger-text:{escape(str(visuals["text"]), quote=True)};">
@@ -2493,17 +2633,21 @@ def render_trade_asset_ledger(trade_team, players_out, players_in, picks_out, pi
                 <span><strong>{escape(format_money(outgoing_salary))}</strong><em>Outgoing Salary</em></span>
                 <span><strong>{escape(format_money(incoming_salary))}</strong><em>Incoming Salary</em></span>
                 <span><strong>{escape(format_money(salary_delta))}</strong><em>Net Salary</em></span>
+                <span class="{salary_match_class}"><strong>{escape(salary_match["label"])}</strong><em>{escape(salary_match["detail"])}</em></span>
                 <span><strong>{escape(str(roster_after))}</strong><em>Players After</em></span>
+                <span class="{apron_tile_class}"><strong>{escape(current_hard_cap)}</strong><em>Current Hard Cap</em></span>
+                <span class="{apron_tile_class}"><strong>{escape(activated_hard_cap)}</strong><em>Activated</em></span>
+                <span class="{apron_tile_class}"><strong>{escape(final_hard_cap)}</strong><em>End Result</em></span>
             </div>
             <div class="sbc-trade-narrative">{escape(narrative)}</div>
         </section>
     """)
 
 
-def trade_cap_type_after(players_in, players_out, trade_team):
+def trade_cap_type_after(players_in, players_out, trade_team, incoming_salary_extra=0, outgoing_salary_extra=0):
     team_total = get_tax_total(df, trade_team)
     team_total -= current_year_salary_for_players(df, players_out)
-    team_total += current_year_salary_for_players(df, players_in)
+    team_total += current_year_salary_for_players(df, players_in) + float(incoming_salary_extra or 0)
     if team_total < current_salary_cap:
         return "Cap"
     if team_total < current_luxury_tax:
@@ -2604,11 +2748,13 @@ def trade_stepien_review(draft_picks, trade_team, picks_in, picks_out):
     }
 
 
-def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash_out):
-    outgoing_salary = current_year_salary_for_players(df, players_out)
-    incoming_salary = current_year_salary_for_players(df, players_in)
+def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash_out, incoming_salary_extra=0, outgoing_salary_extra=0):
+    regular_outgoing_salary = current_year_salary_for_players(df, players_out)
+    regular_incoming_salary = current_year_salary_for_players(df, players_in)
+    outgoing_salary = regular_outgoing_salary + float(outgoing_salary_extra or 0)
+    incoming_salary = regular_incoming_salary + float(incoming_salary_extra or 0)
     tax_before = get_tax_total(df, trade_team)
-    tax_after = tax_before - outgoing_salary + incoming_salary
+    tax_after = tax_before - regular_outgoing_salary + regular_incoming_salary + float(incoming_salary_extra or 0)
     existing_hard_cap = team_hard_cap(base_cap, trade_team)
     try:
         cash_value = 0.0 if cash_out is None else float(cash_out)
@@ -2706,10 +2852,10 @@ def render_trade_rule_card(title, status, message):
     """)
 
 
-def render_trade_rule_checks(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out, apron=None):
-    cap_type = trade_cap_type_after(selected_players_in, selected_players_out, trade_team)
+def render_trade_rule_checks(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out, apron=None, incoming_salary_extra=0, outgoing_salary_extra=0, sign_trade_in_count=0):
+    cap_type = trade_cap_type_after(selected_players_in, selected_players_out, trade_team, incoming_salary_extra, outgoing_salary_extra)
     hard_cap = team_hard_cap(base_cap, trade_team)
-    apron = apron or trade_apron_review(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out)
+    apron = apron or trade_apron_review(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out, incoming_salary_extra, outgoing_salary_extra)
     try:
         cash_value = 0.0 if cash_out is None else float(cash_out)
     except (TypeError, ValueError):
@@ -2721,10 +2867,10 @@ def render_trade_rule_checks(trade_team, selected_players_in, selected_players_o
 
     current_players = active_player_n(df, trade_team)
     current_type_col = "Type" + str(current_year)
-    active_status = (df["Type"] == "Active Players") & ~df[current_type_col].isin(["Unrestricted", "Restricted"])
+    active_status = (df["Type"] == "Active Players") & ~df[current_type_col].isin(["Unrestricted", "Restricted", "Dead"])
     active_in = df[(df["Player"].isin(selected_players_in)) & active_status].shape[0]
     active_out = df[(df["Player"].isin(selected_players_out)) & active_status].shape[0]
-    roster_after = current_players - active_out + active_in
+    roster_after = current_players - active_out + active_in + int(sign_trade_in_count or 0)
     if roster_after > 17:
         render_trade_rule_card("Roster Limit", "block", f"Roster would reach {roster_after}. Cut at least {roster_after - 17} player(s) to comply.")
     elif roster_after >= 15:
@@ -2763,8 +2909,10 @@ def render_trade_rule_checks(trade_team, selected_players_in, selected_players_o
     else:
         render_trade_rule_card("BAE / MLE", "clear", "No BAE or MLE is being used.")
 
-    incoming_salary = current_year_salary_for_players(df, selected_players_in)
-    outgoing_salary = current_year_salary_for_players(df, selected_players_out)
+    incoming_salary = current_year_salary_for_players(df, selected_players_in) + float(incoming_salary_extra or 0)
+    outgoing_salary = current_year_salary_for_players(df, selected_players_out) + float(outgoing_salary_extra or 0)
+    salary_match = trade_salary_matching_review(outgoing_salary, incoming_salary, apron.get("tax_before", 0))
+    render_trade_rule_card("Salary Matching", salary_match["status"], f"{salary_match['label']}: {salary_match['detail']}")
     ratio = incoming_salary / outgoing_salary if outgoing_salary else 1000
     if cap_type in ["First", "Second"] and ratio > 1:
         render_trade_rule_card("100 Percent Rule", "block", "Teams above the First Apron cannot take back more than 100% of outgoing salary unless a minimum exception applies.")
@@ -8812,7 +8960,7 @@ st.markdown(
 
     .sbc-trade-math-strip {{
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(8, minmax(0, 1fr));
         gap: 0.6rem;
         padding: 0 0.9rem 0.85rem;
     }}
@@ -8828,9 +8976,11 @@ st.markdown(
 
     .sbc-trade-math-strip strong {{
         color: var(--sbc-ink);
-        font-size: 1rem;
+        font-size: 0.9rem;
         font-weight: 950;
         font-variant-numeric: tabular-nums;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
     }}
 
     .sbc-trade-math-strip em {{
@@ -8840,6 +8990,21 @@ st.markdown(
         font-weight: 950;
         letter-spacing: 0.08em;
         text-transform: uppercase;
+    }}
+
+    .sbc-trade-math-strip .sbc-trade-apron-clear {{
+        border-color: rgba(0, 122, 50, 0.24);
+        background: linear-gradient(135deg, rgba(0, 122, 50, 0.12), #ffffff);
+    }}
+
+    .sbc-trade-math-strip .sbc-trade-apron-watch {{
+        border-color: rgba(159, 111, 0, 0.28);
+        background: linear-gradient(135deg, rgba(255, 193, 7, 0.18), #ffffff);
+    }}
+
+    .sbc-trade-math-strip .sbc-trade-apron-block {{
+        border-color: rgba(185, 28, 28, 0.28);
+        background: linear-gradient(135deg, rgba(185, 28, 28, 0.13), #ffffff);
     }}
 
     .sbc-trade-narrative {{
@@ -10599,7 +10764,9 @@ with tab9:
     
         with col1:
             render_trade_panel_header("Outgoing Package", "Assets leaving your organization", TradeTeam, "blue")
-            SelectedPlayersOut = st.multiselect("Outgoing Players:", tradeable_players_out(df, TradeTeam), placeholder="")
+            SelectedPlayersOut = st.multiselect("Outgoing Players:", trade_active_player_options(df, TradeTeam, incoming=False), placeholder="")
+            SelectedSignTradeOut = st.multiselect("Outgoing S&T Free Agents:", trade_sign_and_trade_options(df, TradeTeam, incoming=False), placeholder="")
+            SignTradeOutSalaries = trade_salary_map(SelectedSignTradeOut, "trade_st_out")
             SelectedPicksOut = st.multiselect("Outgoing Picks:", tradeable_picks_out(dp, TradeTeam), placeholder="")
             SelectedExceptionOut = st.multiselect("Exceptions Used:", tradeable_exceptions_out(exceptions, TradeTeam), placeholder="")
             CashOutText = st.text_input("Cash Out:", placeholder="$0")
@@ -10607,7 +10774,9 @@ with tab9:
 
         with col2:
             render_trade_panel_header("Incoming Package", "Assets your organization receives", tone="green")
-            SelectedPlayersIn = st.multiselect("Incoming Players:", tradeable_players_in(df, TradeTeam), placeholder="")
+            SelectedPlayersIn = st.multiselect("Incoming Players:", trade_active_player_options(df, TradeTeam, incoming=True), placeholder="")
+            SelectedSignTradeIn = st.multiselect("Incoming S&T Free Agents:", trade_sign_and_trade_options(df, TradeTeam, incoming=True), placeholder="")
+            SignTradeInSalaries = trade_salary_map(SelectedSignTradeIn, "trade_st_in")
             SelectedPicksIn = st.multiselect("Incoming Picks:", tradeable_picks_in(dp, TradeTeam), placeholder="")
             SelectedExceptionIn = st.multiselect("Exceptions Used:", tradeable_exceptions_in(exceptions, TradeTeam), placeholder="")
             CashInText = st.text_input("Cash In:", placeholder="$0")
@@ -10615,24 +10784,26 @@ with tab9:
 
         submitted = st.form_submit_button("Review Deal")
 
-    trade_has_assets = bool(SelectedPicksIn or SelectedPicksOut or SelectedPlayersIn or SelectedPlayersOut or SelectedExceptionIn or SelectedExceptionOut or CashIn or CashOut)
+    sign_trade_out_salary = trade_salary_total(SignTradeOutSalaries)
+    sign_trade_in_salary = trade_salary_total(SignTradeInSalaries)
+    trade_has_assets = bool(SelectedPicksIn or SelectedPicksOut or SelectedPlayersIn or SelectedPlayersOut or SelectedSignTradeIn or SelectedSignTradeOut or SelectedExceptionIn or SelectedExceptionOut or CashIn or CashOut)
 
     if submitted and trade_has_assets:
-        outgoing_salary = current_year_salary_for_players(df, SelectedPlayersOut)
-        incoming_salary = current_year_salary_for_players(df, SelectedPlayersIn)
+        outgoing_salary = current_year_salary_for_players(df, SelectedPlayersOut) + sign_trade_out_salary
+        incoming_salary = current_year_salary_for_players(df, SelectedPlayersIn) + sign_trade_in_salary
         salary_delta = incoming_salary - outgoing_salary
         current_type_col = "Type" + str(current_year)
-        active_status = (df["Type"] == "Active Players") & ~df[current_type_col].isin(["Unrestricted", "Restricted"])
+        active_status = (df["Type"] == "Active Players") & ~df[current_type_col].isin(["Unrestricted", "Restricted", "Dead"])
         active_out = df[(df["Player"].isin(SelectedPlayersOut)) & active_status].shape[0]
         active_in = df[(df["Player"].isin(SelectedPlayersIn)) & active_status].shape[0]
         roster_before = active_player_n(df, TradeTeam)
-        roster_after = roster_before - active_out + active_in
+        roster_after = roster_before - active_out + active_in + len([value for value in SignTradeInSalaries.values() if value])
         cap_total_before = get_cap_total(df, exceptions, TradeTeam)
-        cap_total_after = cap_total_before + salary_delta
+        cap_total_after = cap_total_before - current_year_salary_for_players(df, SelectedPlayersOut) + current_year_salary_for_players(df, SelectedPlayersIn) + sign_trade_in_salary
         players_trade_out = players_out_table(df, pics, SelectedPlayersOut)
         players_traded_in = players_in_table(df, pics, SelectedPlayersIn)
         stepien_review = trade_stepien_review(dp, TradeTeam, SelectedPicksIn, SelectedPicksOut)
-        apron_review = trade_apron_review(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut)
+        apron_review = trade_apron_review(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut, sign_trade_in_salary, sign_trade_out_salary)
         render_trade_asset_ledger(
             TradeTeam,
             players_trade_out,
@@ -10648,6 +10819,10 @@ with tab9:
             salary_delta,
             cap_total_after,
             roster_after,
+            stepien_review,
+            apron_review,
+            SignTradeOutSalaries,
+            SignTradeInSalaries,
         )
 
         render_html("""
@@ -10656,7 +10831,7 @@ with tab9:
                 <em>Roster and apron checks using the existing SBCFBL trade logic.</em>
             </div>
         """)
-        render_trade_rule_checks(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut, apron_review)
+        render_trade_rule_checks(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut, apron_review, sign_trade_in_salary, sign_trade_out_salary, len([value for value in SignTradeInSalaries.values() if value]))
     elif submitted:
         render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
 
