@@ -2346,7 +2346,7 @@ def trade_pick_row_for_label(draft_picks, pick_label):
         return None
     first_col = draft_picks["OGTeam"].astype(str).str.strip().eq(key[0])
     year_col = pd.to_numeric(draft_picks["Year"], errors="coerce").fillna(-1).astype(int).eq(key[1])
-    round_col = draft_picks["Round"].astype(str).str.strip().eq(key[2])
+    round_col = draft_picks["Round"].apply(trade_pick_round_key).eq(key[2])
     matches = draft_picks[first_col & year_col & round_col]
     if matches.empty:
         return None
@@ -2524,7 +2524,7 @@ def trade_pick_key_from_label(label):
         year = int(float(match.group("year")))
     except (TypeError, ValueError):
         return None
-    return match.group("team").strip(), year, match.group("round").strip()
+    return match.group("team").strip(), year, trade_pick_round_key(match.group("round"))
 
 
 def trade_pick_key_from_row(row):
@@ -2532,11 +2532,21 @@ def trade_pick_key_from_row(row):
         year = int(float(row.get("Year", 0)))
     except (TypeError, ValueError):
         return None
-    return str(row.get("OGTeam", "")).strip(), year, str(row.get("Round", "")).strip()
+    return str(row.get("OGTeam", "")).strip(), year, trade_pick_round_key(row.get("Round", ""))
+
+
+def trade_pick_round_key(value):
+    text = clean_pick_display(value)
+    match = re.search(r"\d+", str(text))
+    return match.group(0) if match else str(text).strip().lower()
+
+
+def trade_pick_is_first(value):
+    return trade_pick_round_key(value) == "1"
 
 
 def team_list_contains(value, team):
-    return team in [part.strip() for part in str(value).split(",")]
+    return team in team_names_from_list(value) or team in [part.strip() for part in str(value).split(",")]
 
 
 def trade_truthy(value):
@@ -2549,7 +2559,7 @@ def trade_truthy(value):
 
 def trade_stepien_review(draft_picks, trade_team, picks_in, picks_out):
     future_years = list(range(current_year, current_year + 7))
-    firsts = draft_picks[draft_picks["Round"].astype(str).str.contains("1st", case=False, na=False)].copy()
+    firsts = draft_picks[draft_picks["Round"].apply(trade_pick_is_first)].copy()
     outgoing_keys = {trade_pick_key_from_label(pick) for pick in picks_out}
     incoming_keys = {trade_pick_key_from_label(pick) for pick in picks_in}
     outgoing_keys.discard(None)
@@ -2567,13 +2577,13 @@ def trade_stepien_review(draft_picks, trade_team, picks_in, picks_out):
         if trade_truthy(row.get("FullyOwned", False)) and team_list_contains(row.get("CurrentTeam", ""), trade_team):
             coverage.setdefault(key[1], []).append(key)
     for key in incoming_keys:
-        if key and "1st" in key[2]:
+        if key and key[2] == "1":
             coverage.setdefault(key[1], []).append(key)
     missing_years = [year for year in future_years if not coverage.get(year)]
     broken_pairs = [(year, year + 1) for year in future_years[:-1] if year in missing_years and year + 1 in missing_years]
     outgoing_firsts = [
         pick for pick in picks_out
-        if "1st" in (trade_pick_key_from_label(pick) or ("", 0, ""))[2]
+        if (trade_pick_key_from_label(pick) or ("", 0, ""))[2] == "1"
     ]
     if broken_pairs:
         status = "block"
