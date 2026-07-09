@@ -9171,6 +9171,14 @@ with league_hub_tab:
         "🏛️ History"])
 
     with league_history_tab:
+        league_history_year_options = schedule_year_options_for_history()
+        default_league_history_year = current_year if current_year in league_history_year_options else league_history_year_options[-1]
+        LeagueHistoryYear = st.selectbox(
+            "History Year",
+            options=league_history_year_options,
+            index=league_history_year_options.index(default_league_history_year),
+            key="league_history_year",
+        )
         league_history_scoreboard_tab, league_history_playoffs_tab, league_history_ist_tab, league_history_player_stats_tab, league_history_awards_tab, league_history_draft_tab = st.tabs([
             "📺 Scoreboard",
             "🏆 Playoff Bracket",
@@ -9737,9 +9745,7 @@ with league_history_scoreboard_tab:
             </div>
         </div>
     """)
-    history_years = schedule_year_options_for_history()
-    default_history_year = current_year if current_year in history_years else history_years[-1]
-    HistoryScoreYear = st.selectbox("History Year", options=history_years, index=history_years.index(default_history_year), key="league_history_scoreboard_year")
+    HistoryScoreYear = LeagueHistoryYear
     history_period_options = schedule_period_options(all_time_schedule, HistoryScoreYear)
     HistoryScorePeriod = st.selectbox("History Period", options=history_period_options, index=current_period_index(history_period_options), key="league_history_scoreboard_period")
     history_schedule = all_time_schedule[
@@ -9768,9 +9774,7 @@ with league_history_playoffs_tab:
             </div>
         </div>
     """)
-    playoff_years = schedule_year_options_for_history()
-    default_playoff_year = current_year if current_year in playoff_years else playoff_years[-1]
-    PlayoffHistoryYear = st.selectbox("Playoff Year", options=playoff_years, index=playoff_years.index(default_playoff_year), key="league_history_playoff_year")
+    PlayoffHistoryYear = LeagueHistoryYear
     playoff_period = latest_period_for_year(PlayoffHistoryYear)
     playoff_games = all_time_schedule[
         (all_time_schedule["Year"] == PlayoffHistoryYear)
@@ -9799,9 +9803,7 @@ with league_history_ist_tab:
             </div>
         </div>
     """)
-    ist_years = schedule_year_options_for_history()
-    default_ist_year = current_year if current_year in ist_years else ist_years[-1]
-    ISTHistoryYear = st.selectbox("Tournament Year", options=ist_years, index=ist_years.index(default_ist_year), key="league_history_ist_year")
+    ISTHistoryYear = LeagueHistoryYear
     ist_period = latest_period_for_year(ISTHistoryYear)
     ist_games = all_time_schedule[
         (all_time_schedule["Year"] == ISTHistoryYear)
@@ -10335,35 +10337,18 @@ with league_history_draft_tab:
         </div>
         """)
 
-    draft_years = list(range(current_year, 2020, -1))
-    draft_year_tabs = st.tabs([str(year) for year in draft_years])
-    for draft_tab, draft_year in zip(draft_year_tabs, draft_years):
-        with draft_tab:
-            if draft_year == current_year:
-                # Live draft room retired after the 2026 draft; render as historical results.
-                c1, c2 = st.columns(2)
-                with c1:
-                    render_draft_history_table(
-                        safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"),
-                        f"{draft_year} Round 1",
-                        "First-round selections and current team context.")
-                with c2:
-                    render_draft_history_table(
-                        safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"),
-                        f"{draft_year} Round 2",
-                        "Second-round selections and current team context.")
-            else:
-                c1, c2 = st.columns(2)
-                with c1:
-                    render_draft_history_table(
-                        safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"),
-                        f"{draft_year} Round 1",
-                        "First-round selections and current team context.")
-                with c2:
-                    render_draft_history_table(
-                        safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"),
-                        f"{draft_year} Round 2",
-                        "Second-round selections and current team context.")
+    draft_year = LeagueHistoryYear
+    c1, c2 = st.columns(2)
+    with c1:
+        render_draft_history_table(
+            safe_table_call(past_draft, df, pics, dh, draft_year, "1st Round"),
+            f"{draft_year} Round 1",
+            "First-round selections and current team context.")
+    with c2:
+        render_draft_history_table(
+            safe_table_call(past_draft, df, pics, dh, draft_year, "2nd Round"),
+            f"{draft_year} Round 2",
+            "Second-round selections and current team context.")
     _legacy_tab10 = r'''
     tab2026, tab2025, tab2024, tab2023, tab2022, tab2021, tablottery = st.tabs(["2026 Draft", "2025 Draft", "2024 Draft", "2023 Draft", "2022 Draft", "2021 Draft", "Lottery"])
 
@@ -10664,94 +10649,91 @@ def render_check_card(title, description, check_df):
 
 
 with league_history_awards_tab:
-    award_year_options = list(range(current_year, 2020, -1))
-    award_year_tabs = st.tabs([str(year) for year in award_year_options])
-    for award_tab, AwardYears in zip(award_year_tabs, award_year_options):
-        with award_tab:
-            render_html(f"""
-                <div class="sbc-draft-hero sbc-league-hero">
-                    <div class="sbc-draft-hero-inner">
-                        <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
-                        <div>
-                            <div class="sbc-draft-eyebrow">{AwardYears} Trophy Case</div>
-                            <div class="sbc-draft-heading">SBCFBL Awards</div>
-                            <div class="sbc-draft-subcopy">Champions, postseason heroes, award winners, all-league teams, all-stars, and monthly honors in one polished gallery.</div>
-                        </div>
-                    </div>
+    AwardYears = LeagueHistoryYear
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{AwardYears} Trophy Case</div>
+                    <div class="sbc-draft-heading">SBCFBL Awards</div>
+                    <div class="sbc-draft-subcopy">Champions, postseason heroes, award winners, all-league teams, all-stars, and monthly honors in one polished gallery.</div>
                 </div>
-            """)
+            </div>
+        </div>
+    """)
 
-            col1, col2 = render_awards_section("Crown Jewels", "League champion, Cup champion, and signature postseason stars.", [1, 1])
-            with col1:
-                render_team_award_card("SBCFBL Champion", "Champion", AwardYears, "gold", feature=True)
-                render_player_award("Finals MVP", "Finals MVP", AwardYears, tone="gold")
-                render_player_award("Championship Roster", "Champion", AwardYears, tone="gold", compact=True)
-            with col2:
-                render_team_award_card("SBCFBL Cup Winner", "Cup Winner", AwardYears, "gold", feature=True)
-                render_player_award("Cup MVP", "Cup MVP", AwardYears, tone="gold")
-                render_player_award("Cup-Winning Roster", "Cup Winner", AwardYears, tone="gold", compact=True)
+    col1, col2 = render_awards_section("Crown Jewels", "League champion, Cup champion, and signature postseason stars.", [1, 1])
+    with col1:
+        render_team_award_card("SBCFBL Champion", "Champion", AwardYears, "gold", feature=True)
+        render_player_award("Finals MVP", "Finals MVP", AwardYears, tone="gold")
+        render_player_award("Championship Roster", "Champion", AwardYears, tone="gold", compact=True)
+    with col2:
+        render_team_award_card("SBCFBL Cup Winner", "Cup Winner", AwardYears, "gold", feature=True)
+        render_player_award("Cup MVP", "Cup MVP", AwardYears, tone="gold")
+        render_player_award("Cup-Winning Roster", "Cup Winner", AwardYears, tone="gold", compact=True)
 
-            west_col, east_col = render_awards_section("Conference & Division Crowns", "The paths through each side of the bracket.", [1, 1])
-            with west_col:
-                render_team_award_card("Western Conference Champion", "WC Champion", AwardYears, "green")
-                render_player_award("Western Conference MVP", "WCF MVP", AwardYears, tone="green")
-                div_cols = st.columns(3)
-                with div_cols[0]:
-                    render_team_award_card("Pacific Champion", "Pacific Champion", AwardYears, "green")
-                with div_cols[1]:
-                    render_team_award_card("Northwest Champion", "Northwest Champion", AwardYears, "green")
-                with div_cols[2]:
-                    render_team_award_card("Southwest Champion", "Southwest Champion", AwardYears, "green")
-            with east_col:
-                render_team_award_card("Eastern Conference Champion", "EC Champion", AwardYears, "blue")
-                render_player_award("Eastern Conference MVP", "ECF MVP", AwardYears, tone="blue")
-                div_cols = st.columns(3)
-                with div_cols[0]:
-                    render_team_award_card("Central Champion", "Central Champion", AwardYears, "blue")
-                with div_cols[1]:
-                    render_team_award_card("Atlantic Champion", "Atlantic Champion", AwardYears, "blue")
-                with div_cols[2]:
-                    render_team_award_card("Southeast Champion", "Southeast Champion", AwardYears, "blue")
+    west_col, east_col = render_awards_section("Conference & Division Crowns", "The paths through each side of the bracket.", [1, 1])
+    with west_col:
+        render_team_award_card("Western Conference Champion", "WC Champion", AwardYears, "green")
+        render_player_award("Western Conference MVP", "WCF MVP", AwardYears, tone="green")
+        div_cols = st.columns(3)
+        with div_cols[0]:
+            render_team_award_card("Pacific Champion", "Pacific Champion", AwardYears, "green")
+        with div_cols[1]:
+            render_team_award_card("Northwest Champion", "Northwest Champion", AwardYears, "green")
+        with div_cols[2]:
+            render_team_award_card("Southwest Champion", "Southwest Champion", AwardYears, "green")
+    with east_col:
+        render_team_award_card("Eastern Conference Champion", "EC Champion", AwardYears, "blue")
+        render_player_award("Eastern Conference MVP", "ECF MVP", AwardYears, tone="blue")
+        div_cols = st.columns(3)
+        with div_cols[0]:
+            render_team_award_card("Central Champion", "Central Champion", AwardYears, "blue")
+        with div_cols[1]:
+            render_team_award_card("Atlantic Champion", "Atlantic Champion", AwardYears, "blue")
+        with div_cols[2]:
+            render_team_award_card("Southeast Champion", "Southeast Champion", AwardYears, "blue")
 
-            cols = render_awards_section("Individual Hardware", "The season's headliners and category kings.", [1, 1, 1])
-            individual_awards = [
-                ("Most Valuable Player", "MVP", "purple"),
-                ("Clutch Player of the Year", "Clutch", "purple"),
-                ("Defensive Player of the Year", "DPOY", "purple"),
-                ("Most Improved Player", "MIP", "purple"),
-                ("Rookie of the Year", "ROY", "purple"),
-                ("Sixth Man of the Year", "6MOY", "purple"),
-            ]
-            for idx, (title, award, tone) in enumerate(individual_awards):
-                with cols[idx % 3]:
-                    render_player_award(title, award, AwardYears, tone=tone)
+    cols = render_awards_section("Individual Hardware", "The season's headliners and category kings.", [1, 1, 1])
+    individual_awards = [
+        ("Most Valuable Player", "MVP", "purple"),
+        ("Clutch Player of the Year", "Clutch", "purple"),
+        ("Defensive Player of the Year", "DPOY", "purple"),
+        ("Most Improved Player", "MIP", "purple"),
+        ("Rookie of the Year", "ROY", "purple"),
+        ("Sixth Man of the Year", "6MOY", "purple"),
+    ]
+    for idx, (title, award, tone) in enumerate(individual_awards):
+        with cols[idx % 3]:
+            render_player_award(title, award, AwardYears, tone=tone)
 
-            team_cols = render_awards_section("All-League Teams", "The best five-man groups from the season.", [1, 1, 1])
-            for col, (title, award, tone) in zip(team_cols, [("All-SBC First Team", "All-SBC 1st Team", "purple"), ("All-SBC Second Team", "All-SBC 2nd Team", "purple"), ("All-SBC Third Team", "All-SBC 3rd Team", "purple")]):
-                with col:
-                    render_player_award(title, award, AwardYears, tone=tone, compact=True)
+    team_cols = render_awards_section("All-League Teams", "The best five-man groups from the season.", [1, 1, 1])
+    for col, (title, award, tone) in zip(team_cols, [("All-SBC First Team", "All-SBC 1st Team", "purple"), ("All-SBC Second Team", "All-SBC 2nd Team", "purple"), ("All-SBC Third Team", "All-SBC 3rd Team", "purple")]):
+        with col:
+            render_player_award(title, award, AwardYears, tone=tone, compact=True)
 
-            col1, col2 = render_awards_section("Defense, Rookies & All-Star Stage", "Special teams, regular season crown, and showcase stars.", [1, 1])
-            with col1:
-                render_player_award("All-Defense First Team", "All-Defense 1st Team", AwardYears, tone="purple", compact=True)
-                render_player_award("All-Rookie First Team", "All-Rookie 1st Team", AwardYears, tone="purple", compact=True)
-                render_team_award_card("Regular Season Champion", "RS Champion", AwardYears, "gold")
-                render_player_award("Western Conference All-Stars", "West All-Star", AwardYears, mode="allstar", tone="green", compact=True)
-            with col2:
-                render_player_award("All-Defense Second Team", "All-Defense 2nd Team", AwardYears, tone="purple", compact=True)
-                render_player_award("All-Rookie Second Team", "All-Rookie 2nd Team", AwardYears, tone="purple", compact=True)
-                render_player_award("All-Star Game MVP", "ASG MVP", AwardYears, tone="gold")
-                render_player_award("Eastern Conference All-Stars", "East All-Star", AwardYears, mode="allstar", tone="blue", compact=True)
+    col1, col2 = render_awards_section("Defense, Rookies & All-Star Stage", "Special teams, regular season crown, and showcase stars.", [1, 1])
+    with col1:
+        render_player_award("All-Defense First Team", "All-Defense 1st Team", AwardYears, tone="purple", compact=True)
+        render_player_award("All-Rookie First Team", "All-Rookie 1st Team", AwardYears, tone="purple", compact=True)
+        render_team_award_card("Regular Season Champion", "RS Champion", AwardYears, "gold")
+        render_player_award("Western Conference All-Stars", "West All-Star", AwardYears, mode="allstar", tone="green", compact=True)
+    with col2:
+        render_player_award("All-Defense Second Team", "All-Defense 2nd Team", AwardYears, tone="purple", compact=True)
+        render_player_award("All-Rookie Second Team", "All-Rookie 2nd Team", AwardYears, tone="purple", compact=True)
+        render_player_award("All-Star Game MVP", "ASG MVP", AwardYears, tone="gold")
+        render_player_award("Eastern Conference All-Stars", "East All-Star", AwardYears, mode="allstar", tone="blue", compact=True)
 
-            col1, col2 = render_awards_section("Monthly & Weekly Honors", "A full season of recurring winners without the spreadsheet slog.", [1, 1])
-            with col1:
-                render_player_award("West Player of the Month", "West POM", AwardYears, mode="short", tone="green", compact=True)
-                render_player_award("West Rookie of the Month", "West ROM", AwardYears, mode="short", tone="green", compact=True)
-                render_player_award("West Player of the Week", "West POW", AwardYears, mode="short", tone="green", compact=True)
-            with col2:
-                render_player_award("East Player of the Month", "East POM", AwardYears, mode="short", tone="blue", compact=True)
-                render_player_award("East Rookie of the Month", "East ROM", AwardYears, mode="short", tone="blue", compact=True)
-                render_player_award("East Player of the Week", "East POW", AwardYears, mode="short", tone="blue", compact=True)
+    col1, col2 = render_awards_section("Monthly & Weekly Honors", "A full season of recurring winners without the spreadsheet slog.", [1, 1])
+    with col1:
+        render_player_award("West Player of the Month", "West POM", AwardYears, mode="short", tone="green", compact=True)
+        render_player_award("West Rookie of the Month", "West ROM", AwardYears, mode="short", tone="green", compact=True)
+        render_player_award("West Player of the Week", "West POW", AwardYears, mode="short", tone="green", compact=True)
+    with col2:
+        render_player_award("East Player of the Month", "East POM", AwardYears, mode="short", tone="blue", compact=True)
+        render_player_award("East Rookie of the Month", "East ROM", AwardYears, mode="short", tone="blue", compact=True)
+        render_player_award("East Player of the Week", "East POW", AwardYears, mode="short", tone="blue", compact=True)
     _legacy_tab11 = r'''
     st.title("2025 SBCFBL Awards")
 
