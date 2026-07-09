@@ -4256,7 +4256,7 @@ def bracket_team_label(team, mode="abbr"):
     return TEAM_ABBREVIATIONS.get(str(team), str(team))
 
 
-def render_history_bracket_team(team, winner, seed_lookup, label_mode="abbr"):
+def render_history_bracket_team(team, winner, seed_lookup, label_mode="abbr", score="", show_score=False):
     team = clean_pick_display(team)
     info = team_info.get(team, {})
     logo = info.get("logo", "")
@@ -4269,6 +4269,7 @@ def render_history_bracket_team(team, winner, seed_lookup, label_mode="abbr"):
             <span class="sbc-bracket-seed">{escape(history_team_seed(team, seed_lookup))}</span>
             <img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
             <strong title="{escape(live_team_full_name(team), quote=True)}">{escape(bracket_team_label(team, label_mode))}</strong>
+            {'<b class="sbc-bracket-score">' + escape(format_score_value(score)) + '</b>' if show_score and not is_blank_value(score) else ''}
         </div>
     """
 
@@ -4303,17 +4304,19 @@ def render_history_matchup_card(row):
     """
 
 
-def render_history_bracket_matchup(row, seed_lookup, label_mode="abbr"):
+def render_history_bracket_matchup(row, seed_lookup, label_mode="abbr", show_score=False):
     team_a = clean_pick_display(row.get("TeamA", ""))
     team_b = clean_pick_display(row.get("TeamB", ""))
+    score_a = row.get("TeamAScore", row.get("TeamA_Score", ""))
+    score_b = row.get("TeamBScore", row.get("TeamB_Score", ""))
     winner = history_game_winner(row)
     winner_info = team_info.get(winner, {})
     winner_color = winner_info.get("bg", LEAGUE_PRIMARY)
     return f"""
         <article class="sbc-bracket-matchup" style="--bracket-winner-color:{escape(str(winner_color), quote=True)};">
             <div class="sbc-bracket-matchup-inner">
-                {render_history_bracket_team(team_a, winner, seed_lookup, label_mode)}
-                {render_history_bracket_team(team_b, winner, seed_lookup, label_mode)}
+                {render_history_bracket_team(team_a, winner, seed_lookup, label_mode, score_a, show_score)}
+                {render_history_bracket_team(team_b, winner, seed_lookup, label_mode, score_b, show_score)}
             </div>
         </article>
     """
@@ -4406,13 +4409,14 @@ def render_bracket_empty(label="TBD"):
     """
 
 
-def render_playoff_playin_group(label, games, seed_lookup):
-    cards = [render_history_bracket_matchup(row, seed_lookup, label_mode="logo") for _, row in games.iterrows()]
+def render_playoff_playin_group(label, games, seed_lookup, show_head=False):
+    cards = [render_history_bracket_matchup(row, seed_lookup, label_mode="logo", show_score=True) for _, row in games.iterrows()]
     if not cards:
         cards = [render_bracket_empty("")]
+    head_html = f'<div class="sbc-playin-group-head">{escape(label)}</div>' if show_head and label else ""
     return f"""
         <div class="sbc-playin-group">
-            <div class="sbc-playin-group-head">{escape(label)}</div>
+            {head_html}
             <div class="sbc-playin-group-games">{''.join(cards)}</div>
         </div>
     """
@@ -4426,18 +4430,20 @@ def render_playoff_bracket_column(games, title, seed_lookup, minimum_slots=0, bu
         games["_game_sort"] = pd.to_numeric(games.get("Game_ID", pd.Series(range(games.shape[0]))), errors="coerce").fillna(0)
         games["_seed_sort"] = games.apply(lambda row: playoff_game_sort_key(row, seed_lookup, bucket), axis=1)
         games = games.sort_values(["_seed_sort", "Period", "_game_sort", "TeamA", "TeamB"])
+    elif bucket == "playin":
+        games["_seed_sort"] = pd.Series(dtype=int)
     if bucket == "playin":
         top_games = games[games["_seed_sort"] == 0].copy()
         nine_ten_games = games[games["_seed_sort"] == 1].copy()
         seven_eight_games = games[games["_seed_sort"] == 3].copy()
         cards = [
-            render_playoff_playin_group(bracket_period_label(top_games), top_games, seed_lookup),
+            render_playoff_playin_group("", top_games, seed_lookup),
             '<div class="sbc-playin-spacer"></div>',
-            render_playoff_playin_group(f"Play-In {bracket_period_label(nine_ten_games)}".strip(), nine_ten_games, seed_lookup),
-            render_playoff_playin_group(bracket_period_label(seven_eight_games), seven_eight_games, seed_lookup),
+            render_playoff_playin_group(title, nine_ten_games, seed_lookup, show_head=True),
+            render_playoff_playin_group("", seven_eight_games, seed_lookup),
         ]
     else:
-        cards = [render_history_bracket_matchup(row, seed_lookup, label_mode="logo") for _, row in games.iterrows()]
+        cards = [render_history_bracket_matchup(row, seed_lookup, label_mode="logo", show_score=True) for _, row in games.iterrows()]
     while len(cards) < minimum_slots:
         cards.append(render_bracket_empty())
     return f"""
@@ -6678,6 +6684,15 @@ st.markdown(
         white-space: nowrap;
     }}
 
+    .sbc-bracket-score {{
+        color: #111827;
+        font-size: 0.84rem;
+        font-weight: 950;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+        text-align: right;
+    }}
+
     .sbc-bracket-champion {{
         display: grid;
         align-content: center;
@@ -6735,17 +6750,17 @@ st.markdown(
 
     .sbc-nba-bracket {{
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.22fr) minmax(0, 1fr);
-        gap: 0.85rem;
+        grid-template-columns: minmax(0, 1fr) minmax(13.5rem, 0.3fr) minmax(0, 1fr);
+        gap: 0.65rem;
         align-items: stretch;
-        min-height: 34rem;
-        padding: 0.9rem;
+        min-height: 38rem;
+        padding: 0.85rem;
     }}
 
     .sbc-nba-bracket-side {{
         display: grid;
-        grid-template-columns: repeat(4, minmax(8.8rem, 1fr));
-        gap: 0.72rem;
+        grid-template-columns: repeat(4, minmax(8.35rem, 1fr));
+        gap: 0.58rem;
         align-items: stretch;
         min-width: 0;
     }}
@@ -6769,17 +6784,17 @@ st.markdown(
         content: "";
         position: absolute;
         top: 50%;
-        right: -0.62rem;
-        width: 0.62rem;
+        right: -0.58rem;
+        width: 0.58rem;
         height: 2px;
-        background: rgba(255,255,255,0.7);
-        box-shadow: 0 0 0 1px color-mix(in srgb, {LEAGUE_SECONDARY} 50%, transparent);
+        background: rgba(17,24,39,0.82);
+        box-shadow: none;
     }}
 
     .sbc-nba-bracket-east .sbc-nba-bracket-column:not(:last-child)::after {{
         right: auto;
-        left: -0.62rem;
-        box-shadow: 0 0 0 1px color-mix(in srgb, {LEAGUE_PRIMARY} 50%, transparent);
+        left: -0.58rem;
+        box-shadow: none;
     }}
 
     .sbc-nba-bracket-column-head {{
@@ -6812,9 +6827,9 @@ st.markdown(
     }}
 
     .sbc-nba-bracket .sbc-bracket-games {{
-        gap: 0.42rem;
+        gap: 0.5rem;
         align-content: space-around;
-        min-height: 26rem;
+        min-height: 30rem;
     }}
 
     .sbc-nba-bracket .sbc-bracket-matchup {{
@@ -6823,13 +6838,22 @@ st.markdown(
 
     .sbc-nba-bracket .sbc-bracket-matchup::after,
     .sbc-ist-bracket-panel .sbc-bracket-matchup::after {{
-        right: -0.42rem;
-        width: 0.42rem;
+        right: -0.46rem;
+        width: 0.46rem;
     }}
 
     .sbc-nba-bracket-east .sbc-bracket-matchup::after {{
         right: auto;
-        left: -0.42rem;
+        left: -0.46rem;
+    }}
+
+    .sbc-nba-bracket .sbc-bracket-matchup::after {{
+        background: rgba(17,24,39,0.82);
+    }}
+
+    .sbc-nba-bracket-center .sbc-bracket-matchup::after,
+    .sbc-nba-bracket-center .sbc-nba-bracket-column::after {{
+        display: none;
     }}
 
     .sbc-nba-bracket .sbc-bracket-team,
@@ -6860,23 +6884,30 @@ st.markdown(
     }}
 
     .sbc-nba-bracket .sbc-bracket-team {{
-        grid-template-columns: 1.35rem minmax(0, 1fr);
+        grid-template-columns: 1.35rem minmax(0, 1fr) 2.25rem;
         justify-items: center;
-        min-height: 3.05rem;
+        min-height: 3.35rem;
     }}
 
     .sbc-nba-bracket .sbc-bracket-team img {{
         display: block;
-        width: 2.15rem;
-        height: 2.15rem;
+        width: 2.28rem;
+        height: 2.28rem;
     }}
 
     .sbc-nba-bracket .sbc-bracket-team strong {{
         display: none;
     }}
 
+    .sbc-nba-bracket .sbc-bracket-score {{
+        justify-self: end;
+        padding-right: 0.08rem;
+    }}
+
     .sbc-nba-bracket .sbc-bracket-champion {{
-        min-height: 11rem;
+        justify-self: stretch;
+        min-height: 13rem;
+        min-width: 13.5rem;
     }}
 
     .sbc-playin-group {{
@@ -6885,13 +6916,13 @@ st.markdown(
     }}
 
     .sbc-playin-group-head {{
-        min-height: 1.45rem;
+        min-height: 2.2rem;
         display: grid;
         place-items: center;
         border-radius: 6px;
         background: #111827;
         color: #ffffff;
-        font-size: 0.56rem;
+        font-size: 0.58rem;
         font-weight: 950;
         letter-spacing: 0.06em;
         text-transform: uppercase;
@@ -6904,7 +6935,7 @@ st.markdown(
     }}
 
     .sbc-playin-spacer {{
-        min-height: 1.8rem;
+        min-height: 2rem;
     }}
 
     .sbc-ist-bracket-stage {{
