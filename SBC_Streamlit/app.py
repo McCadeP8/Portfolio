@@ -3983,20 +3983,14 @@ def ist_group_tables(selected_year, selected_period):
             grouped[group_name] = ranked
     for conference in ["West", "East"]:
         conference_groups = {name: table for name, table in grouped.items() if name.startswith(conference)}
-        non_winners = []
+        second_place_rows = []
         for table in conference_groups.values():
             if table.shape[0] > 1:
-                non_winners.append(table.iloc[1:].copy())
-        if non_winners:
-            wildcard_pool = pd.concat(non_winners, ignore_index=True)
-            ranked_wildcards = []
-            for _, group in wildcard_pool.sort_values(["WinPctRaw", "wins", "PointDiff", "Team"], ascending=[False, False, False, True]).groupby(["wins", "losses"], sort=False):
-                tied = group["Team"].astype(str).tolist()
-                common_games = tied_team_games(played_games, tied)
-                group = group.copy()
-                group["_h2h"] = group["Team"].map(lambda team: record_pct_for_games(str(team), common_games))
-                ranked_wildcards.append(group.sort_values(["_h2h", "PointDiff", "Team"], ascending=[False, False, True]))
-            wildcard = pd.concat(ranked_wildcards, ignore_index=True).iloc[0]["Team"]
+                second_place_rows.append(table.iloc[[1]].copy())
+        if second_place_rows:
+            wildcard_pool = pd.concat(second_place_rows, ignore_index=True)
+            wildcard_pool = wildcard_pool.sort_values(["wins", "PointDiff", "Team"], ascending=[False, False, True])
+            wildcard = wildcard_pool.iloc[0]["Team"]
             for table in conference_groups.values():
                 table["Tier"] = ["winner" if idx == 0 else "wildcard" if row["Team"] == wildcard else "out" for idx, row in table.iterrows()]
         else:
@@ -4630,22 +4624,26 @@ def ist_bracket_seed_lookup(selected_year, selected_period):
     lookup = {}
     grouped = ist_group_tables(selected_year, selected_period)
     for conference in ["West", "East"]:
-        winners = []
+        winner_rows = []
         second_place_rows = []
         for group_name in [f"{conference} A", f"{conference} B", f"{conference} C"]:
             table = grouped.get(group_name)
             if table is None or table.empty:
                 continue
-            winners.append(str(table.iloc[0].get("Team", "")))
+            winner_rows.append(table.iloc[[0]].copy())
             if table.shape[0] > 1:
                 second_place_rows.append(table.iloc[[1]].copy())
-        for idx, team in enumerate(winners[:3], start=1):
-            if team:
-                lookup[team] = str(idx)
+        if winner_rows:
+            winner_pool = pd.concat(winner_rows, ignore_index=True)
+            winner_pool = winner_pool.sort_values(["wins", "PointDiff", "Team"], ascending=[False, False, True])
+            for idx, (_, row) in enumerate(winner_pool.head(3).iterrows(), start=1):
+                team = str(row.get("Team", ""))
+                if team:
+                    lookup[team] = str(idx)
         wildcard = ""
         if second_place_rows:
             wildcard_pool = pd.concat(second_place_rows, ignore_index=True)
-            wildcard_pool = wildcard_pool.sort_values(["WinPctRaw", "wins", "PointDiff", "Team"], ascending=[False, False, False, True])
+            wildcard_pool = wildcard_pool.sort_values(["wins", "PointDiff", "Team"], ascending=[False, False, True])
             wildcard = str(wildcard_pool.iloc[0].get("Team", ""))
         if wildcard:
             lookup[wildcard] = "WC"
