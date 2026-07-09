@@ -2366,9 +2366,8 @@ def trade_pick_note_from_label(draft_picks, pick_label):
     row = trade_pick_row_for_label(draft_picks, pick_label)
     if row is None:
         return ""
-    for col in ["Notes", "Explanation"]:
-        if col in row.index and not is_blank_value(row.get(col, "")):
-            return clean_pick_display(row.get(col, ""))
+    if "Explanation" in row.index and not is_blank_value(row.get("Explanation", "")):
+        return clean_pick_display(row.get("Explanation", ""))
     return ""
 
 
@@ -2388,7 +2387,7 @@ def trade_commissioner_paragraph(trade_team, players_in, players_out, picks_in, 
         f"{format_money(apron['tax_before'])} to {format_money(apron['tax_after'])}, with "
         f"{format_money(apron['outgoing_salary'])} outgoing salary and {format_money(apron['incoming_salary'])} incoming salary. "
         f"Roster count would be {roster_after}. Stepien review: {stepien['message']} "
-        f"Apron review: {' '.join(flag[2] for flag in apron['flags'])} Exceptions used: {exceptions_text}. "
+        f"Apron review: {apron.get('hard_cap_summary', ' '.join(flag[2] for flag in apron['flags']))} Exceptions used: {exceptions_text}. "
         f"Overall flag: {overall_label} ({status_word})."
     )
 
@@ -2609,27 +2608,29 @@ def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash
         cash_value = 0.0
 
     flags = []
-    triggered_caps = []
+    existing_caps = []
+    activated_caps = []
     if existing_hard_cap == "First Apron":
-        triggered_caps.append(("Existing First Apron hard cap", current_apron_1))
+        existing_caps.append(("Current First Apron hard cap", current_apron_1))
     elif existing_hard_cap == "Second Apron":
-        triggered_caps.append(("Existing Second Apron hard cap", current_apron_2))
+        existing_caps.append(("Current Second Apron hard cap", current_apron_2))
 
     minimum_exception_used = any("Minimum" in str(exc) for exc in exceptions_out)
     minimum_only_acquisition = minimum_exception_used and len(players_in) == 1 and len(players_out) == 0 and incoming_salary <= max_minimum
     if incoming_salary > outgoing_salary and not minimum_only_acquisition:
-        triggered_caps.append(("Taking back more salary than sent out", current_apron_1))
+        activated_caps.append(("Taking back more salary than sent out", current_apron_1))
     if any("Bi-Annual" in str(exc) or "Mid-Level" in str(exc) for exc in exceptions_out):
-        triggered_caps.append(("Using BAE/MLE", current_apron_1))
+        activated_caps.append(("Using BAE/MLE", current_apron_1))
     if cash_value > 0:
-        triggered_caps.append(("Sending cash", current_apron_2))
+        activated_caps.append(("Sending cash", current_apron_2))
     if any("S&T" in str(exc) for exc in exceptions_out):
-        triggered_caps.append(("Using S&T-created TPE", current_apron_2))
+        activated_caps.append(("Using S&T-created TPE", current_apron_2))
 
-    for label, limit in triggered_caps:
+    hard_cap_limits = existing_caps + activated_caps
+    for label, limit in hard_cap_limits:
         if tax_after > limit:
             flags.append(("block", label, f"Post-trade tax total would be {format_money(tax_after)}, above the {format_money(limit)} limit."))
-        elif not label.startswith("Existing"):
+        elif (label, limit) in activated_caps:
             flags.append(("watch", label, f"This creates a hard-cap trigger, but the post-trade tax total stays below {format_money(limit)}."))
 
     if tax_before >= current_apron_2 and len(players_out) > 1 and incoming_salary > 0:
@@ -2641,9 +2642,40 @@ def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash
 
     priority = {"block": 2, "watch": 1, "clear": 0}
     status = max((flag[0] for flag in flags), key=lambda item: priority[item])
+    current_label = {
+        "First Apron": f"Currently hard-capped at the First Apron ({format_money(current_apron_1)})",
+        "Second Apron": f"Currently hard-capped at the Second Apron ({format_money(current_apron_2)})",
+    }.get(existing_hard_cap, "Currently not hard-capped")
+    if activated_caps:
+        activated_text = "; ".join(
+            f"{label} -> {'Second Apron' if limit == current_apron_2 else 'First Apron'} ({format_money(limit)})"
+            for label, limit in activated_caps
+        )
+    else:
+        activated_text = "No new hard cap is activated by this trade"
+    effective_limit = None
+    if hard_cap_limits:
+        effective_limit = min(limit for _, limit in hard_cap_limits)
+    if effective_limit == current_apron_1:
+        final_label = f"End result: hard-capped at the First Apron ({format_money(current_apron_1)})"
+    elif effective_limit == current_apron_2:
+        final_label = f"End result: hard-capped at the Second Apron ({format_money(current_apron_2)})"
+    else:
+        final_label = "End result: no hard cap"
+    if effective_limit and tax_after > effective_limit:
+        final_label += f", but post-trade tax total is over it at {format_money(tax_after)}"
+    elif effective_limit:
+        final_label += f", with post-trade tax total at {format_money(tax_after)}"
+    hard_cap_summary = f"{current_label}. Activated in this trade: {activated_text}. {final_label}."
     return {
         "status": status,
         "flags": flags,
+        "current_hard_cap_label": current_label,
+        "activated_hard_caps": activated_caps,
+        "activated_hard_cap_label": activated_text,
+        "effective_hard_cap_limit": effective_limit,
+        "effective_hard_cap_label": final_label,
+        "hard_cap_summary": hard_cap_summary,
         "tax_before": tax_before,
         "tax_after": tax_after,
         "incoming_salary": incoming_salary,
@@ -2664,15 +2696,18 @@ def render_trade_rule_card(title, status, message):
     """)
 
 
-def render_trade_rule_checks(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out):
+def render_trade_rule_checks(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out, apron=None):
     cap_type = trade_cap_type_after(selected_players_in, selected_players_out, trade_team)
     hard_cap = team_hard_cap(base_cap, trade_team)
+    apron = apron or trade_apron_review(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out)
     try:
         cash_value = 0.0 if cash_out is None else float(cash_out)
     except (TypeError, ValueError):
         cash_value = 0.0
     if math.isnan(cash_value):
         cash_value = 0.0
+
+    render_trade_rule_card("Apron / Hard Cap", apron["status"], apron.get("hard_cap_summary", "No apron summary available."))
 
     current_players = active_player_n(df, trade_team)
     current_type_col = "Type" + str(current_year)
@@ -10611,7 +10646,7 @@ with tab9:
                 <em>Roster and apron checks using the existing SBCFBL trade logic.</em>
             </div>
         """)
-        render_trade_rule_checks(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut)
+        render_trade_rule_checks(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut, apron_review)
     elif submitted:
         render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
 
