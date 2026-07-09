@@ -2778,6 +2778,9 @@ def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash
     if math.isnan(cash_value):
         cash_value = 0.0
 
+    hard_cap_levels = {"No Cap": 0, "First Apron": 1, "Second Apron": 2}
+    hard_cap_limits_by_level = {1: current_apron_1, 2: current_apron_2}
+    existing_level = hard_cap_levels.get(existing_hard_cap, 0)
     flags = []
     existing_caps = []
     activated_caps = []
@@ -2797,12 +2800,18 @@ def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash
     if any("S&T" in str(exc) for exc in exceptions_out):
         activated_caps.append(("Using S&T-created TPE", current_apron_2))
 
-    hard_cap_limits = existing_caps + activated_caps
-    for label, limit in hard_cap_limits:
-        if tax_after > limit:
-            flags.append(("block", label, f"Post-trade tax total would be {format_money(tax_after)}, above the {format_money(limit)} limit."))
-        elif (label, limit) in activated_caps:
-            flags.append(("watch", label, f"This creates a hard-cap trigger, but the post-trade tax total stays below {format_money(limit)}."))
+    activated_level = max(
+        [2 if limit == current_apron_2 else 1 for _, limit in activated_caps],
+        default=0,
+    )
+    effective_level = max(existing_level, activated_level)
+    effective_limit = hard_cap_limits_by_level.get(effective_level)
+    if effective_limit and tax_after > effective_limit:
+        flags.append(("block", "Effective hard cap", f"Post-trade tax total would be {format_money(tax_after)}, above the {format_money(effective_limit)} limit."))
+    for label, limit in activated_caps:
+        trigger_level = 2 if limit == current_apron_2 else 1
+        if trigger_level > existing_level and (not effective_limit or tax_after <= effective_limit):
+            flags.append(("watch", label, f"This creates a hard-cap trigger, but the post-trade tax total stays below {format_money(effective_limit)}."))
 
     if tax_before >= current_apron_2 and len(players_out) > 1 and incoming_salary > 0:
         flags.append(("block", "Second apron aggregation", "A team already above the second apron cannot aggregate multiple outgoing salaries in a trade."))
@@ -2824,12 +2833,9 @@ def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash
         )
     else:
         activated_text = "No new hard cap is activated by this trade"
-    effective_limit = None
-    if hard_cap_limits:
-        effective_limit = min(limit for _, limit in hard_cap_limits)
-    if effective_limit == current_apron_1:
+    if effective_level == 1:
         final_label = f"End result: hard-capped at the First Apron ({format_money(current_apron_1)})"
-    elif effective_limit == current_apron_2:
+    elif effective_level == 2:
         final_label = f"End result: hard-capped at the Second Apron ({format_money(current_apron_2)})"
     else:
         final_label = "End result: no hard cap"
@@ -2844,6 +2850,7 @@ def trade_apron_review(trade_team, players_in, players_out, exceptions_out, cash
         "current_hard_cap_label": current_label,
         "activated_hard_caps": activated_caps,
         "activated_hard_cap_label": activated_text,
+        "effective_hard_cap_level": effective_level,
         "effective_hard_cap_limit": effective_limit,
         "effective_hard_cap_label": final_label,
         "hard_cap_summary": hard_cap_summary,
@@ -4265,6 +4272,333 @@ def standings_snapshot(standings_df, selected_year, selected_period, conference)
     table["FullTeam"] = table["Team"].map(live_team_full_name)
     table["WinPct"] = (table["WinPctRaw"] * 100).round(1).astype(str) + "%"
     return table.reset_index(drop=True)
+
+
+def history_completed_games(schedule_df, competition_types=None):
+    if schedule_df is None or schedule_df.empty:
+        return pd.DataFrame()
+    required = {"Year", "Period", "Type", "TeamA", "TeamB", "TeamAScore", "TeamBScore"}
+    if not required.issubset(schedule_df.columns):
+        return pd.DataFrame()
+    games = schedule_df.copy()
+    if competition_types:
+        games = games[games["Type"].astype(str).isin(competition_types)].copy()
+    games = games[
+        games["TeamA"].astype(str).isin(list(team_info))
+        & games["TeamB"].astype(str).isin(list(team_info))
+        & ~games["TeamAScore"].apply(is_blank_value)
+        & ~games["TeamBScore"].apply(is_blank_value)
+    ].copy()
+    if games.empty:
+        return games
+    games["TeamAScoreNum"] = games["TeamAScore"].map(score_numeric)
+    games["TeamBScoreNum"] = games["TeamBScore"].map(score_numeric)
+    games = games[(games["TeamAScoreNum"] > 0) | (games["TeamBScoreNum"] > 0)].copy()
+    games["Winner"] = games.apply(lambda row: row["TeamA"] if row["TeamAScoreNum"] >= row["TeamBScoreNum"] else row["TeamB"], axis=1)
+    games["Loser"] = games.apply(lambda row: row["TeamB"] if row["Winner"] == row["TeamA"] else row["TeamA"], axis=1)
+    return games
+
+
+def history_safe_int(value, default=0):
+    try:
+        if is_blank_value(value):
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def history_team_record_rows(games):
+    rows = {team: {"Team": team, "Wins": 0, "Losses": 0, "PF": 0.0, "PA": 0.0} for team in Teams}
+    if games is None or games.empty:
+        return pd.DataFrame(rows.values())
+    for _, game in games.iterrows():
+        team_a = str(game.get("TeamA", ""))
+        team_b = str(game.get("TeamB", ""))
+        score_a = score_numeric(game.get("TeamAScoreNum", game.get("TeamAScore", 0)))
+        score_b = score_numeric(game.get("TeamBScoreNum", game.get("TeamBScore", 0)))
+        if team_a in rows:
+            rows[team_a]["PF"] += score_a
+            rows[team_a]["PA"] += score_b
+            rows[team_a]["Wins" if score_a >= score_b else "Losses"] += 1
+        if team_b in rows:
+            rows[team_b]["PF"] += score_b
+            rows[team_b]["PA"] += score_a
+            rows[team_b]["Wins" if score_b > score_a else "Losses"] += 1
+    table = pd.DataFrame(rows.values())
+    table["Games"] = table["Wins"] + table["Losses"]
+    table["WinPctRaw"] = table["Wins"] / table["Games"].replace(0, pd.NA)
+    table["WinPctRaw"] = table["WinPctRaw"].fillna(0)
+    table["Record"] = table["Wins"].astype(int).astype(str) + "-" + table["Losses"].astype(int).astype(str)
+    table["WinPct"] = (table["WinPctRaw"] * 100).round(1).astype(str) + "%"
+    table["Diff"] = table["PF"] - table["PA"]
+    return table.sort_values(["Wins", "WinPctRaw", "Diff", "Team"], ascending=[False, False, False, True]).reset_index(drop=True)
+
+
+def history_title_counts(schedule_df, standings_df):
+    counts = {team: {"Championships": 0, "Conference Championships": 0, "SBC Cup Wins": 0, "Division Championships": 0} for team in Teams}
+    games = history_completed_games(schedule_df)
+    if not games.empty and "Round" in games.columns:
+        rounds = games["Round"].astype(str).str.lower()
+        playoff_games = games[games["Type"].astype(str).eq("Playoffs")].copy()
+        if not playoff_games.empty:
+            playoff_rounds = playoff_games["Round"].astype(str).str.lower()
+            finals = playoff_games[
+                playoff_rounds.str.contains("final", na=False)
+                & ~playoff_rounds.str.contains("conference|east|west|wcf|ecf", na=False)
+            ].copy()
+            for _, row in finals.sort_values(["Year", "Period"]).groupby("Year", as_index=False).tail(1).iterrows():
+                winner = str(row.get("Winner", ""))
+                if winner in counts:
+                    counts[winner]["Championships"] += 1
+            conf_finals = playoff_games[
+                (playoff_rounds.str.contains("conference", na=False) & playoff_rounds.str.contains("final", na=False))
+                | playoff_rounds.str.contains("east final|west final|wcf|ecf", na=False)
+            ].copy()
+            for _, row in conf_finals.iterrows():
+                winner = str(row.get("Winner", ""))
+                if winner in counts:
+                    counts[winner]["Conference Championships"] += 1
+        cup_games = games[games["Type"].astype(str).eq("In-Season Tournament")].copy()
+        if not cup_games.empty:
+            cup_rounds = cup_games["Round"].astype(str).str.lower()
+            cup_finals = cup_games[
+                cup_rounds.str.contains("championship|cup|final", case=False, na=False)
+                & ~cup_rounds.str.contains("group", case=False, na=False)
+            ].copy()
+            for _, row in cup_finals.sort_values(["Year", "Period"]).groupby("Year", as_index=False).tail(1).iterrows():
+                winner = str(row.get("Winner", ""))
+                if winner in counts:
+                    counts[winner]["SBC Cup Wins"] += 1
+    if standings_df is not None and not standings_df.empty and {"Year", "Period", "Team", "Record"}.issubset(standings_df.columns):
+        for year in sorted(standings_df["Year"].dropna().astype(int).unique()):
+            period = latest_period_for_year(year)
+            table_parts = [standings_snapshot(standings_df, year, period, conf) for conf in ["West", "East"]]
+            table = pd.concat([part for part in table_parts if not part.empty], ignore_index=True) if table_parts else pd.DataFrame()
+            if table.empty or "Division" not in table.columns:
+                continue
+            for _, div_table in table.groupby("Division"):
+                if div_table.empty:
+                    continue
+                diff_col = "PointDiff" if "PointDiff" in div_table.columns else "Diff"
+                winner = str(div_table.sort_values(["WinPctRaw", "wins", diff_col, "Team"], ascending=[False, False, False, True]).iloc[0]["Team"])
+                if winner in counts:
+                    counts[winner]["Division Championships"] += 1
+    return pd.DataFrame([{"Team": team, **values} for team, values in counts.items()])
+
+
+def history_regular_season_h2h_matrix(schedule_df):
+    games = history_completed_games(schedule_df, ["Regular Season"])
+    matrix = pd.DataFrame("-", index=Teams, columns=[team_abbrev_for_name(team) for team in Teams])
+    if games.empty:
+        return matrix.reset_index(names="Team")
+    records = {(a, b): [0, 0] for a in Teams for b in Teams if a != b}
+    for _, game in games.iterrows():
+        team_a = str(game.get("TeamA", ""))
+        team_b = str(game.get("TeamB", ""))
+        if team_a not in Teams or team_b not in Teams:
+            continue
+        score_a = score_numeric(game.get("TeamAScoreNum", game.get("TeamAScore", 0)))
+        score_b = score_numeric(game.get("TeamBScoreNum", game.get("TeamBScore", 0)))
+        if score_a >= score_b:
+            records[(team_a, team_b)][0] += 1
+            records[(team_b, team_a)][1] += 1
+        else:
+            records[(team_b, team_a)][0] += 1
+            records[(team_a, team_b)][1] += 1
+    for row_team in Teams:
+        for col_team in Teams:
+            if row_team == col_team:
+                continue
+            wins, losses = records[(row_team, col_team)]
+            matrix.loc[row_team, team_abbrev_for_name(col_team)] = f"{wins}-{losses}"
+    return matrix.reset_index().rename(columns={"index": "Team"})
+
+
+def history_team_stat_records(team_stats_df, schedule_df):
+    records = []
+    games = history_completed_games(schedule_df, ["Regular Season"])
+    if not games.empty:
+        team_rows = []
+        for _, game in games.iterrows():
+            for side in ["A", "B"]:
+                team_rows.append({
+                    "Record": "Matchup Score",
+                    "Team": game.get(f"Team{side}", ""),
+                    "Value": score_numeric(game.get(f"Team{side}ScoreNum", game.get(f"Team{side}Score", 0))),
+                    "Year": game.get("Year", ""),
+                    "Period": game.get("Period", ""),
+                    "Opponent": game.get("TeamB" if side == "A" else "TeamA", ""),
+                })
+        if team_rows:
+            rows_df = pd.DataFrame(team_rows)
+            records.append(rows_df.sort_values("Value", ascending=False).iloc[0].to_dict())
+    if team_stats_df is None or team_stats_df.empty or "Team" not in team_stats_df.columns:
+        return pd.DataFrame(records)
+    stats = team_stats_df.copy()
+    if "Type" in stats.columns:
+        stats = stats[stats["Type"].astype(str).eq("Regular Season")].copy()
+    elif {"Year", "Period"}.issubset(stats.columns) and not games.empty:
+        keys = set()
+        for _, game in games.iterrows():
+            keys.add((history_safe_int(game.get("Year", 0)), history_safe_int(game.get("Period", 0)), str(game.get("TeamA", ""))))
+            keys.add((history_safe_int(game.get("Year", 0)), history_safe_int(game.get("Period", 0)), str(game.get("TeamB", ""))))
+        stats = stats[
+            stats.apply(lambda row: (history_safe_int(row.get("Year", 0)), history_safe_int(row.get("Period", 0)), str(row.get("Team", ""))) in keys, axis=1)
+        ].copy()
+    exclude = {"Year", "Period", "Team", "Opponent", "Type", "Round", "Game_ID", "Matchup", "Date"}
+    priority = ["PTS", "AST", "OREB", "DREB", "REB", "BLK", "ST", "STL", "TO", "MP", "+/-", "TS%", "2PT%", "3PT%", "FT%"]
+    numeric_cols = []
+    for col in priority + [col for col in stats.columns if col not in priority]:
+        if col in exclude or col in numeric_cols:
+            continue
+        numeric = pd.to_numeric(stats[col], errors="coerce")
+        if numeric.notna().any():
+            numeric_cols.append(col)
+    for col in numeric_cols[:18]:
+        temp = stats.copy()
+        temp["_value"] = pd.to_numeric(temp[col], errors="coerce")
+        temp = temp.dropna(subset=["_value"])
+        if temp.empty:
+            continue
+        row = temp.sort_values("_value", ascending=False).iloc[0]
+        opponent = row.get("Opponent", "")
+        if is_blank_value(opponent) and {"Year", "Period"}.issubset(row.index) and not games.empty:
+            matchup = games[
+                (games["Year"].astype(str) == str(row.get("Year", "")))
+                & (games["Period"].astype(str) == str(row.get("Period", "")))
+                & ((games["TeamA"].astype(str) == str(row.get("Team", ""))) | (games["TeamB"].astype(str) == str(row.get("Team", ""))))
+            ]
+            if not matchup.empty:
+                game = matchup.iloc[0]
+                opponent = game.get("TeamB") if str(game.get("TeamA")) == str(row.get("Team")) else game.get("TeamA")
+        records.append({
+            "Record": col,
+            "Team": row.get("Team", ""),
+            "Value": row.get("_value", 0),
+            "Year": row.get("Year", ""),
+            "Period": row.get("Period", ""),
+            "Opponent": opponent,
+        })
+    return pd.DataFrame(records)
+
+
+def history_all_time_team_stats_table(team_stats_df):
+    stat_cols = ["GP", "MP", "TS%", "2PTM", "2PTA", "2PT%", "3PTM", "3PTA", "3PT%", "FTM", "FTA", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+    if team_stats_df is None or team_stats_df.empty or "Team" not in team_stats_df.columns:
+        return pd.DataFrame(columns=["Team"] + stat_cols)
+    stats = team_stats_df.copy()
+    if "Type" in stats.columns:
+        stats = stats[stats["Type"].astype(str).eq("Regular Season")].copy()
+    for col in stat_cols:
+        if col not in stats.columns:
+            stats[col] = 0
+        stats[col] = pd.to_numeric(stats[col], errors="coerce").fillna(0)
+    totals = stats.groupby("Team", as_index=False)[[col for col in stat_cols if col not in ["TS%", "2PT%", "3PT%", "FT%"]]].sum()
+    for team in Teams:
+        if team not in set(totals["Team"].astype(str)):
+            totals = pd.concat([totals, pd.DataFrame([{"Team": team}])], ignore_index=True)
+    totals = totals.fillna(0)
+    fga = totals["2PTA"] + totals["3PTA"]
+    totals["TS%"] = (totals["PTS"] / (2 * (fga + 0.44 * totals["FTA"]))).where((fga + 0.44 * totals["FTA"]) > 0, 0)
+    totals["2PT%"] = (totals["2PTM"] / totals["2PTA"]).where(totals["2PTA"] > 0, 0)
+    totals["3PT%"] = (totals["3PTM"] / totals["3PTA"]).where(totals["3PTA"] > 0, 0)
+    totals["FT%"] = (totals["FTM"] / totals["FTA"]).where(totals["FTA"] > 0, 0)
+    totals = totals[["Team"] + stat_cols]
+    totals = totals.sort_values(["PTS", "GP", "Team"], ascending=[False, False, True]).reset_index(drop=True)
+    display = totals.copy()
+    for col in ["TS%", "2PT%", "3PT%", "FT%"]:
+        display[col] = (display[col] * 100).round(1).astype(str) + "%"
+    for col in [c for c in stat_cols if c not in ["TS%", "2PT%", "3PT%", "FT%"]]:
+        display[col] = display[col].round(1)
+    return display
+
+
+def render_history_overview_table(data, columns):
+    if data is None or data.empty:
+        render_html('<div class="sbc-empty-state">No historical records are available yet.</div>')
+        return
+    head = "".join(f"<th>{escape(str(col))}</th>" for col in columns)
+    rows = []
+    for _, row in data.iterrows():
+        cells = []
+        for col in columns:
+            value = row.get(col, "")
+            if col == "Team":
+                cells.append(f"<td>{render_draft_team_wordmark(value, include_nickname=True)}</td>")
+            else:
+                cells.append(f"<td>{escape(str(value))}</td>")
+        rows.append(f"<tr>{''.join(cells)}</tr>")
+    render_html(f"""
+        <div class="sbc-history-table-wrap">
+            <table class="sbc-history-overview-table">
+                <thead><tr>{head}</tr></thead>
+                <tbody>{''.join(rows)}</tbody>
+            </table>
+        </div>
+    """)
+
+
+def render_league_history_overview():
+    regular_games = history_completed_games(all_time_schedule, ["Regular Season"])
+    all_games = history_completed_games(all_time_schedule)
+    team_records = history_team_record_rows(regular_games)
+    title_counts = history_title_counts(all_time_schedule, standings)
+    summary = team_records.merge(title_counts, on="Team", how="left").fillna(0)
+    for col in ["Championships", "Conference Championships", "SBC Cup Wins", "Division Championships"]:
+        summary[col] = summary[col].astype(int)
+    summary["PF"] = summary["PF"].round(1)
+    summary["PA"] = summary["PA"].round(1)
+    summary["Diff"] = summary["Diff"].round(1)
+    seasons = sorted(all_games["Year"].dropna().astype(int).unique().tolist()) if not all_games.empty and "Year" in all_games.columns else []
+    championship_total = int(summary["Championships"].sum()) if "Championships" in summary.columns else 0
+    cup_total = int(summary["SBC Cup Wins"].sum()) if "SBC Cup Wins" in summary.columns else 0
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">League History</div>
+                    <div class="sbc-draft-heading">SBCFBL Record Book</div>
+                    <div class="sbc-draft-subcopy">All-time franchise records, title counts, regular-season head-to-head history, and single-matchup team records across the archive.</div>
+                </div>
+            </div>
+        </div>
+        <div class="sbc-history-kpi-grid">
+            <div class="sbc-draft-tile"><div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">Y</div><div class="sbc-draft-tile-value">{escape(str(len(seasons)))}</div></div><div class="sbc-draft-tile-label">Seasons</div><div class="sbc-draft-tile-note">{escape(str(seasons[0] if seasons else '-'))} through {escape(str(seasons[-1] if seasons else '-'))}</div></div>
+            <div class="sbc-draft-tile"><div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">G</div><div class="sbc-draft-tile-value">{escape(str(regular_games.shape[0]))}</div></div><div class="sbc-draft-tile-label">Regular Season Games</div><div class="sbc-draft-tile-note">Completed games in the H2H matrix.</div></div>
+            <div class="sbc-draft-tile"><div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">C</div><div class="sbc-draft-tile-value">{escape(str(championship_total))}</div></div><div class="sbc-draft-tile-label">Championships Logged</div><div class="sbc-draft-tile-note">Playoff finals winners in the archive.</div></div>
+            <div class="sbc-draft-tile"><div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">Cup</div><div class="sbc-draft-tile-value">{escape(str(cup_total))}</div></div><div class="sbc-draft-tile-label">SBC Cup Winners</div><div class="sbc-draft-tile-note">Cup championship results in history.</div></div>
+        </div>
+    """)
+    render_html('<div class="sbc-awards-section-head"><span>All-Time Franchise Ledger</span><em>Regular season record with league title counts.</em></div>')
+    ledger = summary[["Team", "Record", "WinPct", "PF", "PA", "Diff", "Championships", "Conference Championships", "SBC Cup Wins", "Division Championships"]].copy()
+    render_history_overview_table(
+        ledger,
+        ["Team", "Record", "WinPct", "PF", "PA", "Diff", "Championships", "Conference Championships", "SBC Cup Wins", "Division Championships"],
+    )
+    render_html('<div class="sbc-awards-section-head"><span>Regular Season H2H Matrix</span><em>Cell is row team record against column team.</em></div>')
+    h2h = history_regular_season_h2h_matrix(all_time_schedule)
+    if h2h.empty:
+        render_html('<div class="sbc-empty-state">No regular season head-to-head records are available yet.</div>')
+    else:
+        st.dataframe(h2h, width="stretch", height=650, hide_index=True)
+    render_html('<div class="sbc-awards-section-head"><span>All-Time Team Stats</span><em>Regular season totals by franchise; percentages are recalculated from makes and attempts.</em></div>')
+    all_time_stats = history_all_time_team_stats_table(all_time_team_stats)
+    if all_time_stats.empty:
+        render_html('<div class="sbc-empty-state">No all-time team stat archive is available yet.</div>')
+    else:
+        st.dataframe(all_time_stats, width="stretch", height=650, hide_index=True)
+    render_html('<div class="sbc-awards-section-head"><span>Team Matchup Records</span><em>Single regular-season matchup highs by category.</em></div>')
+    records = history_team_stat_records(all_time_team_stats, all_time_schedule)
+    if records.empty:
+        render_html('<div class="sbc-empty-state">No team stat records are available yet.</div>')
+    else:
+        records = records.copy()
+        records["Value"] = records["Value"].apply(format_score_value)
+        records["When"] = records.apply(lambda row: f"{row.get('Year', '')} P{row.get('Period', '')}", axis=1)
+        records["Opponent"] = records["Opponent"].fillna("")
+        render_history_overview_table(records[["Record", "Team", "Value", "When", "Opponent"]], ["Record", "Team", "Value", "When", "Opponent"])
 
 
 def ist_group_games(selected_year):
@@ -6865,6 +7199,58 @@ st.markdown(
 
     .sbc-history-game-winner {{
         background: linear-gradient(90deg, color-mix(in srgb, var(--history-team-color) 21%, #ffffff), #ffffff 64%);
+    }}
+
+    .sbc-history-kpi-grid {{
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.8rem;
+        margin: 0.85rem 0 1rem;
+    }}
+
+    .sbc-history-table-wrap {{
+        overflow-x: auto;
+        border: 1px solid rgba(23, 32, 42, 0.1);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 14px 34px rgba(18, 25, 38, 0.07);
+        margin-bottom: 1rem;
+    }}
+
+    .sbc-history-overview-table {{
+        width: 100%;
+        min-width: 860px;
+        border-collapse: collapse;
+    }}
+
+    .sbc-history-overview-table th {{
+        background: linear-gradient(135deg, color-mix(in srgb, {LEAGUE_PRIMARY} 16%, #ffffff), color-mix(in srgb, {LEAGUE_SECONDARY} 10%, #ffffff));
+        color: var(--sbc-ink);
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        text-align: left;
+        text-transform: uppercase;
+        padding: 0.62rem 0.72rem;
+        white-space: nowrap;
+    }}
+
+    .sbc-history-overview-table td {{
+        border-top: 1px solid rgba(23, 32, 42, 0.08);
+        color: #1f2937;
+        font-size: 0.82rem;
+        font-weight: 800;
+        padding: 0.54rem 0.72rem;
+        vertical-align: middle;
+        white-space: nowrap;
+    }}
+
+    .sbc-history-overview-table tr:nth-child(even) td {{
+        background: rgba(248, 250, 252, 0.72);
+    }}
+
+    .sbc-history-overview-table .sbc-draft-team-mark {{
+        min-width: 11.5rem;
     }}
 
     .sbc-history-game-team img {{
@@ -9695,7 +10081,8 @@ with league_hub_tab:
             index=league_history_year_options.index(default_league_history_year),
             key="league_history_year",
         )
-        league_history_scoreboard_tab, league_history_playoffs_tab, league_history_ist_tab, league_history_player_stats_tab, league_history_awards_tab, league_history_draft_tab = st.tabs([
+        league_history_overview_tab, league_history_scoreboard_tab, league_history_playoffs_tab, league_history_ist_tab, league_history_player_stats_tab, league_history_awards_tab, league_history_draft_tab = st.tabs([
+            "🏠 Overview",
             "📺 Scoreboard",
             "🏆 Playoff Bracket",
             "🏅 In-Season Tournament",
@@ -10247,6 +10634,9 @@ with tab5:
 
     render_html('<div class="sbc-section-label">All Scores</div>')
     render_scoreboard_cards(live_stats_total_scores)
+
+with league_history_overview_tab:
+    render_league_history_overview()
 
 with league_history_scoreboard_tab:
     render_html(f"""
