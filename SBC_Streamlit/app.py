@@ -4335,56 +4335,58 @@ def history_team_record_rows(games):
     return table.sort_values(["Wins", "WinPctRaw", "Diff", "Team"], ascending=[False, False, False, True]).reset_index(drop=True)
 
 
-def history_title_counts(schedule_df, standings_df):
-    counts = {team: {"Championships": 0, "Conference Championships": 0, "SBC Cup Wins": 0, "Division Championships": 0} for team in Teams}
-    games = history_completed_games(schedule_df)
-    if not games.empty and "Round" in games.columns:
-        rounds = games["Round"].astype(str).str.lower()
-        playoff_games = games[games["Type"].astype(str).eq("Playoffs")].copy()
-        if not playoff_games.empty:
-            playoff_rounds = playoff_games["Round"].astype(str).str.lower()
-            finals = playoff_games[
-                playoff_rounds.str.contains("final", na=False)
-                & ~playoff_rounds.str.contains("conference|east|west|wcf|ecf", na=False)
-            ].copy()
-            for _, row in finals.sort_values(["Year", "Period"]).groupby("Year", as_index=False).tail(1).iterrows():
-                winner = str(row.get("Winner", ""))
-                if winner in counts:
-                    counts[winner]["Championships"] += 1
-            conf_finals = playoff_games[
-                (playoff_rounds.str.contains("conference", na=False) & playoff_rounds.str.contains("final", na=False))
-                | playoff_rounds.str.contains("east final|west final|wcf|ecf", na=False)
-            ].copy()
-            for _, row in conf_finals.iterrows():
-                winner = str(row.get("Winner", ""))
-                if winner in counts:
-                    counts[winner]["Conference Championships"] += 1
-        cup_games = games[games["Type"].astype(str).eq("In-Season Tournament")].copy()
-        if not cup_games.empty:
-            cup_rounds = cup_games["Round"].astype(str).str.lower()
-            cup_finals = cup_games[
-                cup_rounds.str.contains("championship|cup|final", case=False, na=False)
-                & ~cup_rounds.str.contains("group", case=False, na=False)
-            ].copy()
-            for _, row in cup_finals.sort_values(["Year", "Period"]).groupby("Year", as_index=False).tail(1).iterrows():
-                winner = str(row.get("Winner", ""))
-                if winner in counts:
-                    counts[winner]["SBC Cup Wins"] += 1
-    if standings_df is not None and not standings_df.empty and {"Year", "Period", "Team", "Record"}.issubset(standings_df.columns):
-        for year in sorted(standings_df["Year"].dropna().astype(int).unique()):
-            period = latest_period_for_year(year)
-            table_parts = [standings_snapshot(standings_df, year, period, conf) for conf in ["West", "East"]]
-            table = pd.concat([part for part in table_parts if not part.empty], ignore_index=True) if table_parts else pd.DataFrame()
-            if table.empty or "Division" not in table.columns:
-                continue
-            for _, div_table in table.groupby("Division"):
-                if div_table.empty:
-                    continue
-                diff_col = "PointDiff" if "PointDiff" in div_table.columns else "Diff"
-                winner = str(div_table.sort_values(["WinPctRaw", "wins", diff_col, "Team"], ascending=[False, False, False, True]).iloc[0]["Team"])
-                if winner in counts:
-                    counts[winner]["Division Championships"] += 1
-    return pd.DataFrame([{"Team": team, **values} for team, values in counts.items()])
+def history_title_years(team_awards_df):
+    title_years = {
+        team: {
+            "Championships": [],
+            "Finals Appearances": [],
+            "SBC Cup Wins": [],
+            "Division Championships": [],
+        }
+        for team in Teams
+    }
+    if team_awards_df is None or team_awards_df.empty or not {"Award", "Year", "Winner"}.issubset(team_awards_df.columns):
+        return pd.DataFrame([{"Team": team, **{col: "-" for col in values}} for team, values in title_years.items()])
+
+    award_map = {
+        "Champion": "Championships",
+        "Cup Winner": "SBC Cup Wins",
+        "WC Champion": "Finals Appearances",
+        "EC Champion": "Finals Appearances",
+        "Pacific Champion": "Division Championships",
+        "Northwest Champion": "Division Championships",
+        "Southwest Champion": "Division Championships",
+        "Central Champion": "Division Championships",
+        "Atlantic Champion": "Division Championships",
+        "Southeast Champion": "Division Championships",
+    }
+    work = team_awards_df[team_awards_df["Award"].astype(str).isin(award_map)].copy()
+    work["_year"] = pd.to_numeric(work["Year"], errors="coerce")
+    work = work.dropna(subset=["_year"])
+    for _, row in work.iterrows():
+        team = clean_pick_display(row.get("Winner", ""))
+        if team not in title_years:
+            continue
+        category = award_map.get(str(row.get("Award", "")))
+        if not category:
+            continue
+        year = int(row["_year"])
+        if year not in title_years[team][category]:
+            title_years[team][category].append(year)
+
+    rows = []
+    for team, values in title_years.items():
+        row = {"Team": team}
+        for category, years in values.items():
+            row[category] = ", ".join(str(year) for year in sorted(years)) if years else "-"
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def history_years_count(value):
+    if is_blank_value(value) or str(value).strip() == "-":
+        return 0
+    return len([part for part in str(value).split(",") if part.strip()])
 
 
 def history_regular_season_h2h_matrix(schedule_df):
@@ -4450,7 +4452,7 @@ def history_team_stat_records(team_stats_df, schedule_df):
     priority = ["PTS", "AST", "OREB", "DREB", "REB", "BLK", "ST", "STL", "TO", "MP", "+/-", "TS%", "2PT%", "3PT%", "FT%"]
     numeric_cols = []
     for col in priority + [col for col in stats.columns if col not in priority]:
-        if col in exclude or col in numeric_cols:
+        if col in exclude or col in numeric_cols or col not in stats.columns:
             continue
         numeric = pd.to_numeric(stats[col], errors="coerce")
         if numeric.notna().any():
@@ -4510,7 +4512,7 @@ def history_all_time_team_stats_table(team_stats_df):
     for col in ["TS%", "2PT%", "3PT%", "FT%"]:
         display[col] = (display[col] * 100).round(1).astype(str) + "%"
     for col in [c for c in stat_cols if c not in ["TS%", "2PT%", "3PT%", "FT%"]]:
-        display[col] = display[col].round(1)
+        display[col] = display[col].round(0).astype(int)
     return display
 
 
@@ -4526,6 +4528,8 @@ def render_history_overview_table(data, columns):
             value = row.get(col, "")
             if col == "Team":
                 cells.append(f"<td>{render_draft_team_wordmark(value, include_nickname=True)}</td>")
+            elif col in ["Championships", "Finals Appearances", "SBC Cup Wins", "Division Championships"]:
+                cells.append(f'<td class="sbc-history-years-cell">{escape(str(value))}</td>')
             else:
                 cells.append(f"<td>{escape(str(value))}</td>")
         rows.append(f"<tr>{''.join(cells)}</tr>")
@@ -4543,6 +4547,30 @@ def render_history_h2h_matrix(matrix):
     if matrix is None or matrix.empty:
         render_html('<div class="sbc-empty-state">No regular season head-to-head records are available yet.</div>')
         return
+
+    def h2h_cell_style(value):
+        try:
+            wins_raw, losses_raw = str(value).split("-", 1)
+            wins = float(wins_raw)
+            losses = float(losses_raw)
+            games = wins + losses
+            if games <= 0:
+                return "background: rgba(255,255,255,0.88);", "No games"
+            pct = wins / games
+            if pct < 0.5:
+                strength = (0.5 - pct) / 0.5
+                red = int(255 - (255 - 248) * strength)
+                green = int(255 - (255 - 113) * strength)
+                blue = int(255 - (255 - 113) * strength)
+            else:
+                strength = (pct - 0.5) / 0.5
+                red = int(255 - (255 - 134) * strength)
+                green = int(255 - (255 - 239) * strength)
+                blue = int(255 - (255 - 172) * strength)
+            return f"background: rgb({red}, {green}, {blue});", f"{pct:.1%} win rate"
+        except (TypeError, ValueError):
+            return "background: rgba(255,255,255,0.88);", "No games"
+
     teams = [team for team in matrix.columns if team != "Team" and team in team_info]
     header_cells = ['<th class="sbc-h2h-corner">Team</th>']
     for team in teams:
@@ -4564,9 +4592,17 @@ def render_history_h2h_matrix(matrix):
         for opp in teams:
             value = str(row.get(opp, "-"))
             cell_class = "sbc-h2h-self" if opp == team else ""
-            cells.append(f'<td class="{cell_class}">{escape(value)}</td>')
+            cell_style, cell_title = h2h_cell_style(value)
+            cells.append(
+                f'<td class="{cell_class}" style="{escape(cell_style, quote=True)}" title="{escape(cell_title, quote=True)}">'
+                f'{escape(value)}</td>'
+            )
         rows.append(f"<tr>{''.join(cells)}</tr>")
     render_html(f"""
+        <div class="sbc-h2h-read-key">
+            <span>Read across</span>
+            <em>Row logo's record against the column logo.</em>
+        </div>
         <div class="sbc-h2h-wrap">
             <table class="sbc-h2h-table">
                 <thead><tr>{''.join(header_cells)}</tr></thead>
@@ -4580,22 +4616,33 @@ def render_history_all_time_stats_table(data):
     if data is None or data.empty:
         render_html('<div class="sbc-empty-state">No all-time team stat archive is available yet.</div>')
         return
+    data = data.reset_index(drop=True).copy()
     columns = ["Team", "GP", "MP", "TS%", "2PTM", "2PTA", "2PT%", "3PTM", "3PTA", "3PT%", "FTM", "FTA", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
-    head = "".join(f"<th>{escape(str(col))}</th>" for col in columns)
+    stat_columns = columns[1:]
+    head = '<th class="sbc-history-stat-logo-head"></th>' + "".join(f"<th>{escape(str(col))}</th>" for col in stat_columns)
+    rank_maps = {}
+    for col in stat_columns:
+        values = data[col].astype(str).str.replace("%", "", regex=False).str.replace(",", "", regex=False)
+        numeric = pd.to_numeric(values, errors="coerce").fillna(0)
+        rank_maps[col] = numeric.rank(method="min", ascending=False).astype(int).to_dict()
     rows = []
-    for idx, row in data.reset_index(drop=True).iterrows():
+    for idx, row in data.iterrows():
         team = str(row.get("Team", ""))
+        logo = team_logo_for_name(team)
         cells = [
-            f'<td class="sbc-history-rank">{idx + 1}</td>',
-            f'<td class="sbc-history-stat-team">{render_draft_team_wordmark(team, include_nickname=False)}<em>{escape(live_team_full_name(team))}</em></td>',
+            f'<td class="sbc-history-stat-team-logo" title="{escape(live_team_full_name(team), quote=True)}">'
+            f'<img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">'
+            f'</td>',
         ]
-        for col in columns[1:]:
-            cells.append(f'<td>{escape(str(row.get(col, "")))}</td>')
+        for col in stat_columns:
+            value = row.get(col, "")
+            rank = rank_maps.get(col, {}).get(idx, "")
+            cells.append(f'<td><span>{escape(str(value))}</span><em>#{escape(str(rank))}</em></td>')
         rows.append(f"<tr>{''.join(cells)}</tr>")
     render_html(f"""
         <div class="sbc-history-table-wrap sbc-history-stats-wrap">
             <table class="sbc-history-overview-table sbc-history-stats-table">
-                <thead><tr><th>#</th>{head}</tr></thead>
+                <thead><tr>{head}</tr></thead>
                 <tbody>{''.join(rows)}</tbody>
             </table>
         </div>
@@ -4606,16 +4653,14 @@ def render_league_history_overview():
     regular_games = history_completed_games(all_time_schedule, ["Regular Season"])
     all_games = history_completed_games(all_time_schedule)
     team_records = history_team_record_rows(regular_games)
-    title_counts = history_title_counts(all_time_schedule, standings)
+    title_counts = history_title_years(team_award_history)
     summary = team_records.merge(title_counts, on="Team", how="left").fillna(0)
-    for col in ["Championships", "Conference Championships", "SBC Cup Wins", "Division Championships"]:
-        summary[col] = summary[col].astype(int)
     summary["PF"] = summary["PF"].round(1)
     summary["PA"] = summary["PA"].round(1)
     summary["Diff"] = summary["Diff"].round(1)
     seasons = sorted(all_games["Year"].dropna().astype(int).unique().tolist()) if not all_games.empty and "Year" in all_games.columns else []
-    championship_total = int(summary["Championships"].sum()) if "Championships" in summary.columns else 0
-    cup_total = int(summary["SBC Cup Wins"].sum()) if "SBC Cup Wins" in summary.columns else 0
+    championship_total = int(summary["Championships"].map(history_years_count).sum()) if "Championships" in summary.columns else 0
+    cup_total = int(summary["SBC Cup Wins"].map(history_years_count).sum()) if "SBC Cup Wins" in summary.columns else 0
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -4634,11 +4679,11 @@ def render_league_history_overview():
             <div class="sbc-draft-tile"><div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">Cup</div><div class="sbc-draft-tile-value">{escape(str(cup_total))}</div></div><div class="sbc-draft-tile-label">SBC Cup Winners</div><div class="sbc-draft-tile-note">Cup championship results in history.</div></div>
         </div>
     """)
-    render_html('<div class="sbc-awards-section-head"><span>All-Time Franchise Ledger</span><em>Regular season record with league title counts.</em></div>')
-    ledger = summary[["Team", "Record", "WinPct", "PF", "PA", "Diff", "Championships", "Conference Championships", "SBC Cup Wins", "Division Championships"]].copy()
+    render_html('<div class="sbc-awards-section-head"><span>All-Time Franchise Ledger</span><em>Regular season record with title seasons from the awards archive.</em></div>')
+    ledger = summary[["Team", "Record", "WinPct", "PF", "PA", "Diff", "Championships", "Finals Appearances", "SBC Cup Wins", "Division Championships"]].copy()
     render_history_overview_table(
         ledger,
-        ["Team", "Record", "WinPct", "PF", "PA", "Diff", "Championships", "Conference Championships", "SBC Cup Wins", "Division Championships"],
+        ["Team", "Record", "WinPct", "PF", "PA", "Diff", "Championships", "Finals Appearances", "SBC Cup Wins", "Division Championships"],
     )
     render_html('<div class="sbc-awards-section-head"><span>Regular Season H2H Matrix</span><em>Cell is row team record against column team.</em></div>')
     h2h = history_regular_season_h2h_matrix(all_time_schedule)
@@ -7310,14 +7355,47 @@ st.markdown(
         min-width: 11.5rem;
     }}
 
+    .sbc-history-years-cell {{
+        color: #111827 !important;
+        font-size: 0.76rem !important;
+        font-weight: 900 !important;
+        line-height: 1.25;
+        min-width: 7.25rem;
+        white-space: normal !important;
+    }}
+
     .sbc-history-overview-table .sbc-draft-team-wordmark {{
         font-family: var(--draft-team-font), "Poppins", "Segoe UI", sans-serif;
         font-size: 0.86rem;
     }}
 
+    .sbc-h2h-read-key {{
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        margin: -0.2rem 0 0.45rem;
+    }}
+
+    .sbc-h2h-read-key span {{
+        border-radius: 999px;
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.64rem;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        padding: 0.24rem 0.46rem;
+        text-transform: uppercase;
+    }}
+
+    .sbc-h2h-read-key em {{
+        color: var(--sbc-muted);
+        font-size: 0.72rem;
+        font-style: normal;
+        font-weight: 850;
+    }}
+
     .sbc-h2h-wrap {{
-        overflow: auto;
-        max-height: 44rem;
+        overflow: visible;
         border: 1px solid rgba(23, 32, 42, 0.1);
         border-radius: 8px;
         background: rgba(255, 255, 255, 0.94);
@@ -7357,9 +7435,6 @@ st.markdown(
     }}
 
     .sbc-h2h-logo-head {{
-        position: sticky;
-        top: 0;
-        z-index: 4;
         width: 2.16rem;
         min-width: 2.16rem;
         height: 2.25rem;
@@ -7409,7 +7484,6 @@ st.markdown(
     .sbc-h2h-table td {{
         width: 2.16rem;
         min-width: 2.16rem;
-        background: rgba(255, 255, 255, 0.86);
         color: #111827;
         font-size: 0.62rem;
         font-weight: 950;
@@ -7417,13 +7491,13 @@ st.markdown(
         text-align: center;
     }}
 
-    .sbc-h2h-table tr:nth-child(even) td,
     .sbc-h2h-table tr:nth-child(even) .sbc-h2h-row-head {{
         background: rgba(248, 250, 252, 0.92);
     }}
 
     .sbc-h2h-table td:not(.sbc-h2h-self):hover {{
-        background: color-mix(in srgb, {LEAGUE_SECONDARY} 18%, #ffffff);
+        outline: 2px solid color-mix(in srgb, {LEAGUE_SECONDARY} 34%, transparent);
+        outline-offset: -2px;
     }}
 
     .sbc-h2h-self {{
@@ -7432,62 +7506,64 @@ st.markdown(
     }}
 
     .sbc-history-stats-wrap {{
-        max-height: 45rem;
-        overflow: auto;
+        overflow: visible;
     }}
 
     .sbc-history-stats-table {{
-        width: max-content;
-        min-width: 94rem;
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
     }}
 
     .sbc-history-stats-table th {{
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        padding: 0.5rem 0.48rem;
+        padding: 0.42rem 0.24rem;
         text-align: right;
     }}
 
-    .sbc-history-stats-table th:nth-child(1),
-    .sbc-history-stats-table th:nth-child(2) {{
-        text-align: left;
+    .sbc-history-stats-table th:not(.sbc-history-stat-logo-head) {{
+        font-size: 0.58rem;
+        letter-spacing: 0.025em;
+        text-align: center;
     }}
 
     .sbc-history-stats-table td {{
-        padding: 0.42rem 0.48rem;
-        text-align: right;
+        padding: 0.32rem 0.18rem;
+        text-align: center;
     }}
 
-    .sbc-history-stats-table td:nth-child(1),
-    .sbc-history-stats-table td:nth-child(2) {{
-        text-align: left;
+    .sbc-history-stats-table td span {{
+        display: block;
+        color: #111827;
+        font-size: 0.67rem;
+        font-weight: 950;
+        line-height: 1;
     }}
 
-    .sbc-history-rank {{
-        color: var(--sbc-muted) !important;
-        font-size: 0.68rem !important;
-        font-weight: 950 !important;
-        width: 2.3rem;
-    }}
-
-    .sbc-history-stat-team {{
-        min-width: 12rem;
-    }}
-
-    .sbc-history-stat-team .sbc-draft-team-mark {{
-        min-width: 0;
-    }}
-
-    .sbc-history-stat-team em {{
+    .sbc-history-stats-table td em {{
         display: block;
         color: var(--sbc-muted);
-        font-size: 0.58rem;
+        font-size: 0.5rem;
         font-style: normal;
-        font-weight: 850;
-        line-height: 1.05;
-        margin: 0.1rem 0 0 2.5rem;
-        white-space: nowrap;
+        font-weight: 900;
+        line-height: 1;
+        margin-top: 0.12rem;
+    }}
+
+    .sbc-history-stat-logo-head {{
+        width: 2.7rem;
+        text-align: center !important;
+    }}
+
+    .sbc-history-stat-team-logo {{
+        width: 2.7rem;
+        text-align: center !important;
+    }}
+
+    .sbc-history-stat-team-logo img {{
+        width: 1.72rem;
+        height: 1.72rem;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 7px rgba(18,25,38,0.14));
     }}
 
     .sbc-history-game-team img {{
