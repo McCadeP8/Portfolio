@@ -1765,11 +1765,15 @@ def render_scorebug(row):
     components.html(html, height=180, scrolling=False)
 
 def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
+    if df is None or df.empty or "Team" not in df.columns:
+        return None, None
     matchup = df[df["Team"].isin([team_a, team_b])].copy()
     if matchup.shape[0] != 2:
-        raise ValueError("Both teams must exist exactly once in dataframe.")
+        return None, None
     matchup = matchup.set_index("Team").loc[[team_a, team_b]].reset_index()
     weights = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
+    if any(stat not in matchup.columns for stat in weights):
+        return None, None
     team_a_score = 0
     team_b_score = 0
     for stat, weight in weights.items():
@@ -1793,8 +1797,19 @@ def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
                 team_b_score += weight / 2
     return team_a_score, team_b_score
 
+def saved_matchup_score(value):
+    if pd.isna(value):
+        return None
+    try:
+        number = float(value)
+        return int(number) if number.is_integer() else number
+    except (TypeError, ValueError):
+        return value
+
 def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     df = df[(df["Year"] == SelectedYear) & (df["Period"] == SelectedPeriod)].copy()
+    if df.empty:
+        return df
     df["TeamA_Nickname"] = df["TeamA"].apply(lambda x: safe_team_info(x, "nickname", str(x)))
     df["TeamB_Nickname"] = df["TeamB"].apply(lambda x: safe_team_info(x, "nickname", str(x)))
     df["TeamA_logo"] = df["TeamA"].apply(lambda x: safe_team_info(x, "logo"))
@@ -1804,21 +1819,32 @@ def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     conditions = [df["Type"] == "Regular Season", df["Round"] == "Group Stage", (df["Type"] == "In-Season Tournament") & (df["Round"] != "Group Stage"), df["Type"].isin(["Play-In", "Playoffs"])]
     choices = ["Record", "GSRecord", "IST Seed", "Playoff Seed"]
     df["lookup_col"] = np.select(conditions, choices, default=None)
-    if ((df3["Year"] == SelectedYear) & (df3["Period"] == SelectedPeriod)).any():
-        df3 = df3[(df3["Year"] == SelectedYear) & (df3["Period"] == SelectedPeriod)].copy()
+    standings_cols = ["Year", "Period", "Team", "Record", "GSRecord", "IST Seed", "Playoff Seed"]
+    if df3 is not None and not df3.empty and all(col in df3.columns for col in ["Year", "Period", "Team"]):
+        if ((df3["Year"] == SelectedYear) & (df3["Period"] == SelectedPeriod)).any():
+            df3 = df3[(df3["Year"] == SelectedYear) & (df3["Period"] == SelectedPeriod)].copy()
+        else:
+            df3 = df3[(df3["Year"] == SelectedYear) & (df3["Period"] == 99)].copy()
+        for col in standings_cols:
+            if col not in df3.columns:
+                df3[col] = None
+        df3_melted = df3.melt(id_vars="Team", value_vars=["Record", "GSRecord", "IST Seed", "Playoff Seed"], var_name="lookup_col", value_name="value")
+        df = df.merge(df3_melted, left_on=["TeamA", "lookup_col"], right_on=["Team", "lookup_col"], how="left")
+        df = df.rename(columns={"value": "TeamA_record"})
+        df = df.drop(columns=["Team"])
+        df = df.merge(df3_melted, left_on=["TeamB", "lookup_col"], right_on=["Team", "lookup_col"],how="left")
+        df = df.rename(columns={"value": "TeamB_record"})
+        df = df.drop(columns=["Team"])
     else:
-        df3 = df3[(df3["Year"] == SelectedYear) & (df3["Period"] == 99)].copy()
-    df3_melted = df3.melt(id_vars="Team", value_vars=["Record", "GSRecord", "IST Seed", "Playoff Seed"], var_name="lookup_col", value_name="value")
-    df = df.merge(df3_melted, left_on=["TeamA", "lookup_col"], right_on=["Team", "lookup_col"], how="left")
-    df = df.rename(columns={"value": "TeamA_record"})
-    df = df.drop(columns=["Team"])
-    df = df.merge(df3_melted, left_on=["TeamB", "lookup_col"], right_on=["Team", "lookup_col"],how="left")
-    df = df.rename(columns={"value": "TeamB_record"})
-    df = df.drop(columns=["Team"])
+        df["TeamA_record"] = None
+        df["TeamB_record"] = None
     def compute_scores(row):
         team_a = row["TeamA"]
         team_b = row["TeamB"]
         score_a, score_b = get_matchup_score(team_a, team_b, df2)
+        if score_a is None or score_b is None:
+            score_a = saved_matchup_score(row.get("TeamAScore"))
+            score_b = saved_matchup_score(row.get("TeamBScore"))
         return pd.Series([score_a, score_b])
     df[["TeamA_Score", "TeamB_Score"]] = df.apply(compute_scores, axis=1)
     order = ["Regular Season", "In-Season Tournament", "Play-In", "Playoffs"]
