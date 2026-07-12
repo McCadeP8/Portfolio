@@ -828,6 +828,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
 
 def render_selected_team_player_boxscore(schedule_rows, selected_team, rosters_df, key_prefix):
     if schedule_rows is None or schedule_rows.shape[0] == 0:
+        render_html('<div class="sbc-empty-state">No scheduled matchup player rows are available for this period.</div>')
         return
     pieces = []
     for _, schedule_row in schedule_rows.iterrows():
@@ -836,6 +837,7 @@ def render_selected_team_player_boxscore(schedule_rows, selected_team, rosters_d
             pieces.append(matchup_rows[matchup_rows["sbc_team"] == selected_team])
     pieces = [piece for piece in pieces if piece is not None and not piece.empty]
     if not pieces:
+        render_html('<div class="sbc-empty-state">No player-game box score rows matched this team for the selected period.</div>')
         return
     rows = pd.concat(pieces, ignore_index=True)
     view_mode = st.radio(
@@ -847,6 +849,16 @@ def render_selected_team_player_boxscore(schedule_rows, selected_team, rosters_d
     )
     aggregate = view_mode == "Aggregate players"
     render_player_boxscore_team(aggregate_boxscore_players(rows) if aggregate else rows, selected_team, aggregate)
+    return aggregate
+
+
+def render_team_player_boxscore_for_matchup(matchup_row, team_name, rosters_df, aggregate=False):
+    rows = matchup_boxscore_rows(matchup_row, rosters_df)
+    rows = rows[rows["sbc_team"] == team_name] if not rows.empty else rows
+    if rows.empty:
+        render_html(f'<div class="sbc-empty-state">No player-game rows matched {escape(live_team_full_name(team_name))} for this matchup.</div>')
+        return
+    render_player_boxscore_team(aggregate_boxscore_players(rows) if aggregate else rows, team_name, aggregate)
 
 
 def current_period_index(options):
@@ -8684,8 +8696,8 @@ st.markdown(
     }}
 
     .sbc-box-stat-win {{
-        background: color-mix(in srgb, #58a76b 22%, #ffffff);
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, #58a76b 32%, transparent);
+        background: color-mix(in srgb, #58a76b 26%, #ffffff) !important;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, #58a76b 44%, transparent);
     }}
 
     .sbc-box-category-name {{
@@ -12465,13 +12477,14 @@ if main_page == "Team Hub" and selected_team_page == "Live":
         & (all_time_schedule["Period"] == SelectedPeriod)
         & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
     ].copy()
+    live_player_aggregate = False
     if live_schedule_rows.shape[0] > 0:
         render_html('<div class="sbc-section-label">Player Box Score</div>')
-        render_selected_team_player_boxscore(
+        live_player_aggregate = render_selected_team_player_boxscore(
             live_schedule_rows,
             SelectedTeam,
             all_time_rosters,
-            key_prefix=f"live_players_{SelectedYear}_{SelectedPeriod}")
+            key_prefix=f"live_players_{SelectedYear}_{SelectedPeriod}") or False
 
     render_html('<div class="sbc-section-label">Matchup Scoreboards</div>')
     if matchup_count == 0:
@@ -12500,7 +12513,9 @@ if main_page == "Team Hub" and selected_team_page == "Live":
             if schedule_match.shape[0] > 0:
                 matchup_home = schedule_match.iloc[0]["TeamA"]
             if schedule_match.shape[0] > 0:
-                render_matchup_boxscore(schedule_match.iloc[0].to_dict(), all_time_rosters, key_prefix=f"live_{idx}", show_players=False)
+                matchup_payload = schedule_match.iloc[0].to_dict()
+                render_matchup_boxscore(matchup_payload, all_time_rosters, key_prefix=f"live_{idx}", show_players=False)
+                render_team_player_boxscore_for_matchup(matchup_payload, opponent, all_time_rosters, aggregate=live_player_aggregate)
             else:
                 render_live_stat_board(
                     f"{SelectedTeam} vs {opponent}",
