@@ -99,6 +99,17 @@ def get_draft_picks() -> pd.DataFrame:
     return df
 
 @st.cache_data(ttl=86400)
+def get_period_calendar() -> pd.DataFrame:
+    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=698621872"
+    df = read_csv_snapshot("period_calendar", csv_url)
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    for col in ["Day", "Year", "Period"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+@st.cache_data(ttl=86400)
 def get_all_time_team_stats() -> pd.DataFrame:
     df = pd.read_parquet("SBC_Streamlit/all_team_stats_history.parquet")
     return df

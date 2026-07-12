@@ -14,7 +14,7 @@ from html import escape
 from pathlib import Path
 from textwrap import dedent
 from zoneinfo import ZoneInfo
-from functions import read_csv_snapshot, get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
+from functions import read_csv_snapshot, get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 
@@ -250,6 +250,71 @@ def schedule_period_options(schedule_df, selected_year):
     return list(range(1, int(period_raw) + 1))
 
 
+def period_date_range_text(dates, fallback=""):
+    dates = pd.to_datetime(dates, errors="coerce").dropna()
+    if dates.empty:
+        return fallback
+    start = dates.min()
+    end = dates.max()
+
+    def fmt_day(ts):
+        return ts.strftime("%b %d").replace(" 0", " ")
+
+    if start.date() == end.date():
+        return fmt_day(start)
+    return f"{fmt_day(start)}-{fmt_day(end)}"
+
+
+def period_date_label(selected_year, selected_period, fallback=None):
+    fallback = fallback or f"P{selected_period}"
+    if not isinstance(period_calendar, pd.DataFrame) or period_calendar.empty:
+        return fallback
+    if not {"Year", "Period", "Date"}.issubset(period_calendar.columns):
+        return fallback
+    try:
+        year = int(selected_year)
+        selected_period = int(selected_period)
+    except (TypeError, ValueError):
+        return fallback
+    dates = period_calendar[
+        (pd.to_numeric(period_calendar["Year"], errors="coerce") == year)
+        & (pd.to_numeric(period_calendar["Period"], errors="coerce") == selected_period)
+    ]["Date"]
+    return period_date_range_text(dates, fallback)
+
+
+def period_select_label(selected_year):
+    return lambda selected_period: period_date_label(selected_year, selected_period, f"P{selected_period}")
+
+
+def period_range_label(selected_year, periods, fallback=""):
+    clean_periods = []
+    for value in periods:
+        try:
+            clean_periods.append(int(value))
+        except (TypeError, ValueError):
+            pass
+    if not clean_periods:
+        return fallback
+    if isinstance(period_calendar, pd.DataFrame) and {"Year", "Period", "Date"}.issubset(period_calendar.columns):
+        try:
+            year = int(selected_year)
+        except (TypeError, ValueError):
+            year = None
+        if year is not None:
+            dates = period_calendar[
+                (pd.to_numeric(period_calendar["Year"], errors="coerce") == year)
+                & (pd.to_numeric(period_calendar["Period"], errors="coerce").isin(clean_periods))
+            ]["Date"]
+            label = period_date_range_text(dates, "")
+            if label:
+                return label
+    labels = [period_date_label(selected_year, period, f"P{period}") for period in sorted(set(clean_periods))]
+    if len(labels) == 1:
+        return labels[0]
+    return f"{labels[0]}-{labels[-1]}"
+
+
 def current_period_index(options):
     try:
         current_value = int(current_matchup)
@@ -336,6 +401,7 @@ need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team
 need_all_time_rosters = need_history_awards
 need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or need_league_standings or need_history
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
+need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup
 
 df = load_required_data("Cap sheet data", get_data) if need_df else pd.DataFrame()
 pics = load_required_data("Player pictures", get_pictures) if need_pics else pd.DataFrame()
@@ -350,6 +416,7 @@ all_time_team_stats = load_optional_data("All-time team stats", get_all_time_tea
 all_time_rosters = load_optional_data("All-time rosters", get_all_time_rosters) if need_all_time_rosters else pd.DataFrame()
 all_time_schedule = load_optional_data("All-time schedule", get_all_time_schedule) if need_all_time_schedule else pd.DataFrame()
 current_matchup = load_optional_data("Current matchup period", current_matchup_period) if need_current_matchup else period
+period_calendar = load_optional_data("Period calendar", get_period_calendar) if need_period_calendar else pd.DataFrame()
 award_history = load_optional_data("Award history", get_award_history) if need_history_awards else pd.DataFrame()
 team_award_history = load_optional_data("Team award history", get_team_award_history) if need_history_awards else pd.DataFrame()
 
@@ -359,6 +426,7 @@ ft_players = ensure_columns(ft_players, ["name", "fantraxId"])
 all_time_rosters = ensure_columns(all_time_rosters, ["Year", "period", "id", "team_name"])
 award_history = ensure_columns(award_history, ["Award", "Year", "Winner"])
 team_award_history = ensure_columns(team_award_history, ["Award", "Year", "Winner"])
+period_calendar = ensure_columns(period_calendar, ["Day", "Year", "Date", "Period", "Season"])
 
 Teams = sorted(team_info.keys())
 
@@ -3532,6 +3600,14 @@ def first_round_control_status(draft_picks, team, year):
             return "full", f"Full first-round pick: {slots}."
         slots = ", ".join(clean_pick_display(value) for value in full["OGTeam"].dropna().unique())
         return "swap-full", f"Full first-round coverage through swap language: {slots}."
+    locked = work[work["Locked"].apply(trade_truthy)] if "Locked" in work.columns else pd.DataFrame()
+    if not locked.empty:
+        clean_locked = locked[~locked["PickSwap"].apply(trade_truthy)] if "PickSwap" in locked.columns else locked
+        if not clean_locked.empty:
+            slots = ", ".join(clean_pick_display(value) for value in clean_locked["OGTeam"].dropna().unique())
+            return "full", f"Locked but no-doubt first-round pick: {slots}."
+        slots = ", ".join(clean_pick_display(value) for value in locked["OGTeam"].dropna().unique())
+        return "swap-full", f"Locked but full first-round coverage through swap language: {slots}."
     split = work[~work["FullyOwned"].apply(trade_truthy)] if "FullyOwned" in work.columns else work
     if not split.empty:
         slots = ", ".join(clean_pick_display(value) for value in split["OGTeam"].dropna().unique())
@@ -3716,6 +3792,132 @@ def render_first_round_control_grid(draft_picks, teams, title, description, comp
                 </table>
             </div>
         </section>
+    """)
+
+
+def render_league_first_round_control_matrix(draft_picks):
+    years = first_round_control_years()
+
+    def conference_panel(conf):
+        teams = [team for team in Teams if team_info.get(team, {}).get("conf") == conf]
+        year_cells = "".join(f"<span>{str(year)[-2:]}</span>" for year in years)
+        rows = []
+        for team in teams:
+            logo = team_logo_for_name(team)
+            cells = []
+            for year in years:
+                status, detail = first_round_control_status(draft_picks, team, year)
+                cells.append(
+                    f'<i class="sbc-first-mini-cell sbc-first-{status}" title="{escape(live_team_full_name(team), quote=True)} {year}: {escape(detail, quote=True)}"></i>'
+                )
+            rows.append(f"""
+                <div class="sbc-first-mini-row">
+                    <img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">
+                    {''.join(cells)}
+                </div>
+            """)
+        return f"""
+            <section class="sbc-first-mini-panel sbc-first-mini-{escape(conf.lower())}">
+                <div class="sbc-first-mini-title">{escape(conf)}</div>
+                <div class="sbc-first-mini-years"><span></span>{year_cells}</div>
+                <div class="sbc-first-mini-rows">{''.join(rows)}</div>
+            </section>
+        """
+
+    render_html(f"""
+        <style>
+            .sbc-first-mini-board {{
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.75rem;
+                margin: 0.75rem 0 1rem;
+            }}
+            .sbc-first-mini-panel {{
+                border-radius: 8px;
+                border: 1px solid rgba(23, 32, 42, 0.12);
+                background: #ffffff;
+                box-shadow: 0 10px 24px rgba(18, 25, 38, 0.055);
+                padding: 0.55rem;
+            }}
+            .sbc-first-mini-west {{
+                border-top: 4px solid {LEAGUE_SECONDARY};
+            }}
+            .sbc-first-mini-east {{
+                border-top: 4px solid {LEAGUE_PRIMARY};
+            }}
+            .sbc-first-mini-title {{
+                color: var(--sbc-ink);
+                font-size: 0.76rem;
+                font-weight: 950;
+                letter-spacing: 0.06em;
+                margin-bottom: 0.35rem;
+                text-transform: uppercase;
+            }}
+            .sbc-first-mini-years,
+            .sbc-first-mini-row {{
+                display: grid;
+                grid-template-columns: 1.45rem repeat(7, minmax(0, 1fr));
+                align-items: center;
+                gap: 0.22rem;
+            }}
+            .sbc-first-mini-years {{
+                margin-bottom: 0.24rem;
+            }}
+            .sbc-first-mini-years span {{
+                color: var(--sbc-muted);
+                font-size: 0.58rem;
+                font-weight: 950;
+                text-align: center;
+            }}
+            .sbc-first-mini-rows {{
+                display: grid;
+                gap: 0.22rem;
+            }}
+            .sbc-first-mini-row img {{
+                width: 1.18rem;
+                height: 1.18rem;
+                object-fit: contain;
+                justify-self: center;
+            }}
+            .sbc-first-mini-cell {{
+                display: block;
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                border-radius: 4px;
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,0.24);
+            }}
+            .sbc-first-mini-cell.sbc-first-full {{ background: #166534; }}
+            .sbc-first-mini-cell.sbc-first-swap-full {{ background: #65a30d; }}
+            .sbc-first-mini-cell.sbc-first-split {{ background: #c99720; }}
+            .sbc-first-mini-cell.sbc-first-none {{ background: #b91c1c; }}
+            .sbc-first-mini-legend {{
+                display: flex;
+                justify-content: flex-end;
+                gap: 0.28rem;
+                margin-top: 0.45rem;
+            }}
+            .sbc-first-mini-legend i {{
+                width: 0.78rem;
+                height: 0.78rem;
+                border-radius: 4px;
+            }}
+            @media (max-width: 850px) {{
+                .sbc-first-mini-board {{
+                    grid-template-columns: 1fr;
+                }}
+            }}
+        </style>
+        <div class="sbc-section-label">First-Round Control Matrix</div>
+        <div class="sbc-first-mini-board">
+            {conference_panel("West")}
+            {conference_panel("East")}
+        </div>
+        <div class="sbc-first-mini-legend" title="Dark green: full. Light green: swap full. Yellow: split/shared. Red: no listed first.">
+            <i class="sbc-first-mini-cell sbc-first-full"></i>
+            <i class="sbc-first-mini-cell sbc-first-swap-full"></i>
+            <i class="sbc-first-mini-cell sbc-first-split"></i>
+            <i class="sbc-first-mini-cell sbc-first-none"></i>
+        </div>
     """)
 
 
@@ -4041,6 +4243,9 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         .loc[:, ["Period", "Team", selected_category]]
         .rename(columns={"Team": "Series"}))
     plot_df = pd.concat([league_median, opponent_series, team_series], ignore_index=True)
+    period_sort = sorted(pd.to_numeric(plot_df["Period"], errors="coerce").dropna().astype(int).unique().tolist())
+    period_label_lookup = {period_value: period_date_label(selected_year, period_value, f"P{period_value}") for period_value in period_sort}
+    plot_df["PeriodLabel"] = pd.to_numeric(plot_df["Period"], errors="coerce").astype("Int64").map(period_label_lookup).fillna(plot_df["Period"].astype(str))
     if selected_category in ["TS%", "2PT%", "3PT%", "FT%"]:
         plot_df["PlotValue"] = plot_df[selected_category] * 100
         value_format = ".1f"
@@ -4048,14 +4253,15 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         plot_df["PlotValue"] = plot_df[selected_category]
         value_format = ".2f"
     team_points = plot_df[plot_df["Series"] == selected_team].copy()
-    selected_period_df = pd.DataFrame({"Period": [selected_period]})
+    selected_period_df = pd.DataFrame({"PeriodLabel": [period_date_label(selected_year, selected_period, f"P{selected_period}")]})
     color_domain = ["League Median"] + opponents + [selected_team]
     color_range = ["#9ca3af"] + [live_chart_color(opponent, "#a3aab5") for opponent in opponents] + [team_color]
 
     base = alt.Chart(plot_df).encode(
         x=alt.X(
-            "Period:O",
-            title="Matchup Period",
+            "PeriodLabel:O",
+            title="Matchup Window",
+            sort=[period_label_lookup[value] for value in period_sort],
             axis=alt.Axis(labelAngle=0, labelFontSize=11, titleFontSize=12, titlePadding=10, grid=False)),
         y=alt.Y(
             "PlotValue:Q",
@@ -4064,13 +4270,13 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
             axis=alt.Axis(labelFontSize=11, titleFontSize=12, titlePadding=10, gridOpacity=0.24)),
         tooltip=[
             alt.Tooltip("Series:N", title="Series"),
-            alt.Tooltip("Period:O", title="Period"),
+            alt.Tooltip("PeriodLabel:O", title="Window"),
             alt.Tooltip("PlotValue:Q", title=selected_category, format=value_format)])
 
     selected_band = (
         alt.Chart(selected_period_df)
         .mark_rect(color=team_color, opacity=0.10)
-        .encode(x=alt.X("Period:O", title=None)))
+        .encode(x=alt.X("PeriodLabel:O", title=None)))
     median_line = (
         base.transform_filter(alt.datum.Series == "League Median")
         .mark_line(strokeWidth=2.5, strokeDash=[5, 4], color="#7c8794", interpolate="monotone"))
@@ -4085,17 +4291,17 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         base.mark_circle(size=58, stroke="#ffffff", strokeWidth=1.2, opacity=0.95)
         .encode(
             color=alt.Color("Series:N", scale=alt.Scale(domain=color_domain, range=color_range), legend=None),
-            size=alt.condition(alt.datum.Period == selected_period, alt.value(150), alt.value(54)),
-            strokeWidth=alt.condition(alt.datum.Period == selected_period, alt.value(2.4), alt.value(1.2))))
+            size=alt.condition(alt.datum.PeriodLabel == period_date_label(selected_year, selected_period, f"P{selected_period}"), alt.value(150), alt.value(54)),
+            strokeWidth=alt.condition(alt.datum.PeriodLabel == period_date_label(selected_year, selected_period, f"P{selected_period}"), alt.value(2.4), alt.value(1.2))))
     points = (
         alt.Chart(team_points)
         .mark_circle(size=115, stroke="#ffffff", strokeWidth=1.8)
         .encode(
-            x="Period:O",
+            x=alt.X("PeriodLabel:O", sort=[period_label_lookup[value] for value in period_sort]),
             y="PlotValue:Q",
             color=alt.value(team_color),
             tooltip=[
-                alt.Tooltip("Period:O", title="Period"),
+                alt.Tooltip("PeriodLabel:O", title="Window"),
                 alt.Tooltip("PlotValue:Q", title=selected_category, format=value_format)]))
     return (
         (selected_band + median_line + opponent_lines + team_line + all_points + points)
@@ -4165,7 +4371,7 @@ def render_schedule_table(schedule_df, selected_team):
             body_rows.append(f'<tr class="sbc-schedule-group-row"><td colspan="3"><span>{escape(type_text)}</span></td></tr>')
         body_rows.append(dedent(f"""
         <tr class="sbc-schedule-row sbc-schedule-{result_class}" style="--sbc-opponent-color:{escape(str(opponent_color), quote=True)};">
-            <td class="sbc-schedule-period"><span>P{escape(str(row.get("Period", "")))}</span></td>
+            <td class="sbc-schedule-period"><span>{escape(period_date_label(row.get("Year", ""), row.get("Period", ""), f'P{row.get("Period", "")}'))}</span></td>
             <td class="sbc-schedule-opponent">
                 {logo_html}
                 <div>
@@ -4239,7 +4445,7 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
                     "dst_lat": float(dest["lat"]),
                     "dst_lon": float(dest["lon"]),
                     "color_hex": home_info.get("bg", bg_color),
-                    "note": f"P{row.get('Period')}: {selected_team} to {destination_team}",
+                    "note": f"{period_date_label(row.get('Year', ''), row.get('Period'), f'P{row.get("Period")}')}: {selected_team} to {destination_team}",
                 })
             route_stops.append({
                 "team": destination_team,
@@ -5075,7 +5281,11 @@ def render_league_history_overview():
     else:
         records = records.copy()
         records["Value"] = records["Value"].apply(format_score_value)
-        records["When"] = records.apply(lambda row: f"{row.get('Year', '')} P{row.get('Period', '')}", axis=1)
+        def history_when_label(row):
+            year_value = row.get("Year", "")
+            period_value = row.get("Period", "")
+            return f"{year_value} {period_date_label(year_value, period_value, f'P{period_value}')}"
+        records["When"] = records.apply(history_when_label, axis=1)
         records["Opponent"] = records["Opponent"].fillna("")
         render_history_overview_table(records[["Record", "Team", "Value", "When", "Opponent"]], ["Record", "Team", "Value", "When", "Opponent"])
 
@@ -5252,7 +5462,7 @@ def render_scoreboard_cards(scores_df):
                 <article class="sbc-score-card">
                     <div class="sbc-score-card-top">
                         <span>{escape(str(round_label))}</span>
-                        <em>P{escape(str(row.get("Period", "")))}</em>
+                        <em>{escape(period_date_label(row.get("Year", ""), row.get("Period", ""), f'P{row.get("Period", "")}'))}</em>
                     </div>
                     <div class="sbc-score-team {'sbc-score-winner' if a_winner else ''}" style="--score-color:{escape(str(color_a), quote=True)};">
                         <img src="{escape(str(logo_a), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
@@ -5313,7 +5523,7 @@ def render_conference_standings(standings_df, selected_year, selected_period, co
         <section class="sbc-standings-panel sbc-standings-{escape(str(conference).lower())}">
             <div class="sbc-standings-head">
                 <span>{escape(conference)} Conference</span>
-                <em>Through Period {escape(str(selected_period))}</em>
+                <em>Through {escape(period_date_label(selected_year, selected_period, f'P{selected_period}'))}</em>
             </div>
             <div class="sbc-standings-table-wrap">
                 <table class="sbc-standings-table">
@@ -5370,7 +5580,7 @@ def render_ist_standings(standings_df, selected_year, selected_period):
             <section class="sbc-standings-panel sbc-standings-{escape(str(conference).lower())}">
                 <div class="sbc-standings-head">
                     <span>{conference} Groups</span>
-                    <em>Through Period {escape(str(selected_period))}</em>
+                    <em>Through {escape(period_date_label(selected_year, selected_period, f'P{selected_period}'))}</em>
                 </div>
                 <div class="sbc-standings-table-wrap">
                     <table class="sbc-standings-table sbc-ist-standings-table">
@@ -5487,7 +5697,7 @@ def render_history_matchup_card(row):
     score_a = row.get("TeamAScore", row.get("TeamA_Score", ""))
     score_b = row.get("TeamBScore", row.get("TeamB_Score", ""))
     winner = history_game_winner(row)
-    period_label = f'P{escape(str(row.get("Period", "")))}' if not is_blank_value(row.get("Period", "")) else ""
+    period_label = period_date_label(row.get("Year", ""), row.get("Period", ""), f'P{row.get("Period", "")}') if not is_blank_value(row.get("Period", "")) else ""
     rows = []
     for team, score in [(team_a, score_a), (team_b, score_b)]:
         info = team_info.get(team, {})
@@ -5535,7 +5745,8 @@ def bracket_period_label(games):
     periods = pd.to_numeric(games["Period"], errors="coerce").dropna().astype(int).tolist()
     if not periods:
         return ""
-    return f"P{min(periods)}" if min(periods) == max(periods) else f"P{min(periods)}-P{max(periods)}"
+    selected_year = games["Year"].dropna().iloc[0] if "Year" in games.columns and not games["Year"].dropna().empty else current_year
+    return period_range_label(selected_year, periods, f"P{min(periods)}" if min(periods) == max(periods) else f"P{min(periods)}-P{max(periods)}")
 
 
 def bracket_game_conference(row):
@@ -5742,10 +5953,9 @@ def render_history_bracket(games, title, empty_text, seed_lookup=None):
         periods = pd.to_numeric(round_games["Period"], errors="coerce").dropna().astype(int).tolist() if "Period" in round_games.columns else []
         if not periods:
             period_label = ""
-        elif min(periods) == max(periods):
-            period_label = f"P{min(periods)}"
         else:
-            period_label = f"P{min(periods)}-P{max(periods)}"
+            period_year = round_games["Year"].dropna().iloc[0] if "Year" in round_games.columns and not round_games["Year"].dropna().empty else current_year
+            period_label = period_range_label(period_year, periods, f"P{min(periods)}" if min(periods) == max(periods) else f"P{min(periods)}-P{max(periods)}")
         cards = "".join(render_history_bracket_matchup(row, seed_lookup) for _, row in round_games.iterrows())
         round_blocks.append(f"""
             <section class="sbc-bracket-round">
@@ -11201,7 +11411,7 @@ if main_page == "Team Hub" and selected_team_page == "Live":
         SelectedYear = st.selectbox("Year", options=year_options, index=year_options.index(current_year))
     with control2:
         period_options = schedule_period_options(all_time_schedule, SelectedYear)
-        SelectedPeriod = st.selectbox("Period", options=period_options, index=current_period_index(period_options))
+        SelectedPeriod = st.selectbox("Period", options=period_options, index=current_period_index(period_options), format_func=period_select_label(SelectedYear))
     RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
     PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
     PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
@@ -11220,7 +11430,7 @@ if main_page == "Team Hub" and selected_team_page == "Live":
     if matchup_count == 0:
         selected_payload = live_row_payload(live_stats_df, SelectedTeam)
         render_live_stat_board(
-            f"{SelectedTeam} Period {SelectedPeriod} Stat Profile",
+            f"{SelectedTeam} {period_date_label(SelectedYear, SelectedPeriod, f'P{SelectedPeriod}')} Stat Profile",
             "No scheduled matchup",
             [selected_payload] if selected_payload else [],
             SelectedTeam,
@@ -11246,7 +11456,7 @@ if main_page == "Team Hub" and selected_team_page == "Live":
                     matchup_home = schedule_match.iloc[0]["TeamA"]
                 render_live_stat_board(
                     f"{SelectedTeam} vs {opponent}",
-                    f"{matchup_type} - Period {SelectedPeriod}",
+                    f"{matchup_type} - {period_date_label(SelectedYear, SelectedPeriod, f'P{SelectedPeriod}')}",
                     matchup_rows,
                     SelectedTeam,
                     matchup_home)
@@ -11348,7 +11558,7 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
         """)
     SelectedYear2 = current_year
     period_options2 = schedule_period_options(all_time_schedule, SelectedYear2)
-    SelectedPeriod2 = st.selectbox("Select Period", options=period_options2, index=current_period_index(period_options2), key="league_current_scoreboard_period")
+    SelectedPeriod2 = st.selectbox("Select Period", options=period_options2, index=current_period_index(period_options2), key="league_current_scoreboard_period", format_func=period_select_label(SelectedYear2))
 
     scoreboard_schedule = all_time_schedule[
         (all_time_schedule["Year"] == SelectedYear2)
@@ -11382,7 +11592,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
     """)
     HistoryScoreYear = LeagueHistoryYear
     history_period_options = schedule_period_options(all_time_schedule, HistoryScoreYear)
-    HistoryScorePeriod = st.selectbox("History Period", options=history_period_options, index=current_period_index(history_period_options), key="league_history_scoreboard_period")
+    HistoryScorePeriod = st.selectbox("History Period", options=history_period_options, index=current_period_index(history_period_options), key="league_history_scoreboard_period", format_func=period_select_label(HistoryScoreYear))
     history_schedule = all_time_schedule[
         (all_time_schedule["Year"] == HistoryScoreYear)
         & (all_time_schedule["Period"] == HistoryScorePeriod)
@@ -11485,7 +11695,7 @@ if main_page == "League Hub" and selected_league_page == "Standings":
         """)
     StandingsYear = st.selectbox("Standings Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
     standings_period_options = schedule_period_options(all_time_schedule, StandingsYear)
-    StandingsPeriod = st.selectbox("Standings Period", options=standings_period_options, index=current_period_index(standings_period_options))
+    StandingsPeriod = st.selectbox("Standings Period", options=standings_period_options, index=current_period_index(standings_period_options), format_func=period_select_label(StandingsYear))
     render_html('<div class="sbc-section-label">Standings Snapshot</div>')
     west_col, east_col = st.columns(2)
     with west_col:
@@ -11706,13 +11916,6 @@ if main_page == "League Hub" and selected_league_page == "Draft Picks":
         <div class="sbc-mini-note"><strong>{all_pick_count}</strong> total league pick records shown across all active draft-control categories.</div>
         """)
 
-    render_first_round_control_grid(
-        dp,
-        Teams,
-        "League First-Round Control Matrix",
-        "Thirty-team view of first-round coverage by year: full, swap-based full, split/shared, or no listed first.",
-    )
-
     render_pick_table(
         all_full_team_picks,
         "Fully Owned Picks",
@@ -11756,6 +11959,8 @@ if main_page == "League Hub" and selected_league_page == "Draft Picks":
         image_columns=["CurrentTeam"],
         status="locked"
     )
+
+    render_league_first_round_control_matrix(dp)
 
     _legacy_tab7 = r'''
     all_full_team_picks = all_full_draft_picks(dp)
