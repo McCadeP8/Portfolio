@@ -875,7 +875,7 @@ def player_stats_options(rosters_df):
     work = rosters_df.copy()
     year_col = "Year" if "Year" in work.columns else "year"
     work = work[work.get("status", "").astype(str).str.upper() == "ACTIVE"].copy()
-    bridge = load_player_id_bridge()
+    bridge = build_fantrax_to_espn_bridge().rename(columns={"fantraxId": "fantrax_id"})
     options = (
         work[["id"]]
         .dropna()
@@ -920,7 +920,7 @@ def player_awards_for_name(player_name, awards_df):
 def selected_player_game_rows(fantrax_id, rosters_df, schedule_df):
     if not fantrax_id or rosters_df is None or rosters_df.empty:
         return pd.DataFrame()
-    bridge = load_player_id_bridge()
+    bridge = build_fantrax_to_espn_bridge().rename(columns={"fantraxId": "fantrax_id"})
     bridge_row = bridge[bridge["fantrax_id"] == fantrax_id]
     if bridge_row.empty or is_blank_value(bridge_row.iloc[0].get("espn_player_id")):
         return pd.DataFrame()
