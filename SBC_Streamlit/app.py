@@ -603,7 +603,7 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     totals_display = format_boxscore_table(team_totals.rename(columns={"sbc_team": "display_player"}), include_games=False)
     if "Player" in totals_display.columns:
         totals_display = totals_display.rename(columns={"Player": "Team"})
-    st.dataframe(totals_display, width="stretch", hide_index=True)
+    st.dataframe(totals_display, use_container_width=True, hide_index=True)
 
     if not category_table.empty:
         render_html('<div class="sbc-cap-eyebrow">Category Votes</div>')
@@ -615,14 +615,14 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
             else:
                 for team_col in [team_a, team_b]:
                     cat_display.at[idx, team_col] = round(float(cat_display.at[idx, team_col]), 1)
-        st.dataframe(cat_display, width="stretch", hide_index=True)
+        st.dataframe(cat_display, use_container_width=True, hide_index=True)
 
     render_html('<div class="sbc-cap-eyebrow">Player Box Score</div>')
     if view_mode == "Individual Games":
         player_display = format_boxscore_table(rows, include_games=True)
     else:
         player_display = format_boxscore_table(aggregate_boxscore_players(rows), include_games=False)
-    st.dataframe(player_display, width="stretch", hide_index=True)
+    st.dataframe(player_display, use_container_width=True, hide_index=True)
 
 
 def current_period_index(options):
