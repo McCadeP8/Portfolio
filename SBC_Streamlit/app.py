@@ -482,7 +482,7 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
 def aggregate_boxscore_players(rows):
     if rows.empty:
         return rows
-    grouped = rows.groupby(["sbc_team", "fantraxId", "display_player"], as_index=False)[BOX_SCORE_SUM_STATS].sum()
+    grouped = rows.groupby(["sbc_team", "fantraxId", "espn_player_id", "display_player"], as_index=False)[BOX_SCORE_SUM_STATS].sum()
     grouped = recalc_shooting_stats(grouped)
     return grouped.sort_values(["sbc_team", "PTS", "display_player"], ascending=[True, False, True]).reset_index(drop=True)
 
@@ -542,6 +542,159 @@ def format_boxscore_table(df, include_games=False):
     return table[[col for col in columns if col in table.columns]]
 
 
+def boxscore_title_for_round(round_label, type_label):
+    round_text = str(round_label or "")
+    type_text = str(type_label or "")
+    if "SBCFBL Finals" in round_text:
+        return "SBCFBL Finals Box Score"
+    if "Final" in round_text or "Championship" in round_text:
+        return f"{round_text} Box Score"
+    if type_text == "Regular Season":
+        return "Regular Season Box Score"
+    return f"{type_text or round_text or 'Matchup'} Box Score"
+
+
+def boxscore_stat_label(stat):
+    return {"2PT%": "2P%", "3PT%": "3P%"}.get(stat, stat)
+
+
+def stat_number(value, pct=False):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = 0
+    if pct:
+        return f"{number * 100:.1f}%"
+    if abs(number - round(number)) < 0.05:
+        return f"{int(round(number))}"
+    return f"{number:.1f}"
+
+
+def stat_subtext(row, stat):
+    if stat == "MP":
+        return f"{stat_number(row.get('GP', 0))} GP"
+    if stat == "2PT%":
+        return f"{stat_number(row.get('2PTM', 0))} / {stat_number(row.get('2PTA', 0))}"
+    if stat == "3PT%":
+        return f"{stat_number(row.get('3PTM', 0))} / {stat_number(row.get('3PTA', 0))}"
+    if stat == "FT%":
+        return f"{stat_number(row.get('FTM', 0))} / {stat_number(row.get('FTA', 0))}"
+    return ""
+
+
+def stat_cell_html(row, stat, winner=False, align="center"):
+    is_pct = stat in ["TS%", "2PT%", "3PT%", "FT%"]
+    sub = stat_subtext(row, stat)
+    sub_html = f"<em>{escape(sub)}</em>" if sub else ""
+    return f"""
+        <td class="sbc-box-stat-cell {'sbc-box-stat-win' if winner else ''}" style="text-align:{align};">
+            <strong>{escape(stat_number(row.get(stat, 0), pct=is_pct))}</strong>
+            {sub_html}
+        </td>
+    """
+
+
+def espn_headshot_url(player_id):
+    player_id = str(player_id or "").strip()
+    if not player_id:
+        return ""
+    return f"https://a.espncdn.com/i/headshots/nba/players/full/{escape(player_id, quote=True)}.png"
+
+
+def render_category_votes_box(category_table, team_totals, team_a, team_b):
+    if category_table.empty or team_totals.empty:
+        return
+    totals = team_totals.set_index("sbc_team")
+    category_lookup = category_table.set_index("Category")
+    info_a = team_info.get(team_a, {})
+    info_b = team_info.get(team_b, {})
+    rows_html = []
+    for stat in BOX_SCORE_WEIGHTS:
+        if stat not in category_lookup.index or team_a not in totals.index or team_b not in totals.index:
+            continue
+        cat_row = category_lookup.loc[stat]
+        winner = cat_row.get("Winner", "Tie")
+        team_a_win = winner == team_a
+        team_b_win = winner == team_b
+        rows_html.append(f"""
+            <tr>
+                {stat_cell_html(totals.loc[team_a], stat, winner=team_a_win)}
+                <td class="sbc-box-category-name">
+                    <strong>{escape(boxscore_stat_label(stat))}</strong>
+                    <em>{escape(str(BOX_SCORE_WEIGHTS.get(stat, '')))} votes</em>
+                </td>
+                {stat_cell_html(totals.loc[team_b], stat, winner=team_b_win)}
+            </tr>
+        """)
+    render_html(f"""
+        <section class="sbc-box-panel">
+            <div class="sbc-box-panel-head">
+                <span>Category Votes</span>
+            </div>
+            <table class="sbc-box-category-table">
+                <thead>
+                    <tr>
+                        <th><img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(team_a, quote=True)} logo"></th>
+                        <th>Category</th>
+                        <th><img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(team_b, quote=True)} logo"></th>
+                    </tr>
+                </thead>
+                <tbody>{''.join(rows_html)}</tbody>
+            </table>
+        </section>
+    """)
+
+
+def render_player_boxscore_team(team_rows, team_name, aggregate):
+    info = team_info.get(team_name, {})
+    primary = info.get("bg", "#111827")
+    secondary = info.get("bg2", primary)
+    font = team_font_for_name(team_name)
+    stats = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+    rows_html = []
+    for _, row in team_rows.iterrows():
+        game_meta = ""
+        if not aggregate:
+            game_date = pd.to_datetime(row.get("Date"), errors="coerce")
+            date_text = game_date.strftime("%b %d").replace(" 0", " ") if pd.notna(game_date) else ""
+            game_meta = f"<em>{escape(date_text)} / {escape(str(row.get('nba_team', '')))} {escape(str(row.get('matchup', '')))}</em>"
+        stat_cells = "".join(stat_cell_html(row, stat) for stat in stats)
+        rows_html.append(f"""
+            <tr>
+                <td class="sbc-box-player-cell">
+                    <img src="{espn_headshot_url(row.get('espn_player_id'))}" alt="{escape(str(row.get('display_player', '')), quote=True)} headshot">
+                    <span><strong>{escape(str(row.get('display_player', '')))}</strong>{game_meta}</span>
+                </td>
+                {stat_cells}
+            </tr>
+        """)
+    headers = "".join(f"<th>{escape(boxscore_stat_label(stat))}</th>" for stat in stats)
+    return f"""
+        <section class="sbc-box-panel sbc-box-team-panel" style="--box-team:{escape(str(primary), quote=True)};--box-team-secondary:{escape(str(secondary), quote=True)};--box-team-font:{escape(str(font), quote=True)};">
+            <div class="sbc-box-team-head">
+                <img src="{escape(str(info.get('logo', '')), quote=True)}" alt="{escape(team_name, quote=True)} logo">
+                <span>{escape(live_team_full_name(team_name))}</span>
+            </div>
+            <div class="sbc-box-table-scroll">
+                <table class="sbc-box-player-table">
+                    <thead><tr><th>Player</th>{headers}</tr></thead>
+                    <tbody>{''.join(rows_html)}</tbody>
+                </table>
+            </div>
+        </section>
+    """
+
+
+def render_player_boxscore_split(rows, team_a, team_b, aggregate=False):
+    display_rows = aggregate_boxscore_players(rows) if aggregate else rows.copy()
+    render_html(f"""
+        <div class="sbc-box-player-grid">
+            {render_player_boxscore_team(display_rows[display_rows["sbc_team"] == team_a], team_a, aggregate)}
+            {render_player_boxscore_team(display_rows[display_rows["sbc_team"] == team_b], team_b, aggregate)}
+        </div>
+    """)
+
+
 @st.dialog("SBCFBL Box Score", width="large")
 def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     team_a = str(matchup_row.get("TeamA", ""))
@@ -552,23 +705,30 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     info_b = team_info.get(team_b, {})
     period_label = period_date_label(matchup_row.get("Year", ""), matchup_row.get("Period", ""), f'P{matchup_row.get("Period", "")}')
     round_label = str(matchup_row.get("Round", matchup_row.get("Type", "")))
-    title_label = "Championship Box Score" if "Final" in round_label or "Championship" in round_label else "Matchup Box Score"
+    type_label = str(matchup_row.get("Type", ""))
+    title_label = boxscore_title_for_round(round_label, type_label)
+    a_winner = score_numeric(score_a) >= score_numeric(score_b)
+    b_winner = score_numeric(score_b) > score_numeric(score_a)
 
     render_html(f"""
         <section class="sbc-box-dialog-hero" style="--box-a:{escape(str(info_a.get('bg', '#111827')), quote=True)}; --box-b:{escape(str(info_b.get('bg', '#334155')), quote=True)};">
-            <div class="sbc-box-dialog-kicker">{escape(title_label)} / {escape(period_label)}</div>
+            <div class="sbc-box-dialog-kicker">{escape(period_label)}</div>
+            <div class="sbc-box-dialog-title">{escape(title_label)}</div>
             <div class="sbc-box-dialog-matchup">
-                <div class="sbc-box-dialog-team">
+                <div class="sbc-box-dialog-team {'sbc-box-dialog-winner' if a_winner else ''}">
                     <img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
                     <strong>{escape(live_team_full_name(team_a))}</strong>
                     <em>{escape(str(matchup_row.get('TeamA_record', '')))}</em>
                 </div>
                 <div class="sbc-box-dialog-score">
-                    <span>{escape(format_score_value(score_a))}</span>
-                    <i>{escape(str(round_label))}</i>
-                    <span>{escape(format_score_value(score_b))}</span>
+                    <i>Final</i>
+                    <div>
+                        <span>{escape(format_score_value(score_a))}</span>
+                        <b>-</b>
+                        <span>{escape(format_score_value(score_b))}</span>
+                    </div>
                 </div>
-                <div class="sbc-box-dialog-team">
+                <div class="sbc-box-dialog-team {'sbc-box-dialog-winner' if b_winner else ''}">
                     <img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
                     <strong>{escape(live_team_full_name(team_b))}</strong>
                     <em>{escape(str(matchup_row.get('TeamB_record', '')))}</em>
@@ -583,46 +743,17 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
         return
 
     team_totals = team_boxscore_totals(rows)
-    category_table, calc_a, calc_b = matchup_category_results(team_totals, team_a, team_b)
-    render_html(f"""
-        <div class="sbc-box-dialog-summary">
-            <div><span>Recalculated Score</span><strong>{escape(format_score_value(calc_a))} - {escape(format_score_value(calc_b))}</strong></div>
-            <div><span>Player Games</span><strong>{rows.shape[0]:,}</strong></div>
-            <div><span>Active Filter</span><strong>ACTIVE only</strong></div>
-        </div>
-    """)
+    category_table, _, _ = matchup_category_results(team_totals, team_a, team_b)
 
-    view_mode = st.segmented_control(
-        "View",
-        ["Grouped by Player", "Individual Games"],
-        default="Grouped by Player",
-        key=f"box_mode_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}",
+    render_category_votes_box(category_table, team_totals, team_a, team_b)
+
+    aggregate = st.toggle(
+        "Aggregate",
+        value=False,
+        key=f"box_aggregate_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}",
+        help="Combine all games for each player.",
     )
-
-    render_html('<div class="sbc-cap-eyebrow">Team Totals</div>')
-    totals_display = format_boxscore_table(team_totals.rename(columns={"sbc_team": "display_player"}), include_games=False)
-    if "Player" in totals_display.columns:
-        totals_display = totals_display.rename(columns={"Player": "Team"})
-    st.dataframe(totals_display, use_container_width=True, hide_index=True)
-
-    if not category_table.empty:
-        render_html('<div class="sbc-cap-eyebrow">Category Votes</div>')
-        cat_display = category_table.copy()
-        for idx, cat_row in cat_display.iterrows():
-            if cat_row.get("Category") in ["TS%", "2PT%", "3PT%", "FT%"]:
-                for team_col in [team_a, team_b]:
-                    cat_display.at[idx, team_col] = round(float(cat_display.at[idx, team_col]) * 100, 1)
-            else:
-                for team_col in [team_a, team_b]:
-                    cat_display.at[idx, team_col] = round(float(cat_display.at[idx, team_col]), 1)
-        st.dataframe(cat_display, use_container_width=True, hide_index=True)
-
-    render_html('<div class="sbc-cap-eyebrow">Player Box Score</div>')
-    if view_mode == "Individual Games":
-        player_display = format_boxscore_table(rows, include_games=True)
-    else:
-        player_display = format_boxscore_table(aggregate_boxscore_players(rows), include_games=False)
-    st.dataframe(player_display, use_container_width=True, hide_index=True)
+    render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
 
 
 def current_period_index(options):
@@ -5783,7 +5914,7 @@ def render_scoreboard_cards(scores_df):
                 <article class="sbc-score-card">
                     <div class="sbc-score-card-top">
                         <span>{escape(str(round_label))}</span>
-                        <em>BOX SCORE</em>
+                        <em>{escape(period_label)}</em>
                     </div>
                     <div class="sbc-score-team {'sbc-score-winner' if a_winner else ''}" style="--score-color:{escape(str(color_a), quote=True)};">
                         <img src="{escape(str(logo_a), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
@@ -5804,7 +5935,7 @@ def render_scoreboard_cards(scores_df):
                 </article>
                 """)
                 button_key = f"boxscore_{row.get('Game_ID', '')}_{row.get('Year', '')}_{row.get('Period', '')}_{team_a}_{team_b}"
-                if st.button(period_label, key=button_key, use_container_width=True, help="Open matchup box score"):
+                if st.button("Box Score", key=button_key, use_container_width=True, type="primary", help="Open matchup box score"):
                     render_matchup_boxscore_dialog(row.to_dict(), all_time_rosters)
 
 
@@ -8065,50 +8196,95 @@ st.markdown(
         color: var(--sbc-ink);
     }}
 
+    div[data-testid="stButton"] > button[kind="primary"],
+    div[data-testid="stButton"] > button[kind="primary"] p,
+    div.stButton > button[kind="primary"],
+    div.stButton > button[kind="primary"] p {{
+        color: #ffffff !important;
+    }}
+
+    div[data-testid="stDialog"] div[role="dialog"] {{
+        width: min(96vw, 1420px) !important;
+        max-width: min(96vw, 1420px) !important;
+        background: #ffffff !important;
+        color: var(--sbc-ink) !important;
+    }}
+
+    div[data-testid="stDialog"] div[role="dialog"] section {{
+        background: #ffffff;
+    }}
+
     .sbc-box-dialog-hero {{
         overflow: hidden;
+        border: 1px solid rgba(23, 32, 42, 0.10);
         border-radius: 8px;
-        background:
-            linear-gradient(115deg, color-mix(in srgb, var(--box-a) 86%, #111827 14%) 0%, color-mix(in srgb, var(--box-b) 78%, #111827 22%) 100%);
-        color: #ffffff;
-        padding: 1rem;
-        box-shadow: 0 18px 42px rgba(18, 25, 38, 0.18);
+        background: #ffffff;
+        color: var(--sbc-ink);
+        box-shadow: 0 16px 36px rgba(18, 25, 38, 0.10);
     }}
 
     .sbc-box-dialog-kicker {{
-        font-size: 0.72rem;
+        background: #111827;
+        color: rgba(255,255,255,0.76);
+        font-size: 0.7rem;
         font-weight: 950;
         letter-spacing: 0.08em;
+        padding: 0.5rem 0.75rem;
         text-transform: uppercase;
-        opacity: 0.82;
+    }}
+
+    .sbc-box-dialog-title {{
+        padding: 0.82rem 0.9rem 0;
+        color: var(--sbc-ink);
+        font-size: 1.15rem;
+        font-weight: 950;
+        line-height: 1.05;
     }}
 
     .sbc-box-dialog-matchup {{
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) minmax(8rem, auto) minmax(0, 1fr);
         gap: 1rem;
         align-items: center;
-        margin-top: 0.85rem;
+        padding: 0.85rem 1rem 1rem;
     }}
 
     .sbc-box-dialog-team {{
         display: grid;
-        justify-items: center;
+        grid-template-columns: 4.3rem minmax(0, 1fr);
+        gap: 0.7rem;
+        align-items: center;
         min-width: 0;
-        text-align: center;
+        border-left: 0.35rem solid color-mix(in srgb, var(--box-a) 55%, var(--box-b) 45%);
+        border-radius: 8px;
+        background: #f8fafc;
+        padding: 0.7rem;
+    }}
+
+    .sbc-box-dialog-team:last-child {{
+        border-left-color: var(--box-b);
+    }}
+
+    .sbc-box-dialog-team:first-child {{
+        border-left-color: var(--box-a);
+    }}
+
+    .sbc-box-dialog-winner {{
+        background: color-mix(in srgb, #58a76b 15%, #ffffff);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, #58a76b 38%, transparent);
     }}
 
     .sbc-box-dialog-team img {{
-        width: 4.7rem;
-        height: 4.7rem;
+        width: 4rem;
+        height: 4rem;
         object-fit: contain;
-        filter: drop-shadow(0 10px 16px rgba(0,0,0,0.25));
+        filter: drop-shadow(0 7px 12px rgba(18, 25, 38, 0.16));
     }}
 
     .sbc-box-dialog-team strong {{
+        display: block;
         overflow: hidden;
-        max-width: 100%;
-        margin-top: 0.45rem;
+        color: var(--sbc-ink);
         font-size: 1rem;
         font-weight: 950;
         line-height: 1.08;
@@ -8117,8 +8293,9 @@ st.markdown(
     }}
 
     .sbc-box-dialog-team em {{
+        display: block;
         margin-top: 0.24rem;
-        color: rgba(255,255,255,0.75);
+        color: var(--sbc-muted);
         font-size: 0.68rem;
         font-style: normal;
         font-weight: 900;
@@ -8128,58 +8305,224 @@ st.markdown(
 
     .sbc-box-dialog-score {{
         display: grid;
-        justify-items: center;
-        gap: 0.24rem;
-        min-width: 8rem;
+        gap: 0.35rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #111827;
+        color: #ffffff;
         font-variant-numeric: tabular-nums;
+        padding: 0.75rem 0.9rem;
         text-align: center;
     }}
 
+    .sbc-box-dialog-score div {{
+        display: grid;
+        grid-template-columns: auto auto auto;
+        gap: 0.58rem;
+        align-items: center;
+    }}
+
     .sbc-box-dialog-score span {{
-        font-size: 2.45rem;
+        font-size: 2.1rem;
         font-weight: 950;
         line-height: 0.95;
     }}
 
+    .sbc-box-dialog-score b {{
+        color: rgba(255,255,255,0.44);
+        font-size: 1.2rem;
+        font-weight: 900;
+        line-height: 1;
+    }}
+
     .sbc-box-dialog-score i {{
-        color: rgba(255,255,255,0.74);
-        font-size: 0.62rem;
+        color: rgba(255,255,255,0.66);
+        font-size: 0.66rem;
         font-style: normal;
         font-weight: 950;
         letter-spacing: 0.08em;
         text-transform: uppercase;
     }}
 
-    .sbc-box-dialog-summary {{
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.65rem;
-        margin: 0.8rem 0;
-    }}
-
-    .sbc-box-dialog-summary div {{
+    .sbc-box-panel {{
+        overflow: hidden;
         border: 1px solid rgba(23, 32, 42, 0.10);
         border-radius: 8px;
         background: #ffffff;
-        padding: 0.65rem 0.7rem;
-        box-shadow: 0 10px 22px rgba(18, 25, 38, 0.06);
+        box-shadow: 0 12px 28px rgba(18, 25, 38, 0.06);
+        margin-top: 0.8rem;
     }}
 
-    .sbc-box-dialog-summary span {{
-        display: block;
+    .sbc-box-panel-head,
+    .sbc-box-team-head {{
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background: #f8fafc;
+        color: var(--sbc-ink);
+        font-size: 0.86rem;
+        font-weight: 950;
+        padding: 0.62rem 0.75rem;
+    }}
+
+    .sbc-box-team-head {{
+        min-height: 4.35rem;
+        border-left: 0;
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--box-team) 92%, #000000), color-mix(in srgb, var(--box-team-secondary) 74%, #111827));
+        color: #ffffff;
+        padding: 0.72rem 0.85rem;
+    }}
+
+    .sbc-box-team-head img,
+    .sbc-box-category-table th img {{
+        width: 2rem;
+        height: 2rem;
+        object-fit: contain;
+    }}
+
+    .sbc-box-team-head img {{
+        width: 2.8rem;
+        height: 2.8rem;
+        filter: drop-shadow(0 8px 12px rgba(0,0,0,0.28));
+    }}
+
+    .sbc-box-team-head span {{
+        overflow: hidden;
+        color: #ffffff;
+        font-family: var(--box-team-font), "Poppins", "Segoe UI", sans-serif;
+        font-size: clamp(1.05rem, 1.8vw, 1.55rem);
+        font-weight: 950;
+        line-height: 1;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.28);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-box-category-table,
+    .sbc-box-player-table {{
+        width: 100%;
+        border-collapse: collapse;
+        color: var(--sbc-ink);
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-box-category-table th,
+    .sbc-box-player-table th {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background: #ffffff;
         color: var(--sbc-muted);
         font-size: 0.66rem;
         font-weight: 950;
         letter-spacing: 0.06em;
+        padding: 0.45rem 0.5rem;
         text-transform: uppercase;
+        white-space: nowrap;
     }}
 
-    .sbc-box-dialog-summary strong {{
+    .sbc-box-category-table td,
+    .sbc-box-player-table td {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.06);
+        padding: 0.46rem 0.5rem;
+        vertical-align: middle;
+    }}
+
+    .sbc-box-stat-cell strong {{
         display: block;
-        margin-top: 0.25rem;
         color: var(--sbc-ink);
-        font-size: 1.1rem;
+        font-size: 0.88rem;
         font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-box-stat-cell em,
+    .sbc-box-category-name em,
+    .sbc-box-player-cell em {{
+        display: block;
+        margin-top: 0.18rem;
+        color: var(--sbc-muted);
+        font-size: 0.6rem;
+        font-style: normal;
+        font-weight: 850;
+        line-height: 1;
+        white-space: nowrap;
+    }}
+
+    .sbc-box-stat-win {{
+        background: color-mix(in srgb, #58a76b 22%, #ffffff);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, #58a76b 32%, transparent);
+    }}
+
+    .sbc-box-category-name {{
+        text-align: center;
+        background: #f8fafc;
+    }}
+
+    .sbc-box-category-name strong {{
+        display: block;
+        color: var(--sbc-ink);
+        font-size: 0.82rem;
+        font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-box-section-title {{
+        margin: 0.9rem 0 0.45rem;
+        color: var(--sbc-ink);
+        font-size: 0.95rem;
+        font-weight: 950;
+    }}
+
+    .sbc-box-player-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.8rem;
+        align-items: start;
+    }}
+
+    .sbc-box-table-scroll {{
+        overflow-x: auto;
+    }}
+
+    .sbc-box-player-table {{
+        min-width: 54rem;
+    }}
+
+    .sbc-box-player-table th:first-child,
+    .sbc-box-player-table td:first-child {{
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: #ffffff;
+    }}
+
+    .sbc-box-player-cell {{
+        display: grid;
+        grid-template-columns: 2.35rem minmax(8rem, 1fr);
+        gap: 0.5rem;
+        align-items: center;
+        min-width: 12rem;
+    }}
+
+    .sbc-box-player-cell img {{
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 999px;
+        background: #eef2f7;
+        object-fit: cover;
+    }}
+
+    .sbc-box-player-cell strong {{
+        display: block;
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.78rem;
+        font-weight: 950;
+        line-height: 1.08;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }}
 
     .sbc-history-layout {{
