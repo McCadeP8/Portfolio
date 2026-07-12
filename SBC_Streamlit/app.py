@@ -325,7 +325,7 @@ need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats"]
 
 need_df = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft
-need_pics = need_team_data or need_trade_data or need_checks_data or need_league_players or need_history_awards or need_history_draft
+need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft
 need_exceptions = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
 need_base_cap = need_team_data or need_trade_data or need_checks_data or need_league_overview
 need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks") or need_trade_data or need_checks_data or need_league_picks
@@ -2852,6 +2852,11 @@ def trade_pick_key_from_row(row):
 
 def trade_pick_round_key(value):
     text = clean_pick_display(value)
+    normalized = str(text).strip().lower()
+    if normalized in {"first", "first round", "round 1", "r1"} or "1st" in normalized:
+        return "1"
+    if normalized in {"second", "second round", "round 2", "r2"} or "2nd" in normalized:
+        return "2"
     match = re.search(r"\d+", str(text))
     return match.group(0) if match else str(text).strip().lower()
 
@@ -3030,10 +3035,11 @@ def render_trade_rule_card(title, status, message):
     """)
 
 
-def render_trade_rule_checks(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out, apron=None, incoming_salary_extra=0, outgoing_salary_extra=0, sign_trade_in_count=0):
+def render_trade_rule_checks(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out, apron=None, stepien=None, incoming_salary_extra=0, outgoing_salary_extra=0, sign_trade_in_count=0):
     cap_type = trade_cap_type_after(selected_players_in, selected_players_out, trade_team, incoming_salary_extra, outgoing_salary_extra)
     hard_cap = team_hard_cap(base_cap, trade_team)
     apron = apron or trade_apron_review(trade_team, selected_players_in, selected_players_out, selected_exception_out, cash_out, incoming_salary_extra, outgoing_salary_extra)
+    stepien = stepien or trade_stepien_review(dp, trade_team, [], [])
     try:
         cash_value = 0.0 if cash_out is None else float(cash_out)
     except (TypeError, ValueError):
@@ -3041,6 +3047,7 @@ def render_trade_rule_checks(trade_team, selected_players_in, selected_players_o
     if math.isnan(cash_value):
         cash_value = 0.0
 
+    render_trade_rule_card("Stepien Rule", stepien["status"], stepien.get("message", "No Stepien summary available."))
     render_trade_rule_card("Apron / Hard Cap", apron["status"], apron.get("hard_cap_summary", "No apron summary available."))
 
     current_players = active_player_n(df, trade_team)
@@ -3496,6 +3503,220 @@ def live_team_full_name(team):
 
 def live_chart_color(team, fallback):
     return team_info.get(team, {}).get("bg", fallback)
+
+
+def first_round_control_years():
+    return list(range(current_year, current_year + 7))
+
+
+def first_round_control_status(draft_picks, team, year):
+    if draft_picks is None or draft_picks.empty:
+        return "none", "No first-round pick listed."
+    required = {"Year", "Round", "CurrentTeam"}
+    if not required.issubset(draft_picks.columns):
+        return "none", "Draft-pick data is missing required columns."
+    work = draft_picks.copy()
+    work["_year"] = np.floor(pd.to_numeric(work["Year"], errors="coerce")).astype("Int64")
+    work = work[
+        (work["_year"] == int(year))
+        & work["Round"].apply(trade_pick_is_first)
+        & work["CurrentTeam"].apply(lambda value: team_list_contains(value, team))
+    ].copy()
+    if work.empty:
+        return "none", "No first-round pick listed."
+    full = work[work["FullyOwned"].apply(trade_truthy)] if "FullyOwned" in work.columns else pd.DataFrame()
+    if not full.empty:
+        clean_full = full[~full["PickSwap"].apply(trade_truthy)] if "PickSwap" in full.columns else full
+        if not clean_full.empty:
+            slots = ", ".join(clean_pick_display(value) for value in clean_full["OGTeam"].dropna().unique())
+            return "full", f"Full first-round pick: {slots}."
+        slots = ", ".join(clean_pick_display(value) for value in full["OGTeam"].dropna().unique())
+        return "swap-full", f"Full first-round coverage through swap language: {slots}."
+    split = work[~work["FullyOwned"].apply(trade_truthy)] if "FullyOwned" in work.columns else work
+    if not split.empty:
+        slots = ", ".join(clean_pick_display(value) for value in split["OGTeam"].dropna().unique())
+        return "split", f"Split/shared first-round rights: {slots}."
+    return "none", "No first-round pick listed."
+
+
+def render_first_round_control_grid(draft_picks, teams, title, description, compact=False):
+    years = first_round_control_years()
+    header_years = "".join(f"<th>{year}</th>" for year in years)
+    rows = []
+    for team in teams:
+        logo = team_logo_for_name(team)
+        team_cell = (
+            f'<td class="sbc-first-team">'
+            f'<img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">'
+            f'<span>{escape(team_abbrev_for_name(team))}</span>'
+            f'</td>'
+        )
+        cells = []
+        for year in years:
+            status, detail = first_round_control_status(draft_picks, team, year)
+            label = {"full": "FULL", "swap-full": "SWAP", "split": "SPLIT", "none": "NO"}[status]
+            cells.append(
+                f'<td class="sbc-first-cell sbc-first-{status}" title="{escape(detail, quote=True)}">'
+                f'<span>{escape(label)}</span>'
+                f'</td>'
+            )
+        rows.append(f"<tr>{team_cell}{''.join(cells)}</tr>")
+    compact_class = " sbc-first-grid-compact" if compact else ""
+    render_html(f"""
+        <style>
+            .sbc-first-grid-card {{
+                overflow: hidden;
+                margin: 0.65rem 0 1rem;
+                border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 22%, rgba(23, 32, 42, 0.12));
+                border-top: 4px solid {LEAGUE_SECONDARY};
+                border-radius: 8px;
+                background: #ffffff;
+                box-shadow: 0 14px 34px rgba(18, 25, 38, 0.07);
+            }}
+            .sbc-first-grid-head {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                padding: 0.72rem 0.85rem;
+                background: linear-gradient(90deg, color-mix(in srgb, {LEAGUE_PRIMARY} 10%, #ffffff), color-mix(in srgb, {LEAGUE_SECONDARY} 12%, #ffffff));
+                border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+            }}
+            .sbc-first-grid-head strong,
+            .sbc-first-grid-head span {{
+                display: block;
+            }}
+            .sbc-first-grid-head strong {{
+                color: var(--sbc-ink);
+                font-size: 0.98rem;
+                font-weight: 950;
+                line-height: 1.08;
+            }}
+            .sbc-first-grid-head span {{
+                color: var(--sbc-muted);
+                font-size: 0.78rem;
+                font-weight: 800;
+            }}
+            .sbc-first-legend {{
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 0.42rem 0.58rem;
+                color: var(--sbc-muted);
+                font-size: 0.7rem;
+                font-weight: 900;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }}
+            .sbc-first-legend i {{
+                width: 0.8rem;
+                height: 0.8rem;
+                border-radius: 999px;
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,0.48);
+            }}
+            .sbc-first-table-wrap {{
+                overflow-x: auto;
+            }}
+            .sbc-first-table {{
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+            }}
+            .sbc-first-table th {{
+                background: #f8fafc;
+                border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+                color: var(--sbc-muted);
+                font-size: 0.72rem;
+                font-weight: 950;
+                padding: 0.44rem 0.38rem;
+                text-align: center;
+            }}
+            .sbc-first-table th:first-child {{
+                width: 5.2rem;
+                text-align: left;
+                padding-left: 0.72rem;
+            }}
+            .sbc-first-table td {{
+                border-bottom: 1px solid rgba(23, 32, 42, 0.055);
+                padding: 0.34rem;
+                text-align: center;
+            }}
+            .sbc-first-table tr:last-child td {{
+                border-bottom: none;
+            }}
+            .sbc-first-team {{
+                display: flex;
+                align-items: center;
+                gap: 0.42rem;
+                padding-left: 0.68rem !important;
+                text-align: left !important;
+            }}
+            .sbc-first-team img {{
+                width: 1.65rem;
+                height: 1.65rem;
+                object-fit: contain;
+            }}
+            .sbc-first-team span {{
+                color: var(--sbc-ink);
+                font-size: 0.72rem;
+                font-weight: 950;
+            }}
+            .sbc-first-cell span {{
+                display: inline-grid;
+                place-items: center;
+                width: 100%;
+                min-height: 1.85rem;
+                border-radius: 7px;
+                color: #ffffff;
+                font-size: 0.66rem;
+                font-weight: 950;
+                letter-spacing: 0.02em;
+                box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+            }}
+            .sbc-first-full span,
+            .sbc-first-legend .sbc-first-full {{
+                background: #166534;
+            }}
+            .sbc-first-swap-full span,
+            .sbc-first-legend .sbc-first-swap-full {{
+                background: #65a30d;
+            }}
+            .sbc-first-split span,
+            .sbc-first-legend .sbc-first-split {{
+                background: #c99720;
+            }}
+            .sbc-first-none span,
+            .sbc-first-legend .sbc-first-none {{
+                background: #b91c1c;
+            }}
+            .sbc-first-grid-compact .sbc-first-table th:first-child {{
+                width: 5.4rem;
+            }}
+            .sbc-first-grid-compact .sbc-first-table td {{
+                padding: 0.42rem;
+            }}
+        </style>
+        <section class="sbc-first-grid-card{compact_class}">
+            <div class="sbc-first-grid-head">
+                <div>
+                    <strong>{escape(title)}</strong>
+                    <span>{escape(description)}</span>
+                </div>
+                <div class="sbc-first-legend">
+                    <i class="sbc-first-full"></i><span>Full</span>
+                    <i class="sbc-first-swap-full"></i><span>Swap full</span>
+                    <i class="sbc-first-split"></i><span>Split</span>
+                    <i class="sbc-first-none"></i><span>No</span>
+                </div>
+            </div>
+            <div class="sbc-first-table-wrap">
+                <table class="sbc-first-table">
+                    <thead><tr><th>Team</th>{header_years}</tr></thead>
+                    <tbody>{''.join(rows)}</tbody>
+                </table>
+            </div>
+        </section>
+    """)
 
 
 def render_pick_table(data, title, icon, description, empty_text, columns=None, image_columns=None, status="hold"):
@@ -10451,6 +10672,7 @@ main_page = st.radio(
     format_func=nav_label(MAIN_NAV_LABELS),
     key="sbc_main_page",
     horizontal=True,
+    label_visibility="collapsed",
 )
 st.markdown(
     f"<script>document.documentElement.dataset.sbcMainTab = '{'team' if main_page == 'Team Hub' else 'league'}';</script>",
@@ -10481,6 +10703,7 @@ if main_page == "Free Agency":
         format_func=nav_label(FREE_AGENCY_NAV_LABELS),
         horizontal=True,
         key="sbc_free_agency_page",
+        label_visibility="collapsed",
     )
     fa_league_view = load_free_agency_league_view()
     if selected_free_agency_page == "League View":
@@ -10549,7 +10772,6 @@ if main_page == "Free Agency":
 if main_page == "Team Hub":
     picker_col, _ = st.columns([1.15, 3.85], vertical_alignment="bottom")
     with picker_col:
-        render_html('<div class="sbc-picker-eyebrow">Team View</div>')
         st.selectbox("Choose your team", Teams, key="_sbc_selected_team")
 
     selected_team_page = st.radio(
@@ -10558,6 +10780,7 @@ if main_page == "Team Hub":
         format_func=nav_label(TEAM_NAV_LABELS),
         horizontal=True,
         key="sbc_team_page",
+        label_visibility="collapsed",
     )
 
 if main_page == "League Hub":
@@ -10567,6 +10790,7 @@ if main_page == "League Hub":
         format_func=nav_label(LEAGUE_NAV_LABELS),
         horizontal=True,
         key="sbc_league_page",
+        label_visibility="collapsed",
     )
 
     if selected_league_page == "History":
@@ -10584,6 +10808,7 @@ if main_page == "League Hub":
             format_func=nav_label(HISTORY_NAV_LABELS),
             horizontal=True,
             key="sbc_history_page",
+            label_visibility="collapsed",
         )
 
 if main_page == "Team Hub" and selected_team_page == "Cap":
@@ -10896,6 +11121,14 @@ if main_page == "Team Hub" and selected_team_page == "Picks":
         </div>
         <div class="sbc-mini-note"><strong>{total_pick_count}</strong> total pick records shown here, including <strong>{first_round_count}</strong> controlled or restricted first-round records.</div>
         """)
+
+    render_first_round_control_grid(
+        dp,
+        [SelectedTeam],
+        "First-Round Control",
+        "Seven-year snapshot of whether this team has a no-doubt first-round pick, swap-based first, split/shared rights, or no listed first.",
+        compact=True,
+    )
 
     render_pick_table(
         full_team_picks,
@@ -11473,6 +11706,13 @@ if main_page == "League Hub" and selected_league_page == "Draft Picks":
         <div class="sbc-mini-note"><strong>{all_pick_count}</strong> total league pick records shown across all active draft-control categories.</div>
         """)
 
+    render_first_round_control_grid(
+        dp,
+        Teams,
+        "League First-Round Control Matrix",
+        "Thirty-team view of first-round coverage by year: full, swap-based full, split/shared, or no listed first.",
+    )
+
     render_pick_table(
         all_full_team_picks,
         "Fully Owned Picks",
@@ -11740,7 +11980,7 @@ if main_page == "Trade Machine":
                 <em>Roster and apron checks using the existing SBCFBL trade logic.</em>
             </div>
         """)
-        render_trade_rule_checks(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut, apron_review, sign_trade_in_salary, sign_trade_out_salary, len([value for value in SignTradeInSalaries.values() if value]))
+        render_trade_rule_checks(TradeTeam, SelectedPlayersIn, SelectedPlayersOut, SelectedExceptionOut, CashOut, apron_review, stepien_review, sign_trade_in_salary, sign_trade_out_salary, len([value for value in SignTradeInSalaries.values() if value]))
     elif submitted:
         render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
 
