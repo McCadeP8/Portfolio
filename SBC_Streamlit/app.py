@@ -664,9 +664,9 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
             <table class="sbc-box-category-table">
                 <thead>
                     <tr>
-                        <th><span class="sbc-box-category-team-name sbc-box-category-team-a">{escape(live_team_full_name(team_a))}</span></th>
+                        <th class="sbc-box-category-team-header sbc-box-category-team-header-a"><span class="sbc-box-category-team-name sbc-box-category-team-a">{escape(live_team_full_name(team_a))}</span></th>
                         <th>Category</th>
-                        <th><span class="sbc-box-category-team-name sbc-box-category-team-b">{escape(live_team_full_name(team_b))}</span></th>
+                        <th class="sbc-box-category-team-header sbc-box-category-team-header-b"><span class="sbc-box-category-team-name sbc-box-category-team-b">{escape(live_team_full_name(team_b))}</span></th>
                     </tr>
                 </thead>
                 <tbody>{''.join(rows_html)}</tbody>
@@ -779,17 +779,6 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline"):
             <div class="sbc-box-dialog-kicker">{escape(period_label)}</div>
             <div class="sbc-box-dialog-title">{escape(title_label)}</div>
             <div class="sbc-box-dialog-matchup">
-                <div class="sbc-box-dialog-team" style="--box-team:{escape(str(color_a), quote=True)};--box-team-secondary:{escape(str(secondary_a), quote=True)};--box-team-font:{escape(str(font_a), quote=True)};">
-                    <img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
-                    <div>
-                        <strong>{escape(live_team_full_name(team_a))}</strong>
-                        <em>{escape(str(matchup_row.get('TeamA_record', '')))}</em>
-                    </div>
-                    <b class="{'sbc-box-dialog-score-win' if a_winner else ''}">{escape(format_score_value(score_a))}</b>
-                </div>
-                <div class="sbc-box-dialog-score">
-                    <i>Final</i>
-                </div>
                 <div class="sbc-box-dialog-team" style="--box-team:{escape(str(color_b), quote=True)};--box-team-secondary:{escape(str(secondary_b), quote=True)};--box-team-font:{escape(str(font_b), quote=True)};">
                     <img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
                     <div>
@@ -797,6 +786,17 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline"):
                         <em>{escape(str(matchup_row.get('TeamB_record', '')))}</em>
                     </div>
                     <b class="{'sbc-box-dialog-score-win' if b_winner else ''}">{escape(format_score_value(score_b))}</b>
+                </div>
+                <div class="sbc-box-dialog-score">
+                    <i>Final</i>
+                </div>
+                <div class="sbc-box-dialog-team sbc-box-dialog-team-home" style="--box-team:{escape(str(color_a), quote=True)};--box-team-secondary:{escape(str(secondary_a), quote=True)};--box-team-font:{escape(str(font_a), quote=True)};">
+                    <b class="{'sbc-box-dialog-score-win' if a_winner else ''}">{escape(format_score_value(score_a))}</b>
+                    <div>
+                        <strong>{escape(live_team_full_name(team_a))}</strong>
+                        <em>{escape(str(matchup_row.get('TeamA_record', '')))}</em>
+                    </div>
+                    <img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
                 </div>
             </div>
         </section>
@@ -8340,6 +8340,13 @@ st.markdown(
         color: var(--sbc-ink) !important;
     }}
 
+    div[data-testid="stDialog"] div[role="dialog"] h1,
+    div[data-testid="stDialog"] div[role="dialog"] h2,
+    div[data-testid="stDialog"] div[role="dialog"] h3,
+    div[data-testid="stDialog"] div[role="dialog"] [data-testid="stMarkdownContainer"] p {{
+        color: var(--sbc-ink) !important;
+    }}
+
     div[data-testid="stDialog"] button[aria-label="Close"],
     div[data-testid="stDialog"] button[title="Close"],
     div[data-testid="stDialog"] button[kind="header"] {{
@@ -8407,6 +8414,11 @@ st.markdown(
             linear-gradient(135deg, color-mix(in srgb, var(--box-team) 94%, #000000), color-mix(in srgb, var(--box-team-secondary) 76%, #111827));
         box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18), 0 12px 26px rgba(18,25,38,0.14);
         padding: 0.78rem 0.85rem;
+    }}
+
+    .sbc-box-dialog-team-home {{
+        grid-template-columns: auto minmax(0, 1fr) 4.2rem;
+        text-align: right;
     }}
 
     .sbc-box-dialog-team img {{
@@ -8487,10 +8499,11 @@ st.markdown(
     }}
 
     .sbc-box-category-panel {{
-        max-width: 50rem;
-        margin-left: auto;
-        margin-right: auto;
-        background: #f3f5f8;
+        width: 100%;
+        max-width: none;
+        margin-left: 0;
+        margin-right: 0;
+        background: #ffffff;
     }}
 
     .sbc-box-panel-head,
@@ -8548,9 +8561,25 @@ st.markdown(
         font-variant-numeric: tabular-nums;
     }}
 
+    .sbc-box-category-table {{
+        table-layout: fixed;
+    }}
+
+    .sbc-box-category-table th:nth-child(1),
+    .sbc-box-category-table td:nth-child(1),
+    .sbc-box-category-table th:nth-child(3),
+    .sbc-box-category-table td:nth-child(3) {{
+        width: 42%;
+    }}
+
+    .sbc-box-category-table th:nth-child(2),
+    .sbc-box-category-table td:nth-child(2) {{
+        width: 16%;
+    }}
+
     .sbc-box-category-team-name {{
         display: inline-block;
-        max-width: 16rem;
+        max-width: 100%;
         overflow: hidden;
         font-size: clamp(1.05rem, 1.8vw, 1.55rem);
         font-weight: 950;
@@ -8567,6 +8596,19 @@ st.markdown(
     .sbc-box-category-team-b {{
         color: var(--cat-b);
         font-family: var(--cat-font-b), "Poppins", "Segoe UI", sans-serif;
+    }}
+
+    .sbc-box-category-team-header {{
+        padding-top: 0.7rem !important;
+        padding-bottom: 0.7rem !important;
+    }}
+
+    .sbc-box-category-team-header-a {{
+        background: color-mix(in srgb, var(--cat-a) 12%, #f3f5f8) !important;
+    }}
+
+    .sbc-box-category-team-header-b {{
+        background: color-mix(in srgb, var(--cat-b) 12%, #f3f5f8) !important;
     }}
 
     .sbc-box-category-table th,
@@ -8621,7 +8663,7 @@ st.markdown(
 
     .sbc-box-category-name {{
         text-align: center;
-        background: #e8edf3 !important;
+        background: #f3f5f8 !important;
     }}
 
     .sbc-box-category-name strong {{
