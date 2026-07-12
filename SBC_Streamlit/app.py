@@ -754,7 +754,7 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     render_matchup_boxscore(matchup_row, rosters_df, key_prefix="dialog")
 
 
-def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline"):
+def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_players=True):
     team_a = str(matchup_row.get("TeamA", ""))
     team_b = str(matchup_row.get("TeamB", ""))
     score_a = matchup_row.get("TeamA_Score", matchup_row.get("TeamAScore", ""))
@@ -779,24 +779,24 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline"):
             <div class="sbc-box-dialog-kicker">{escape(period_label)}</div>
             <div class="sbc-box-dialog-title">{escape(title_label)}</div>
             <div class="sbc-box-dialog-matchup">
-                <div class="sbc-box-dialog-team" style="--box-team:{escape(str(color_b), quote=True)};--box-team-secondary:{escape(str(secondary_b), quote=True)};--box-team-font:{escape(str(font_b), quote=True)};">
-                    <img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
-                    <div>
-                        <strong>{escape(live_team_full_name(team_b))}</strong>
-                        <em>{escape(str(matchup_row.get('TeamB_record', '')))}</em>
-                    </div>
-                    <b class="{'sbc-box-dialog-score-win' if b_winner else ''}">{escape(format_score_value(score_b))}</b>
-                </div>
-                <div class="sbc-box-dialog-score">
-                    <i>Final</i>
-                </div>
-                <div class="sbc-box-dialog-team sbc-box-dialog-team-home" style="--box-team:{escape(str(color_a), quote=True)};--box-team-secondary:{escape(str(secondary_a), quote=True)};--box-team-font:{escape(str(font_a), quote=True)};">
-                    <b class="{'sbc-box-dialog-score-win' if a_winner else ''}">{escape(format_score_value(score_a))}</b>
+                <div class="sbc-box-dialog-team" style="--box-team:{escape(str(color_a), quote=True)};--box-team-secondary:{escape(str(secondary_a), quote=True)};--box-team-font:{escape(str(font_a), quote=True)};">
+                    <img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
                     <div>
                         <strong>{escape(live_team_full_name(team_a))}</strong>
                         <em>{escape(str(matchup_row.get('TeamA_record', '')))}</em>
                     </div>
-                    <img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
+                    <b class="{'sbc-box-dialog-score-win' if a_winner else ''}">{escape(format_score_value(score_a))}</b>
+                </div>
+                <div class="sbc-box-dialog-score">
+                    <i>Final</i>
+                </div>
+                <div class="sbc-box-dialog-team sbc-box-dialog-team-home" style="--box-team:{escape(str(color_b), quote=True)};--box-team-secondary:{escape(str(secondary_b), quote=True)};--box-team-font:{escape(str(font_b), quote=True)};">
+                    <b class="{'sbc-box-dialog-score-win' if b_winner else ''}">{escape(format_score_value(score_b))}</b>
+                    <div>
+                        <strong>{escape(live_team_full_name(team_b))}</strong>
+                        <em>{escape(str(matchup_row.get('TeamB_record', '')))}</em>
+                    </div>
+                    <img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
                 </div>
             </div>
         </section>
@@ -812,6 +812,9 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline"):
 
     render_category_votes_box(category_table, team_totals, team_a, team_b)
 
+    if not show_players:
+        return
+
     view_mode = st.radio(
         "Box score view",
         options=["Game rows", "Aggregate players"],
@@ -821,6 +824,29 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline"):
     )
     aggregate = view_mode == "Aggregate players"
     render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
+
+
+def render_selected_team_player_boxscore(schedule_rows, selected_team, rosters_df, key_prefix):
+    if schedule_rows is None or schedule_rows.shape[0] == 0:
+        return
+    pieces = []
+    for _, schedule_row in schedule_rows.iterrows():
+        matchup_rows = matchup_boxscore_rows(schedule_row.to_dict(), rosters_df)
+        if not matchup_rows.empty:
+            pieces.append(matchup_rows[matchup_rows["sbc_team"] == selected_team])
+    pieces = [piece for piece in pieces if piece is not None and not piece.empty]
+    if not pieces:
+        return
+    rows = pd.concat(pieces, ignore_index=True)
+    view_mode = st.radio(
+        "Box score view",
+        options=["Game rows", "Aggregate players"],
+        index=0,
+        horizontal=True,
+        key=f"{key_prefix}_selected_team_box_view_{selected_team}",
+    )
+    aggregate = view_mode == "Aggregate players"
+    render_player_boxscore_team(aggregate_boxscore_players(rows) if aggregate else rows, selected_team, aggregate)
 
 
 def current_period_index(options):
@@ -4762,15 +4788,16 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         plot_df["PlotValue"] = plot_df[selected_category]
         value_format = ".2f"
     team_points = plot_df[plot_df["Series"] == selected_team].copy()
-    selected_period_df = pd.DataFrame({"PeriodLabel": [period_date_label(selected_year, selected_period, f"P{selected_period}")]})
+    plot_df["PeriodNumber"] = pd.to_numeric(plot_df["Period"], errors="coerce")
+    selected_period_df = pd.DataFrame({"PeriodNumber": [selected_period]})
     color_domain = ["League Median"] + opponents + [selected_team]
     color_range = ["#9ca3af"] + [live_chart_color(opponent, "#a3aab5") for opponent in opponents] + [team_color]
 
     base = alt.Chart(plot_df).encode(
         x=alt.X(
-            "PeriodLabel:O",
-            title="Matchup Window",
-            sort=[period_label_lookup[value] for value in period_sort],
+            "PeriodNumber:Q",
+            title="Period",
+            scale=alt.Scale(domain=[min(period_sort), max(period_sort)]),
             axis=alt.Axis(labelAngle=0, labelFontSize=11, titleFontSize=12, titlePadding=10, grid=False)),
         y=alt.Y(
             "PlotValue:Q",
@@ -4785,7 +4812,7 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
     selected_band = (
         alt.Chart(selected_period_df)
         .mark_rect(color=team_color, opacity=0.10)
-        .encode(x=alt.X("PeriodLabel:O", title=None)))
+        .encode(x=alt.X("PeriodNumber:Q", title=None)))
     median_line = (
         base.transform_filter(alt.datum.Series == "League Median")
         .mark_line(strokeWidth=2.5, strokeDash=[5, 4], color="#7c8794", interpolate="monotone"))
@@ -4800,13 +4827,13 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
         base.mark_circle(size=58, stroke="#ffffff", strokeWidth=1.2, opacity=0.95)
         .encode(
             color=alt.Color("Series:N", scale=alt.Scale(domain=color_domain, range=color_range), legend=None),
-            size=alt.condition(alt.datum.PeriodLabel == period_date_label(selected_year, selected_period, f"P{selected_period}"), alt.value(150), alt.value(54)),
-            strokeWidth=alt.condition(alt.datum.PeriodLabel == period_date_label(selected_year, selected_period, f"P{selected_period}"), alt.value(2.4), alt.value(1.2))))
+            size=alt.condition(alt.datum.PeriodNumber == selected_period, alt.value(150), alt.value(54)),
+            strokeWidth=alt.condition(alt.datum.PeriodNumber == selected_period, alt.value(2.4), alt.value(1.2))))
     points = (
         alt.Chart(team_points)
         .mark_circle(size=115, stroke="#ffffff", strokeWidth=1.8)
         .encode(
-            x=alt.X("PeriodLabel:O", sort=[period_label_lookup[value] for value in period_sort]),
+            x=alt.X("PeriodNumber:Q", title="Period", scale=alt.Scale(domain=[min(period_sort), max(period_sort)])),
             y="PlotValue:Q",
             color=alt.value(team_color),
             tooltip=[
@@ -12338,14 +12365,6 @@ if main_page == "Team Hub" and selected_team_page == "Picks":
         <div class="sbc-mini-note"><strong>{total_pick_count}</strong> total pick records shown here, including <strong>{first_round_count}</strong> controlled or restricted first-round records.</div>
         """)
 
-    render_first_round_control_grid(
-        dp,
-        [SelectedTeam],
-        "First-Round Control",
-        "Seven-year snapshot of whether this team has a no-doubt first-round pick, swap-based first, split/shared rights, or no listed first.",
-        compact=True,
-    )
-
     render_pick_table(
         full_team_picks,
         "Full Control Picks",
@@ -12385,6 +12404,15 @@ if main_page == "Team Hub" and selected_team_page == "Picks":
         columns=["Year", "Round", "OGTeam", "CurrentTeam", "Contacted", "Explanation"],
         image_columns=["CurrentTeam"],
         status="away")
+
+    render_first_round_control_grid(
+        dp,
+        [SelectedTeam],
+        "First-Round Control",
+        "Seven-year snapshot of whether this team has a no-doubt first-round pick, swap-based first, split/shared rights, or no listed first.",
+        compact=True,
+    )
+
     if False and touched_team_picks.shape[0] > 0:
         st.header("Touched Draft Picks")
         st.dataframe(touched_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
@@ -12432,6 +12460,19 @@ if main_page == "Team Hub" and selected_team_page == "Live":
     with st.spinner("Updating live center..."):
         live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
 
+    live_schedule_rows = all_time_schedule[
+        (all_time_schedule["Year"] == SelectedYear)
+        & (all_time_schedule["Period"] == SelectedPeriod)
+        & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
+    ].copy()
+    if live_schedule_rows.shape[0] > 0:
+        render_html('<div class="sbc-section-label">Player Box Score</div>')
+        render_selected_team_player_boxscore(
+            live_schedule_rows,
+            SelectedTeam,
+            all_time_rosters,
+            key_prefix=f"live_players_{SelectedYear}_{SelectedPeriod}")
+
     render_html('<div class="sbc-section-label">Matchup Scoreboards</div>')
     if matchup_count == 0:
         selected_payload = live_row_payload(live_stats_df, SelectedTeam)
@@ -12442,33 +12483,31 @@ if main_page == "Team Hub" and selected_team_page == "Live":
             SelectedTeam,
             SelectedTeam)
     else:
-        matchup_cols = st.columns(min(3, matchup_count))
         for idx, (matchup_type, opponent) in enumerate(matchup_sections):
-            with matchup_cols[idx % len(matchup_cols)]:
-                selected_payload = live_row_payload(live_stats_df, SelectedTeam)
-                opponent_payload = live_row_payload(live_stats_df, opponent)
-                matchup_rows = [payload for payload in [selected_payload, opponent_payload] if payload]
-                matchup_home = SelectedTeam
-                schedule_match = all_time_schedule[
-                    (all_time_schedule["Year"] == SelectedYear)
-                    & (all_time_schedule["Period"] == SelectedPeriod)
-                    & (all_time_schedule["Type"] == matchup_type)
-                    & (
-                        ((all_time_schedule["TeamA"] == SelectedTeam) & (all_time_schedule["TeamB"] == opponent))
-                        | ((all_time_schedule["TeamA"] == opponent) & (all_time_schedule["TeamB"] == SelectedTeam))
-                    )
-                ]
-                if schedule_match.shape[0] > 0:
-                    matchup_home = schedule_match.iloc[0]["TeamA"]
-                if schedule_match.shape[0] > 0:
-                    render_matchup_boxscore(schedule_match.iloc[0].to_dict(), all_time_rosters, key_prefix=f"live_{idx}")
-                else:
-                    render_live_stat_board(
-                        f"{SelectedTeam} vs {opponent}",
-                        f"{matchup_type} - {period_date_label(SelectedYear, SelectedPeriod, f'P{SelectedPeriod}')}",
-                        matchup_rows,
-                        SelectedTeam,
-                        matchup_home)
+            selected_payload = live_row_payload(live_stats_df, SelectedTeam)
+            opponent_payload = live_row_payload(live_stats_df, opponent)
+            matchup_rows = [payload for payload in [selected_payload, opponent_payload] if payload]
+            matchup_home = SelectedTeam
+            schedule_match = all_time_schedule[
+                (all_time_schedule["Year"] == SelectedYear)
+                & (all_time_schedule["Period"] == SelectedPeriod)
+                & (all_time_schedule["Type"] == matchup_type)
+                & (
+                    ((all_time_schedule["TeamA"] == SelectedTeam) & (all_time_schedule["TeamB"] == opponent))
+                    | ((all_time_schedule["TeamA"] == opponent) & (all_time_schedule["TeamB"] == SelectedTeam))
+                )
+            ]
+            if schedule_match.shape[0] > 0:
+                matchup_home = schedule_match.iloc[0]["TeamA"]
+            if schedule_match.shape[0] > 0:
+                render_matchup_boxscore(schedule_match.iloc[0].to_dict(), all_time_rosters, key_prefix=f"live_{idx}", show_players=False)
+            else:
+                render_live_stat_board(
+                    f"{SelectedTeam} vs {opponent}",
+                    f"{matchup_type} - {period_date_label(SelectedYear, SelectedPeriod, f'P{SelectedPeriod}')}",
+                    matchup_rows,
+                    SelectedTeam,
+                    matchup_home)
 
     render_html('<div class="sbc-section-label">Season Trend</div>')
     SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
