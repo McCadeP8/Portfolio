@@ -16,6 +16,29 @@ import altair as alt
 import unicodedata
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
 
+SNAPSHOT_DIR = Path(__file__).resolve().parent / "data_snapshots"
+
+
+def read_csv_snapshot(name: str, url: str, ttl_seconds: int = 86400, **kwargs) -> pd.DataFrame:
+    SNAPSHOT_DIR.mkdir(exist_ok=True)
+    cache_path = SNAPSHOT_DIR / f"{name}.parquet"
+    if cache_path.exists():
+        age = pd.Timestamp.now().timestamp() - cache_path.stat().st_mtime
+        if age <= ttl_seconds:
+            return pd.read_parquet(cache_path)
+    try:
+        table = pd.read_csv(url, **kwargs)
+        try:
+            table.to_parquet(cache_path, index=False)
+        except Exception:
+            pass
+        return table
+    except Exception:
+        if cache_path.exists():
+            return pd.read_parquet(cache_path)
+        raise
+
+
 def safe_team_info(team, field, default=""):
     return team_info.get(str(team), {}).get(field, default)
 
@@ -35,7 +58,7 @@ def normalize_player_key(value):
 @st.cache_data(ttl=86400)
 def get_data() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("cap_sheet_data", csv_url)
     for year in columns_order:
         salary_col = "Y" + str(year)
         type_col = "Type" + str(year)
@@ -48,14 +71,14 @@ def get_data() -> pd.DataFrame:
 @st.cache_data()
 def get_pictures() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1180190150"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("player_pictures", csv_url)
     df = df.drop(columns=["Picture"], errors="ignore")
     return df
 
 @st.cache_data()
 def get_exceptions(ttl=86400) -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1620818587"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("exceptions", csv_url)
     current_salary_col = "Y" + str(current_year)
     for col in ["Team", "Player", current_salary_col, "BirdRights"]:
         if col not in df.columns:
@@ -65,13 +88,13 @@ def get_exceptions(ttl=86400) -> pd.DataFrame:
 @st.cache_data(ttl=86400)
 def get_base_cap() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=760630769"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("base_cap", csv_url)
     return df
 
 @st.cache_data(ttl=86400)
 def get_draft_picks() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1612129799"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("draft_picks", csv_url)
     df = df[df['Year'].between(current_year, current_year + 6)]
     return df
 
@@ -161,13 +184,13 @@ def get_fantrax_matchups(year) -> pd.DataFrame:
 @st.cache_data()
 def get_draft_history() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1546613902"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("draft_history", csv_url)
     return df
 
 @st.cache_data()
 def get_award_history() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=1698988928"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("award_history", csv_url)
     df = df.melt(id_vars=["Award"], var_name="Year", value_name="Winner")
     df = df[df["Year"].str.isnumeric()] 
     df["Year"] = df["Year"].astype(int)    
@@ -176,7 +199,7 @@ def get_award_history() -> pd.DataFrame:
 @st.cache_data()
 def get_team_award_history() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=451021615"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("team_award_history", csv_url)
     df = df.melt(id_vars=["Award"], var_name="Year", value_name="Winner")  
     df = df[df["Year"].str.isnumeric()] 
     df["Year"] = df["Year"].astype(int)    
@@ -189,7 +212,7 @@ def get_all_time_schedule() -> pd.DataFrame:
 
 def current_matchup_period() -> float:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=3600)
     df["Date"] = pd.to_datetime(df["Date"]).dt.date
     df2 = df[(df["Date"] == today) & (df["Year"] == current_year)]
     if len(df2) == 0:

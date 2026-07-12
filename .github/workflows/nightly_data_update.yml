@@ -35,6 +35,6 @@ jobs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add SBC_Streamlit/*.parquet
+        git add SBC_Streamlit/*.parquet SBC_Streamlit/data_snapshots/
         git diff --staged --quiet || git commit -m "Auto-update data files [skip ci]"
         git push

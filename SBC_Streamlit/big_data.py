@@ -6,7 +6,22 @@ import os
 import numpy as np  # noqa: F401
 from datetime import datetime
 from data import current_year, team_info
-from functions import get_matchup_stats, get_fantrax_roster, send_discord_message, get_matchup_score
+from functions import (
+    current_matchup_period,
+    get_award_history,
+    get_base_cap,
+    get_data,
+    get_draft_history,
+    get_draft_picks,
+    get_exceptions,
+    get_fantrax_roster,
+    get_matchup_score,
+    get_matchup_stats,
+    get_pictures,
+    get_team_award_history,
+    read_csv_snapshot,
+    send_discord_message,
+)
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 
@@ -18,6 +33,26 @@ def notify(message: str):
         send_discord_message(DISCORD_WEBHOOK_URL, message)
     except Exception as exc:
         print(f"Discord notification failed: {exc}")
+
+
+def refresh_sheet_snapshots():
+    loaders = [
+        ("cap sheet", get_data),
+        ("pictures", get_pictures),
+        ("exceptions", get_exceptions),
+        ("base cap", get_base_cap),
+        ("draft picks", get_draft_picks),
+        ("draft history", get_draft_history),
+        ("award history", get_award_history),
+        ("team award history", get_team_award_history),
+        ("current matchup period", current_matchup_period),
+    ]
+    for label, loader in loaders:
+        try:
+            loader()
+            notify(f"Refreshed snapshot: {label}")
+        except Exception as exc:
+            notify(f"Skipped snapshot refresh for {label}: {type(exc).__name__}: {exc}")
 
 
 def get_all_team_stats_history() -> pd.DataFrame:
@@ -58,7 +93,7 @@ def get_all_team_stats_history() -> pd.DataFrame:
 def get_all_time_rosters_history() -> pd.DataFrame:
     history = pd.read_parquet("all_time_rosters_history.parquet")
     csv_url = ("https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429")
-    df = pd.read_csv(csv_url)
+    df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=0)
     df = df[df["Year"] == current_year]
     df = (df[["games", "Year"]].drop_duplicates().reset_index(drop=True))
     if df.empty:
@@ -191,7 +226,7 @@ def get_all_time_standings() -> pd.DataFrame:
     df2 = df2.drop(columns=['CumGSWins', 'CumGSLosses'])
     df = pd.concat([df_old, df2], ignore_index=True)        
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=243607559"
-    df3 = pd.read_csv(csv_url)
+    df3 = read_csv_snapshot("playoff_ist_seeds", csv_url, ttl_seconds=0)
     df = df.drop(columns=["Playoff Seed", "IST Seed"], errors="ignore")
     df = df.merge(df3, on=["Year", "Team"], how="left")
     df.to_parquet("all_time_standings.parquet", index=False)
@@ -225,6 +260,7 @@ def add_game_to_schedule(game_dict):
 # })
 
 if __name__ == "__main__":
+    refresh_sheet_snapshots()
     get_all_team_stats_history()
     get_all_time_rosters_history()
     get_all_time_scores()

@@ -14,7 +14,7 @@ from html import escape
 from pathlib import Path
 from textwrap import dedent
 from zoneinfo import ZoneInfo
-from functions import get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
+from functions import read_csv_snapshot, get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 
@@ -196,7 +196,7 @@ def load_optional_data(label, loader):
 
 def load_live_draft_history():
     # Manual draft-board refresh bypasses the cached draft history loader.
-    return pd.read_csv(f"{DRAFT_HISTORY_CSV_URL}&refresh={datetime.now().timestamp()}")
+    return read_csv_snapshot("draft_history_live", f"{DRAFT_HISTORY_CSV_URL}&refresh={datetime.now().timestamp()}", ttl_seconds=60)
 
 
 def ensure_columns(data, columns):
@@ -228,21 +228,53 @@ def current_period_index(options):
     return options.index(min(current_value, options[-1]))
 
 
-df = load_required_data("Cap sheet data", get_data)
-pics = load_required_data("Player pictures", get_pictures)
-exceptions = load_required_data("Exceptions", get_exceptions)
-base_cap = load_required_data("Base cap", get_base_cap)
-dp = load_required_data("Draft picks", get_draft_picks)
-ft_roster = load_optional_data("Fantrax rosters", lambda: get_fantrax_roster(current_year, period))
-ft_players = load_optional_data("Fantrax players", get_fantrax_players)
-standings = load_optional_data("Standings", get_standings)
-dh = load_optional_data("Draft history", get_draft_history)
-all_time_team_stats = load_optional_data("All-time team stats", get_all_time_team_stats)
-all_time_rosters = load_optional_data("All-time rosters", get_all_time_rosters)
-all_time_schedule = load_optional_data("All-time schedule", get_all_time_schedule)
-current_matchup = load_optional_data("Current matchup period", current_matchup_period)
-award_history = load_optional_data("Award history", get_award_history)
-team_award_history = load_optional_data("Team award history", get_team_award_history)
+requested_main_page = st.session_state.get("sbc_main_page", "Team Hub")
+requested_team_page = st.session_state.get("sbc_team_page", "Cap")
+requested_league_page = st.session_state.get("sbc_league_page", "Overview")
+requested_history_page = st.session_state.get("sbc_history_page", "Overview")
+
+need_team_data = requested_main_page == "Team Hub" and requested_team_page in ["Cap", "Picks", "Live", "Schedule"]
+need_trade_data = requested_main_page == "Trade Machine"
+need_fa_data = requested_main_page == "Free Agency"
+need_checks_data = requested_main_page == "Data Checks"
+need_league_overview = requested_main_page == "League Hub" and requested_league_page == "Overview"
+need_league_players = requested_main_page == "League Hub" and requested_league_page == "Players"
+need_league_picks = requested_main_page == "League Hub" and requested_league_page == "Draft Picks"
+need_league_standings = requested_main_page == "League Hub" and requested_league_page == "Standings"
+need_league_scoreboard = requested_main_page == "League Hub" and requested_league_page == "Scoreboard"
+need_history = requested_main_page == "League Hub" and requested_league_page == "History"
+need_history_awards = need_history and requested_history_page in ["Awards", "Overview"]
+need_history_draft = need_history and requested_history_page == "Draft History"
+need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats"]
+
+need_df = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft
+need_pics = need_team_data or need_trade_data or need_checks_data or need_league_players or need_history_awards or need_history_draft
+need_exceptions = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
+need_base_cap = need_team_data or need_trade_data or need_checks_data or need_league_overview
+need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks") or need_trade_data or need_checks_data or need_league_picks
+need_ft = need_checks_data
+need_standings = need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft
+need_dh = need_history_draft
+need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_history_stats or need_history_awards
+need_all_time_rosters = need_history_awards
+need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or need_league_standings or need_history
+need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
+
+df = load_required_data("Cap sheet data", get_data) if need_df else pd.DataFrame()
+pics = load_required_data("Player pictures", get_pictures) if need_pics else pd.DataFrame()
+exceptions = load_required_data("Exceptions", get_exceptions) if need_exceptions else pd.DataFrame()
+base_cap = load_required_data("Base cap", get_base_cap) if need_base_cap else pd.DataFrame()
+dp = load_required_data("Draft picks", get_draft_picks) if need_dp else pd.DataFrame()
+ft_roster = load_optional_data("Fantrax rosters", lambda: get_fantrax_roster(current_year, period)) if need_ft else pd.DataFrame()
+ft_players = load_optional_data("Fantrax players", get_fantrax_players) if need_ft or need_history_awards else pd.DataFrame()
+standings = load_optional_data("Standings", get_standings) if need_standings else pd.DataFrame()
+dh = load_optional_data("Draft history", get_draft_history) if need_dh else pd.DataFrame()
+all_time_team_stats = load_optional_data("All-time team stats", get_all_time_team_stats) if need_all_time_team_stats else pd.DataFrame()
+all_time_rosters = load_optional_data("All-time rosters", get_all_time_rosters) if need_all_time_rosters else pd.DataFrame()
+all_time_schedule = load_optional_data("All-time schedule", get_all_time_schedule) if need_all_time_schedule else pd.DataFrame()
+current_matchup = load_optional_data("Current matchup period", current_matchup_period) if need_current_matchup else period
+award_history = load_optional_data("Award history", get_award_history) if need_history_awards else pd.DataFrame()
+team_award_history = load_optional_data("Team award history", get_team_award_history) if need_history_awards else pd.DataFrame()
 
 all_time_schedule = ensure_columns(all_time_schedule, ["Year", "Period", "Type", "Round", "TeamA", "TeamB", "TeamAScore", "TeamBScore", "Game_ID"])
 standings = ensure_columns(standings, ["Year", "Period", "Team", "Record", "ConfRecord", "DivRecord", "GSRecord", "Playoff Seed", "IST Seed"])
@@ -1524,7 +1556,7 @@ def free_agency_team_snapshot():
 @st.cache_data(ttl=300)
 def load_free_agency_league_view():
     try:
-        table = pd.read_csv(FREE_AGENCY_LEAGUE_VIEW_URL)
+        table = read_csv_snapshot("free_agency_league_view", FREE_AGENCY_LEAGUE_VIEW_URL, ttl_seconds=300)
     except Exception:
         return pd.DataFrame()
     expected = ["OldTeam", "Player", "RFA", "DayR", "DayS", "SignOrder", "Offers", "High Bid", "Yrs", "Team"]
@@ -10227,64 +10259,22 @@ if selected_team_changed and SelectedTeam == "Honolulu":
     st.balloons()
 if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
-
-team_hub_tab, league_hub_tab, tab9, free_agency_tab, tab12, tab13 = st.tabs([
-    "🏢 Team Hub",
-    "🏟️ League Hub",
-    "🔁 Trade Machine",
-    "🧾 Free Agency",
-    "📖 About",
-    "✅ Data Checks"])
-
-components.html("""
-<script>
-try {
-  const doc = window.parent.document;
-  function syncSbcMainTab() {
-    const tabs = Array.from(doc.querySelectorAll('[role="tab"]'));
-    const teamTab = tabs.find(tab => (tab.textContent || '').includes('Team Hub'));
-    const isTeam = teamTab && teamTab.getAttribute('aria-selected') === 'true';
-    doc.documentElement.dataset.sbcMainTab = isTeam ? 'team' : 'league';
-  }
-  syncSbcMainTab();
-  new MutationObserver(syncSbcMainTab).observe(doc.body, {
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['aria-selected']
-  });
-} catch (error) {
-  // Keep the league-branded fallback if parent DOM access is unavailable.
-}
-</script>
-""", height=0)
-
-components.html("""
-<script>
-try {
-  const doc = window.parent.document;
-  function formatCountdown(ms) {
-    if (ms <= 0) return 'Due now';
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} left til pick`;
-  }
-  function syncDraftCountdowns() {
-    doc.querySelectorAll('.sbc-countdown[data-target]').forEach((node) => {
-      const target = new Date(node.dataset.target);
-      if (!Number.isNaN(target.getTime())) {
-        node.textContent = formatCountdown(target.getTime() - Date.now());
-      }
-    });
-  }
-  syncDraftCountdowns();
-  setInterval(syncDraftCountdowns, 1000);
-} catch (error) {}
-</script>
-""", height=0)
-
-with free_agency_tab:
+main_page = st.sidebar.radio(
+    "SBC Office",
+    ["Team Hub", "League Hub", "Trade Machine", "Free Agency", "About", "Data Checks"],
+    index=0,
+    key="sbc_main_page",
+)
+st.markdown(
+    f"<script>document.documentElement.dataset.sbcMainTab = '{'team' if main_page == 'Team Hub' else 'league'}';</script>",
+    unsafe_allow_html=True,
+)
+selected_team_page = None
+selected_league_page = None
+selected_history_page = None
+selected_free_agency_page = None
+LeagueHistoryYear = current_year
+if main_page == "Free Agency":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -10298,9 +10288,14 @@ with free_agency_tab:
         </div>
         """)
 
-    fa_league_tab, fa_my_bids_tab, fa_commish_tab = st.tabs(["🌐 League View", "🔎 My Bids", "🔐 Commish View"])
-    with fa_league_tab:
-        fa_league_view = load_free_agency_league_view()
+    selected_free_agency_page = st.radio(
+        "Free Agency View",
+        ["League View", "My Bids", "Commish View"],
+        horizontal=True,
+        key="sbc_free_agency_page",
+    )
+    fa_league_view = load_free_agency_league_view()
+    if selected_free_agency_page == "League View":
         render_html(f"""
             <style>
                 .sbc-fa-league-note {{
@@ -10329,7 +10324,7 @@ with free_agency_tab:
         render_html('<div class="sbc-section-label">Free Agency Board</div>')
         render_free_agency_league_table(fa_league_view)
 
-    with fa_my_bids_tab:
+    if selected_free_agency_page == "My Bids":
         team_key = st.text_input("Team code", type="password", key="sbc_free_agency_team_bid_key")
         my_team = free_agency_team_from_code(team_key.strip())
         if my_team not in team_info:
@@ -10343,7 +10338,7 @@ with free_agency_tab:
             fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, league_view=fa_league_view)
             render_free_agency_my_bids(my_team, fa_bids, fa_active_bids, fa_excluded_bids, fa_league_view)
 
-    with fa_commish_tab:
+    if selected_free_agency_page == "Commish View":
         commish_key = st.text_input("Commissioner key", type="password", key="sbc_free_agency_commish_key")
         if commish_key.strip() != FREE_AGENCY_PASSWORD:
             render_html('<div class="sbc-empty-state">Enter the commissioner key to view free agency controls.</div>')
@@ -10363,29 +10358,28 @@ with free_agency_tab:
             fa_active_bids, fa_excluded_bids = free_agency_bid_audit(fa_bids, signed_players=signed_players, available_players=available_players, league_view=fa_league_view)
             render_free_agency_commish_desk(fa_active_bids, fa_excluded_bids, fa_league_view, all_bids=fa_bids, bid_players=fa_bid_players)
 
-with team_hub_tab:
+if main_page == "Team Hub":
     picker_col, _ = st.columns([1.15, 3.85], vertical_alignment="bottom")
     with picker_col:
         render_html('<div class="sbc-picker-eyebrow">Team View</div>')
         st.selectbox("Choose your team", Teams, key="_sbc_selected_team")
 
-    tab1, tab2, tab3, tab4, team_history_tab = st.tabs([
-        f"💰 {SelectedTeam} Cap",
-        f"📦 {SelectedTeam} Picks",
-        f"📡 {SelectedTeam} Live",
-        f"🗓️ {SelectedTeam} Schedule",
-        f"🏛️ {SelectedTeam} History"])
+    selected_team_page = st.radio(
+        "Team Hub View",
+        ["Cap", "Picks", "Live", "Schedule", "History"],
+        horizontal=True,
+        key="sbc_team_page",
+    )
 
-with league_hub_tab:
-    tab8, tab5, standings_tab, tab6, tab7, league_history_tab = st.tabs([
-        "🏠 Overview",
-        "📺 Scoreboard",
-        "📊 Standings",
-        "👥 Players",
-        "📦 Draft Picks",
-        "🏛️ History"])
+if main_page == "League Hub":
+    selected_league_page = st.radio(
+        "League Hub View",
+        ["Overview", "Scoreboard", "Standings", "Players", "Draft Picks", "History"],
+        horizontal=True,
+        key="sbc_league_page",
+    )
 
-    with league_history_tab:
+    if selected_league_page == "History":
         league_history_year_options = schedule_year_options_for_history()
         default_league_history_year = current_year if current_year in league_history_year_options else league_history_year_options[-1]
         LeagueHistoryYear = st.selectbox(
@@ -10394,16 +10388,14 @@ with league_hub_tab:
             index=league_history_year_options.index(default_league_history_year),
             key="league_history_year",
         )
-        league_history_overview_tab, league_history_scoreboard_tab, league_history_playoffs_tab, league_history_ist_tab, league_history_player_stats_tab, league_history_awards_tab, league_history_draft_tab = st.tabs([
-            "🏠 Overview",
-            "📺 Scoreboard",
-            "🏆 Playoff Bracket",
-            "🏅 In-Season Tournament",
-            "📈 Player Stats",
-            "⭐ Awards",
-            "📚 Draft History"])
+        selected_history_page = st.radio(
+            "League History View",
+            ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "Awards", "Draft History"],
+            horizontal=True,
+            key="sbc_history_page",
+        )
 
-with tab1:
+if main_page == "Team Hub" and selected_team_page == "Cap":
     _legacy_tab1 = r'''
     st.subheader(f"{SelectedTeam} Cap Sheet for {current_year-1}-{str(current_year)[-2:]} Season")
     
@@ -10630,7 +10622,7 @@ with tab1:
         else:
             render_html('<div class="sbc-empty-state">No draft-rights or retired players are currently listed for this team.</div>')
 
-with tab2:
+if main_page == "Team Hub" and selected_team_page == "Picks":
     # Custom draft-room layout replaces the legacy dataframe stack below.
     
     full_team_picks = full_draft_picks(dp, SelectedTeam)
@@ -10758,7 +10750,7 @@ with tab2:
         st.dataframe(touched_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
 
-with tab3:
+if main_page == "Team Hub" and selected_team_page == "Live":
     render_html(f"""
         <div class="sbc-draft-hero sbc-team-branded">
             <div class="sbc-draft-hero-inner">
@@ -10853,7 +10845,7 @@ with tab3:
     else:
         st.altair_chart(season_line_chart_data, use_container_width=True)
 
-with tab4:
+if main_page == "Team Hub" and selected_team_page == "Schedule":
     schedule_years = sorted(all_time_schedule["Year"].dropna().astype(int).unique().tolist())
     if not schedule_years:
         schedule_years = [current_year]
@@ -10899,7 +10891,7 @@ with tab4:
         st.metric(label="Total Flights", value=num_flights, help="Number of flights taken this season (legs with distance > 0).", border=True)
     render_team_travel_map(schedule_raw, SelectedTeam, SelectedScheduleYear)
 
-with team_history_tab:
+if main_page == "Team Hub" and selected_team_page == "History":
     render_html(f"""
         <div class="sbc-draft-hero sbc-team-branded">
             <div class="sbc-draft-hero-inner">
@@ -10917,7 +10909,7 @@ with team_history_tab:
         "This tab is parked here now so the Team Hub has a clean place for franchise archive work later."
     )
 
-with tab5:
+if main_page == "League Hub" and selected_league_page == "Scoreboard":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -10948,10 +10940,10 @@ with tab5:
     render_html('<div class="sbc-section-label">All Scores</div>')
     render_scoreboard_cards(live_stats_total_scores)
 
-with league_history_overview_tab:
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Overview":
     render_league_history_overview()
 
-with league_history_scoreboard_tab:
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Scoreboard":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -10980,7 +10972,7 @@ with league_history_scoreboard_tab:
     render_html('<div class="sbc-section-label">Historical Scores</div>')
     render_scoreboard_cards(history_scores)
 
-with league_history_playoffs_tab:
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Playoff Bracket":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -11009,7 +11001,7 @@ with league_history_playoffs_tab:
     with east_col:
         render_conference_standings(standings, PlayoffHistoryYear, playoff_period, "East")
 
-with league_history_ist_tab:
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "In-Season Tournament":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -11039,7 +11031,7 @@ with league_history_ist_tab:
     with east_col:
         render_ist_conference_history_panel(ISTHistoryYear, ist_period, "East")
 
-with league_history_player_stats_tab:
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Player Stats":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -11054,7 +11046,7 @@ with league_history_player_stats_tab:
     """)
     render_under_construction("Player Stats are under construction", "The History tab is ready for this section when the stat archive design is next.")
 
-with standings_tab:
+if main_page == "League Hub" and selected_league_page == "Standings":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -11078,7 +11070,7 @@ with standings_tab:
         render_conference_standings(standings, StandingsYear, StandingsPeriod, "East")
     render_ist_standings(standings, StandingsYear, StandingsPeriod)
 
-with tab6:
+if main_page == "League Hub" and selected_league_page == "Players":
 
     active_all_df = safe_table_call(active_players_all, df, pics)
     inactive_all_df = safe_table_call(inactive_players_all, df, pics)
@@ -11241,7 +11233,7 @@ with tab6:
             st.dataframe(trade_restrictins_all_df, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_order=["Team_logo", " ", "Player", "Trade Restriction"], column_config={" ": st.column_config.ImageColumn(label="", width="small"), "Team_logo": st.column_config.ImageColumn(label="", width="small")})
 
     '''
-with tab7:
+if main_page == "League Hub" and selected_league_page == "Draft Picks":
     all_full_team_picks = safe_table_call(all_full_draft_picks, dp)
     all_swap_team_picks = safe_table_call(all_swap_draft_picks, dp)
     all_split_team_picks = safe_table_call(all_split_draft_picks, dp)
@@ -11352,7 +11344,7 @@ with tab7:
     st.dataframe(all_locked_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
     '''
-with tab8:
+if main_page == "League Hub" and selected_league_page == "Overview":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -11464,7 +11456,7 @@ with tab8:
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
     '''
-with tab9:
+if main_page == "Trade Machine":
     if "_sbc_trade_team" not in st.session_state:
         st.session_state["_sbc_trade_team"] = SelectedTeam if SelectedTeam in Teams else "Vegas"
     TradeTeam = st.selectbox(
@@ -11561,7 +11553,7 @@ with tab9:
     elif submitted:
         render_trade_panel_header("No Deal Submitted", "Select at least one player, pick, exception, or cash field to run the machine.", TradeTeam, "gold")
 
-with league_history_draft_tab:
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Draft History":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -11886,7 +11878,7 @@ def render_check_card(title, description, check_df):
             st.dataframe(check_df, width="stretch", hide_index=True)
 
 
-with league_history_awards_tab:
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Awards":
     AwardYears = LeagueHistoryYear
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
@@ -12130,7 +12122,7 @@ with league_history_awards_tab:
 
     '''
 
-with tab12:
+if main_page == "About":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -12403,7 +12395,7 @@ with tab12:
     """)
     '''
 
-with tab13:
+if main_page == "Data Checks":
     picture_check = data_picture_check(df, pics)
     roster_n_check = data_roster_check(df)
     missing_salary_check = data_missing_salary_check(df)
