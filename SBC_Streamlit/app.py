@@ -258,6 +258,53 @@ def current_period_index(options):
     return options.index(min(current_value, options[-1]))
 
 
+MAIN_NAV_LABELS = {
+    "Team Hub": "🏠 Team Hub",
+    "League Hub": "🏟️ League Hub",
+    "Trade Machine": "🔁 Trade Machine",
+    "Free Agency": "📝 Free Agency",
+    "About": "ℹ️ About",
+    "Data Checks": "🧪 Data Checks",
+}
+
+TEAM_NAV_LABELS = {
+    "Cap": "💰 Cap",
+    "Picks": "🎯 Picks",
+    "Live": "📡 Live",
+    "Schedule": "🗓️ Schedule",
+    "History": "📚 History",
+}
+
+LEAGUE_NAV_LABELS = {
+    "Overview": "🌐 Overview",
+    "Scoreboard": "🏀 Scoreboard",
+    "Standings": "📊 Standings",
+    "Players": "👤 Players",
+    "Draft Picks": "🎯 Draft Picks",
+    "History": "📚 History",
+}
+
+HISTORY_NAV_LABELS = {
+    "Overview": "🌐 Overview",
+    "Scoreboard": "🏀 Scoreboard",
+    "Playoff Bracket": "🏆 Playoff Bracket",
+    "In-Season Tournament": "🏅 In-Season Tournament",
+    "Player Stats": "📈 Player Stats",
+    "Awards": "⭐ Awards",
+    "Draft History": "🎓 Draft History",
+}
+
+FREE_AGENCY_NAV_LABELS = {
+    "League View": "🌐 League View",
+    "My Bids": "🙋 My Bids",
+    "Commish View": "🧑‍⚖️ Commish View",
+}
+
+
+def nav_label(labels):
+    return lambda value: labels.get(value, value)
+
+
 requested_main_page = st.session_state.get("sbc_main_page", "Team Hub")
 requested_team_page = st.session_state.get("sbc_team_page", "Cap")
 requested_league_page = st.session_state.get("sbc_league_page", "Overview")
@@ -1210,6 +1257,26 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
                 font-size: 0.78rem;
                 font-weight: 850;
             }}
+            .sbc-fa-commish-meta .sbc-fa-status-wrap {{
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                min-height: 1.75rem;
+                max-width: 100%;
+            }}
+            .sbc-fa-commish-meta .sbc-fa-status-logo {{
+                width: 1.65rem !important;
+                height: 1.65rem !important;
+                max-width: 1.65rem !important;
+                max-height: 1.65rem !important;
+                object-fit: contain;
+                flex: 0 0 1.65rem;
+            }}
+            .sbc-fa-commish-meta .sbc-fa-status-logo-empty {{
+                width: 1.65rem !important;
+                height: 1.65rem !important;
+                flex-basis: 1.65rem;
+            }}
             .sbc-fa-commish-callout {{
                 text-align: right;
                 min-width: 8.5rem;
@@ -1277,6 +1344,33 @@ def render_free_agency_commish_desk(active_bids, excluded_bids, league_view, all
                 border-radius: 8px;
                 background: rgba(248, 250, 252, 0.9);
                 font-size: 0.82rem;
+            }}
+            .sbc-fa-bid-row .sbc-draft-team-mark,
+            .sbc-fa-commish-leader .sbc-draft-team-mark,
+            .sbc-fa-team-audit .sbc-draft-team-mark {{
+                display: inline-grid;
+                grid-template-columns: 1.75rem minmax(0, 1fr);
+                align-items: center;
+                gap: 0.42rem;
+                min-width: 0;
+                max-width: 100%;
+            }}
+            .sbc-fa-bid-row .sbc-draft-team-mark img,
+            .sbc-fa-commish-leader .sbc-draft-team-mark img,
+            .sbc-fa-team-audit .sbc-draft-team-mark img {{
+                width: 1.75rem !important;
+                height: 1.75rem !important;
+                max-width: 1.75rem !important;
+                max-height: 1.75rem !important;
+                object-fit: contain;
+                flex: 0 0 1.75rem;
+            }}
+            .sbc-fa-bid-row .sbc-draft-team-wordmark,
+            .sbc-fa-commish-leader .sbc-draft-team-wordmark,
+            .sbc-fa-team-audit .sbc-draft-team-wordmark {{
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }}
             .sbc-fa-bid-row-leader {{
                 background: color-mix(in srgb, {LEAGUE_SECONDARY} 10%, #ffffff);
@@ -10090,6 +10184,67 @@ st.markdown(
         border-bottom-color: var(--sbc-team-primary);
     }}
 
+    div[role="radiogroup"] label,
+    div[role="radiogroup"] label *,
+    div[role="radiogroup"] p,
+    [data-testid="stRadio"] label,
+    [data-testid="stRadio"] label *,
+    [data-testid="stRadio"] p,
+    .stButton > button,
+    .stButton > button *,
+    [data-testid="stFormSubmitButton"] button,
+    [data-testid="stFormSubmitButton"] button * {{
+        color: #111827 !important;
+        fill: #111827 !important;
+    }}
+
+    [data-testid="stRadio"] > div {{
+        gap: 0.42rem;
+    }}
+
+    div[role="radiogroup"] label,
+    [data-testid="stRadio"] label {{
+        min-height: 2.38rem;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 16%, rgba(23, 32, 42, 0.14));
+        background: linear-gradient(135deg, #ffffff, color-mix(in srgb, {LEAGUE_SECONDARY} 5%, #ffffff));
+        box-shadow: 0 8px 18px rgba(18, 25, 38, 0.045);
+        padding: 0.18rem 0.72rem;
+        transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }}
+
+    div[role="radiogroup"] label:hover,
+    [data-testid="stRadio"] label:hover {{
+        border-color: color-mix(in srgb, {LEAGUE_SECONDARY} 52%, {LEAGUE_PRIMARY});
+        background: linear-gradient(135deg, color-mix(in srgb, {LEAGUE_PRIMARY} 8%, #ffffff), color-mix(in srgb, {LEAGUE_SECONDARY} 10%, #ffffff));
+        box-shadow: 0 10px 22px rgba(18, 25, 38, 0.075);
+        transform: translateY(-1px);
+    }}
+
+    div[role="radiogroup"] label:has(input:checked),
+    [data-testid="stRadio"] label:has(input:checked),
+    div[role="radiogroup"] label:has([aria-checked="true"]),
+    [data-testid="stRadio"] label:has([aria-checked="true"]) {{
+        border-color: color-mix(in srgb, {LEAGUE_PRIMARY} 54%, {LEAGUE_SECONDARY});
+        background: linear-gradient(135deg, color-mix(in srgb, {LEAGUE_PRIMARY} 28%, #ffffff), color-mix(in srgb, {LEAGUE_SECONDARY} 24%, #ffffff));
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.54), 0 12px 26px rgba(18, 25, 38, 0.11);
+    }}
+
+    div[role="radiogroup"] label [data-testid="stMarkdownContainer"] p,
+    [data-testid="stRadio"] label [data-testid="stMarkdownContainer"] p {{
+        font-weight: 900 !important;
+    }}
+
+    div[role="radiogroup"] input[type="radio"],
+    [data-testid="stRadio"] input[type="radio"] {{
+        accent-color: {LEAGUE_PRIMARY};
+    }}
+
+    div[role="radiogroup"] label:has(input:checked) input[type="radio"],
+    [data-testid="stRadio"] label:has(input:checked) input[type="radio"] {{
+        accent-color: {LEAGUE_SECONDARY};
+    }}
+
     [data-testid="stMetric"] {{
         background: var(--sbc-panel);
         border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 20%, var(--sbc-border));
@@ -10161,7 +10316,7 @@ st.markdown(
         border-radius: 8px;
         border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 82%, #000 18%);
         background: linear-gradient(135deg, var(--sbc-team-primary), color-mix(in srgb, var(--sbc-team-primary) 76%, #111827 24%));
-        color: var(--sbc-team-text);
+        color: #111827;
         font-family: "Poppins", sans-serif;
         font-size: 0.86rem;
         font-weight: 900;
@@ -10293,6 +10448,7 @@ main_page = st.radio(
     "SBC Office",
     ["Team Hub", "League Hub", "Trade Machine", "Free Agency", "About", "Data Checks"],
     index=0,
+    format_func=nav_label(MAIN_NAV_LABELS),
     key="sbc_main_page",
     horizontal=True,
 )
@@ -10322,6 +10478,7 @@ if main_page == "Free Agency":
     selected_free_agency_page = st.radio(
         "Free Agency View",
         ["League View", "My Bids", "Commish View"],
+        format_func=nav_label(FREE_AGENCY_NAV_LABELS),
         horizontal=True,
         key="sbc_free_agency_page",
     )
@@ -10398,6 +10555,7 @@ if main_page == "Team Hub":
     selected_team_page = st.radio(
         "Team Hub View",
         ["Cap", "Picks", "Live", "Schedule", "History"],
+        format_func=nav_label(TEAM_NAV_LABELS),
         horizontal=True,
         key="sbc_team_page",
     )
@@ -10406,6 +10564,7 @@ if main_page == "League Hub":
     selected_league_page = st.radio(
         "League Hub View",
         ["Overview", "Scoreboard", "Standings", "Players", "Draft Picks", "History"],
+        format_func=nav_label(LEAGUE_NAV_LABELS),
         horizontal=True,
         key="sbc_league_page",
     )
@@ -10422,6 +10581,7 @@ if main_page == "League Hub":
         selected_history_page = st.radio(
             "League History View",
             ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "Awards", "Draft History"],
+            format_func=nav_label(HISTORY_NAV_LABELS),
             horizontal=True,
             key="sbc_history_page",
         )
