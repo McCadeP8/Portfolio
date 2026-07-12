@@ -3516,7 +3516,7 @@ def first_round_control_status(draft_picks, team, year):
     if not required.issubset(draft_picks.columns):
         return "none", "Draft-pick data is missing required columns."
     work = draft_picks.copy()
-    work["_year"] = np.floor(pd.to_numeric(work["Year"], errors="coerce")).astype("Int64")
+    work["_year"] = pd.to_numeric(work["Year"], errors="coerce").floordiv(1).astype("Int64")
     work = work[
         (work["_year"] == int(year))
         & work["Round"].apply(trade_pick_is_first)
