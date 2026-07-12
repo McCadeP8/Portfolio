@@ -321,6 +321,7 @@ def period_range_label(selected_year, periods, fallback=""):
 BOX_SCORE_STATS = ["GP", "MP", "TS%", "2PTM", "2PTA", "2PT%", "3PTM", "3PTA", "3PT%", "FTM", "FTA", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 BOX_SCORE_SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 BOX_SCORE_WEIGHTS = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
+BOX_SCORE_CATEGORY_ORDER = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 
 
 def _read_local_parquet(filename):
@@ -555,7 +556,7 @@ def boxscore_title_for_round(round_label, type_label):
 
 
 def boxscore_stat_label(stat):
-    return {"2PT%": "2P%", "3PT%": "3P%"}.get(stat, stat)
+    return {"2PT%": "2P%", "3PT%": "3P%", "ST": "STL", "TO": "TOV"}.get(stat, stat)
 
 
 def stat_number(value, pct=False):
@@ -609,7 +610,7 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
     info_a = team_info.get(team_a, {})
     info_b = team_info.get(team_b, {})
     rows_html = []
-    for stat in BOX_SCORE_WEIGHTS:
+    for stat in BOX_SCORE_CATEGORY_ORDER:
         if stat not in category_lookup.index or team_a not in totals.index or team_b not in totals.index:
             continue
         cat_row = category_lookup.loc[stat]
@@ -621,7 +622,7 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
                 {stat_cell_html(totals.loc[team_a], stat, winner=team_a_win)}
                 <td class="sbc-box-category-name">
                     <strong>{escape(boxscore_stat_label(stat))}</strong>
-                    <em>{escape(str(BOX_SCORE_WEIGHTS.get(stat, '')))} votes</em>
+                    <em>{escape(str(BOX_SCORE_WEIGHTS.get(stat, '')))} points</em>
                 </td>
                 {stat_cell_html(totals.loc[team_b], stat, winner=team_b_win)}
             </tr>
@@ -629,7 +630,7 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
     render_html(f"""
         <section class="sbc-box-panel">
             <div class="sbc-box-panel-head">
-                <span>Category Votes</span>
+                <span>Category Points</span>
             </div>
             <table class="sbc-box-category-table">
                 <thead>
@@ -703,6 +704,12 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     score_b = matchup_row.get("TeamB_Score", matchup_row.get("TeamBScore", ""))
     info_a = team_info.get(team_a, {})
     info_b = team_info.get(team_b, {})
+    color_a = info_a.get("bg", "#111827")
+    color_b = info_b.get("bg", "#334155")
+    secondary_a = info_a.get("bg2", color_a)
+    secondary_b = info_b.get("bg2", color_b)
+    font_a = team_font_for_name(team_a)
+    font_b = team_font_for_name(team_b)
     period_label = period_date_label(matchup_row.get("Year", ""), matchup_row.get("Period", ""), f'P{matchup_row.get("Period", "")}')
     round_label = str(matchup_row.get("Round", matchup_row.get("Type", "")))
     type_label = str(matchup_row.get("Type", ""))
@@ -711,27 +718,28 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     b_winner = score_numeric(score_b) > score_numeric(score_a)
 
     render_html(f"""
-        <section class="sbc-box-dialog-hero" style="--box-a:{escape(str(info_a.get('bg', '#111827')), quote=True)}; --box-b:{escape(str(info_b.get('bg', '#334155')), quote=True)};">
+        <section class="sbc-box-dialog-hero" style="--box-a:{escape(str(color_a), quote=True)}; --box-b:{escape(str(color_b), quote=True)};">
             <div class="sbc-box-dialog-kicker">{escape(period_label)}</div>
             <div class="sbc-box-dialog-title">{escape(title_label)}</div>
             <div class="sbc-box-dialog-matchup">
-                <div class="sbc-box-dialog-team {'sbc-box-dialog-winner' if a_winner else ''}">
+                <div class="sbc-box-dialog-team" style="--box-team:{escape(str(color_a), quote=True)};--box-team-secondary:{escape(str(secondary_a), quote=True)};--box-team-font:{escape(str(font_a), quote=True)};">
                     <img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
-                    <strong>{escape(live_team_full_name(team_a))}</strong>
-                    <em>{escape(str(matchup_row.get('TeamA_record', '')))}</em>
+                    <div>
+                        <strong>{escape(live_team_full_name(team_a))}</strong>
+                        <em>{escape(str(matchup_row.get('TeamA_record', '')))}</em>
+                    </div>
+                    <b class="{'sbc-box-dialog-score-win' if a_winner else ''}">{escape(format_score_value(score_a))}</b>
                 </div>
                 <div class="sbc-box-dialog-score">
                     <i>Final</i>
-                    <div>
-                        <span>{escape(format_score_value(score_a))}</span>
-                        <b>-</b>
-                        <span>{escape(format_score_value(score_b))}</span>
-                    </div>
                 </div>
-                <div class="sbc-box-dialog-team {'sbc-box-dialog-winner' if b_winner else ''}">
+                <div class="sbc-box-dialog-team" style="--box-team:{escape(str(color_b), quote=True)};--box-team-secondary:{escape(str(secondary_b), quote=True)};--box-team-font:{escape(str(font_b), quote=True)};">
                     <img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
-                    <strong>{escape(live_team_full_name(team_b))}</strong>
-                    <em>{escape(str(matchup_row.get('TeamB_record', '')))}</em>
+                    <div>
+                        <strong>{escape(live_team_full_name(team_b))}</strong>
+                        <em>{escape(str(matchup_row.get('TeamB_record', '')))}</em>
+                    </div>
+                    <b class="{'sbc-box-dialog-score-win' if b_winner else ''}">{escape(format_score_value(score_b))}</b>
                 </div>
             </div>
         </section>
@@ -748,7 +756,7 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     render_category_votes_box(category_table, team_totals, team_a, team_b)
 
     aggregate = st.toggle(
-        "Aggregate",
+        "Aggregate players",
         value=False,
         key=f"box_aggregate_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}",
         help="Combine all games for each player.",
@@ -8203,6 +8211,33 @@ st.markdown(
         color: #ffffff !important;
     }}
 
+    div[data-testid="stToggle"] {{
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid rgba(23,32,42,0.14);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 8px 18px rgba(18,25,38,0.06);
+        margin-top: 0.85rem;
+        padding: 0.4rem 0.55rem;
+    }}
+
+    div[data-testid="stToggle"] label,
+    div[data-testid="stToggle"] p {{
+        color: var(--sbc-ink) !important;
+        font-size: 0.86rem !important;
+        font-weight: 950 !important;
+    }}
+
+    div[data-testid="stToggle"] [role="switch"] {{
+        border: 1px solid rgba(23,32,42,0.22) !important;
+        background: #e5e7eb !important;
+    }}
+
+    div[data-testid="stToggle"] [role="switch"][aria-checked="true"] {{
+        background: {LEAGUE_PRIMARY} !important;
+    }}
+
     div[data-testid="stDialog"] div[role="dialog"] {{
         width: min(96vw, 1420px) !important;
         max-width: min(96vw, 1420px) !important;
@@ -8251,94 +8286,79 @@ st.markdown(
 
     .sbc-box-dialog-team {{
         display: grid;
-        grid-template-columns: 4.3rem minmax(0, 1fr);
-        gap: 0.7rem;
+        grid-template-columns: 4.2rem minmax(0, 1fr) auto;
+        gap: 0.72rem;
         align-items: center;
         min-width: 0;
-        border-left: 0.35rem solid color-mix(in srgb, var(--box-a) 55%, var(--box-b) 45%);
         border-radius: 8px;
-        background: #f8fafc;
-        padding: 0.7rem;
-    }}
-
-    .sbc-box-dialog-team:last-child {{
-        border-left-color: var(--box-b);
-    }}
-
-    .sbc-box-dialog-team:first-child {{
-        border-left-color: var(--box-a);
-    }}
-
-    .sbc-box-dialog-winner {{
-        background: color-mix(in srgb, #58a76b 15%, #ffffff);
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, #58a76b 38%, transparent);
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--box-team) 94%, #000000), color-mix(in srgb, var(--box-team-secondary) 76%, #111827));
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18), 0 12px 26px rgba(18,25,38,0.14);
+        padding: 0.78rem 0.85rem;
     }}
 
     .sbc-box-dialog-team img {{
         width: 4rem;
         height: 4rem;
         object-fit: contain;
-        filter: drop-shadow(0 7px 12px rgba(18, 25, 38, 0.16));
+        filter: drop-shadow(0 8px 13px rgba(0,0,0,0.30));
     }}
 
     .sbc-box-dialog-team strong {{
         display: block;
         overflow: hidden;
-        color: var(--sbc-ink);
-        font-size: 1rem;
+        color: #ffffff;
+        font-family: var(--box-team-font), "Poppins", "Segoe UI", sans-serif;
+        font-size: clamp(1.05rem, 1.55vw, 1.55rem);
         font-weight: 950;
-        line-height: 1.08;
+        line-height: 1;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.28);
         text-overflow: ellipsis;
         white-space: nowrap;
     }}
 
     .sbc-box-dialog-team em {{
         display: block;
-        margin-top: 0.24rem;
-        color: var(--sbc-muted);
-        font-size: 0.68rem;
+        margin-top: 0.34rem;
+        color: rgba(255,255,255,0.88);
+        font-size: 0.82rem;
         font-style: normal;
-        font-weight: 900;
+        font-weight: 950;
         letter-spacing: 0.05em;
         text-transform: uppercase;
     }}
 
+    .sbc-box-dialog-team b {{
+        color: #ffffff;
+        font-size: clamp(2.15rem, 4vw, 3.45rem);
+        font-weight: 950;
+        line-height: 0.9;
+        text-shadow: 0 3px 10px rgba(0,0,0,0.34);
+    }}
+
+    .sbc-box-dialog-score-win {{
+        text-decoration: underline;
+        text-decoration-color: rgba(255,255,255,0.72);
+        text-decoration-thickness: 0.12em;
+        text-underline-offset: 0.12em;
+    }}
+
     .sbc-box-dialog-score {{
-        display: grid;
-        gap: 0.35rem;
+        display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 8px;
-        background: #111827;
-        color: #ffffff;
+        border: 1px solid rgba(23,32,42,0.10);
+        background: #ffffff;
+        color: var(--sbc-ink);
         font-variant-numeric: tabular-nums;
-        padding: 0.75rem 0.9rem;
+        padding: 0.62rem 0.9rem;
         text-align: center;
     }}
 
-    .sbc-box-dialog-score div {{
-        display: grid;
-        grid-template-columns: auto auto auto;
-        gap: 0.58rem;
-        align-items: center;
-    }}
-
-    .sbc-box-dialog-score span {{
-        font-size: 2.1rem;
-        font-weight: 950;
-        line-height: 0.95;
-    }}
-
-    .sbc-box-dialog-score b {{
-        color: rgba(255,255,255,0.44);
-        font-size: 1.2rem;
-        font-weight: 900;
-        line-height: 1;
-    }}
-
     .sbc-box-dialog-score i {{
-        color: rgba(255,255,255,0.66);
-        font-size: 0.66rem;
+        color: var(--sbc-muted);
+        font-size: 0.72rem;
         font-style: normal;
         font-weight: 950;
         letter-spacing: 0.08em;
@@ -8364,7 +8384,7 @@ st.markdown(
         color: var(--sbc-ink);
         font-size: 0.86rem;
         font-weight: 950;
-        padding: 0.62rem 0.75rem;
+        padding: 0.54rem 0.7rem;
     }}
 
     .sbc-box-team-head {{
@@ -8378,8 +8398,8 @@ st.markdown(
 
     .sbc-box-team-head img,
     .sbc-box-category-table th img {{
-        width: 2rem;
-        height: 2rem;
+        width: 2.65rem;
+        height: 2.65rem;
         object-fit: contain;
     }}
 
@@ -8417,7 +8437,7 @@ st.markdown(
         font-size: 0.66rem;
         font-weight: 950;
         letter-spacing: 0.06em;
-        padding: 0.45rem 0.5rem;
+        padding: 0.36rem 0.5rem;
         text-transform: uppercase;
         white-space: nowrap;
     }}
@@ -8425,7 +8445,7 @@ st.markdown(
     .sbc-box-category-table td,
     .sbc-box-player-table td {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.06);
-        padding: 0.46rem 0.5rem;
+        padding: 0.38rem 0.5rem;
         vertical-align: middle;
     }}
 
@@ -8477,7 +8497,7 @@ st.markdown(
 
     .sbc-box-player-grid {{
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         gap: 0.8rem;
         align-items: start;
     }}
