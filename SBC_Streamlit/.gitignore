@@ -1,2 +1,6 @@
 .streamlit_cache/
+.venv/
 __pycache__/
+*.py[cod]
+data_snapshots/*.parquet
+data_snapshots/nba_boxscore_cache/

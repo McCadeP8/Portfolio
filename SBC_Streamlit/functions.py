@@ -55,10 +55,11 @@ def normalize_player_key(value):
     parts = [part for part in text.split() if part not in suffixes]
     return " ".join(parts)
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=60)
 def get_data() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859"
-    df = read_csv_snapshot("cap_sheet_data", csv_url)
+    refresh_key = int(pd.Timestamp.now().timestamp() // 60)
+    csv_url = f"https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859&refresh={refresh_key}"
+    df = read_csv_snapshot("cap_sheet_data", csv_url, ttl_seconds=0)
     for year in columns_order:
         salary_col = "Y" + str(year)
         type_col = "Type" + str(year)
@@ -75,26 +76,29 @@ def get_pictures() -> pd.DataFrame:
     df = df.drop(columns=["Picture"], errors="ignore")
     return df
 
-@st.cache_data()
-def get_exceptions(ttl=86400) -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1620818587"
-    df = read_csv_snapshot("exceptions", csv_url)
+@st.cache_data(ttl=60)
+def get_exceptions() -> pd.DataFrame:
+    refresh_key = int(pd.Timestamp.now().timestamp() // 60)
+    csv_url = f"https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1620818587&refresh={refresh_key}"
+    df = read_csv_snapshot("exceptions", csv_url, ttl_seconds=0)
     current_salary_col = "Y" + str(current_year)
     for col in ["Team", "Player", current_salary_col, "BirdRights"]:
         if col not in df.columns:
             df[col] = 0 if col == current_salary_col else ""
     return df[["Team", "Player", current_salary_col, "BirdRights"]]
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=60)
 def get_base_cap() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=760630769"
-    df = read_csv_snapshot("base_cap", csv_url)
+    refresh_key = int(pd.Timestamp.now().timestamp() // 60)
+    csv_url = f"https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=760630769&refresh={refresh_key}"
+    df = read_csv_snapshot("base_cap", csv_url, ttl_seconds=0)
     return df
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=60)
 def get_draft_picks() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1612129799"
-    df = read_csv_snapshot("draft_picks", csv_url)
+    refresh_key = int(pd.Timestamp.now().timestamp() // 60)
+    csv_url = f"https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1612129799&refresh={refresh_key}"
+    df = read_csv_snapshot("draft_picks", csv_url, ttl_seconds=0)
     df = df[df['Year'].between(current_year, current_year + 6)]
     return df
 

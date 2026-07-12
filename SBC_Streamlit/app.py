@@ -7462,7 +7462,7 @@ st.markdown(
         text-transform: uppercase;
     }}
 
-    .sbc-schedule-table th:nth-child(1) {{ width: 5.5rem; }}
+    .sbc-schedule-table th:nth-child(1) {{ width: 9.25rem; }}
     .sbc-schedule-table th:nth-child(3) {{ width: 8.5rem; text-align: center; }}
 
     .sbc-schedule-row {{
@@ -7503,8 +7503,9 @@ st.markdown(
     .sbc-schedule-period span {{
         display: inline-grid;
         place-items: center;
-        width: 3.1rem;
+        min-width: 7rem;
         height: 2.1rem;
+        padding: 0 0.62rem;
         border-radius: 999px;
         background: color-mix(in srgb, var(--sbc-team-primary) 16%, #ffffff);
         border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 30%, rgba(23, 32, 42, 0.12));
