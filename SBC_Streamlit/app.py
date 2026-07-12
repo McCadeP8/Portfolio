@@ -751,6 +751,10 @@ def render_player_boxscore_split(rows, team_a, team_b, aggregate=False):
 
 @st.dialog("SBCFBL Box Score", width="large")
 def render_matchup_boxscore_dialog(matchup_row, rosters_df):
+    render_matchup_boxscore(matchup_row, rosters_df, key_prefix="dialog")
+
+
+def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline"):
     team_a = str(matchup_row.get("TeamA", ""))
     team_b = str(matchup_row.get("TeamB", ""))
     score_a = matchup_row.get("TeamA_Score", matchup_row.get("TeamAScore", ""))
@@ -808,12 +812,14 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
 
     render_category_votes_box(category_table, team_totals, team_a, team_b)
 
-    aggregate = st.toggle(
-        "Aggregate players",
-        value=False,
-        key=f"box_aggregate_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}",
-        help="Combine all games for each player.",
+    view_mode = st.radio(
+        "Box score view",
+        options=["Game rows", "Aggregate players"],
+        index=0,
+        horizontal=True,
+        key=f"{key_prefix}_box_view_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}_{team_a}_{team_b}",
     )
+    aggregate = view_mode == "Aggregate players"
     render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
 
 
@@ -900,7 +906,7 @@ need_ft = need_checks_data
 need_standings = need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft
 need_dh = need_history_draft
 need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_history_stats or need_history_awards
-need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
+need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_all_time_rosters = need_history_awards or need_boxscore_data
 need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or need_league_standings or need_history
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
@@ -4843,7 +4849,7 @@ def schedule_regular_record(schedule_df, selected_team):
     return f"{wins}-{losses}"
 
 
-def render_schedule_table(schedule_df, selected_team):
+def render_schedule_table(schedule_df, selected_team, rosters_df=None, show_boxscores=False):
     if schedule_df is None or schedule_df.shape[0] == 0:
         render_html('<div class="sbc-empty-state">No schedule records are available for this selection.</div>')
         return
@@ -4853,8 +4859,8 @@ def render_schedule_table(schedule_df, selected_team):
     table_df["TypeOrder"] = table_df["Type"].map(type_order).fillna(9)
     table_df = table_df.sort_values(["TypeOrder", "Period", "Game_ID"])
 
-    body_rows = []
     current_type = None
+    render_html('<div class="sbc-schedule-list">')
     for _, row in table_df.iterrows():
         is_home = row.get("TeamA") == selected_team
         opponent = row.get("TeamB") if is_home else row.get("TeamA")
@@ -4871,34 +4877,25 @@ def render_schedule_table(schedule_df, selected_team):
         type_text = clean_pick_display(row.get("Type", ""))
         if type_text != current_type:
             current_type = type_text
-            body_rows.append(f'<tr class="sbc-schedule-group-row"><td colspan="3"><span>{escape(type_text)}</span></td></tr>')
-        body_rows.append(dedent(f"""
-        <tr class="sbc-schedule-row sbc-schedule-{result_class}" style="--sbc-opponent-color:{escape(str(opponent_color), quote=True)};">
-            <td class="sbc-schedule-period"><span>{escape(period_date_label(row.get("Year", ""), row.get("Period", ""), f'P{row.get("Period", "")}'))}</span></td>
-            <td class="sbc-schedule-opponent">
+            render_html(f'<div class="sbc-schedule-group-card"><span>{escape(type_text)}</span></div>')
+        render_html(dedent(f"""
+        <article class="sbc-schedule-card sbc-schedule-{result_class}" style="--sbc-opponent-color:{escape(str(opponent_color), quote=True)};">
+            <div class="sbc-schedule-period"><span>{escape(period_date_label(row.get("Year", ""), row.get("Period", ""), f'P{row.get("Period", "")}'))}</span></div>
+            <div class="sbc-schedule-opponent">
                 {logo_html}
                 <div>
                     <strong>{escape(str(venue_mark))} {escape(str(opponent))}</strong>
+                    <em>{escape(live_team_full_name(opponent))}</em>
                 </div>
-            </td>
-            <td class="sbc-schedule-score"><strong>{escape(score_text)}</strong><em>{escape(result)}</em></td>
-        </tr>
+            </div>
+            <div class="sbc-schedule-score"><strong>{escape(score_text)}</strong><em>{escape(result)}</em></div>
+        </article>
         """))
-
-    render_html(f"""
-    <div class="sbc-schedule-table-wrap">
-        <table class="sbc-schedule-table">
-            <thead>
-                <tr>
-                    <th>Period</th>
-                    <th>Opponent</th>
-                    <th>Score</th>
-                </tr>
-            </thead>
-            <tbody>{''.join(body_rows)}</tbody>
-        </table>
-    </div>
-    """)
+        if show_boxscores and rosters_df is not None and result != "TBD":
+            button_key = f"team_schedule_boxscore_{row.get('Game_ID', '')}_{row.get('Year', '')}_{row.get('Period', '')}_{row.get('TeamA', '')}_{row.get('TeamB', '')}"
+            if st.button("Box Score", key=button_key, use_container_width=True, type="primary"):
+                render_matchup_boxscore_dialog(row.to_dict(), rosters_df)
+    render_html('</div>')
 
 
 def render_team_travel_map(schedule_df, selected_team, selected_year, height=500):
@@ -7950,6 +7947,44 @@ st.markdown(
         margin: 0.4rem 0 1.2rem;
     }}
 
+    .sbc-schedule-list {{
+        display: grid;
+        gap: 0.55rem;
+        margin: 0.4rem 0 1.2rem;
+    }}
+
+    .sbc-schedule-group-card {{
+        margin-top: 0.35rem;
+    }}
+
+    .sbc-schedule-group-card span {{
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.65rem;
+        border-radius: 999px;
+        background: var(--sbc-team-primary);
+        color: var(--sbc-team-text);
+        font-size: 0.78rem;
+        font-weight: 950;
+        letter-spacing: 0.04em;
+        padding: 0.18rem 0.75rem;
+        text-transform: uppercase;
+    }}
+
+    .sbc-schedule-card {{
+        display: grid;
+        grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr) minmax(6rem, auto);
+        gap: 0.75rem;
+        align-items: center;
+        border: 1px solid rgba(23,32,42,0.10);
+        border-left: 0.42rem solid var(--sbc-opponent-color);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 10px 24px rgba(18,25,38,0.065);
+        min-height: 4.25rem;
+        padding: 0.62rem 0.75rem 0.62rem 0.55rem;
+    }}
+
     .sbc-schedule-table {{
         width: 100%;
         border-collapse: collapse;
@@ -8264,7 +8299,7 @@ st.markdown(
         color: #ffffff !important;
     }}
 
-    div[data-testid="stToggle"] {{
+    div[data-testid="stRadio"] {{
         display: inline-flex;
         align-items: center;
         border: 1px solid rgba(23,32,42,0.18);
@@ -8275,36 +8310,27 @@ st.markdown(
         padding: 0.4rem 0.55rem;
     }}
 
-    div[data-testid="stToggle"] label,
-    div[data-testid="stToggle"] p {{
+    div[data-testid="stRadio"] label,
+    div[data-testid="stRadio"] p {{
         color: var(--sbc-ink) !important;
         font-size: 0.86rem !important;
         font-weight: 950 !important;
     }}
 
-    div[data-testid="stToggle"] [role="switch"],
-    div[data-testid="stToggle"] [data-baseweb="checkbox"] {{
-        border: 1px solid rgba(23,32,42,0.30) !important;
-        background: #cbd5e1 !important;
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55) !important;
+    div[data-testid="stRadio"] [role="radiogroup"] {{
+        gap: 0.35rem;
     }}
 
-    div[data-testid="stToggle"] [role="switch"]::before,
-    div[data-testid="stToggle"] [role="switch"]::after,
-    div[data-testid="stToggle"] [data-baseweb="checkbox"]::before,
-    div[data-testid="stToggle"] [data-baseweb="checkbox"]::after {{
-        background: #ffffff !important;
-        box-shadow: 0 1px 4px rgba(18,25,38,0.35) !important;
+    div[data-testid="stRadio"] [role="radio"] {{
+        border: 1px solid rgba(23,32,42,0.16);
+        border-radius: 999px;
+        background: #ffffff;
+        padding: 0.22rem 0.58rem;
     }}
 
-    div[data-testid="stToggle"] [role="switch"][aria-checked="false"],
-    div[data-testid="stToggle"] [data-baseweb="checkbox"][aria-checked="false"] {{
-        background: #94a3b8 !important;
-    }}
-
-    div[data-testid="stToggle"] [role="switch"][aria-checked="true"],
-    div[data-testid="stToggle"] [data-baseweb="checkbox"][aria-checked="true"] {{
-        background: {LEAGUE_PRIMARY} !important;
+    div[data-testid="stRadio"] [role="radio"][aria-checked="true"] {{
+        background: {LEAGUE_PRIMARY};
+        color: #ffffff !important;
     }}
 
     div[data-testid="stDialog"] div[role="dialog"] {{
@@ -8312,6 +8338,23 @@ st.markdown(
         max-width: min(96vw, 1420px) !important;
         background: #ffffff !important;
         color: var(--sbc-ink) !important;
+    }}
+
+    div[data-testid="stDialog"] button[aria-label="Close"],
+    div[data-testid="stDialog"] button[title="Close"],
+    div[data-testid="stDialog"] button[kind="header"] {{
+        color: var(--sbc-ink) !important;
+        background: #e5e7eb !important;
+        border: 1px solid rgba(23,32,42,0.16) !important;
+        border-radius: 999px !important;
+    }}
+
+    div[data-testid="stDialog"] button[aria-label="Close"] svg,
+    div[data-testid="stDialog"] button[title="Close"] svg,
+    div[data-testid="stDialog"] button[kind="header"] svg {{
+        color: var(--sbc-ink) !important;
+        fill: var(--sbc-ink) !important;
+        stroke: var(--sbc-ink) !important;
     }}
 
     div[data-testid="stDialog"] div[role="dialog"] section {{
@@ -8444,9 +8487,10 @@ st.markdown(
     }}
 
     .sbc-box-category-panel {{
-        max-width: 58rem;
+        max-width: 50rem;
         margin-left: auto;
         margin-right: auto;
+        background: #f3f5f8;
     }}
 
     .sbc-box-panel-head,
@@ -8508,7 +8552,7 @@ st.markdown(
         display: inline-block;
         max-width: 16rem;
         overflow: hidden;
-        font-size: clamp(0.9rem, 1.35vw, 1.2rem);
+        font-size: clamp(1.05rem, 1.8vw, 1.55rem);
         font-weight: 950;
         line-height: 1;
         text-overflow: ellipsis;
@@ -8528,7 +8572,7 @@ st.markdown(
     .sbc-box-category-table th,
     .sbc-box-player-table th {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.08);
-        background: #ffffff;
+        background: #f3f5f8;
         color: var(--sbc-muted);
         font-size: 0.66rem;
         font-weight: 950;
@@ -8543,6 +8587,10 @@ st.markdown(
         border-bottom: 1px solid rgba(23, 32, 42, 0.06);
         padding: 0.38rem 0.5rem;
         vertical-align: middle;
+    }}
+
+    .sbc-box-category-table td {{
+        background: #f3f5f8;
     }}
 
     .sbc-box-stat-cell strong {{
@@ -8573,7 +8621,7 @@ st.markdown(
 
     .sbc-box-category-name {{
         text-align: center;
-        background: #f8fafc;
+        background: #e8edf3 !important;
     }}
 
     .sbc-box-category-name strong {{
@@ -11578,6 +11626,20 @@ st.markdown(
         accent-color: {LEAGUE_SECONDARY};
     }}
 
+    [data-testid="stRadio"] label:has(input:checked) *,
+    [data-testid="stRadio"] label:has([aria-checked="true"]) * {{
+        color: #ffffff !important;
+        fill: #ffffff !important;
+    }}
+
+    .stButton > button[kind="primary"],
+    .stButton > button[kind="primary"] *,
+    [data-testid="stButton"] > button[kind="primary"],
+    [data-testid="stButton"] > button[kind="primary"] * {{
+        color: #ffffff !important;
+        fill: #ffffff !important;
+    }}
+
     [data-testid="stMetric"] {{
         background: var(--sbc-panel);
         border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 20%, var(--sbc-border));
@@ -12356,12 +12418,15 @@ if main_page == "Team Hub" and selected_team_page == "Live":
                 ]
                 if schedule_match.shape[0] > 0:
                     matchup_home = schedule_match.iloc[0]["TeamA"]
-                render_live_stat_board(
-                    f"{SelectedTeam} vs {opponent}",
-                    f"{matchup_type} - {period_date_label(SelectedYear, SelectedPeriod, f'P{SelectedPeriod}')}",
-                    matchup_rows,
-                    SelectedTeam,
-                    matchup_home)
+                if schedule_match.shape[0] > 0:
+                    render_matchup_boxscore(schedule_match.iloc[0].to_dict(), all_time_rosters, key_prefix=f"live_{idx}")
+                else:
+                    render_live_stat_board(
+                        f"{SelectedTeam} vs {opponent}",
+                        f"{matchup_type} - {period_date_label(SelectedYear, SelectedPeriod, f'P{SelectedPeriod}')}",
+                        matchup_rows,
+                        SelectedTeam,
+                        matchup_home)
 
     render_html('<div class="sbc-section-label">Season Trend</div>')
     SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
@@ -12418,7 +12483,7 @@ if main_page == "Team Hub" and selected_team_page == "Schedule":
         & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
     ].copy()
     render_html('<div class="sbc-section-label">Schedule</div>')
-    render_schedule_table(schedule_raw, SelectedTeam)
+    render_schedule_table(schedule_raw, SelectedTeam, rosters_df=all_time_rosters, show_boxscores=True)
     total_miles, num_flights = calculate_team_travel_summary(SelectedTeam, SelectedScheduleYear, all_time_schedule)
     col1, col2 = st.columns(2)
     with col1:
