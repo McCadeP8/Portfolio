@@ -18,6 +18,36 @@ from functions import read_csv_snapshot, get_data, get_pictures, active_players,
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 
+
+_native_metric = st.metric
+
+
+def _format_metric_money(value):
+    try:
+        if value is None or value == "":
+            return value
+        return f"${float(value):,.0f}"
+    except (TypeError, ValueError):
+        return value
+
+
+def _sbc_metric(*args, **kwargs):
+    metric_format = kwargs.pop("format", None)
+    kwargs.pop("delta_arrow", None)
+    if metric_format == "dollar":
+        if "value" in kwargs:
+            kwargs["value"] = _format_metric_money(kwargs["value"])
+        elif len(args) >= 2:
+            args = (args[0], _format_metric_money(args[1]), *args[2:])
+        if "delta" in kwargs:
+            kwargs["delta"] = _format_metric_money(kwargs["delta"])
+        elif len(args) >= 3:
+            args = (*args[:2], _format_metric_money(args[2]), *args[3:])
+    return _native_metric(*args, **kwargs)
+
+
+st.metric = _sbc_metric
+
 def render_html(markup):
     markup = dedent(str(markup)).strip()
     if hasattr(st, "html"):
@@ -10259,11 +10289,12 @@ if selected_team_changed and SelectedTeam == "Honolulu":
     st.balloons()
 if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
-main_page = st.sidebar.radio(
+main_page = st.radio(
     "SBC Office",
     ["Team Hub", "League Hub", "Trade Machine", "Free Agency", "About", "Data Checks"],
     index=0,
     key="sbc_main_page",
+    horizontal=True,
 )
 st.markdown(
     f"<script>document.documentElement.dataset.sbcMainTab = '{'team' if main_page == 'Team Hub' else 'league'}';</script>",
