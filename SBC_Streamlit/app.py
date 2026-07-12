@@ -1038,11 +1038,13 @@ def selected_player_game_rows(fantrax_id, rosters_df, schedule_df):
     if not sched.empty:
         sched["_year"] = pd.to_numeric(sched["Year"], errors="coerce").astype("Int64")
         sched["_period"] = pd.to_numeric(sched["Period"], errors="coerce").astype("Int64")
-        sched_a = sched[["_year", "_period", "Type", "TeamA"]].rename(columns={"TeamA": "sbc_team"})
-        sched_b = sched[["_year", "_period", "Type", "TeamB"]].rename(columns={"TeamB": "sbc_team"})
+        sched_a = sched[["_year", "_period", "Type", "TeamA"]].rename(columns={"TeamA": "sbc_team", "Type": "sbc_matchup_type"})
+        sched_b = sched[["_year", "_period", "Type", "TeamB"]].rename(columns={"TeamB": "sbc_team", "Type": "sbc_matchup_type"})
         sched_long = pd.concat([sched_a, sched_b], ignore_index=True).drop_duplicates()
-        rows = rows.merge(sched_long[["_year", "_period", "sbc_team", "Type"]], on=["_year", "_period", "sbc_team"], how="left")
-    rows["Type"] = rows.get("Type", "Regular Season").fillna("Regular Season")
+        rows = rows.merge(sched_long[["_year", "_period", "sbc_team", "sbc_matchup_type"]], on=["_year", "_period", "sbc_team"], how="left")
+    if "sbc_matchup_type" not in rows.columns:
+        rows["sbc_matchup_type"] = "Regular Season"
+    rows["sbc_matchup_type"] = rows["sbc_matchup_type"].fillna("Regular Season")
     return rows
 
 
@@ -1050,7 +1052,16 @@ def aggregate_player_season_rows(rows, per_sbc_game=False):
     if rows.empty:
         return pd.DataFrame()
     group_cols = ["sbc_year", "sbc_team"]
+    ordered_rows = rows.copy()
+    ordered_rows["_sort_date"] = pd.to_datetime(ordered_rows.get("Date"), errors="coerce")
+    ordered_rows = ordered_rows.sort_values(["sbc_year", "_sort_date", "_period", "sbc_team"])
+    team_order = (
+        ordered_rows[group_cols]
+        .drop_duplicates()
+        .assign(_team_order=lambda frame: frame.groupby("sbc_year").cumcount())
+    )
     grouped = rows.groupby(group_cols, as_index=False)[BOX_SCORE_SUM_STATS].sum()
+    grouped = grouped.merge(team_order, on=group_cols, how="left")
     if per_sbc_game:
         denom = (
             rows.dropna(subset=["_period"])
@@ -1072,6 +1083,7 @@ def aggregate_player_season_rows(rows, per_sbc_game=False):
         total = {col: frame[col].sum() for col in BOX_SCORE_SUM_STATS}
         total["sbc_year"] = year
         total["sbc_team"] = "TOT"
+        total["_team_order"] = 999
         if per_sbc_game:
             total["_denom_gp"] = rows[rows["sbc_year"] == year].dropna(subset=["_period"])["_period"].nunique()
         else:
@@ -1083,13 +1095,14 @@ def aggregate_player_season_rows(rows, per_sbc_game=False):
         totals.append(total)
     if totals:
         grouped = pd.concat([grouped, pd.DataFrame(totals)], ignore_index=True)
-    per_game_cols = [col for col in BOX_SCORE_SUM_STATS if col != "GP"]
+    per_game_cols = BOX_SCORE_SUM_STATS if per_sbc_game else [col for col in BOX_SCORE_SUM_STATS if col != "GP"]
     gp_values = pd.to_numeric(grouped["_denom_gp"], errors="coerce").replace(0, pd.NA)
     for col in per_game_cols:
         grouped[col] = pd.to_numeric(grouped[col], errors="coerce").div(gp_values).fillna(0)
-    grouped["GP"] = pd.to_numeric(grouped["_denom_gp"], errors="coerce").fillna(0)
     grouped["Season"] = grouped["sbc_year"].apply(season_label_from_year)
-    grouped = grouped.sort_values(["sbc_year", "sbc_team"])
+    grouped["_is_total"] = (grouped["sbc_team"] == "TOT").astype(int)
+    grouped["_team_order"] = pd.to_numeric(grouped["_team_order"], errors="coerce").fillna(998)
+    grouped = grouped.sort_values(["sbc_year", "_is_total", "_team_order"])
     return grouped
 
 
@@ -1104,7 +1117,7 @@ def render_player_stats_table(rows, empty_text):
         cells = "".join(stat_cell_html(row, stat) for stat in stats)
         team_value = str(row.get("sbc_team", ""))
         if team_value == "TOT":
-            team_html = '<span class="sbc-player-profile-team-mark sbc-player-profile-team-total"><strong>TOT</strong><em>Total</em></span>'
+            team_html = f'<span class="sbc-player-profile-team-mark sbc-player-profile-team-total"><img src="{league_logo_html}" alt="SBCFBL logo"><strong>TOT</strong><em>Total</em></span>'
         else:
             visuals = team_visuals(team_value) if team_value in team_info else {"primary": LEAGUE_PRIMARY, "secondary": LEAGUE_SECONDARY, "font": LEAGUE_FONT, "logo": ""}
             logo_html = f'<img src="{escape(str(visuals.get("logo", "")), quote=True)}" alt="{escape(team_value, quote=True)} logo">' if visuals.get("logo") else ""
@@ -1115,7 +1128,7 @@ def render_player_stats_table(rows, empty_text):
             )
         body.append(f"""
             <tr>
-                <td class="sbc-player-profile-season"><strong>{escape(str(row.get('Season', '')))}</strong></td>
+                <td class="sbc-player-profile-season {'sbc-player-profile-season-total' if team_value == 'TOT' else ''}"><strong>{escape(str(row.get('Season', '')))}</strong>{'<em>Total</em>' if team_value == 'TOT' else ''}</td>
                 <td class="sbc-player-profile-team">{team_html}</td>
                 {cells}
             </tr>
@@ -9191,6 +9204,21 @@ st.markdown(
         white-space: nowrap;
     }}
 
+    .sbc-player-profile-season em {{
+        display: block;
+        margin-top: 0.16rem;
+        color: var(--sbc-muted);
+        font-size: 0.58rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-player-profile-season-total {{
+        background: color-mix(in srgb, {LEAGUE_PRIMARY} 8%, #ffffff) !important;
+    }}
+
     .sbc-player-profile-team-mark {{
         display: inline-flex;
         align-items: center;
@@ -9212,8 +9240,8 @@ st.markdown(
 
     .sbc-player-profile-team-mark strong {{
         overflow: hidden;
-        color: color-mix(in srgb, var(--profile-team-color) 78%, #111827);
-        font-family: var(--profile-team-font), "Poppins", sans-serif;
+        color: color-mix(in srgb, var(--profile-team-color) 82%, #111827) !important;
+        font-family: var(--profile-team-font), "Poppins", sans-serif !important;
         font-size: 0.78rem;
         font-weight: 950;
         line-height: 1;
@@ -9225,12 +9253,18 @@ st.markdown(
         --profile-team-color: {LEAGUE_PRIMARY};
         --profile-team-secondary: {LEAGUE_SECONDARY};
         --profile-team-font: "{league_font_css}";
-        min-width: 7rem;
-        justify-content: center;
+        min-width: 9rem;
+        justify-content: flex-start;
+        background: linear-gradient(90deg, #111827, #263244) !important;
+        border-left-color: #111827;
+    }}
+
+    .sbc-player-profile-team-total strong {{
+        color: #ffffff !important;
     }}
 
     .sbc-player-profile-team-total em {{
-        color: var(--sbc-muted);
+        color: rgba(255,255,255,0.66);
         font-size: 0.62rem;
         font-style: normal;
         font-weight: 850;
@@ -13273,7 +13307,8 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
             "Play-In": ("Play-In Stats", "Play-In", "No play-in games matched this player while active."),
         }
         title, type_value, empty_text = stat_type_lookup[stat_mode]
-        section_rows = player_rows[player_rows["Type"].astype(str) == type_value] if not player_rows.empty else pd.DataFrame()
+        type_column = "sbc_matchup_type" if "sbc_matchup_type" in player_rows.columns else "Type"
+        section_rows = player_rows[player_rows[type_column].astype(str) == type_value] if not player_rows.empty else pd.DataFrame()
         basis_note = "Per unique SBCFBL matchup." if pace_mode == "Per SBCFBL Matchup" else "Per NBA game played."
         render_html(f'<div class="sbc-awards-section-head"><span>{escape(title)}</span><em>{escape(basis_note)} Only NBA games on dates this player was ACTIVE in an SBCFBL matchup.</em></div>')
         render_player_stats_table(aggregate_player_season_rows(section_rows, per_sbc_game=(pace_mode == "Per SBCFBL Matchup")), empty_text)
