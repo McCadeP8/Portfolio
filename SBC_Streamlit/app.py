@@ -55,6 +55,9 @@ def render_html(markup):
     else:
         st.markdown(markup, unsafe_allow_html=True)
 
+
+APP_DIR = Path(__file__).resolve().parent
+
 TEAM_FONTS = {
     "Albuquerque": "Amatic SC",
     "Anaheim": "Baloo 2",
@@ -315,6 +318,313 @@ def period_range_label(selected_year, periods, fallback=""):
     return f"{labels[0]}-{labels[-1]}"
 
 
+BOX_SCORE_STATS = ["GP", "MP", "TS%", "2PTM", "2PTA", "2PT%", "3PTM", "3PTA", "3PT%", "FTM", "FTA", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+BOX_SCORE_SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+BOX_SCORE_WEIGHTS = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
+
+
+def _read_local_parquet(filename):
+    candidates = [APP_DIR / filename, APP_DIR.parent / filename, Path(filename)]
+    for path in candidates:
+        if path.exists():
+            return pd.read_parquet(path)
+    return pd.DataFrame()
+
+
+def _read_local_csv(filename):
+    candidates = [APP_DIR / filename, APP_DIR.parent / filename, Path(filename)]
+    for path in candidates:
+        if path.exists():
+            return pd.read_csv(path)
+    return pd.DataFrame()
+
+
+@st.cache_data(ttl=86400)
+def load_nba_player_boxscores_archive():
+    df = _read_local_parquet("nba_player_game_boxscores_2021_2026.parquet")
+    if not df.empty and "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
+    return df
+
+
+@st.cache_data(ttl=86400)
+def load_fantrax_players_snapshot():
+    df = _read_local_parquet("fantrax_players_snapshot.parquet")
+    if df.empty:
+        df = get_fantrax_players()
+    return ensure_columns(df, ["name", "fantraxId"]).dropna(subset=["name", "fantraxId"])
+
+
+def normalize_boxscore_player_key(value):
+    text = str(value or "")
+    text = re.sub(r"\b(Jr|Sr|II|III|IV|V)\b\.?", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"[^A-Za-z0-9]+", "", text).lower()
+    return text
+
+
+def team_short_name(team_name):
+    text = str(team_name or "").strip()
+    for city, info in team_info.items():
+        full_name = f"{city} {info.get('nickname', '')}".strip()
+        if text == city or text == full_name or text.startswith(f"{city} "):
+            return city
+    return text
+
+
+@st.cache_data(ttl=86400)
+def build_fantrax_to_espn_bridge():
+    ft = load_fantrax_players_snapshot().copy()
+    box = load_nba_player_boxscores_archive()
+    if ft.empty or box.empty:
+        return pd.DataFrame(columns=["fantraxId", "fantrax_name", "espn_player_id", "espn_name", "match_type"])
+
+    ft = ft.rename(columns={"name": "fantrax_name"}).dropna(subset=["fantrax_name", "fantraxId"])
+    ft["fantraxId"] = ft["fantraxId"].astype(str)
+    ft["_player_key"] = ft["fantrax_name"].apply(normalize_boxscore_player_key)
+
+    box_players = box[["nba_player_id", "player_name"]].dropna().drop_duplicates().copy()
+    box_players["nba_player_id"] = box_players["nba_player_id"].astype(str)
+    box_players["_player_key"] = box_players["player_name"].apply(normalize_boxscore_player_key)
+    key_counts = box_players.groupby("_player_key")["nba_player_id"].nunique()
+    unique_box_players = box_players[box_players["_player_key"].isin(key_counts[key_counts == 1].index)]
+
+    bridge = ft.merge(unique_box_players, on="_player_key", how="inner")
+    bridge = bridge.rename(columns={"nba_player_id": "espn_player_id", "player_name": "espn_name"})
+    bridge["match_type"] = "name"
+    bridge = bridge[["fantraxId", "fantrax_name", "espn_player_id", "espn_name", "match_type"]]
+
+    overrides = _read_local_csv("player_id_overrides.csv")
+    if not overrides.empty:
+        overrides = ensure_columns(overrides, ["fantraxId", "fantrax_name", "espn_player_id", "espn_name"])
+        overrides = overrides[["fantraxId", "fantrax_name", "espn_player_id", "espn_name"]].dropna(subset=["fantraxId", "espn_player_id"])
+        overrides["fantraxId"] = overrides["fantraxId"].astype(str)
+        overrides["espn_player_id"] = overrides["espn_player_id"].astype(str)
+        overrides["match_type"] = "override"
+        bridge = bridge[~bridge["fantraxId"].isin(overrides["fantraxId"])]
+        bridge = pd.concat([bridge, overrides], ignore_index=True)
+    return bridge.drop_duplicates("fantraxId").reset_index(drop=True)
+
+
+def recalc_shooting_stats(df):
+    out = df.copy()
+    for col in BOX_SCORE_SUM_STATS:
+        if col not in out.columns:
+            out[col] = 0
+        out[col] = pd.to_numeric(out[col], errors="coerce").fillna(0)
+    fga = out["2PTA"] + out["3PTA"]
+    out["TS%"] = (out["PTS"] / (2 * (fga + 0.44 * out["FTA"]))).where((fga + 0.44 * out["FTA"]) > 0, 0)
+    out["2PT%"] = (out["2PTM"] / out["2PTA"]).where(out["2PTA"] > 0, 0)
+    out["3PT%"] = (out["3PTM"] / out["3PTA"]).where(out["3PTA"] > 0, 0)
+    out["FT%"] = (out["FTM"] / out["FTA"]).where(out["FTA"] > 0, 0)
+    return out
+
+
+def matchup_boxscore_rows(matchup_row, rosters_df):
+    year = int(matchup_row.get("Year", 0))
+    matchup_period = int(matchup_row.get("Period", 0))
+    teams = [str(matchup_row.get("TeamA", "")), str(matchup_row.get("TeamB", ""))]
+
+    if period_calendar.empty or rosters_df.empty:
+        return pd.DataFrame()
+    calendar = period_calendar.copy()
+    calendar["Date"] = pd.to_datetime(calendar["Date"], errors="coerce").dt.date
+    matchup_days = calendar[
+        (pd.to_numeric(calendar["Year"], errors="coerce") == year)
+        & (pd.to_numeric(calendar["Period"], errors="coerce") == matchup_period)
+    ][["Year", "Day", "Date"]].dropna()
+    if matchup_days.empty:
+        return pd.DataFrame()
+    matchup_days["Year"] = matchup_days["Year"].astype(int)
+    matchup_days["Day"] = matchup_days["Day"].astype(int)
+
+    bridge = build_fantrax_to_espn_bridge()
+    if bridge.empty:
+        return pd.DataFrame()
+
+    active = rosters_df.copy()
+    active["Year"] = pd.to_numeric(active["Year"], errors="coerce")
+    active["period"] = pd.to_numeric(active["period"], errors="coerce")
+    active = active[
+        (active["Year"] == year)
+        & (active["status"].astype(str).str.upper() == "ACTIVE")
+        & (active["period"].isin(matchup_days["Day"]))
+    ].copy()
+    active["sbc_team"] = active["team_name"].apply(team_short_name)
+    active = active[active["sbc_team"].isin(teams)].copy()
+    active = active.rename(columns={"id": "fantraxId", "period": "Day"})
+    active["fantraxId"] = active["fantraxId"].astype(str)
+    active["Day"] = active["Day"].astype(int)
+    active = active.merge(bridge, on="fantraxId", how="left")
+    active = active.dropna(subset=["espn_player_id"])
+    active["espn_player_id"] = active["espn_player_id"].astype(str)
+
+    box = load_nba_player_boxscores_archive()
+    if box.empty:
+        return pd.DataFrame()
+    box = box[box["sbc_year"].astype(int) == year].copy()
+    box["Date"] = pd.to_datetime(box["Date"], errors="coerce").dt.date
+    box = box[box["Date"].isin(matchup_days["Date"])].copy()
+    box = box.merge(matchup_days[["Date", "Day"]], on="Date", how="inner")
+    box["nba_player_id"] = box["nba_player_id"].astype(str)
+
+    merged = active.merge(
+        box,
+        left_on=["Day", "espn_player_id"],
+        right_on=["Day", "nba_player_id"],
+        how="inner",
+    )
+    if merged.empty:
+        return pd.DataFrame()
+    merged["display_player"] = merged["fantrax_name"].fillna(merged["player_name"])
+    return merged.sort_values(["sbc_team", "display_player", "Date", "nba_game_id"]).reset_index(drop=True)
+
+
+def aggregate_boxscore_players(rows):
+    if rows.empty:
+        return rows
+    grouped = rows.groupby(["sbc_team", "fantraxId", "display_player"], as_index=False)[BOX_SCORE_SUM_STATS].sum()
+    grouped = recalc_shooting_stats(grouped)
+    return grouped.sort_values(["sbc_team", "PTS", "display_player"], ascending=[True, False, True]).reset_index(drop=True)
+
+
+def team_boxscore_totals(rows):
+    if rows.empty:
+        return rows
+    grouped = rows.groupby("sbc_team", as_index=False)[BOX_SCORE_SUM_STATS].sum()
+    grouped = recalc_shooting_stats(grouped)
+    return grouped
+
+
+def matchup_category_results(team_totals, team_a, team_b):
+    if team_totals.empty or team_totals["sbc_team"].nunique() < 2:
+        return pd.DataFrame(), 0, 0
+    totals = team_totals.set_index("sbc_team")
+    if team_a not in totals.index or team_b not in totals.index:
+        return pd.DataFrame(), 0, 0
+    rows = []
+    score_a = 0
+    score_b = 0
+    for stat, weight in BOX_SCORE_WEIGHTS.items():
+        val_a = float(totals.loc[team_a, stat])
+        val_b = float(totals.loc[team_b, stat])
+        if stat == "TO":
+            winner = team_a if val_a < val_b else team_b if val_b < val_a else "Tie"
+        else:
+            winner = team_a if val_a > val_b else team_b if val_b > val_a else "Tie"
+        if winner == team_a:
+            score_a += weight
+        elif winner == team_b:
+            score_b += weight
+        else:
+            score_a += weight / 2
+            score_b += weight / 2
+        rows.append({"Category": stat, team_a: val_a, team_b: val_b, "Votes": weight, "Winner": winner})
+    return pd.DataFrame(rows), score_a, score_b
+
+
+def format_boxscore_table(df, include_games=False):
+    if df.empty:
+        return df
+    table = df.copy()
+    if include_games:
+        table["Date"] = pd.to_datetime(table["Date"], errors="coerce").apply(lambda value: value.strftime("%b %d").replace(" 0", " ") if pd.notna(value) else "")
+        table = table.rename(columns={"display_player": "Player", "sbc_team": "Team", "nba_team": "NBA", "opponent": "Opp"})
+        columns = ["Team", "Player", "Date", "NBA", "Opp"] + BOX_SCORE_STATS
+    else:
+        table = table.rename(columns={"display_player": "Player", "sbc_team": "Team"})
+        columns = ["Team", "Player"] + BOX_SCORE_STATS
+    for pct_col in ["TS%", "2PT%", "3PT%", "FT%"]:
+        if pct_col in table.columns:
+            table[pct_col] = (pd.to_numeric(table[pct_col], errors="coerce").fillna(0) * 100).round(1)
+    for stat in ["MP", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]:
+        if stat in table.columns:
+            table[stat] = pd.to_numeric(table[stat], errors="coerce").fillna(0).round(1)
+    return table[[col for col in columns if col in table.columns]]
+
+
+@st.dialog("SBCFBL Box Score", width="large")
+def render_matchup_boxscore_dialog(matchup_row, rosters_df):
+    team_a = str(matchup_row.get("TeamA", ""))
+    team_b = str(matchup_row.get("TeamB", ""))
+    score_a = matchup_row.get("TeamA_Score", matchup_row.get("TeamAScore", ""))
+    score_b = matchup_row.get("TeamB_Score", matchup_row.get("TeamBScore", ""))
+    info_a = team_info.get(team_a, {})
+    info_b = team_info.get(team_b, {})
+    period_label = period_date_label(matchup_row.get("Year", ""), matchup_row.get("Period", ""), f'P{matchup_row.get("Period", "")}')
+    round_label = str(matchup_row.get("Round", matchup_row.get("Type", "")))
+    title_label = "Championship Box Score" if "Final" in round_label or "Championship" in round_label else "Matchup Box Score"
+
+    render_html(f"""
+        <section class="sbc-box-dialog-hero" style="--box-a:{escape(str(info_a.get('bg', '#111827')), quote=True)}; --box-b:{escape(str(info_b.get('bg', '#334155')), quote=True)};">
+            <div class="sbc-box-dialog-kicker">{escape(title_label)} / {escape(period_label)}</div>
+            <div class="sbc-box-dialog-matchup">
+                <div class="sbc-box-dialog-team">
+                    <img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
+                    <strong>{escape(live_team_full_name(team_a))}</strong>
+                    <em>{escape(str(matchup_row.get('TeamA_record', '')))}</em>
+                </div>
+                <div class="sbc-box-dialog-score">
+                    <span>{escape(format_score_value(score_a))}</span>
+                    <i>{escape(str(round_label))}</i>
+                    <span>{escape(format_score_value(score_b))}</span>
+                </div>
+                <div class="sbc-box-dialog-team">
+                    <img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
+                    <strong>{escape(live_team_full_name(team_b))}</strong>
+                    <em>{escape(str(matchup_row.get('TeamB_record', '')))}</em>
+                </div>
+            </div>
+        </section>
+    """)
+
+    rows = matchup_boxscore_rows(matchup_row, rosters_df)
+    if rows.empty:
+        render_html('<div class="sbc-empty-state">No player-game box score rows matched this matchup yet. Check the Fantrax-to-ESPN mapping file for unmapped active players.</div>')
+        return
+
+    team_totals = team_boxscore_totals(rows)
+    category_table, calc_a, calc_b = matchup_category_results(team_totals, team_a, team_b)
+    render_html(f"""
+        <div class="sbc-box-dialog-summary">
+            <div><span>Recalculated Score</span><strong>{escape(format_score_value(calc_a))} - {escape(format_score_value(calc_b))}</strong></div>
+            <div><span>Player Games</span><strong>{rows.shape[0]:,}</strong></div>
+            <div><span>Active Filter</span><strong>ACTIVE only</strong></div>
+        </div>
+    """)
+
+    view_mode = st.segmented_control(
+        "View",
+        ["Grouped by Player", "Individual Games"],
+        default="Grouped by Player",
+        key=f"box_mode_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}",
+    )
+
+    render_html('<div class="sbc-cap-eyebrow">Team Totals</div>')
+    totals_display = format_boxscore_table(team_totals.rename(columns={"sbc_team": "display_player"}), include_games=False)
+    if "Player" in totals_display.columns:
+        totals_display = totals_display.rename(columns={"Player": "Team"})
+    st.dataframe(totals_display, width="stretch", hide_index=True)
+
+    if not category_table.empty:
+        render_html('<div class="sbc-cap-eyebrow">Category Votes</div>')
+        cat_display = category_table.copy()
+        for idx, cat_row in cat_display.iterrows():
+            if cat_row.get("Category") in ["TS%", "2PT%", "3PT%", "FT%"]:
+                for team_col in [team_a, team_b]:
+                    cat_display.at[idx, team_col] = round(float(cat_display.at[idx, team_col]) * 100, 1)
+            else:
+                for team_col in [team_a, team_b]:
+                    cat_display.at[idx, team_col] = round(float(cat_display.at[idx, team_col]), 1)
+        st.dataframe(cat_display, width="stretch", hide_index=True)
+
+    render_html('<div class="sbc-cap-eyebrow">Player Box Score</div>')
+    if view_mode == "Individual Games":
+        player_display = format_boxscore_table(rows, include_games=True)
+    else:
+        player_display = format_boxscore_table(aggregate_boxscore_players(rows), include_games=False)
+    st.dataframe(player_display, width="stretch", hide_index=True)
+
+
 def current_period_index(options):
     try:
         current_value = int(current_matchup)
@@ -398,7 +708,8 @@ need_ft = need_checks_data
 need_standings = need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft
 need_dh = need_history_draft
 need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_history_stats or need_history_awards
-need_all_time_rosters = need_history_awards
+need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
+need_all_time_rosters = need_history_awards or need_boxscore_data
 need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or need_league_standings or need_history
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup
@@ -5433,14 +5744,21 @@ def render_scoreboard_cards(scores_df):
         "Play-In": "Play-In",
         "Playoffs": "Playoffs",
     }
-    groups = []
     for type_name in ["Regular Season", "In-Season Tournament", "Play-In", "Playoffs"]:
         group_df = scores_df[scores_df["Type"].astype(str) == type_name].copy()
         if group_df.empty:
             continue
         group_df = group_df.sort_values(["Round", "TeamB_Nickname", "TeamA_Nickname"], na_position="last")
-        cards = []
-        for _, row in group_df.iterrows():
+        render_html(f"""
+            <section class="sbc-score-group">
+                <div class="sbc-score-group-head">
+                    <span>{escape(type_labels.get(type_name, type_name))}</span>
+                    <em>{group_df.shape[0]} matchup{'s' if group_df.shape[0] != 1 else ''}</em>
+                </div>
+            </section>
+        """)
+        matchup_cols = st.columns(min(3, group_df.shape[0]))
+        for card_idx, (_, row) in enumerate(group_df.iterrows()):
             team_a = str(row.get("TeamA", ""))
             team_b = str(row.get("TeamB", ""))
             score_a = row.get("TeamA_Score", row.get("TeamAScore", ""))
@@ -5458,11 +5776,14 @@ def render_scoreboard_cards(scores_df):
             record_a = row.get("TeamA_record", "")
             record_b = row.get("TeamB_record", "")
             round_label = row.get("Round", type_name)
-            cards.append(f"""
+            period_label = period_date_label(row.get("Year", ""), row.get("Period", ""), f'P{row.get("Period", "")}')
+            col_idx = card_idx % len(matchup_cols)
+            with matchup_cols[col_idx]:
+                render_html(f"""
                 <article class="sbc-score-card">
                     <div class="sbc-score-card-top">
                         <span>{escape(str(round_label))}</span>
-                        <em>{escape(period_date_label(row.get("Year", ""), row.get("Period", ""), f'P{row.get("Period", "")}'))}</em>
+                        <em>BOX SCORE</em>
                     </div>
                     <div class="sbc-score-team {'sbc-score-winner' if a_winner else ''}" style="--score-color:{escape(str(color_a), quote=True)};">
                         <img src="{escape(str(logo_a), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
@@ -5481,18 +5802,10 @@ def render_scoreboard_cards(scores_df):
                         <b>{escape(format_score_value(score_b))}</b>
                     </div>
                 </article>
-            """)
-        groups.append(f"""
-            <section class="sbc-score-group">
-                <div class="sbc-score-group-head">
-                    <span>{escape(type_labels.get(type_name, type_name))}</span>
-                    <em>{group_df.shape[0]} matchup{'s' if group_df.shape[0] != 1 else ''}</em>
-                </div>
-                <div class="sbc-score-grid">{''.join(cards)}</div>
-            </section>
-        """)
-
-    render_html(f'<div class="sbc-scoreboard-wrap">{"".join(groups)}</div>')
+                """)
+                button_key = f"boxscore_{row.get('Game_ID', '')}_{row.get('Year', '')}_{row.get('Period', '')}_{team_a}_{team_b}"
+                if st.button(period_label, key=button_key, use_container_width=True, help="Open matchup box score"):
+                    render_matchup_boxscore_dialog(row.to_dict(), all_time_rosters)
 
 
 def render_conference_standings(standings_df, selected_year, selected_period, conference):
@@ -7750,6 +8063,123 @@ st.markdown(
 
     .sbc-score-winner b {{
         color: var(--sbc-ink);
+    }}
+
+    .sbc-box-dialog-hero {{
+        overflow: hidden;
+        border-radius: 8px;
+        background:
+            linear-gradient(115deg, color-mix(in srgb, var(--box-a) 86%, #111827 14%) 0%, color-mix(in srgb, var(--box-b) 78%, #111827 22%) 100%);
+        color: #ffffff;
+        padding: 1rem;
+        box-shadow: 0 18px 42px rgba(18, 25, 38, 0.18);
+    }}
+
+    .sbc-box-dialog-kicker {{
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.82;
+    }}
+
+    .sbc-box-dialog-matchup {{
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.85rem;
+    }}
+
+    .sbc-box-dialog-team {{
+        display: grid;
+        justify-items: center;
+        min-width: 0;
+        text-align: center;
+    }}
+
+    .sbc-box-dialog-team img {{
+        width: 4.7rem;
+        height: 4.7rem;
+        object-fit: contain;
+        filter: drop-shadow(0 10px 16px rgba(0,0,0,0.25));
+    }}
+
+    .sbc-box-dialog-team strong {{
+        overflow: hidden;
+        max-width: 100%;
+        margin-top: 0.45rem;
+        font-size: 1rem;
+        font-weight: 950;
+        line-height: 1.08;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-box-dialog-team em {{
+        margin-top: 0.24rem;
+        color: rgba(255,255,255,0.75);
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 900;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-box-dialog-score {{
+        display: grid;
+        justify-items: center;
+        gap: 0.24rem;
+        min-width: 8rem;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+    }}
+
+    .sbc-box-dialog-score span {{
+        font-size: 2.45rem;
+        font-weight: 950;
+        line-height: 0.95;
+    }}
+
+    .sbc-box-dialog-score i {{
+        color: rgba(255,255,255,0.74);
+        font-size: 0.62rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-box-dialog-summary {{
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.65rem;
+        margin: 0.8rem 0;
+    }}
+
+    .sbc-box-dialog-summary div {{
+        border: 1px solid rgba(23, 32, 42, 0.10);
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 0.65rem 0.7rem;
+        box-shadow: 0 10px 22px rgba(18, 25, 38, 0.06);
+    }}
+
+    .sbc-box-dialog-summary span {{
+        display: block;
+        color: var(--sbc-muted);
+        font-size: 0.66rem;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-box-dialog-summary strong {{
+        display: block;
+        margin-top: 0.25rem;
+        color: var(--sbc-ink);
+        font-size: 1.1rem;
+        font-weight: 950;
     }}
 
     .sbc-history-layout {{

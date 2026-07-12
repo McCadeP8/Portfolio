@@ -635,7 +635,6 @@ def fetch_cdn_player_game_log(
 def normalize_boxscores(raw: pd.DataFrame, sbc_year: int, nba_season: str) -> pd.DataFrame:
     df = raw.copy()
     df["Date"] = pd.to_datetime(df["GAME_DATE"]).dt.date
-    df["GP"] = 1
 
     numeric_cols = [
         "MIN",
@@ -671,6 +670,8 @@ def normalize_boxscores(raw: pd.DataFrame, sbc_year: int, nba_season: str) -> pd
     df["ST"] = df["STL"]
     df["TO"] = df["TOV"]
     df["+/-"] = df["PLUS_MINUS"]
+    appearance_cols = ["MP", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA"]
+    df["GP"] = (df[appearance_cols].abs().sum(axis=1) > 0).astype(int)
 
     df["home_away"] = df["MATCHUP"].astype(str).str.extract(r"(vs\.|@)", expand=False)
     df["is_home"] = df["home_away"].eq("vs.")
