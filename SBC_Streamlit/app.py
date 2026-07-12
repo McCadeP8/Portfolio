@@ -559,7 +559,7 @@ def boxscore_stat_label(stat):
     return {"2PT%": "2P%", "3PT%": "3P%", "ST": "STL", "TO": "TOV"}.get(stat, stat)
 
 
-def stat_number(value, pct=False):
+def stat_number(value, pct=False, signed=False):
     try:
         number = float(value)
     except (TypeError, ValueError):
@@ -567,29 +567,56 @@ def stat_number(value, pct=False):
     if pct:
         return f"{number * 100:.1f}%"
     if abs(number - round(number)) < 0.05:
-        return f"{int(round(number))}"
-    return f"{number:.1f}"
+        text = f"{int(round(number))}"
+    else:
+        text = f"{number:.1f}"
+    if signed and number >= 0:
+        return f"+{text}"
+    return text
 
 
-def stat_subtext(row, stat):
-    if stat == "MP":
-        return f"{stat_number(row.get('GP', 0))} GP"
+def shot_attempts(row, made_col, attempt_col):
+    attempts = float(row.get(attempt_col, 0) or 0)
+    if attempts <= 0:
+        return ""
+    return f"{stat_number(row.get(made_col, 0))} / {stat_number(attempts)}"
+
+
+def stat_has_shooting_volume(row, stat):
+    if stat == "TS%":
+        return sum(float(row.get(col, 0) or 0) for col in ["2PTA", "3PTA", "FTA"]) > 0
     if stat == "2PT%":
-        return f"{stat_number(row.get('2PTM', 0))} / {stat_number(row.get('2PTA', 0))}"
+        return float(row.get("2PTA", 0) or 0) > 0
     if stat == "3PT%":
-        return f"{stat_number(row.get('3PTM', 0))} / {stat_number(row.get('3PTA', 0))}"
+        return float(row.get("3PTA", 0) or 0) > 0
     if stat == "FT%":
-        return f"{stat_number(row.get('FTM', 0))} / {stat_number(row.get('FTA', 0))}"
+        return float(row.get("FTA", 0) or 0) > 0
+    return True
+
+
+def stat_subtext(row, stat, show_gp=True):
+    if stat == "MP":
+        return f"{stat_number(row.get('GP', 0))} GP" if show_gp else ""
+    if stat == "2PT%":
+        return shot_attempts(row, "2PTM", "2PTA")
+    if stat == "3PT%":
+        return shot_attempts(row, "3PTM", "3PTA")
+    if stat == "FT%":
+        return shot_attempts(row, "FTM", "FTA")
     return ""
 
 
-def stat_cell_html(row, stat, winner=False, align="center"):
+def stat_cell_html(row, stat, winner=False, align="center", show_gp=True):
     is_pct = stat in ["TS%", "2PT%", "3PT%", "FT%"]
-    sub = stat_subtext(row, stat)
+    if is_pct and not stat_has_shooting_volume(row, stat):
+        value = "-"
+    else:
+        value = stat_number(row.get(stat, 0), pct=is_pct, signed=(stat == "+/-"))
+    sub = stat_subtext(row, stat, show_gp=show_gp)
     sub_html = f"<em>{escape(sub)}</em>" if sub else ""
     return f"""
         <td class="sbc-box-stat-cell {'sbc-box-stat-win' if winner else ''}" style="text-align:{align};">
-            <strong>{escape(stat_number(row.get(stat, 0), pct=is_pct))}</strong>
+            <strong>{escape(value)}</strong>
             {sub_html}
         </td>
     """
@@ -609,6 +636,8 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
     category_lookup = category_table.set_index("Category")
     info_a = team_info.get(team_a, {})
     info_b = team_info.get(team_b, {})
+    font_a = team_font_for_name(team_a)
+    font_b = team_font_for_name(team_b)
     rows_html = []
     for stat in BOX_SCORE_CATEGORY_ORDER:
         if stat not in category_lookup.index or team_a not in totals.index or team_b not in totals.index:
@@ -628,16 +657,16 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
             </tr>
         """)
     render_html(f"""
-        <section class="sbc-box-panel">
+        <section class="sbc-box-panel sbc-box-category-panel" style="--cat-a:{escape(str(info_a.get('bg', '#111827')), quote=True)};--cat-b:{escape(str(info_b.get('bg', '#334155')), quote=True)};--cat-font-a:{escape(str(font_a), quote=True)};--cat-font-b:{escape(str(font_b), quote=True)};">
             <div class="sbc-box-panel-head">
                 <span>Category Points</span>
             </div>
             <table class="sbc-box-category-table">
                 <thead>
                     <tr>
-                        <th><img src="{escape(str(info_a.get('logo', '')), quote=True)}" alt="{escape(team_a, quote=True)} logo"></th>
+                        <th><span class="sbc-box-category-team-name sbc-box-category-team-a">{escape(live_team_full_name(team_a))}</span></th>
                         <th>Category</th>
-                        <th><img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(team_b, quote=True)} logo"></th>
+                        <th><span class="sbc-box-category-team-name sbc-box-category-team-b">{escape(live_team_full_name(team_b))}</span></th>
                     </tr>
                 </thead>
                 <tbody>{''.join(rows_html)}</tbody>
@@ -646,20 +675,44 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
     """)
 
 
+def matchup_label_for_row(row):
+    matchup = str(row.get("matchup", "") or "").strip()
+    if matchup:
+        return matchup
+    nba_team = str(row.get("nba_team", "") or "").strip()
+    opponent = str(row.get("opponent", "") or "").strip()
+    if nba_team and opponent:
+        return f"{nba_team} vs. {opponent}"
+    return nba_team or opponent
+
+
 def render_player_boxscore_team(team_rows, team_name, aggregate):
     info = team_info.get(team_name, {})
     primary = info.get("bg", "#111827")
     secondary = info.get("bg2", primary)
     font = team_font_for_name(team_name)
     stats = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+    team_rows = team_rows.copy()
+    if aggregate:
+        mp_values = team_rows["MP"] if "MP" in team_rows else pd.Series(0, index=team_rows.index)
+        team_rows["_sort_mp"] = pd.to_numeric(mp_values, errors="coerce").fillna(0)
+        team_rows = team_rows.sort_values(["_sort_mp", "display_player"], ascending=[False, True])
+    else:
+        date_values = team_rows["Date"] if "Date" in team_rows else pd.Series(pd.NaT, index=team_rows.index)
+        team_rows["_sort_date"] = pd.to_datetime(date_values, errors="coerce")
+        team_rows = team_rows.sort_values(["_sort_date", "display_player"], ascending=[True, True])
     rows_html = []
+    last_date_text = None
     for _, row in team_rows.iterrows():
         game_meta = ""
         if not aggregate:
             game_date = pd.to_datetime(row.get("Date"), errors="coerce")
             date_text = game_date.strftime("%b %d").replace(" 0", " ") if pd.notna(game_date) else ""
-            game_meta = f"<em>{escape(date_text)} / {escape(str(row.get('nba_team', '')))} {escape(str(row.get('matchup', '')))}</em>"
-        stat_cells = "".join(stat_cell_html(row, stat) for stat in stats)
+            if date_text != last_date_text:
+                rows_html.append(f'<tr class="sbc-box-game-date-row"><td colspan="{len(stats) + 1}">{escape(date_text)}</td></tr>')
+                last_date_text = date_text
+            game_meta = f"<em>{escape(matchup_label_for_row(row))}</em>"
+        stat_cells = "".join(stat_cell_html(row, stat, show_gp=aggregate) for stat in stats)
         rows_html.append(f"""
             <tr>
                 <td class="sbc-box-player-cell">
@@ -8214,9 +8267,9 @@ st.markdown(
     div[data-testid="stToggle"] {{
         display: inline-flex;
         align-items: center;
-        border: 1px solid rgba(23,32,42,0.14);
+        border: 1px solid rgba(23,32,42,0.18);
         border-radius: 8px;
-        background: #ffffff;
+        background: #f8fafc;
         box-shadow: 0 8px 18px rgba(18,25,38,0.06);
         margin-top: 0.85rem;
         padding: 0.4rem 0.55rem;
@@ -8229,12 +8282,28 @@ st.markdown(
         font-weight: 950 !important;
     }}
 
-    div[data-testid="stToggle"] [role="switch"] {{
-        border: 1px solid rgba(23,32,42,0.22) !important;
-        background: #e5e7eb !important;
+    div[data-testid="stToggle"] [role="switch"],
+    div[data-testid="stToggle"] [data-baseweb="checkbox"] {{
+        border: 1px solid rgba(23,32,42,0.30) !important;
+        background: #cbd5e1 !important;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55) !important;
     }}
 
-    div[data-testid="stToggle"] [role="switch"][aria-checked="true"] {{
+    div[data-testid="stToggle"] [role="switch"]::before,
+    div[data-testid="stToggle"] [role="switch"]::after,
+    div[data-testid="stToggle"] [data-baseweb="checkbox"]::before,
+    div[data-testid="stToggle"] [data-baseweb="checkbox"]::after {{
+        background: #ffffff !important;
+        box-shadow: 0 1px 4px rgba(18,25,38,0.35) !important;
+    }}
+
+    div[data-testid="stToggle"] [role="switch"][aria-checked="false"],
+    div[data-testid="stToggle"] [data-baseweb="checkbox"][aria-checked="false"] {{
+        background: #94a3b8 !important;
+    }}
+
+    div[data-testid="stToggle"] [role="switch"][aria-checked="true"],
+    div[data-testid="stToggle"] [data-baseweb="checkbox"][aria-checked="true"] {{
         background: {LEAGUE_PRIMARY} !important;
     }}
 
@@ -8374,6 +8443,12 @@ st.markdown(
         margin-top: 0.8rem;
     }}
 
+    .sbc-box-category-panel {{
+        max-width: 58rem;
+        margin-left: auto;
+        margin-right: auto;
+    }}
+
     .sbc-box-panel-head,
     .sbc-box-team-head {{
         display: flex;
@@ -8427,6 +8502,27 @@ st.markdown(
         border-collapse: collapse;
         color: var(--sbc-ink);
         font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-box-category-team-name {{
+        display: inline-block;
+        max-width: 16rem;
+        overflow: hidden;
+        font-size: clamp(0.9rem, 1.35vw, 1.2rem);
+        font-weight: 950;
+        line-height: 1;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-box-category-team-a {{
+        color: var(--cat-a);
+        font-family: var(--cat-font-a), "Poppins", "Segoe UI", sans-serif;
+    }}
+
+    .sbc-box-category-team-b {{
+        color: var(--cat-b);
+        font-family: var(--cat-font-b), "Poppins", "Segoe UI", sans-serif;
     }}
 
     .sbc-box-category-table th,
@@ -8516,6 +8612,18 @@ st.markdown(
         left: 0;
         z-index: 1;
         background: #ffffff;
+    }}
+
+    .sbc-box-player-table tr.sbc-box-game-date-row td {{
+        position: static;
+        z-index: 2;
+        background: color-mix(in srgb, var(--box-team) 10%, #ffffff);
+        color: color-mix(in srgb, var(--box-team) 72%, #111827);
+        font-size: 0.68rem;
+        font-weight: 950;
+        letter-spacing: 0.07em;
+        padding: 0.38rem 0.6rem;
+        text-transform: uppercase;
     }}
 
     .sbc-box-player-cell {{
