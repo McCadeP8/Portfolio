@@ -971,14 +971,13 @@ def render_award_detail_ledger(awards_table):
             <tr>
                 <td>{escape(year_text)}</td>
                 <td>{escape(str(row.get('Award', '')))}</td>
-                <td>{escape(str(row.get('Winner', '')))}</td>
             </tr>
         """)
     render_html(f"""
         <div class="sbc-awards-section-head"><span>Award Ledger</span><em>Manual awards archive, unsummarized.</em></div>
         <div class="sbc-history-table-wrap">
             <table class="sbc-history-overview-table">
-                <thead><tr><th>Year</th><th>Award</th><th>Player</th></tr></thead>
+                <thead><tr><th>Year</th><th>Award</th></tr></thead>
                 <tbody>{''.join(rows)}</tbody>
             </table>
         </div>
@@ -1103,10 +1102,21 @@ def render_player_stats_table(rows, empty_text):
     body = []
     for _, row in rows.iterrows():
         cells = "".join(stat_cell_html(row, stat) for stat in stats)
+        team_value = str(row.get("sbc_team", ""))
+        if team_value == "TOT":
+            team_html = '<span class="sbc-player-profile-team-mark sbc-player-profile-team-total"><strong>TOT</strong><em>Total</em></span>'
+        else:
+            visuals = team_visuals(team_value) if team_value in team_info else {"primary": LEAGUE_PRIMARY, "secondary": LEAGUE_SECONDARY, "font": LEAGUE_FONT, "logo": ""}
+            logo_html = f'<img src="{escape(str(visuals.get("logo", "")), quote=True)}" alt="{escape(team_value, quote=True)} logo">' if visuals.get("logo") else ""
+            team_html = (
+                f'<span class="sbc-player-profile-team-mark" style="--profile-team-color:{escape(str(visuals["primary"]), quote=True)};'
+                f'--profile-team-secondary:{escape(str(visuals["secondary"]), quote=True)};--profile-team-font:{escape(str(visuals["font"]), quote=True)};">'
+                f'{logo_html}<strong>{escape(live_team_full_name(team_value))}</strong></span>'
+            )
         body.append(f"""
             <tr>
                 <td class="sbc-player-profile-season"><strong>{escape(str(row.get('Season', '')))}</strong></td>
-                <td class="sbc-player-profile-team"><strong>{escape(str(row.get('sbc_team', '')))}</strong></td>
+                <td class="sbc-player-profile-team">{team_html}</td>
                 {cells}
             </tr>
         """)
@@ -9033,8 +9043,8 @@ st.markdown(
         grid-template-columns: 12rem minmax(0, 1fr) minmax(13rem, 0.52fr);
         gap: 1.25rem;
         align-items: center;
-        width: min(80%, 72rem);
-        max-width: 72rem;
+        width: 100%;
+        max-width: 90rem;
         overflow: hidden;
         border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 34%, rgba(23,32,42,0.12));
         border-radius: 8px;
@@ -9179,6 +9189,52 @@ st.markdown(
     .sbc-player-profile-season,
     .sbc-player-profile-team {{
         white-space: nowrap;
+    }}
+
+    .sbc-player-profile-team-mark {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.42rem;
+        min-width: 13rem;
+        border-left: 0.32rem solid var(--profile-team-color);
+        border-radius: 8px;
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--profile-team-color) 14%, #ffffff), #ffffff 72%);
+        padding: 0.32rem 0.5rem 0.32rem 0.42rem;
+    }}
+
+    .sbc-player-profile-team-mark img {{
+        width: 1.9rem;
+        height: 1.9rem;
+        object-fit: contain;
+        filter: drop-shadow(0 3px 6px rgba(18,25,38,0.14));
+    }}
+
+    .sbc-player-profile-team-mark strong {{
+        overflow: hidden;
+        color: color-mix(in srgb, var(--profile-team-color) 78%, #111827);
+        font-family: var(--profile-team-font), "Poppins", sans-serif;
+        font-size: 0.78rem;
+        font-weight: 950;
+        line-height: 1;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-player-profile-team-total {{
+        --profile-team-color: {LEAGUE_PRIMARY};
+        --profile-team-secondary: {LEAGUE_SECONDARY};
+        --profile-team-font: "{league_font_css}";
+        min-width: 7rem;
+        justify-content: center;
+    }}
+
+    .sbc-player-profile-team-total em {{
+        color: var(--sbc-muted);
+        font-size: 0.62rem;
+        font-style: normal;
+        font-weight: 850;
+        text-transform: uppercase;
     }}
 
     .sbc-history-layout {{
@@ -13207,7 +13263,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         )
         pace_mode = st.radio(
             "Stat Basis",
-            options=["Per NBA Game", "Per SBCFBL Game"],
+            options=["Per NBA Game", "Per SBCFBL Matchup"],
             horizontal=True,
             key="history_player_stats_basis",
         )
@@ -13218,10 +13274,9 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         }
         title, type_value, empty_text = stat_type_lookup[stat_mode]
         section_rows = player_rows[player_rows["Type"].astype(str) == type_value] if not player_rows.empty else pd.DataFrame()
-        basis_note = "Per unique SBCFBL matchup period." if pace_mode == "Per SBCFBL Game" else "Per NBA game played."
+        basis_note = "Per unique SBCFBL matchup." if pace_mode == "Per SBCFBL Matchup" else "Per NBA game played."
         render_html(f'<div class="sbc-awards-section-head"><span>{escape(title)}</span><em>{escape(basis_note)} Only NBA games on dates this player was ACTIVE in an SBCFBL matchup.</em></div>')
-        render_player_stats_table(aggregate_player_season_rows(section_rows, per_sbc_game=(pace_mode == "Per SBCFBL Game")), empty_text)
-        render_html('<div class="sbc-mini-note">Stats use the local NBA player-game archive and are filtered to SBCFBL active roster days. Basketball-Reference style layout only; no Sports Reference data is used here.</div>')
+        render_player_stats_table(aggregate_player_season_rows(section_rows, per_sbc_game=(pace_mode == "Per SBCFBL Matchup")), empty_text)
         render_award_detail_ledger(awards_table)
 
 if main_page == "League Hub" and selected_league_page == "Standings":
