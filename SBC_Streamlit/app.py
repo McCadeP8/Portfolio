@@ -861,6 +861,165 @@ def render_team_player_boxscore_for_matchup(matchup_row, team_name, rosters_df, 
     render_player_boxscore_team(aggregate_boxscore_players(rows) if aggregate else rows, team_name, aggregate)
 
 
+def season_label_from_year(year):
+    try:
+        year = int(year)
+    except (TypeError, ValueError):
+        return str(year or "")
+    return f"{year - 1}-{str(year)[-2:]}"
+
+
+def player_stats_options(rosters_df):
+    if rosters_df is None or rosters_df.empty:
+        return pd.DataFrame(columns=["fantrax_id", "display_name"])
+    work = rosters_df.copy()
+    year_col = "Year" if "Year" in work.columns else "year"
+    work = work[work.get("status", "").astype(str).str.upper() == "ACTIVE"].copy()
+    bridge = load_player_id_bridge()
+    options = (
+        work[["id"]]
+        .dropna()
+        .drop_duplicates()
+        .rename(columns={"id": "fantrax_id"})
+        .merge(bridge[["fantrax_id", "fantrax_name", "espn_player_id"]], on="fantrax_id", how="left")
+    )
+    options["display_name"] = options["fantrax_name"].fillna(options["fantrax_id"]).astype(str)
+    options = options.sort_values("display_name", key=lambda col: col.str.lower()).reset_index(drop=True)
+    return options
+
+
+def current_player_contract(player_name, cap_df):
+    if cap_df is None or cap_df.empty or "Player" not in cap_df.columns:
+        return {}
+    row = cap_df[cap_df["Player"].astype(str).str.lower() == str(player_name).lower()]
+    if row.empty:
+        return {}
+    row = row.iloc[0]
+    salary_col = f"Y{current_year}"
+    type_col = f"Type{current_year}"
+    salary = row.get(salary_col, "")
+    return {
+        "team": row.get("Team", ""),
+        "type": row.get(type_col, ""),
+        "salary": salary,
+        "status": row.get("Type", ""),
+    }
+
+
+def player_awards_for_name(player_name, awards_df):
+    if awards_df is None or awards_df.empty or not {"Award", "Year", "Winner"}.issubset(awards_df.columns):
+        return []
+    work = awards_df[awards_df["Winner"].astype(str).str.lower() == str(player_name).lower()].copy()
+    if work.empty:
+        return []
+    work["_year"] = pd.to_numeric(work["Year"], errors="coerce")
+    work = work.sort_values(["_year", "Award"], ascending=[False, True])
+    return [f"{int(row['_year']) if pd.notna(row['_year']) else row.get('Year', '')} {row.get('Award', '')}" for _, row in work.iterrows()]
+
+
+def selected_player_game_rows(fantrax_id, rosters_df, schedule_df):
+    if not fantrax_id or rosters_df is None or rosters_df.empty:
+        return pd.DataFrame()
+    bridge = load_player_id_bridge()
+    bridge_row = bridge[bridge["fantrax_id"] == fantrax_id]
+    if bridge_row.empty or is_blank_value(bridge_row.iloc[0].get("espn_player_id")):
+        return pd.DataFrame()
+    espn_id = str(bridge_row.iloc[0]["espn_player_id"])
+    year_col = "Year" if "Year" in rosters_df.columns else "year"
+    active = rosters_df[
+        (rosters_df["id"].astype(str) == str(fantrax_id))
+        & (rosters_df["status"].astype(str).str.upper() == "ACTIVE")
+    ].copy()
+    if active.empty:
+        return pd.DataFrame()
+    active["_year"] = pd.to_numeric(active[year_col], errors="coerce").astype("Int64")
+    active["_period"] = pd.to_numeric(active["period"], errors="coerce").astype("Int64")
+    calendar = period_calendar.copy()
+    if calendar.empty:
+        return pd.DataFrame()
+    calendar["_year"] = pd.to_numeric(calendar["Year"], errors="coerce").astype("Int64")
+    calendar["_period"] = pd.to_numeric(calendar["Day"], errors="coerce").astype("Int64")
+    calendar["Date"] = pd.to_datetime(calendar["Date"], errors="coerce").dt.normalize()
+    active_dates = active.merge(calendar[["_year", "_period", "Date"]], on=["_year", "_period"], how="left")
+    active_dates = active_dates.dropna(subset=["Date"])
+    if active_dates.empty:
+        return pd.DataFrame()
+    box = load_nba_player_boxscores_archive()
+    box = box[box["nba_player_id"].astype(str) == espn_id].copy()
+    box["Date"] = pd.to_datetime(box["Date"], errors="coerce").dt.normalize()
+    rows = box.merge(
+        active_dates[["_year", "_period", "Date", "team_name"]].rename(columns={"team_name": "sbc_team"}),
+        left_on=["sbc_year", "Date"],
+        right_on=["_year", "Date"],
+        how="inner",
+    )
+    if rows.empty:
+        return rows
+    sched = schedule_df.copy() if schedule_df is not None else pd.DataFrame()
+    if not sched.empty:
+        sched["_year"] = pd.to_numeric(sched["Year"], errors="coerce").astype("Int64")
+        sched["_period"] = pd.to_numeric(sched["Period"], errors="coerce").astype("Int64")
+        sched_a = sched[["_year", "_period", "Type", "TeamA"]].rename(columns={"TeamA": "sbc_team"})
+        sched_b = sched[["_year", "_period", "Type", "TeamB"]].rename(columns={"TeamB": "sbc_team"})
+        sched_long = pd.concat([sched_a, sched_b], ignore_index=True).drop_duplicates()
+        rows = rows.merge(sched_long[["_year", "_period", "sbc_team", "Type"]], on=["_year", "_period", "sbc_team"], how="left")
+    rows["Type"] = rows.get("Type", "Regular Season").fillna("Regular Season")
+    return rows
+
+
+def aggregate_player_season_rows(rows):
+    if rows.empty:
+        return pd.DataFrame()
+    group_cols = ["sbc_year", "nba_team"]
+    grouped = rows.groupby(group_cols, as_index=False)[BOX_SCORE_SUM_STATS].sum()
+    grouped["TS%"] = grouped.apply(lambda row: row["PTS"] / (2 * (row["2PTA"] + row["3PTA"] + 0.44 * row["FTA"])) if (row["2PTA"] + row["3PTA"] + 0.44 * row["FTA"]) else 0, axis=1)
+    grouped["2PT%"] = grouped.apply(lambda row: row["2PTM"] / row["2PTA"] if row["2PTA"] else 0, axis=1)
+    grouped["3PT%"] = grouped.apply(lambda row: row["3PTM"] / row["3PTA"] if row["3PTA"] else 0, axis=1)
+    grouped["FT%"] = grouped.apply(lambda row: row["FTM"] / row["FTA"] if row["FTA"] else 0, axis=1)
+    multi = grouped.groupby("sbc_year").filter(lambda frame: frame["nba_team"].nunique() > 1)
+    totals = []
+    for year, frame in multi.groupby("sbc_year"):
+        total = {col: frame[col].sum() for col in BOX_SCORE_SUM_STATS}
+        total["sbc_year"] = year
+        total["nba_team"] = "TOT"
+        total["TS%"] = total["PTS"] / (2 * (total["2PTA"] + total["3PTA"] + 0.44 * total["FTA"])) if (total["2PTA"] + total["3PTA"] + 0.44 * total["FTA"]) else 0
+        total["2PT%"] = total["2PTM"] / total["2PTA"] if total["2PTA"] else 0
+        total["3PT%"] = total["3PTM"] / total["3PTA"] if total["3PTA"] else 0
+        total["FT%"] = total["FTM"] / total["FTA"] if total["FTA"] else 0
+        totals.append(total)
+    if totals:
+        grouped = pd.concat([grouped, pd.DataFrame(totals)], ignore_index=True)
+    grouped["Season"] = grouped["sbc_year"].apply(season_label_from_year)
+    grouped = grouped.sort_values(["sbc_year", "nba_team"])
+    return grouped
+
+
+def render_player_stats_table(rows, empty_text):
+    if rows.empty:
+        render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
+        return
+    stats = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+    header = "".join(f"<th>{escape(boxscore_stat_label(stat))}</th>" for stat in stats)
+    body = []
+    for _, row in rows.iterrows():
+        cells = "".join(stat_cell_html(row, stat) for stat in stats)
+        body.append(f"""
+            <tr>
+                <td class="sbc-player-profile-season"><strong>{escape(str(row.get('Season', '')))}</strong></td>
+                <td class="sbc-player-profile-team"><strong>{escape(str(row.get('nba_team', '')))}</strong></td>
+                {cells}
+            </tr>
+        """)
+    render_html(f"""
+        <div class="sbc-box-table-scroll">
+            <table class="sbc-player-profile-table">
+                <thead><tr><th>Season</th><th>Team</th>{header}</tr></thead>
+                <tbody>{''.join(body)}</tbody>
+            </table>
+        </div>
+    """)
+
+
 def current_period_index(options):
     try:
         current_value = int(current_matchup)
@@ -931,12 +1090,12 @@ need_league_picks = requested_main_page == "League Hub" and requested_league_pag
 need_league_standings = requested_main_page == "League Hub" and requested_league_page == "Standings"
 need_league_scoreboard = requested_main_page == "League Hub" and requested_league_page == "Scoreboard"
 need_history = requested_main_page == "League Hub" and requested_league_page == "History"
-need_history_awards = need_history and requested_history_page in ["Awards", "Overview"]
+need_history_awards = need_history and requested_history_page in ["Awards", "Overview", "Player Stats"]
 need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats"]
 
-need_df = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft
-need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft
+need_df = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page == "Player Stats")
+need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft or (need_history and requested_history_page == "Player Stats")
 need_exceptions = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
 need_base_cap = need_team_data or need_trade_data or need_checks_data or need_league_overview
 need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks") or need_trade_data or need_checks_data or need_league_picks
@@ -945,7 +1104,7 @@ need_standings = need_league_overview or need_league_standings or need_league_sc
 need_dh = need_history_draft
 need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_history_stats or need_history_awards
 need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
-need_all_time_rosters = need_history_awards or need_boxscore_data
+need_all_time_rosters = need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
 need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or need_league_standings or need_history
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup
@@ -5813,20 +5972,6 @@ def render_league_history_overview():
     render_html('<div class="sbc-awards-section-head"><span>All-Time Team Stats</span><em>Regular season totals by franchise; percentages are recalculated from makes and attempts.</em></div>')
     all_time_stats = history_all_time_team_stats_table(all_time_team_stats)
     render_history_all_time_stats_table(all_time_stats)
-    render_html('<div class="sbc-awards-section-head"><span>Team Matchup Records</span><em>Single regular-season matchup highs by category.</em></div>')
-    records = history_team_stat_records(all_time_team_stats, all_time_schedule)
-    if records.empty:
-        render_html('<div class="sbc-empty-state">No team stat records are available yet.</div>')
-    else:
-        records = records.copy()
-        records["Value"] = records["Value"].apply(format_score_value)
-        def history_when_label(row):
-            year_value = row.get("Year", "")
-            period_value = row.get("Period", "")
-            return f"{year_value} {period_date_label(year_value, period_value, f'P{period_value}')}"
-        records["When"] = records.apply(history_when_label, axis=1)
-        records["Opponent"] = records["Opponent"].fillna("")
-        render_history_overview_table(records[["Record", "Team", "Value", "When", "Opponent"]], ["Record", "Team", "Value", "When", "Opponent"])
 
 
 def ist_group_games(selected_year):
@@ -8779,6 +8924,124 @@ st.markdown(
         font-weight: 950;
         line-height: 1.08;
         text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-player-profile-hero {{
+        display: grid;
+        grid-template-columns: 9rem minmax(0, 1fr);
+        gap: 1rem;
+        align-items: center;
+        border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 24%, rgba(23,32,42,0.12));
+        border-radius: 8px;
+        background: linear-gradient(135deg, #ffffff, color-mix(in srgb, {LEAGUE_PRIMARY} 7%, #ffffff));
+        box-shadow: 0 16px 38px rgba(18,25,38,0.08);
+        margin: 0.85rem 0 1rem;
+        padding: 1rem;
+    }}
+
+    .sbc-player-profile-photo {{
+        display: grid;
+        place-items: end center;
+        overflow: hidden;
+        width: 9rem;
+        height: 9rem;
+        border-radius: 8px;
+        background: color-mix(in srgb, {LEAGUE_SECONDARY} 12%, #eef2f7);
+    }}
+
+    .sbc-player-profile-photo img {{
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }}
+
+    .sbc-player-profile-kicker {{
+        color: {LEAGUE_PRIMARY};
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-player-profile-main h2 {{
+        margin: 0.12rem 0 0.4rem;
+        color: var(--sbc-ink);
+        font-family: "{league_font_css}", "Poppins", sans-serif;
+        font-size: clamp(2rem, 4vw, 3.6rem);
+        font-weight: 950;
+        line-height: 0.95;
+    }}
+
+    .sbc-player-profile-meta {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }}
+
+    .sbc-player-profile-meta span,
+    .sbc-player-profile-awards span {{
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #f3f5f8;
+        color: var(--sbc-ink);
+        font-size: 0.72rem;
+        font-weight: 900;
+        padding: 0.25rem 0.58rem;
+    }}
+
+    .sbc-player-profile-awards {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.38rem;
+        margin-top: 0.65rem;
+    }}
+
+    .sbc-player-profile-awards span {{
+        background: color-mix(in srgb, #c99720 18%, #ffffff);
+        color: #5a3b00;
+    }}
+
+    .sbc-player-profile-awards em {{
+        color: var(--sbc-muted);
+        font-size: 0.78rem;
+        font-style: normal;
+        font-weight: 800;
+    }}
+
+    .sbc-player-profile-table {{
+        width: 100%;
+        min-width: 60rem;
+        border-collapse: collapse;
+        color: var(--sbc-ink);
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-player-profile-table th {{
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.62rem;
+        font-weight: 950;
+        letter-spacing: 0.05em;
+        padding: 0.45rem 0.42rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-player-profile-table td {{
+        border-bottom: 1px solid rgba(23,32,42,0.065);
+        background: #ffffff;
+        padding: 0.42rem;
+        vertical-align: middle;
+    }}
+
+    .sbc-player-profile-table tr:nth-child(even) td {{
+        background: #f8fafc;
+    }}
+
+    .sbc-player-profile-season,
+    .sbc-player-profile-team {{
         white-space: nowrap;
     }}
 
@@ -12431,6 +12694,11 @@ if main_page == "Team Hub" and selected_team_page == "Picks":
 
 
 if main_page == "Team Hub" and selected_team_page == "Live":
+    live_rosters = all_time_rosters.copy() if all_time_rosters is not None else pd.DataFrame()
+    if live_rosters.empty:
+        live_rosters = load_optional_data("All-time rosters", get_all_time_rosters)
+    live_rosters = ensure_columns(live_rosters, ["id", "position", "status", "team_name", "period", "year"])
+
     render_html(f"""
         <div class="sbc-draft-hero sbc-team-branded">
             <div class="sbc-draft-hero-inner">
@@ -12472,10 +12740,15 @@ if main_page == "Team Hub" and selected_team_page == "Live":
     with st.spinner("Updating live center..."):
         live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
 
-    live_schedule_rows = all_time_schedule[
-        (all_time_schedule["Year"] == SelectedYear)
-        & (all_time_schedule["Period"] == SelectedPeriod)
-        & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
+    live_schedule_source = all_time_schedule.copy()
+    live_schedule_source["_live_year"] = pd.to_numeric(live_schedule_source["Year"], errors="coerce")
+    live_schedule_source["_live_period"] = pd.to_numeric(live_schedule_source["Period"], errors="coerce")
+    live_year_value = int(SelectedYear)
+    live_period_value = int(SelectedPeriod)
+    live_schedule_rows = live_schedule_source[
+        (live_schedule_source["_live_year"] == live_year_value)
+        & (live_schedule_source["_live_period"] == live_period_value)
+        & ((live_schedule_source["TeamA"] == SelectedTeam) | (live_schedule_source["TeamB"] == SelectedTeam))
     ].copy()
     live_player_aggregate = False
     if live_schedule_rows.shape[0] > 0:
@@ -12483,7 +12756,7 @@ if main_page == "Team Hub" and selected_team_page == "Live":
         live_player_aggregate = render_selected_team_player_boxscore(
             live_schedule_rows,
             SelectedTeam,
-            all_time_rosters,
+            live_rosters,
             key_prefix=f"live_players_{SelectedYear}_{SelectedPeriod}") or False
 
     render_html('<div class="sbc-section-label">Matchup Scoreboards</div>')
@@ -12501,21 +12774,21 @@ if main_page == "Team Hub" and selected_team_page == "Live":
             opponent_payload = live_row_payload(live_stats_df, opponent)
             matchup_rows = [payload for payload in [selected_payload, opponent_payload] if payload]
             matchup_home = SelectedTeam
-            schedule_match = all_time_schedule[
-                (all_time_schedule["Year"] == SelectedYear)
-                & (all_time_schedule["Period"] == SelectedPeriod)
-                & (all_time_schedule["Type"] == matchup_type)
+            schedule_match = live_schedule_source[
+                (live_schedule_source["_live_year"] == live_year_value)
+                & (live_schedule_source["_live_period"] == live_period_value)
+                & (live_schedule_source["Type"] == matchup_type)
                 & (
-                    ((all_time_schedule["TeamA"] == SelectedTeam) & (all_time_schedule["TeamB"] == opponent))
-                    | ((all_time_schedule["TeamA"] == opponent) & (all_time_schedule["TeamB"] == SelectedTeam))
+                    ((live_schedule_source["TeamA"] == SelectedTeam) & (live_schedule_source["TeamB"] == opponent))
+                    | ((live_schedule_source["TeamA"] == opponent) & (live_schedule_source["TeamB"] == SelectedTeam))
                 )
             ]
             if schedule_match.shape[0] > 0:
                 matchup_home = schedule_match.iloc[0]["TeamA"]
             if schedule_match.shape[0] > 0:
                 matchup_payload = schedule_match.iloc[0].to_dict()
-                render_matchup_boxscore(matchup_payload, all_time_rosters, key_prefix=f"live_{idx}", show_players=False)
-                render_team_player_boxscore_for_matchup(matchup_payload, opponent, all_time_rosters, aggregate=live_player_aggregate)
+                render_matchup_boxscore(matchup_payload, live_rosters, key_prefix=f"live_{idx}", show_players=False)
+                render_team_player_boxscore_for_matchup(matchup_payload, opponent, live_rosters, aggregate=live_player_aggregate)
             else:
                 render_live_stat_board(
                     f"{SelectedTeam} vs {opponent}",
@@ -12729,6 +13002,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         render_ist_conference_history_panel(ISTHistoryYear, ist_period, "East")
 
 if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Player Stats":
+    player_options = player_stats_options(all_time_rosters)
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
@@ -12736,12 +13010,63 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
                 <div>
                     <div class="sbc-draft-eyebrow">League History</div>
                     <div class="sbc-draft-heading">Player Stats</div>
-                    <div class="sbc-draft-subcopy">A future home for historical player leaderboards, season peaks, and postseason stat archives.</div>
+                    <div class="sbc-draft-subcopy">Career pages for every player who has ever been active in an SBCFBL lineup, counting only games while started in this league.</div>
                 </div>
             </div>
         </div>
     """)
-    render_under_construction("Player Stats are under construction", "The History tab is ready for this section when the stat archive design is next.")
+    if player_options.empty:
+        render_html('<div class="sbc-empty-state">No active-start player history is available yet.</div>')
+    else:
+        selected_player_id = st.selectbox(
+            "Player",
+            options=player_options["fantrax_id"].tolist(),
+            format_func=lambda player_id: player_options.set_index("fantrax_id").loc[player_id, "display_name"],
+            key="history_player_stats_player",
+        )
+        selected_meta = player_options[player_options["fantrax_id"] == selected_player_id].iloc[0]
+        selected_player_name = str(selected_meta.get("display_name", selected_player_id))
+        espn_player_id = selected_meta.get("espn_player_id", "")
+        contract = current_player_contract(selected_player_name, df)
+        current_team = contract.get("team", "")
+        current_type = contract.get("type", "")
+        current_salary = contract.get("salary", "")
+        salary_text = format_money(current_salary) if not is_blank_value(current_salary) else "No active contract listed"
+        team_text = live_team_full_name(current_team) if not is_blank_value(current_team) else "Not currently rostered"
+        awards = player_awards_for_name(selected_player_name, award_history)
+        player_rows = selected_player_game_rows(selected_player_id, all_time_rosters, all_time_schedule)
+        total_games = int(pd.to_numeric(player_rows.get("GP", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()) if not player_rows.empty else 0
+        active_years = sorted(pd.to_numeric(player_rows.get("sbc_year", pd.Series(dtype=float)), errors="coerce").dropna().astype(int).unique().tolist()) if not player_rows.empty else []
+        year_text = f"{season_label_from_year(min(active_years))} to {season_label_from_year(max(active_years))}" if active_years else "No NBA games matched"
+        headshot = espn_headshot_url(espn_player_id)
+        award_html = "".join(f"<span>{escape(award)}</span>" for award in awards[:10]) or "<em>No manual awards listed yet.</em>"
+        render_html(f"""
+            <section class="sbc-player-profile-hero">
+                <div class="sbc-player-profile-photo">
+                    <img src="{headshot}" alt="{escape(selected_player_name, quote=True)} headshot">
+                </div>
+                <div class="sbc-player-profile-main">
+                    <div class="sbc-player-profile-kicker">SBCFBL Player Profile</div>
+                    <h2>{escape(selected_player_name)}</h2>
+                    <div class="sbc-player-profile-meta">
+                        <span>{escape(team_text)}</span>
+                        <span>{escape(str(current_type or 'Contract'))}: {escape(salary_text)}</span>
+                        <span>{escape(year_text)}</span>
+                        <span>{total_games} counted games</span>
+                    </div>
+                    <div class="sbc-player-profile-awards">{award_html}</div>
+                </div>
+            </section>
+        """)
+        stat_sections = [
+            ("Regular Season Stats", player_rows[player_rows["Type"].astype(str) == "Regular Season"] if not player_rows.empty else pd.DataFrame(), "No regular season games matched this player while active."),
+            ("Playoff Stats", player_rows[player_rows["Type"].astype(str) == "Playoffs"] if not player_rows.empty else pd.DataFrame(), "No playoff games matched this player while active."),
+            ("Play-In Stats", player_rows[player_rows["Type"].astype(str) == "Play-In"] if not player_rows.empty else pd.DataFrame(), "No play-in games matched this player while active."),
+        ]
+        for title, section_rows, empty_text in stat_sections:
+            render_html(f'<div class="sbc-awards-section-head"><span>{escape(title)}</span><em>Only NBA games on dates this player was ACTIVE in an SBCFBL matchup.</em></div>')
+            render_player_stats_table(aggregate_player_season_rows(section_rows), empty_text)
+        render_html('<div class="sbc-mini-note">Stats use the local NBA player-game archive and are filtered to SBCFBL active roster days. Basketball-Reference style layout only; no Sports Reference data is used here.</div>')
 
 if main_page == "League Hub" and selected_league_page == "Standings":
     render_html(f"""
