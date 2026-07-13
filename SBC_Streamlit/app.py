@@ -596,6 +596,14 @@ def stat_has_shooting_volume(row, stat):
 
 def stat_subtext(row, stat, show_gp=True):
     if stat == "MP":
+        if str(row.get("_basis", "")) == "per_sbc":
+            matchups = row.get("_matchups", row.get("_denom_gp", 0))
+            try:
+                matchup_count = float(matchups)
+            except (TypeError, ValueError):
+                matchup_count = 0
+            matchup_text = "Matchup" if abs(matchup_count - 1) < 0.05 else "Matchups"
+            return f"{stat_number(row.get('GP', 0))} GP, {stat_number(matchup_count)} {matchup_text}" if show_gp else ""
         return f"{stat_number(row.get('GP', 0))} GP" if show_gp else ""
     if stat == "2PT%":
         return shot_attempts(row, "2PTM", "2PTA")
@@ -1078,6 +1086,7 @@ def aggregate_player_season_rows(rows, basis="per_nba"):
         grouped = grouped.merge(denom, on=group_cols, how="left")
     else:
         grouped["_denom_gp"] = grouped["GP"]
+    grouped["_matchups"] = grouped["_denom_gp"] if per_sbc_game else pd.NA
     grouped["TS%"] = grouped.apply(lambda row: row["PTS"] / (2 * (row["2PTA"] + row["3PTA"] + 0.44 * row["FTA"])) if (row["2PTA"] + row["3PTA"] + 0.44 * row["FTA"]) else 0, axis=1)
     grouped["2PT%"] = grouped.apply(lambda row: row["2PTM"] / row["2PTA"] if row["2PTA"] else 0, axis=1)
     grouped["3PT%"] = grouped.apply(lambda row: row["3PTM"] / row["3PTA"] if row["3PTA"] else 0, axis=1)
@@ -1091,8 +1100,10 @@ def aggregate_player_season_rows(rows, basis="per_nba"):
         total["_team_order"] = 999
         if per_sbc_game:
             total["_denom_gp"] = rows[rows["sbc_year"] == year].dropna(subset=["_period"])["_period"].nunique()
+            total["_matchups"] = total["_denom_gp"]
         else:
             total["_denom_gp"] = frame["_denom_gp"].sum()
+            total["_matchups"] = pd.NA
         total["TS%"] = total["PTS"] / (2 * (total["2PTA"] + total["3PTA"] + 0.44 * total["FTA"])) if (total["2PTA"] + total["3PTA"] + 0.44 * total["FTA"]) else 0
         total["2PT%"] = total["2PTM"] / total["2PTA"] if total["2PTA"] else 0
         total["3PT%"] = total["3PTM"] / total["3PTA"] if total["3PTA"] else 0
@@ -1106,6 +1117,7 @@ def aggregate_player_season_rows(rows, basis="per_nba"):
         for col in per_game_cols:
             grouped[col] = pd.to_numeric(grouped[col], errors="coerce").div(gp_values).fillna(0)
     grouped["Season"] = grouped["sbc_year"].apply(season_label_from_year)
+    grouped["_basis"] = basis
     grouped["_is_total"] = (grouped["sbc_team"] == "TOT").astype(int)
     grouped["_team_order"] = pd.to_numeric(grouped["_team_order"], errors="coerce").fillna(998)
     grouped = grouped.sort_values(["sbc_year", "_is_total", "_team_order"])
