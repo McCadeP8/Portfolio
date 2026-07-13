@@ -991,6 +991,20 @@ def current_player_contract_lookup(cap_df):
     }
 
 
+def current_active_player_keys_for_team(cap_df, team):
+    if cap_df is None or cap_df.empty or "Player" not in cap_df.columns:
+        return set()
+    team_key = resolve_team_key(team)
+    type_col = f"Type{current_year}"
+    if type_col not in cap_df.columns or "Team" not in cap_df.columns:
+        return set()
+    work = cap_df.copy()
+    work["_team_key"] = work["Team"].apply(resolve_team_key)
+    active_types = {"Guaranteed", "Non-Guaranteed"}
+    active = work[(work["_team_key"] == team_key) & (work[type_col].isin(active_types))].copy()
+    return {player_name_match_key(value) for value in active["Player"].dropna().tolist()}
+
+
 def player_awards_for_name(player_name, awards_df):
     work = player_awards_table_for_name(player_name, awards_df)
     if work.empty:
@@ -1517,7 +1531,7 @@ def aggregate_matchup_player_rows(rows, basis="total", group_by_team=True):
     return grouped
 
 
-def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team=True, show_seasons=False, sort_stat="PTS", current_contracts=None, highlight_team=None):
+def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team=True, show_seasons=False, sort_stat="PTS", current_contracts=None, highlight_team=None, highlight_player_keys=None):
     if rows is None or rows.empty:
         render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
         return
@@ -1531,13 +1545,17 @@ def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team
     header = "".join(f"<th>{escape(boxscore_stat_label(stat))}</th>" for stat in stats)
     body = []
     highlight_team_key = resolve_team_key(highlight_team) if highlight_team else ""
+    highlight_keys = set(highlight_player_keys or [])
     for rank, (_, row) in enumerate(work.iterrows(), start=1):
         player_name = str(row.get("fantrax_name", row.get("player_name", "")))
-        contract = contract_lookup.get(player_name_match_key(player_name), {})
+        player_key = player_name_match_key(player_name)
+        contract = contract_lookup.get(player_key, {})
         row_style = ""
         contract_team = contract.get("team_key")
         team_matches_scope = not highlight_team_key or contract_team == highlight_team_key
-        if contract.get("active_roster") and contract_team in team_info and team_matches_scope:
+        if player_key in highlight_keys:
+            row_style = f' style="--ledger-team-color:{escape(str(team_color_for_name(highlight_team_key)), quote=True)};"'
+        elif contract.get("active_roster") and contract_team in team_info and team_matches_scope:
             row_style = f' style="--ledger-team-color:{escape(str(team_color_for_name(contract.get("team_key"))), quote=True)};"'
         team_html = history_team_mark_html(row.get("sbc_team_key", row.get("sbc_team", ""))) if show_team else ""
         cells = "".join(stat_cell_html(row, stat, show_gp=(stat != "MP")) for stat in stats)
@@ -9642,7 +9660,7 @@ st.markdown(
     .sbc-player-profile-awards span {{
         justify-content: center;
         background: color-mix(in srgb, #c99720 18%, #ffffff);
-        color: #5a3b00;
+        color: #111827;
         width: 100%;
     }}
 
@@ -9667,11 +9685,6 @@ st.markdown(
     .sbc-player-profile-hero-current .sbc-player-profile-accolades {{
         border-color: color-mix(in srgb, var(--profile-current-team-secondary) 34%, rgba(23,32,42,0.10));
         background: linear-gradient(135deg, color-mix(in srgb, var(--profile-current-team-secondary) 14%, #ffffff), #ffffff);
-    }}
-
-    .sbc-player-profile-hero-current .sbc-player-profile-awards span {{
-        background: color-mix(in srgb, var(--profile-current-team-secondary) 18%, #ffffff);
-        color: color-mix(in srgb, var(--profile-current-team-color) 76%, #111827);
     }}
 
     .sbc-player-profile-accolades-label {{
@@ -13757,6 +13770,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
         filtered_team_archive = filtered_team_archive[filtered_team_archive["sbc_matchup_type"].astype(str) == team_type].copy()
         basis_key = {"Total": "total", "Per NBA Game": "per_nba", "Per SBCFBL Matchup": "per_sbc"}[team_basis]
         render_html('<div class="sbc-awards-section-head"><span>Player Ledger</span><em>Sorted by points, with percentages recalculated from summed makes and attempts.</em></div>')
+        selected_team_active_player_keys = current_active_player_keys_for_team(df, SelectedTeam)
         render_all_time_player_aggregate_table(
             aggregate_matchup_player_rows(filtered_team_archive, basis=basis_key),
             "No player stats match this team history filter.",
@@ -13766,6 +13780,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
             sort_stat=leader_stat,
             current_contracts=df,
             highlight_team=SelectedTeam,
+            highlight_player_keys=selected_team_active_player_keys,
         )
         render_html('<div class="sbc-awards-section-head"><span>Franchise Single-Matchup Leaders</span><em>Best individual matchup performances for the selected stat.</em></div>')
         player_filter = st.text_input("Filter players", key="team_history_player_filter", placeholder="Type a player name...")
@@ -13931,10 +13946,23 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         active_roster = bool(contract.get("active_roster"))
         salary_text = contract.get("summary") or (format_money(current_salary) if not is_blank_value(current_salary) else "No active contract listed")
         team_key = contract.get("team_key", "")
+        awards_table = player_awards_table_for_name(selected_player_name, award_history)
+        player_rows = selected_player_matchup_rows(selected_player_id, all_time_rosters, all_time_schedule)
+        career_team_values = []
+        if not player_rows.empty:
+            team_col = "sbc_team_key" if "sbc_team_key" in player_rows.columns else "sbc_team"
+            if team_col in player_rows.columns:
+                career_team_values = [
+                    resolve_team_key(value)
+                    for value in player_rows[team_col].dropna().astype(str).unique().tolist()
+                    if resolve_team_key(value) in team_info
+                ]
+        career_team_values = sorted(set(career_team_values))
+        profile_team_key = team_key if active_roster and team_key in team_info else (career_team_values[0] if len(career_team_values) == 1 else "")
         team_text = live_team_full_name(team_key) if active_roster and team_key in team_info else "Not currently rostered"
-        profile_class = "sbc-player-profile-hero sbc-player-profile-hero-current" if active_roster and team_key in team_info else "sbc-player-profile-hero"
-        if active_roster and team_key in team_info:
-            profile_visuals = team_visuals(team_key)
+        profile_class = "sbc-player-profile-hero sbc-player-profile-hero-current" if profile_team_key in team_info else "sbc-player-profile-hero"
+        if profile_team_key in team_info:
+            profile_visuals = team_visuals(profile_team_key)
             profile_style = (
                 f' style="--profile-current-team-color:{escape(str(profile_visuals["primary"]), quote=True)};'
                 f'--profile-current-team-secondary:{escape(str(profile_visuals["secondary"]), quote=True)};'
@@ -13943,8 +13971,6 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
             )
         else:
             profile_style = ""
-        awards_table = player_awards_table_for_name(selected_player_name, award_history)
-        player_rows = selected_player_matchup_rows(selected_player_id, all_time_rosters, all_time_schedule)
         active_years = sorted(pd.to_numeric(player_rows.get("sbc_year", pd.Series(dtype=float)), errors="coerce").dropna().astype(int).unique().tolist()) if not player_rows.empty else []
         season_text = player_season_count_text(active_years, active_roster=active_roster)
         headshot = espn_headshot_url(espn_player_id)
