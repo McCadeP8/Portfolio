@@ -6612,6 +6612,7 @@ def active_franchise_record_chasers(matchup_archive, cap_df):
                     "Stat": stat,
                     "Current": current_value,
                     "Leader": leader.get("fantrax_name", ""),
+                    "LeaderEspnId": leader.get("espn_player_id", ""),
                     "LeaderValue": leader_value,
                     "LeaderActive": leader_active,
                     "Gap": gap,
@@ -6635,6 +6636,7 @@ def render_franchise_record_chasers(chasers):
     if selected_stat != "All Categories":
         work = work[work["Stat"].astype(str) == selected_stat].copy()
         work = work.sort_values(["Gap", "Progress"], ascending=[True, False])
+        work = work.drop_duplicates("Team", keep="first")
     else:
         work = work.sort_values(["Progress", "Gap"], ascending=[False, True])
     body = []
@@ -6643,8 +6645,16 @@ def render_franchise_record_chasers(chasers):
         stat = str(row.get("Stat", ""))
         is_pct = stat in ["TS%", "2PT%", "3PT%", "FT%"]
         gap_text = f"{float(row.get('Gap', 0) or 0) * 100:.1f} pct pts" if is_pct else stat_number(row.get("Gap", 0), signed=(stat == "+/-"))
-        leader_marker = " *" if bool(row.get("LeaderActive", False)) else ""
-        leader_text = f"{row.get('Leader', '')}{leader_marker}: {stat_number(row.get('LeaderValue', 0), pct=is_pct, signed=(stat == '+/-'))}"
+        leader_marker = " ⭐" if bool(row.get("LeaderActive", False)) else ""
+        leader_name = clean_pick_display(row.get("Leader", ""))
+        leader_value_text = stat_number(row.get("LeaderValue", 0), pct=is_pct, signed=(stat == "+/-"))
+        leader_image = espn_headshot_url(row.get("LeaderEspnId", "")) if not is_blank_value(row.get("LeaderEspnId", "")) else DRAFT_SILHOUETTE
+        leader_html = f"""
+            <span class="sbc-history-player-cell">
+                <img src="{escape(str(leader_image), quote=True)}" alt="{escape(str(leader_name), quote=True)} headshot">
+                <strong>{escape(str(leader_name))}{leader_marker}</strong>
+            </span>
+        """
         current_text = stat_number(row.get("Current", 0), pct=is_pct, signed=(stat == "+/-"))
         progress = float(row.get("Progress", 0) or 0)
         progress_text = f"{progress * 100:.1f}%"
@@ -6655,7 +6665,7 @@ def render_franchise_record_chasers(chasers):
                 <td>{player_history_cell_html(row)}</td>
                 <td><strong>{escape(boxscore_stat_label(stat))}</strong><em>{escape(gap_text)} away</em></td>
                 <td><strong>{escape(current_text)}</strong><em>{escape(progress_text)} of record</em></td>
-                <td><strong>{escape(str(leader_text))}</strong></td>
+                <td>{leader_html}<em>{escape(leader_value_text)}</em></td>
             </tr>
         """)
     render_html(f"""
@@ -6711,7 +6721,7 @@ def render_league_history_overview():
     all_time_stats = history_all_time_team_stats_table(all_time_team_stats)
     render_history_all_time_stats_table(all_time_stats)
     matchup_archive = load_sbc_player_matchup_stats_archive()
-    render_html('<div class="sbc-awards-section-head"><span>Active Record Chasers</span><em>Current roster players closest to becoming their franchise leader. * means the leader is also active, so the target can move.</em></div>')
+    render_html('<div class="sbc-awards-section-head"><span>Active Record Chasers</span><em>Current roster players closest to becoming their franchise leader. ⭐ means the leader is also active, so the target can move.</em></div>')
     render_franchise_record_chasers(active_franchise_record_chasers(matchup_archive, df))
 
 
