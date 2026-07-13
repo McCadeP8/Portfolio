@@ -913,10 +913,29 @@ def player_stats_options(rosters_df):
     return options
 
 
+def player_name_match_key(value):
+    text = "" if is_blank_value(value) else str(value)
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    text = " ".join(text.lower().replace(".", "").replace("'", "").split())
+    replacements = {
+        "alperun sengun": "alperen sengun",
+        "cam thomas": "cameron thomas",
+        "pj washington": "p.j. washington",
+        "scotty pippen": "scotty pippen jr",
+        "nikola jovic": "nikola jovi",
+        "alex sarr": "alexandre sarr",
+    }
+    text = replacements.get(text, text)
+    suffixes = {"jr", "sr", "ii", "iii", "iv", "v"}
+    parts = [part for part in text.split() if part not in suffixes]
+    return " ".join(parts)
+
+
 def current_player_contract(player_name, cap_df):
     if cap_df is None or cap_df.empty or "Player" not in cap_df.columns:
         return {}
-    row = cap_df[cap_df["Player"].astype(str).str.lower() == str(player_name).lower()]
+    match_key = player_name_match_key(player_name)
+    row = cap_df[cap_df["Player"].apply(player_name_match_key) == match_key]
     if row.empty:
         return {}
     row = row.iloc[0]
@@ -966,7 +985,7 @@ def current_player_contract_lookup(cap_df):
     if cap_df is None or cap_df.empty or "Player" not in cap_df.columns:
         return {}
     return {
-        str(row.get("Player", "")).lower(): current_player_contract(row.get("Player", ""), cap_df)
+        player_name_match_key(row.get("Player", "")): current_player_contract(row.get("Player", ""), cap_df)
         for _, row in cap_df.iterrows()
         if not is_blank_value(row.get("Player", ""))
     }
@@ -1498,7 +1517,7 @@ def aggregate_matchup_player_rows(rows, basis="total", group_by_team=True):
     return grouped
 
 
-def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team=True, show_seasons=False, sort_stat="PTS", current_contracts=None):
+def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team=True, show_seasons=False, sort_stat="PTS", current_contracts=None, highlight_team=None):
     if rows is None or rows.empty:
         render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
         return
@@ -1511,11 +1530,14 @@ def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team
     stats = ["GP", "MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     header = "".join(f"<th>{escape(boxscore_stat_label(stat))}</th>" for stat in stats)
     body = []
+    highlight_team_key = resolve_team_key(highlight_team) if highlight_team else ""
     for rank, (_, row) in enumerate(work.iterrows(), start=1):
         player_name = str(row.get("fantrax_name", row.get("player_name", "")))
-        contract = contract_lookup.get(player_name.lower(), {})
+        contract = contract_lookup.get(player_name_match_key(player_name), {})
         row_style = ""
-        if contract.get("active_roster") and contract.get("team_key") in team_info:
+        contract_team = contract.get("team_key")
+        team_matches_scope = not highlight_team_key or contract_team == highlight_team_key
+        if contract.get("active_roster") and contract_team in team_info and team_matches_scope:
             row_style = f' style="--ledger-team-color:{escape(str(team_color_for_name(contract.get("team_key"))), quote=True)};"'
         team_html = history_team_mark_html(row.get("sbc_team_key", row.get("sbc_team", ""))) if show_team else ""
         cells = "".join(stat_cell_html(row, stat, show_gp=(stat != "MP")) for stat in stats)
@@ -10014,11 +10036,11 @@ st.markdown(
     }}
 
     .sbc-ledger-table tr[style*="--ledger-team-color"] td {{
-        background: color-mix(in srgb, var(--ledger-team-color) 6%, #ffffff) !important;
+        background: color-mix(in srgb, var(--ledger-team-color) 10%, #ffffff) !important;
     }}
 
     .sbc-ledger-table tr:nth-child(even)[style*="--ledger-team-color"] td {{
-        background: color-mix(in srgb, var(--ledger-team-color) 8%, #ffffff) !important;
+        background: color-mix(in srgb, var(--ledger-team-color) 13%, #ffffff) !important;
     }}
 
     .sbc-ledger-table tr[style*="--ledger-team-color"] td:first-child {{
@@ -13743,6 +13765,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
             show_seasons=(team_scope == "Career"),
             sort_stat=leader_stat,
             current_contracts=df,
+            highlight_team=SelectedTeam,
         )
         render_html('<div class="sbc-awards-section-head"><span>Franchise Single-Matchup Leaders</span><em>Best individual matchup performances for the selected stat.</em></div>')
         player_filter = st.text_input("Filter players", key="team_history_player_filter", placeholder="Type a player name...")
@@ -14737,21 +14760,7 @@ def team_award_winner(award_table, year, award):
 
 
 def award_player_key(value):
-    text = "" if is_blank_value(value) else str(value)
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    text = " ".join(text.lower().replace(".", "").replace("'", "").split())
-    replacements = {
-        "alperun sengun": "alperen sengun",
-        "cam thomas": "cameron thomas",
-        "pj washington": "p.j. washington",
-        "scotty pippen": "scotty pippen jr",
-        "nikola jovic": "nikola jovi",
-        "alex sarr": "alexandre sarr",
-    }
-    text = replacements.get(text, text)
-    suffixes = {"jr", "sr", "ii", "iii", "iv", "v"}
-    parts = [part for part in text.split() if part not in suffixes]
-    return " ".join(parts)
+    return player_name_match_key(value)
 
 
 def month_number_from_label(value):
