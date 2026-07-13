@@ -1162,6 +1162,29 @@ def display_stat_value(row, stat):
     return stat_number(row.get(stat, 0), pct=is_pct, signed=(stat == "+/-"))
 
 
+def matchup_high_value_text(row, stat):
+    if stat in ["2PT%", "3PT%", "FT%"]:
+        attempt_col = {"2PT%": "2PTA", "3PT%": "3PTA", "FT%": "FTA"}[stat]
+        attempts = stat_number(row.get(attempt_col, 0))
+        return display_stat_value(row, stat), f"on {attempts} attempts"
+    if stat == "TO":
+        return stat_number(row.get("TO", 0)), f"in {stat_number(row.get('MP', 0))} minutes played"
+    return display_stat_value(row, stat), stat_subtext(row, stat, show_gp=True)
+
+
+def history_team_mark_html(team):
+    team_key = resolve_team_key(team)
+    if team_key not in team_info:
+        return escape(str(team or ""))
+    visuals = team_visuals(team_key)
+    logo_html = f'<img src="{escape(str(visuals.get("logo", "")), quote=True)}" alt="{escape(live_team_full_name(team_key), quote=True)} logo">' if visuals.get("logo") else ""
+    return (
+        f'<span class="sbc-player-profile-team-mark" style="--profile-team-color:{escape(str(visuals["primary"]), quote=True)};'
+        f'--profile-team-secondary:{escape(str(visuals["secondary"]), quote=True)};--profile-team-font:{escape(str(visuals["font"]), quote=True)};">'
+        f'{logo_html}<strong>{escape(live_team_full_name(team_key))}</strong></span>'
+    )
+
+
 def matchup_date_text(row):
     start = pd.to_datetime(row.get("start_date", row.get("Date", "")), errors="coerce")
     end = pd.to_datetime(row.get("end_date", row.get("Date", "")), errors="coerce")
@@ -1186,6 +1209,13 @@ def top_matchup_rows(rows, stat, limit=25):
         work = work[work.apply(lambda row: stat_has_shooting_volume(row, stat), axis=1)].copy()
     work["_stat_sort"] = pd.to_numeric(work[stat], errors="coerce")
     work = work.dropna(subset=["_stat_sort"])
+    if stat in ["2PT%", "3PT%", "FT%"]:
+        attempt_col = {"2PT%": "2PTA", "3PT%": "3PTA", "FT%": "FTA"}[stat]
+        work["_volume_sort"] = pd.to_numeric(work.get(attempt_col, 0), errors="coerce").fillna(0)
+        return work.sort_values(["_stat_sort", "_volume_sort"], ascending=[False, False]).head(limit)
+    if stat == "TO":
+        work["_volume_sort"] = pd.to_numeric(work.get("MP", 0), errors="coerce").fillna(0)
+        return work.sort_values(["_stat_sort", "_volume_sort"], ascending=[True, False]).head(limit)
     return work.sort_values("_stat_sort", ascending=stat_sort_ascending(stat)).head(limit)
 
 
@@ -1197,21 +1227,64 @@ def render_matchup_leaderboard(rows, stat, empty_text, limit=25, show_team=True)
     body = []
     for rank, (_, row) in enumerate(leaders.iterrows(), start=1):
         team_value = row.get("sbc_team_key", row.get("sbc_team", ""))
-        team_html = render_draft_team_mark(team_value, include_nickname=True) if show_team else ""
+        team_html = history_team_mark_html(team_value) if show_team else ""
+        value_text, sub_text = matchup_high_value_text(row, stat)
         body.append(f"""
             <tr>
                 <td><strong>{rank}</strong></td>
                 <td>{escape(str(row.get('fantrax_name', row.get('player_name', ''))))}</td>
                 {f'<td>{team_html}</td>' if show_team else ''}
-                <td><strong>{escape(display_stat_value(row, stat))}</strong><em>{escape(stat_subtext(row, stat, show_gp=True))}</em></td>
+                <td><strong>{escape(value_text)}</strong><em>{escape(sub_text)}</em></td>
                 <td>{escape(matchup_context_text(row))}</td>
             </tr>
         """)
     team_header = "<th>Team</th>" if show_team else ""
     render_html(f"""
         <div class="sbc-box-table-scroll">
-            <table class="sbc-history-overview-table">
+            <table class="sbc-history-overview-table sbc-matchup-high-table">
                 <thead><tr><th>#</th><th>Player</th>{team_header}<th>{escape(boxscore_stat_label(stat))}</th><th>Matchup</th></tr></thead>
+                <tbody>{''.join(body)}</tbody>
+            </table>
+        </div>
+    """)
+
+
+def render_player_season_leaders(rows, empty_text):
+    if rows is None or rows.empty:
+        render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
+        return
+    body = []
+    for stat in BOX_SCORE_CATEGORY_ORDER:
+        work = rows.copy()
+        if stat in ["TS%", "2PT%", "3PT%", "FT%"]:
+            work = work[work.apply(lambda row: stat_has_shooting_volume(row, stat), axis=1)].copy()
+        if work.empty or stat not in work.columns:
+            continue
+        work["_stat_sort"] = pd.to_numeric(work[stat], errors="coerce")
+        work = work.dropna(subset=["_stat_sort"])
+        if work.empty:
+            continue
+        row = work.sort_values("_stat_sort", ascending=stat_sort_ascending(stat)).iloc[0]
+        team_value = str(row.get("sbc_team", ""))
+        season_context = str(row.get("Season", ""))
+        if team_value == "TOT":
+            season_context = f"{season_context} / Total"
+        elif team_value:
+            season_context = f"{season_context} / {live_team_full_name(resolve_team_key(team_value))}"
+        body.append(f"""
+            <tr>
+                <td><strong>{escape(boxscore_stat_label(stat))}</strong></td>
+                <td><strong>{escape(display_stat_value(row, stat))}</strong><em>{escape(stat_subtext(row, stat, show_gp=True))}</em></td>
+                <td>{escape(season_context)}</td>
+            </tr>
+        """)
+    if not body:
+        render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
+        return
+    render_html(f"""
+        <div class="sbc-box-table-scroll">
+            <table class="sbc-history-overview-table">
+                <thead><tr><th>Category</th><th>Best Season</th><th>Season</th></tr></thead>
                 <tbody>{''.join(body)}</tbody>
             </table>
         </div>
@@ -1222,23 +1295,17 @@ def render_player_matchup_highs(rows, empty_text):
     if rows is None or rows.empty:
         render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
         return
-    years = sorted(pd.to_numeric(rows.get("sbc_year", pd.Series(dtype=float)), errors="coerce").dropna().astype(int).unique().tolist())
-    options = ["Career"] + [season_label_from_year(year) for year in years]
-    selected_scope = st.selectbox("Highs Scope", options=options, key="history_player_highs_scope")
-    work = rows.copy()
-    if selected_scope != "Career":
-        selected_year = years[options.index(selected_scope) - 1]
-        work = work[pd.to_numeric(work["sbc_year"], errors="coerce") == selected_year].copy()
     body = []
     for stat in BOX_SCORE_CATEGORY_ORDER:
-        leaders = top_matchup_rows(work, stat, limit=1)
+        leaders = top_matchup_rows(rows, stat, limit=1)
         if leaders.empty:
             continue
         row = leaders.iloc[0]
+        value_text, sub_text = matchup_high_value_text(row, stat)
         body.append(f"""
             <tr>
                 <td><strong>{escape(boxscore_stat_label(stat))}</strong></td>
-                <td><strong>{escape(display_stat_value(row, stat))}</strong><em>{escape(stat_subtext(row, stat, show_gp=True))}</em></td>
+                <td><strong>{escape(value_text)}</strong><em>{escape(sub_text)}</em></td>
                 <td>{escape(matchup_context_text(row))}</td>
             </tr>
         """)
@@ -1247,8 +1314,8 @@ def render_player_matchup_highs(rows, empty_text):
         return
     render_html(f"""
         <div class="sbc-box-table-scroll">
-            <table class="sbc-history-overview-table">
-                <thead><tr><th>Category</th><th>High</th><th>Matchup</th></tr></thead>
+            <table class="sbc-history-overview-table sbc-matchup-high-table">
+                <thead><tr><th>Category</th><th>Best Matchup</th><th>Matchup</th></tr></thead>
                 <tbody>{''.join(body)}</tbody>
             </table>
         </div>
@@ -1285,7 +1352,7 @@ def render_all_time_player_aggregate_table(rows, empty_text, limit=50):
     header = "".join(f"<th>{escape(boxscore_stat_label(stat))}</th>" for stat in stats)
     body = []
     for rank, (_, row) in enumerate(work.iterrows(), start=1):
-        team_html = render_draft_team_mark(row.get("sbc_team_key", row.get("sbc_team", "")), include_nickname=True)
+        team_html = history_team_mark_html(row.get("sbc_team_key", row.get("sbc_team", "")))
         cells = "".join(stat_cell_html(row, stat) for stat in stats)
         body.append(f"""
             <tr>
@@ -9691,6 +9758,41 @@ st.markdown(
         background: rgba(248, 250, 252, 0.72);
     }}
 
+    .sbc-matchup-high-table {{
+        overflow: hidden;
+        border: 2px solid rgba(17,24,39,0.16) !important;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 14px 34px rgba(15,23,42,0.10);
+    }}
+
+    .sbc-matchup-high-table th {{
+        background: #ffffff !important;
+        border-bottom: 2px solid rgba(17,24,39,0.14);
+        color: var(--sbc-ink) !important;
+    }}
+
+    .sbc-matchup-high-table td {{
+        background: #ffffff !important;
+    }}
+
+    .sbc-matchup-high-table tr:nth-child(even) td {{
+        background: #fbfcfe !important;
+    }}
+
+    .sbc-matchup-high-table td strong {{
+        color: var(--sbc-ink);
+    }}
+
+    .sbc-matchup-high-table td em {{
+        display: block;
+        margin-top: 0.12rem;
+        color: var(--sbc-muted);
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 850;
+    }}
+
     .sbc-history-overview-table .sbc-draft-team-mark {{
         min-width: 11.5rem;
     }}
@@ -13550,7 +13652,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         """)
         stat_mode = st.radio(
             "Stat Type",
-            options=["Regular Season", "Playoffs", "Play-In"],
+            options=["Regular Season", "Playoffs", "Play-In", "In-Season Tournament"],
             horizontal=True,
             key="history_player_stats_type",
         )
@@ -13564,6 +13666,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
             "Regular Season": ("Regular Season Stats", "Regular Season", "No regular season games matched this player while active."),
             "Playoffs": ("Playoff Stats", "Playoffs", "No playoff games matched this player while active."),
             "Play-In": ("Play-In Stats", "Play-In", "No play-in games matched this player while active."),
+            "In-Season Tournament": ("In-Season Tournament Stats", "In-Season Tournament", "No in-season tournament games matched this player while active."),
         }
         title, type_value, empty_text = stat_type_lookup[stat_mode]
         type_column = "sbc_matchup_type" if "sbc_matchup_type" in player_rows.columns else "Type"
@@ -13575,8 +13678,11 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
             "total": "Raw totals.",
         }[basis_key]
         render_html(f'<div class="sbc-awards-section-head"><span>{escape(title)}</span><em>{escape(basis_note)} Only NBA games on dates this player was ACTIVE in an SBCFBL matchup.</em></div>')
-        render_player_stats_table(aggregate_player_season_rows(section_rows, basis=basis_key), empty_text)
-        render_html('<div class="sbc-awards-section-head"><span>Matchup Highs</span><em>Best single SBCFBL matchup performance by category.</em></div>')
+        season_rows = aggregate_player_season_rows(section_rows, basis=basis_key)
+        render_player_stats_table(season_rows, empty_text)
+        render_html('<div class="sbc-awards-section-head"><span>Season Leaders</span><em>Best season row for each category using the selected stat type and basis.</em></div>')
+        render_player_season_leaders(season_rows, "No season leaders are available for this player and stat type.")
+        render_html('<div class="sbc-awards-section-head"><span>Matchup Leaders</span><em>Best single SBCFBL matchup performance by category.</em></div>')
         render_player_matchup_highs(section_rows, "No matchup highs are available for this player and stat type.")
         render_award_detail_ledger(awards_table)
 
