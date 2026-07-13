@@ -1012,14 +1012,15 @@ def selected_player_game_rows(fantrax_id, rosters_df, schedule_df):
     if active.empty:
         return pd.DataFrame()
     active["_year"] = pd.to_numeric(active[year_col], errors="coerce").astype("Int64")
-    active["_period"] = pd.to_numeric(active["period"], errors="coerce").astype("Int64")
+    active["_day"] = pd.to_numeric(active["period"], errors="coerce").astype("Int64")
     calendar = period_calendar.copy()
     if calendar.empty:
         return pd.DataFrame()
     calendar["_year"] = pd.to_numeric(calendar["Year"], errors="coerce").astype("Int64")
-    calendar["_period"] = pd.to_numeric(calendar["Day"], errors="coerce").astype("Int64")
+    calendar["_day"] = pd.to_numeric(calendar["Day"], errors="coerce").astype("Int64")
+    calendar["_period"] = pd.to_numeric(calendar["Period"], errors="coerce").astype("Int64")
     calendar["Date"] = pd.to_datetime(calendar["Date"], errors="coerce").dt.normalize()
-    active_dates = active.merge(calendar[["_year", "_period", "Date"]], on=["_year", "_period"], how="left")
+    active_dates = active.merge(calendar[["_year", "_day", "_period", "Date"]], on=["_year", "_day"], how="left")
     active_dates = active_dates.dropna(subset=["Date"])
     if active_dates.empty:
         return pd.DataFrame()
@@ -1027,21 +1028,23 @@ def selected_player_game_rows(fantrax_id, rosters_df, schedule_df):
     box = box[box["nba_player_id"].astype(str) == espn_id].copy()
     box["Date"] = pd.to_datetime(box["Date"], errors="coerce").dt.normalize()
     rows = box.merge(
-        active_dates[["_year", "_period", "Date", "team_name"]].rename(columns={"team_name": "sbc_team"}),
+        active_dates[["_year", "_day", "_period", "Date", "team_name"]].rename(columns={"team_name": "sbc_team"}),
         left_on=["sbc_year", "Date"],
         right_on=["_year", "Date"],
         how="inner",
     )
     if rows.empty:
         return rows
+    rows["sbc_team_key"] = rows["sbc_team"].apply(resolve_team_key)
     sched = schedule_df.copy() if schedule_df is not None else pd.DataFrame()
     if not sched.empty:
         sched["_year"] = pd.to_numeric(sched["Year"], errors="coerce").astype("Int64")
         sched["_period"] = pd.to_numeric(sched["Period"], errors="coerce").astype("Int64")
-        sched_a = sched[["_year", "_period", "Type", "TeamA"]].rename(columns={"TeamA": "sbc_team", "Type": "sbc_matchup_type"})
-        sched_b = sched[["_year", "_period", "Type", "TeamB"]].rename(columns={"TeamB": "sbc_team", "Type": "sbc_matchup_type"})
+        sched_a = sched[["_year", "_period", "Type", "TeamA"]].rename(columns={"TeamA": "sbc_team_key", "Type": "sbc_matchup_type"})
+        sched_b = sched[["_year", "_period", "Type", "TeamB"]].rename(columns={"TeamB": "sbc_team_key", "Type": "sbc_matchup_type"})
         sched_long = pd.concat([sched_a, sched_b], ignore_index=True).drop_duplicates()
-        rows = rows.merge(sched_long[["_year", "_period", "sbc_team", "sbc_matchup_type"]], on=["_year", "_period", "sbc_team"], how="left")
+        sched_long["sbc_team_key"] = sched_long["sbc_team_key"].apply(resolve_team_key)
+        rows = rows.merge(sched_long[["_year", "_period", "sbc_team_key", "sbc_matchup_type"]], on=["_year", "_period", "sbc_team_key"], how="left")
     if "sbc_matchup_type" not in rows.columns:
         rows["sbc_matchup_type"] = "Regular Season"
     rows["sbc_matchup_type"] = rows["sbc_matchup_type"].fillna("Regular Season")
