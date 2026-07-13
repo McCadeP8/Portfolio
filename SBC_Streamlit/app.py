@@ -1048,9 +1048,11 @@ def selected_player_game_rows(fantrax_id, rosters_df, schedule_df):
     return rows
 
 
-def aggregate_player_season_rows(rows, per_sbc_game=False):
+def aggregate_player_season_rows(rows, basis="per_nba"):
     if rows.empty:
         return pd.DataFrame()
+    per_sbc_game = basis == "per_sbc"
+    total_basis = basis == "total"
     group_cols = ["sbc_year", "sbc_team"]
     ordered_rows = rows.copy()
     ordered_rows["_sort_date"] = pd.to_datetime(ordered_rows.get("Date"), errors="coerce")
@@ -1095,10 +1097,11 @@ def aggregate_player_season_rows(rows, per_sbc_game=False):
         totals.append(total)
     if totals:
         grouped = pd.concat([grouped, pd.DataFrame(totals)], ignore_index=True)
-    per_game_cols = BOX_SCORE_SUM_STATS if per_sbc_game else [col for col in BOX_SCORE_SUM_STATS if col != "GP"]
-    gp_values = pd.to_numeric(grouped["_denom_gp"], errors="coerce").replace(0, pd.NA)
-    for col in per_game_cols:
-        grouped[col] = pd.to_numeric(grouped[col], errors="coerce").div(gp_values).fillna(0)
+    if not total_basis:
+        per_game_cols = BOX_SCORE_SUM_STATS if per_sbc_game else [col for col in BOX_SCORE_SUM_STATS if col != "GP"]
+        gp_values = pd.to_numeric(grouped["_denom_gp"], errors="coerce").replace(0, pd.NA)
+        for col in per_game_cols:
+            grouped[col] = pd.to_numeric(grouped[col], errors="coerce").div(gp_values).fillna(0)
     grouped["Season"] = grouped["sbc_year"].apply(season_label_from_year)
     grouped["_is_total"] = (grouped["sbc_team"] == "TOT").astype(int)
     grouped["_team_order"] = pd.to_numeric(grouped["_team_order"], errors="coerce").fillna(998)
@@ -1119,12 +1122,13 @@ def render_player_stats_table(rows, empty_text):
         if team_value == "TOT":
             team_html = f'<span class="sbc-player-profile-team-mark sbc-player-profile-team-total"><img src="{league_logo_html}" alt="SBCFBL logo"><strong>TOT</strong><em>Total</em></span>'
         else:
-            visuals = team_visuals(team_value) if team_value in team_info else {"primary": LEAGUE_PRIMARY, "secondary": LEAGUE_SECONDARY, "font": LEAGUE_FONT, "logo": ""}
+            team_key = resolve_team_key(team_value)
+            visuals = team_visuals(team_key) if team_key in team_info else {"primary": LEAGUE_PRIMARY, "secondary": LEAGUE_SECONDARY, "font": LEAGUE_FONT, "logo": ""}
             logo_html = f'<img src="{escape(str(visuals.get("logo", "")), quote=True)}" alt="{escape(team_value, quote=True)} logo">' if visuals.get("logo") else ""
             team_html = (
                 f'<span class="sbc-player-profile-team-mark" style="--profile-team-color:{escape(str(visuals["primary"]), quote=True)};'
                 f'--profile-team-secondary:{escape(str(visuals["secondary"]), quote=True)};--profile-team-font:{escape(str(visuals["font"]), quote=True)};">'
-                f'{logo_html}<strong>{escape(live_team_full_name(team_value))}</strong></span>'
+                f'{logo_html}<strong>{escape(live_team_full_name(team_key) if team_key in team_info else team_value)}</strong></span>'
             )
         body.append(f"""
             <tr>
@@ -3283,15 +3287,28 @@ def render_draft_team_wordmark(value, empty_text="Not on roster", include_nickna
 
 
 def team_visuals(team):
-    info = team_info.get(str(team), {})
+    info = team_info.get(resolve_team_key(team), {})
     return {
         "logo": info.get("logo", ""),
         "primary": info.get("bg", LEAGUE_PRIMARY),
         "secondary": info.get("bg2", LEAGUE_SECONDARY),
         "text": info.get("text", "#ffffff"),
         "nickname": info.get("nickname", ""),
-        "font": TEAM_FONTS.get(str(team), "Poppins"),
+        "font": TEAM_FONTS.get(resolve_team_key(team), "Poppins"),
     }
+
+
+def resolve_team_key(team):
+    value = str(team).strip()
+    if value in team_info:
+        return value
+    lowered = value.lower()
+    for key, info in team_info.items():
+        nickname = str(info.get("nickname", "")).strip()
+        full_name = f"{key} {nickname}".strip()
+        if lowered in {str(key).lower(), nickname.lower(), full_name.lower()}:
+            return key
+    return value
 
 
 def current_year_salary_for_players(data, players):
@@ -9053,7 +9070,7 @@ st.markdown(
 
     .sbc-player-profile-hero {{
         display: grid;
-        grid-template-columns: 12rem minmax(0, 1fr) minmax(13rem, 0.52fr);
+        grid-template-columns: 18rem minmax(0, 1fr) minmax(14rem, 0.5fr);
         gap: 1.25rem;
         align-items: center;
         width: 100%;
@@ -9072,8 +9089,8 @@ st.markdown(
         display: grid;
         place-items: end center;
         overflow: hidden;
-        width: 12rem;
-        height: 12rem;
+        width: 18rem;
+        height: 18rem;
         border-radius: 8px;
         background:
             radial-gradient(circle at 50% 18%, color-mix(in srgb, {LEAGUE_SECONDARY} 30%, #ffffff), #eef2f7 64%);
@@ -9128,15 +9145,18 @@ st.markdown(
 
     .sbc-player-profile-awards {{
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
         justify-content: center;
-        gap: 0.38rem;
+        align-items: stretch;
+        gap: 0.42rem;
         margin-top: 0.5rem;
     }}
 
     .sbc-player-profile-awards span {{
+        justify-content: center;
         background: color-mix(in srgb, #c99720 18%, #ffffff);
         color: #5a3b00;
+        width: 100%;
     }}
 
     .sbc-player-profile-awards em {{
@@ -9240,9 +9260,9 @@ st.markdown(
 
     .sbc-player-profile-team-mark strong {{
         overflow: hidden;
-        color: color-mix(in srgb, var(--profile-team-color) 82%, #111827) !important;
+        color: var(--profile-team-color) !important;
         font-family: var(--profile-team-font), "Poppins", sans-serif !important;
-        font-size: 0.78rem;
+        font-size: 0.86rem;
         font-weight: 950;
         line-height: 1;
         text-overflow: ellipsis;
@@ -9269,6 +9289,22 @@ st.markdown(
         font-style: normal;
         font-weight: 850;
         text-transform: uppercase;
+    }}
+
+    @media (max-width: 980px) {{
+        .sbc-player-profile-hero {{
+            grid-template-columns: 1fr;
+            justify-items: center;
+        }}
+
+        .sbc-player-profile-photo {{
+            width: min(18rem, 82vw);
+            height: min(18rem, 82vw);
+        }}
+
+        .sbc-player-profile-accolades {{
+            width: 100%;
+        }}
     }}
 
     .sbc-history-layout {{
@@ -13297,7 +13333,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         )
         pace_mode = st.radio(
             "Stat Basis",
-            options=["Per NBA Game", "Per SBCFBL Matchup"],
+            options=["Per NBA Game", "Per SBCFBL Matchup", "Total"],
             horizontal=True,
             key="history_player_stats_basis",
         )
@@ -13309,9 +13345,14 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         title, type_value, empty_text = stat_type_lookup[stat_mode]
         type_column = "sbc_matchup_type" if "sbc_matchup_type" in player_rows.columns else "Type"
         section_rows = player_rows[player_rows[type_column].astype(str) == type_value] if not player_rows.empty else pd.DataFrame()
-        basis_note = "Per unique SBCFBL matchup." if pace_mode == "Per SBCFBL Matchup" else "Per NBA game played."
+        basis_key = {"Per NBA Game": "per_nba", "Per SBCFBL Matchup": "per_sbc", "Total": "total"}[pace_mode]
+        basis_note = {
+            "per_nba": "Per NBA game played.",
+            "per_sbc": "Per SBCFBL matchup; GP is NBA games played per matchup.",
+            "total": "Raw totals.",
+        }[basis_key]
         render_html(f'<div class="sbc-awards-section-head"><span>{escape(title)}</span><em>{escape(basis_note)} Only NBA games on dates this player was ACTIVE in an SBCFBL matchup.</em></div>')
-        render_player_stats_table(aggregate_player_season_rows(section_rows, per_sbc_game=(pace_mode == "Per SBCFBL Matchup")), empty_text)
+        render_player_stats_table(aggregate_player_season_rows(section_rows, basis=basis_key), empty_text)
         render_award_detail_ledger(awards_table)
 
 if main_page == "League Hub" and selected_league_page == "Standings":
