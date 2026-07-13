@@ -9,6 +9,7 @@ import altair as alt
 import re as re
 import json
 import math
+import unicodedata
 from datetime import datetime, date, time
 from html import escape
 from pathlib import Path
@@ -322,6 +323,7 @@ BOX_SCORE_STATS = ["GP", "MP", "TS%", "2PTM", "2PTA", "2PT%", "3PTM", "3PTA", "3
 BOX_SCORE_SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 BOX_SCORE_WEIGHTS = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
 BOX_SCORE_CATEGORY_ORDER = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+HISTORY_LEADERBOARD_STATS = BOX_SCORE_CATEGORY_ORDER + ["Matchups", "Games Played"]
 
 
 def _read_local_parquet(filename):
@@ -921,11 +923,52 @@ def current_player_contract(player_name, cap_df):
     salary_col = f"Y{current_year}"
     type_col = f"Type{current_year}"
     salary = row.get(salary_col, "")
+    active_types = {"Guaranteed", "Non-Guaranteed"}
+    contract_types = active_types | {"Team"}
+    future_years = []
+    future_total = 0
+    for col in cap_df.columns:
+        match = re.fullmatch(r"Y(\d{4})", str(col))
+        if not match:
+            continue
+        year = int(match.group(1))
+        if year < current_year:
+            continue
+        year_type = row.get(f"Type{year}", "")
+        if year_type not in contract_types:
+            continue
+        year_salary = pd.to_numeric(pd.Series([row.get(col, 0)]), errors="coerce").fillna(0).iloc[0]
+        if year_salary <= 0:
+            continue
+        future_years.append(year)
+        future_total += float(year_salary)
+    year_count = len(future_years)
+    summary = ""
+    if year_count:
+        summary = f"{year_count} year{'s' if year_count != 1 else ''}, {format_money(future_total)}"
+    team = row.get("Team", "")
+    current_type = row.get(type_col, "")
+    active_roster = current_type in active_types
     return {
-        "team": row.get("Team", ""),
-        "type": row.get(type_col, ""),
+        "team": team,
+        "team_key": resolve_team_key(team) if not is_blank_value(team) else "",
+        "type": current_type,
         "salary": salary,
+        "years": year_count,
+        "total": future_total,
+        "summary": summary,
+        "active_roster": active_roster,
         "status": row.get("Type", ""),
+    }
+
+
+def current_player_contract_lookup(cap_df):
+    if cap_df is None or cap_df.empty or "Player" not in cap_df.columns:
+        return {}
+    return {
+        str(row.get("Player", "")).lower(): current_player_contract(row.get("Player", ""), cap_df)
+        for _, row in cap_df.iterrows()
+        if not is_blank_value(row.get("Player", ""))
     }
 
 
@@ -1013,15 +1056,28 @@ def render_award_detail_ledger(awards_table):
     """)
 
 
-def player_season_count_text(years):
+def ordinal_text(value):
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        return str(value)
+    suffix = "th"
+    if value % 100 not in [11, 12, 13]:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+    return f"{value}{suffix}"
+
+
+def player_season_count_text(years, active_roster=False):
     if not years:
+        if active_roster:
+            return "1st year"
         return "No counted seasons"
     count = len(years)
+    if active_roster:
+        current_count = count if current_year in years else count + 1
+        return f"{ordinal_text(current_count)} year"
     if max(years) == current_year:
-        suffix = "th"
-        if count % 100 not in [11, 12, 13]:
-            suffix = {1: "st", 2: "nd", 3: "rd"}.get(count % 10, "th")
-        return f"{count}{suffix} Season"
+        return f"{ordinal_text(count)} Season"
     return f"{count} Year{'s' if count != 1 else ''}"
 
 
@@ -1205,7 +1261,16 @@ def stat_sort_ascending(stat):
     return stat == "TO"
 
 
+def history_stat_column(stat):
+    return {"Matchups": "_matchups", "Games Played": "GP"}.get(stat, stat)
+
+
+def history_stat_label(stat):
+    return {"Games Played": "GP"}.get(stat, boxscore_stat_label(stat))
+
+
 def display_stat_value(row, stat):
+    stat = history_stat_column(stat)
     is_pct = stat in ["TS%", "2PT%", "3PT%", "FT%"]
     if is_pct and not stat_has_shooting_volume(row, stat):
         return "-"
@@ -1213,6 +1278,12 @@ def display_stat_value(row, stat):
 
 
 def matchup_high_value_text(row, stat):
+    display_stat = stat
+    stat = history_stat_column(stat)
+    if display_stat == "Matchups":
+        return stat_number(row.get("_matchups", 1)), ""
+    if display_stat == "Games Played":
+        return stat_number(row.get("GP", 0)), ""
     if stat in ["2PT%", "3PT%", "FT%"]:
         attempt_col = {"2PT%": "2PTA", "3PT%": "3PTA", "FT%": "FTA"}[stat]
         attempts = stat_number(row.get(attempt_col, 0))
@@ -1270,24 +1341,25 @@ def matchup_context_text(row):
 
 
 def top_matchup_rows(rows, stat, limit=25):
-    if rows is None or rows.empty or stat not in rows.columns:
+    stat_col = history_stat_column(stat)
+    if rows is None or rows.empty or stat_col not in rows.columns:
         return pd.DataFrame()
     work = valid_matchup_archive_rows(rows)
     work = dedupe_matchup_archive_for_totals(work)
     if work.empty:
         return work
-    if stat in ["TS%", "2PT%", "3PT%", "FT%"]:
-        work = work[work.apply(lambda row: stat_has_shooting_volume(row, stat), axis=1)].copy()
-    work["_stat_sort"] = pd.to_numeric(work[stat], errors="coerce")
+    if stat_col in ["TS%", "2PT%", "3PT%", "FT%"]:
+        work = work[work.apply(lambda row: stat_has_shooting_volume(row, stat_col), axis=1)].copy()
+    work["_stat_sort"] = pd.to_numeric(work[stat_col], errors="coerce")
     work = work.dropna(subset=["_stat_sort"])
-    if stat in ["2PT%", "3PT%", "FT%"]:
-        attempt_col = {"2PT%": "2PTA", "3PT%": "3PTA", "FT%": "FTA"}[stat]
+    if stat_col in ["2PT%", "3PT%", "FT%"]:
+        attempt_col = {"2PT%": "2PTA", "3PT%": "3PTA", "FT%": "FTA"}[stat_col]
         work["_volume_sort"] = pd.to_numeric(work.get(attempt_col, 0), errors="coerce").fillna(0)
         return work.sort_values(["_stat_sort", "_volume_sort"], ascending=[False, False]).head(limit)
-    if stat == "TO":
+    if stat_col == "TO":
         work["_volume_sort"] = pd.to_numeric(work.get("MP", 0), errors="coerce").fillna(0)
         return work.sort_values(["_stat_sort", "_volume_sort"], ascending=[True, False]).head(limit)
-    return work.sort_values("_stat_sort", ascending=stat_sort_ascending(stat)).head(limit)
+    return work.sort_values("_stat_sort", ascending=stat_sort_ascending(stat_col)).head(limit)
 
 
 def render_matchup_leaderboard(rows, stat, empty_text, limit=25, show_team=True):
@@ -1313,7 +1385,7 @@ def render_matchup_leaderboard(rows, stat, empty_text, limit=25, show_team=True)
     render_html(f"""
         <div class="sbc-box-table-scroll">
             <table class="sbc-history-overview-table sbc-matchup-high-table">
-                <thead><tr><th>#</th><th>Player</th>{team_header}<th>{escape(boxscore_stat_label(stat))}</th><th>Matchup</th></tr></thead>
+                <thead><tr><th>#</th><th>Player</th>{team_header}<th>{escape(history_stat_label(stat))}</th><th>Matchup</th></tr></thead>
                 <tbody>{''.join(body)}</tbody>
             </table>
         </div>
@@ -1426,24 +1498,31 @@ def aggregate_matchup_player_rows(rows, basis="total", group_by_team=True):
     return grouped
 
 
-def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team=True, show_seasons=False, sort_stat="PTS"):
+def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team=True, show_seasons=False, sort_stat="PTS", current_contracts=None):
     if rows is None or rows.empty:
         render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
         return
-    if sort_stat in rows.columns:
-        work = rows.sort_values([sort_stat, "MP", "GP"], ascending=[stat_sort_ascending(sort_stat), False, False]).head(limit).copy()
+    contract_lookup = current_contracts if isinstance(current_contracts, dict) else current_player_contract_lookup(current_contracts)
+    sort_col = history_stat_column(sort_stat)
+    if sort_col in rows.columns:
+        work = rows.sort_values([sort_col, "MP", "GP"], ascending=[stat_sort_ascending(sort_col), False, False]).head(limit).copy()
     else:
         work = rows.sort_values(["PTS", "MP", "GP"], ascending=[False, False, False]).head(limit).copy()
     stats = ["GP", "MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     header = "".join(f"<th>{escape(boxscore_stat_label(stat))}</th>" for stat in stats)
     body = []
     for rank, (_, row) in enumerate(work.iterrows(), start=1):
+        player_name = str(row.get("fantrax_name", row.get("player_name", "")))
+        contract = contract_lookup.get(player_name.lower(), {})
+        row_style = ""
+        if contract.get("active_roster") and contract.get("team_key") in team_info:
+            row_style = f' style="--ledger-team-color:{escape(str(team_color_for_name(contract.get("team_key"))), quote=True)};"'
         team_html = history_team_mark_html(row.get("sbc_team_key", row.get("sbc_team", ""))) if show_team else ""
         cells = "".join(stat_cell_html(row, stat, show_gp=(stat != "MP")) for stat in stats)
         season_cell = f"<td>{escape(stat_number(row.get('_seasons', 0)))}</td>" if show_seasons else ""
         team_cell = f"<td>{team_html}</td>" if show_team else ""
         body.append(f"""
-            <tr>
+            <tr{row_style}>
                 <td><strong>{rank}</strong></td>
                 <td>{player_history_cell_html(row)}</td>
                 {season_cell}
@@ -1590,7 +1669,7 @@ need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page 
 need_all_time_rosters = need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
 need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or need_league_standings or need_history
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
-need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup
+need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_history_awards
 
 df = load_required_data("Cap sheet data", get_data) if need_df else pd.DataFrame()
 pics = load_required_data("Player pictures", get_pictures) if need_pics else pd.DataFrame()
@@ -9443,6 +9522,13 @@ st.markdown(
         padding: 1.15rem;
     }}
 
+    .sbc-player-profile-hero-current {{
+        border-color: color-mix(in srgb, var(--profile-current-team-color) 36%, rgba(23,32,42,0.12));
+        background:
+            linear-gradient(135deg, color-mix(in srgb, var(--profile-current-team-color) 18%, #ffffff), #ffffff 44%, color-mix(in srgb, var(--profile-current-team-secondary) 18%, #ffffff));
+        box-shadow: 0 20px 48px color-mix(in srgb, var(--profile-current-team-color) 16%, rgba(18,25,38,0.10));
+    }}
+
     .sbc-player-profile-photo {{
         display: grid;
         place-items: end center;
@@ -9453,6 +9539,11 @@ st.markdown(
         background:
             radial-gradient(circle at 50% 18%, color-mix(in srgb, {LEAGUE_SECONDARY} 30%, #ffffff), #eef2f7 64%);
         box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8), 0 12px 28px rgba(18,25,38,0.12);
+    }}
+
+    .sbc-player-profile-hero-current .sbc-player-profile-photo {{
+        background:
+            radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--profile-current-team-secondary) 34%, #ffffff), color-mix(in srgb, var(--profile-current-team-color) 9%, #eef2f7) 64%);
     }}
 
     .sbc-player-profile-photo img {{
@@ -9469,6 +9560,10 @@ st.markdown(
         text-transform: uppercase;
     }}
 
+    .sbc-player-profile-hero-current .sbc-player-profile-kicker {{
+        color: var(--profile-current-team-color);
+    }}
+
     .sbc-player-profile-main h2 {{
         margin: 0.16rem 0 0.55rem;
         color: var(--sbc-ink);
@@ -9476,6 +9571,12 @@ st.markdown(
         font-size: clamp(2.35rem, 5vw, 4.4rem);
         font-weight: 950;
         line-height: 0.95;
+    }}
+
+    .sbc-player-profile-hero-current .sbc-player-profile-main h2 {{
+        color: var(--profile-current-team-color);
+        font-family: var(--profile-current-team-font), "Poppins", sans-serif;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.72);
     }}
 
     .sbc-player-profile-meta {{
@@ -9499,6 +9600,12 @@ st.markdown(
         font-size: 0.72rem;
         font-weight: 900;
         padding: 0.25rem 0.58rem;
+    }}
+
+    .sbc-player-profile-hero-current .sbc-player-profile-meta span {{
+        border: 1px solid color-mix(in srgb, var(--profile-current-team-color) 22%, rgba(23,32,42,0.10));
+        background: color-mix(in srgb, var(--profile-current-team-color) 10%, #ffffff);
+        color: color-mix(in srgb, var(--profile-current-team-color) 82%, #111827);
     }}
 
     .sbc-player-profile-awards {{
@@ -9535,6 +9642,16 @@ st.markdown(
         padding: 0.85rem;
     }}
 
+    .sbc-player-profile-hero-current .sbc-player-profile-accolades {{
+        border-color: color-mix(in srgb, var(--profile-current-team-secondary) 34%, rgba(23,32,42,0.10));
+        background: linear-gradient(135deg, color-mix(in srgb, var(--profile-current-team-secondary) 14%, #ffffff), #ffffff);
+    }}
+
+    .sbc-player-profile-hero-current .sbc-player-profile-awards span {{
+        background: color-mix(in srgb, var(--profile-current-team-secondary) 18%, #ffffff);
+        color: color-mix(in srgb, var(--profile-current-team-color) 76%, #111827);
+    }}
+
     .sbc-player-profile-accolades-label {{
         color: #5a3b00;
         font-size: 0.72rem;
@@ -9542,6 +9659,10 @@ st.markdown(
         letter-spacing: 0.08em;
         text-align: center;
         text-transform: uppercase;
+    }}
+
+    .sbc-player-profile-hero-current .sbc-player-profile-accolades-label {{
+        color: var(--profile-current-team-color);
     }}
 
     .sbc-player-profile-table {{
@@ -9890,6 +10011,18 @@ st.markdown(
     .sbc-ledger-table {{
         outline: 1px solid rgba(255,255,255,0.9);
         outline-offset: -5px;
+    }}
+
+    .sbc-ledger-table tr[style*="--ledger-team-color"] td {{
+        background: color-mix(in srgb, var(--ledger-team-color) 6%, #ffffff) !important;
+    }}
+
+    .sbc-ledger-table tr:nth-child(even)[style*="--ledger-team-color"] td {{
+        background: color-mix(in srgb, var(--ledger-team-color) 8%, #ffffff) !important;
+    }}
+
+    .sbc-ledger-table tr[style*="--ledger-team-color"] td:first-child {{
+        border-left: 0.24rem solid var(--ledger-team-color);
     }}
 
     .sbc-history-player-cell {{
@@ -12491,11 +12624,23 @@ st.markdown(
         text-align: center;
     }}
 
+    .sbc-award-team-spotlight-stacked {{
+        display: grid;
+        justify-items: center;
+        gap: 0.44rem;
+        width: 100%;
+    }}
+
     .sbc-award-team-spotlight img {{
         width: 4.5rem;
         height: 4.5rem;
         object-fit: contain;
         filter: drop-shadow(0 12px 20px rgba(18,25,38,0.16));
+    }}
+
+    .sbc-award-team-spotlight-stacked img {{
+        width: 4.75rem;
+        height: 4.75rem;
     }}
 
     .sbc-award-team-feature .sbc-award-team-spotlight {{
@@ -12513,6 +12658,13 @@ st.markdown(
         font-size: clamp(1.2rem, 2.6vw, 2.1rem);
         font-weight: 950;
         line-height: 1;
+    }}
+
+    .sbc-award-team-spotlight-stacked strong {{
+        max-width: 100%;
+        font-size: 1rem;
+        line-height: 1.05;
+        text-wrap: balance;
     }}
 
     .sbc-award-team-footer {{
@@ -13575,7 +13727,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
         with col3:
             team_basis = st.selectbox("Stat Basis", ["Total", "Per NBA Game", "Per SBCFBL Matchup"], key="team_history_all_time_basis")
         with col4:
-            leader_stat = st.selectbox("Sort / Leaderboard Stat", BOX_SCORE_CATEGORY_ORDER, index=BOX_SCORE_CATEGORY_ORDER.index("PTS"), key="team_history_matchup_stat")
+            leader_stat = st.selectbox("Sort / Leaderboard Stat", HISTORY_LEADERBOARD_STATS, index=HISTORY_LEADERBOARD_STATS.index("PTS"), key="team_history_matchup_stat")
         filtered_team_archive = team_archive.copy()
         if team_scope != "Career":
             selected_year = seasons[season_options.index(team_scope) - 1]
@@ -13590,6 +13742,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
             show_team=False,
             show_seasons=(team_scope == "Career"),
             sort_stat=leader_stat,
+            current_contracts=df,
         )
         render_html('<div class="sbc-awards-section-head"><span>Franchise Single-Matchup Leaders</span><em>Best individual matchup performances for the selected stat.</em></div>')
         player_filter = st.text_input("Filter players", key="team_history_player_filter", placeholder="Type a player name...")
@@ -13751,19 +13904,30 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         selected_meta = player_options[player_options["fantrax_id"] == selected_player_id].iloc[0]
         espn_player_id = selected_meta.get("espn_player_id", "")
         contract = current_player_contract(selected_player_name, df)
-        current_team = contract.get("team", "")
-        current_type = contract.get("type", "")
         current_salary = contract.get("salary", "")
-        salary_text = format_money(current_salary) if not is_blank_value(current_salary) else "No active contract listed"
-        team_text = live_team_full_name(current_team) if not is_blank_value(current_team) else "Not currently rostered"
+        active_roster = bool(contract.get("active_roster"))
+        salary_text = contract.get("summary") or (format_money(current_salary) if not is_blank_value(current_salary) else "No active contract listed")
+        team_key = contract.get("team_key", "")
+        team_text = live_team_full_name(team_key) if active_roster and team_key in team_info else "Not currently rostered"
+        profile_class = "sbc-player-profile-hero sbc-player-profile-hero-current" if active_roster and team_key in team_info else "sbc-player-profile-hero"
+        if active_roster and team_key in team_info:
+            profile_visuals = team_visuals(team_key)
+            profile_style = (
+                f' style="--profile-current-team-color:{escape(str(profile_visuals["primary"]), quote=True)};'
+                f'--profile-current-team-secondary:{escape(str(profile_visuals["secondary"]), quote=True)};'
+                f'--profile-current-team-font:{escape(str(profile_visuals["font"]), quote=True)};'
+                f'--profile-current-team-text:{escape(str(profile_visuals["text"]), quote=True)};"'
+            )
+        else:
+            profile_style = ""
         awards_table = player_awards_table_for_name(selected_player_name, award_history)
         player_rows = selected_player_matchup_rows(selected_player_id, all_time_rosters, all_time_schedule)
         active_years = sorted(pd.to_numeric(player_rows.get("sbc_year", pd.Series(dtype=float)), errors="coerce").dropna().astype(int).unique().tolist()) if not player_rows.empty else []
-        season_text = player_season_count_text(active_years)
+        season_text = player_season_count_text(active_years, active_roster=active_roster)
         headshot = espn_headshot_url(espn_player_id)
         award_html = award_summary_chips(awards_table)
         render_html(f"""
-            <section class="sbc-player-profile-hero">
+            <section class="{profile_class}"{profile_style}>
                 <div class="sbc-player-profile-photo">
                     <img src="{headshot}" alt="{escape(selected_player_name, quote=True)} headshot">
                 </div>
@@ -13772,7 +13936,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
                     <h2>{escape(selected_player_name)}</h2>
                     <div class="sbc-player-profile-meta">
                         <span>{escape(team_text)}</span>
-                        <span>{escape(str(current_type or 'Contract'))}: {escape(salary_text)}</span>
+                        <span>{escape(salary_text)}</span>
                         <span>{escape(season_text)}</span>
                     </div>
                 </div>
@@ -13812,8 +13976,6 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         render_html(f'<div class="sbc-awards-section-head"><span>{escape(title)}</span><em>{escape(basis_note)} Only NBA games on dates this player was ACTIVE in an SBCFBL matchup.</em></div>')
         season_rows = aggregate_player_season_rows(section_rows, basis=basis_key)
         render_player_stats_table(season_rows, empty_text)
-        render_html('<div class="sbc-awards-section-head"><span>Season Leaders</span><em>Best season row for each category using the selected stat type and basis.</em></div>')
-        render_player_season_leaders(season_rows, "No season leaders are available for this player and stat type.")
         render_html('<div class="sbc-awards-section-head"><span>Matchup Leaders</span><em>Best single SBCFBL matchup performance by category.</em></div>')
         render_player_matchup_highs(section_rows, "No matchup highs are available for this player and stat type.")
         render_award_detail_ledger(awards_table)
@@ -13839,26 +14001,36 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         season_options = ["Career"] + [season_label_from_year(year) for year in seasons]
         col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
         with col1:
-            league_stat = st.selectbox("Category", BOX_SCORE_CATEGORY_ORDER, index=BOX_SCORE_CATEGORY_ORDER.index("PTS"), key="league_history_all_time_stat")
+            league_stat = st.selectbox("Category", HISTORY_LEADERBOARD_STATS, index=HISTORY_LEADERBOARD_STATS.index("PTS"), key="league_history_all_time_stat")
         with col2:
             league_scope = st.selectbox("Season", season_options, key="league_history_all_time_scope")
         with col3:
             league_type = st.selectbox("Stat Type", ["Regular Season", "Playoffs", "Play-In", "In-Season Tournament"], key="league_history_all_time_type_v2")
         with col4:
-            league_mode = st.selectbox("View", ["Single Game", "SBCFBL Matchup Average"], key="league_history_all_time_mode")
+            league_mode = st.selectbox("View", ["Single Game", "SBCFBL Matchup Average", "Total"], key="league_history_all_time_mode")
         filtered_archive = matchup_archive.copy()
         if league_scope != "Career":
             selected_year = seasons[season_options.index(league_scope) - 1]
             filtered_archive = filtered_archive[pd.to_numeric(filtered_archive["sbc_year"], errors="coerce") == selected_year].copy()
         filtered_archive = filtered_archive[filtered_archive["sbc_matchup_type"].astype(str) == league_type].copy()
         if league_mode == "Single Game":
-            render_html(f'<div class="sbc-awards-section-head"><span>{escape(boxscore_stat_label(league_stat))} Single-Matchup Leaders</span><em>One row is one player in one SBCFBL matchup period.</em></div>')
+            render_html(f'<div class="sbc-awards-section-head"><span>{escape(history_stat_label(league_stat))} Single-Matchup Leaders</span><em>One row is one player in one SBCFBL matchup period.</em></div>')
             render_matchup_leaderboard(filtered_archive, league_stat, "No single-matchup leaders match this filter.", limit=50, show_team=True)
-        else:
+        elif league_mode == "SBCFBL Matchup Average":
             render_html('<div class="sbc-awards-section-head"><span>Matchup Average Leaders</span><em>Player averages per SBCFBL matchup in the selected scope.</em></div>')
             render_all_time_player_aggregate_table(
                 aggregate_matchup_player_rows(filtered_archive, basis="per_sbc", group_by_team=False),
                 "No matchup average leaders match this filter.",
+                limit=50,
+                show_team=False,
+                show_seasons=(league_scope == "Career"),
+                sort_stat=league_stat,
+            )
+        else:
+            render_html('<div class="sbc-awards-section-head"><span>Total Leaders</span><em>Player totals in the selected scope.</em></div>')
+            render_all_time_player_aggregate_table(
+                aggregate_matchup_player_rows(filtered_archive, basis="total", group_by_team=False),
+                "No total leaders match this filter.",
                 limit=50,
                 show_team=False,
                 show_seasons=(league_scope == "Career"),
@@ -14564,12 +14736,225 @@ def team_award_winner(award_table, year, award):
     return clean_pick_display(row.iloc[0]["Winner"])
 
 
-def player_award_table(year, award, mode="single"):
-    if mode == "allstar":
-        return safe_table_call(get_all_stars_award, award_history, ft_players, all_time_rosters, pics, year, award)
+def award_player_key(value):
+    text = "" if is_blank_value(value) else str(value)
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    text = " ".join(text.lower().replace(".", "").replace("'", "").split())
+    replacements = {
+        "alperun sengun": "alperen sengun",
+        "cam thomas": "cameron thomas",
+        "pj washington": "p.j. washington",
+        "scotty pippen": "scotty pippen jr",
+        "nikola jovic": "nikola jovi",
+        "alex sarr": "alexandre sarr",
+    }
+    text = replacements.get(text, text)
+    suffixes = {"jr", "sr", "ii", "iii", "iv", "v"}
+    parts = [part for part in text.split() if part not in suffixes]
+    return " ".join(parts)
+
+
+def month_number_from_label(value):
+    months = {
+        "january": 1,
+        "february": 2,
+        "march": 3,
+        "april": 4,
+        "may": 5,
+        "june": 6,
+        "july": 7,
+        "august": 8,
+        "september": 9,
+        "october": 10,
+        "november": 11,
+        "december": 12,
+    }
+    return months.get(str(value).strip().lower())
+
+
+def award_calendar_rows(year):
+    if period_calendar is None or period_calendar.empty or not {"Year", "Period", "Date"}.issubset(period_calendar.columns):
+        return pd.DataFrame()
+    calendar = period_calendar.copy()
+    calendar["_award_year"] = pd.to_numeric(calendar["Year"], errors="coerce")
+    calendar["_period"] = pd.to_numeric(calendar["Period"], errors="coerce")
+    calendar["_date"] = pd.to_datetime(calendar["Date"], errors="coerce")
+    return calendar[(calendar["_award_year"] == year) & calendar["_date"].notna()].copy()
+
+
+def period_for_award_date(year, target_date):
+    calendar = award_calendar_rows(year)
+    if calendar.empty or pd.isna(target_date):
+        return None
+    eligible = calendar[calendar["_date"] <= pd.Timestamp(target_date)].copy()
+    if eligible.empty:
+        eligible = calendar.copy()
+    period_value = eligible.sort_values("_date").iloc[-1].get("_period")
+    return int(period_value) if pd.notna(period_value) else None
+
+
+def regular_season_final_period(year):
+    calendar = award_calendar_rows(year)
+    if calendar.empty:
+        return None
+    regular = calendar[calendar.get("Season", "").astype(str).str.lower().eq("regular")].copy() if "Season" in calendar.columns else calendar
+    if regular.empty:
+        regular = calendar
+    period_value = regular.sort_values("_date").iloc[-1].get("_period")
+    return int(period_value) if pd.notna(period_value) else None
+
+
+def final_calendar_period(year):
+    calendar = award_calendar_rows(year)
+    if calendar.empty:
+        return None
+    period_value = calendar.sort_values("_date").iloc[-1].get("_period")
+    return int(period_value) if pd.notna(period_value) else None
+
+
+def month_end_period(year, month_label):
+    month_num = month_number_from_label(month_label)
+    if not month_num:
+        return None
+    calendar = award_calendar_rows(year)
+    if calendar.empty:
+        return None
+    month_rows = calendar[calendar["_date"].dt.month == month_num].copy()
+    if month_rows.empty:
+        return None
+    period_value = month_rows.sort_values("_date").iloc[-1].get("_period")
+    return int(period_value) if pd.notna(period_value) else None
+
+
+def week_award_period(week_label):
+    match = re.search(r"\d+", str(week_label))
+    return int(match.group(0)) if match else None
+
+
+def award_snapshot_period(year, award, mode="single", week_label=""):
+    if mode == "allstar" or award in {"ASG MVP", "West All-Star", "East All-Star"}:
+        return period_for_award_date(year, pd.Timestamp(year=year, month=2, day=1))
     if mode == "short":
-        return safe_table_call(get_short_term_awards, award_history, ft_players, all_time_rosters, pics, year, award)
-    return safe_table_call(get_single_award, award_history, ft_players, all_time_rosters, pics, year, award)
+        if str(week_label).lower().startswith("week"):
+            return week_award_period(week_label)
+        return month_end_period(year, week_label)
+    season_long_awards = {
+        "MVP",
+        "Clutch",
+        "DPOY",
+        "MIP",
+        "ROY",
+        "6MOY",
+        "All-SBC 1st Team",
+        "All-SBC 2nd Team",
+        "All-SBC 3rd Team",
+        "All-Defense 1st Team",
+        "All-Defense 2nd Team",
+        "All-Rookie 1st Team",
+        "All-Rookie 2nd Team",
+    }
+    if award in season_long_awards:
+        return regular_season_final_period(year)
+    return final_calendar_period(year)
+
+
+def full_team_name_to_key(value):
+    team_key = resolve_team_key(clean_pick_display(value))
+    return team_key if team_key in team_info else ""
+
+
+def logo_for_team_key(team_key):
+    return team_logo_for_name(team_key) if team_key in team_info else ""
+
+
+def award_roster_team_for_player(fantrax_id, year, period_value):
+    if is_blank_value(fantrax_id) or all_time_rosters is None or all_time_rosters.empty or period_value is None:
+        return ""
+    rosters = all_time_rosters.copy()
+    year_col = "Year" if "Year" in rosters.columns else "year"
+    if not {"id", "period", "team_name", year_col}.issubset(rosters.columns):
+        return ""
+    rosters["_award_year"] = pd.to_numeric(rosters[year_col], errors="coerce")
+    rosters["_award_period"] = pd.to_numeric(rosters["period"], errors="coerce")
+    rows = rosters[
+        (rosters["id"].astype(str) == str(fantrax_id))
+        & (rosters["_award_year"] == year)
+        & (rosters["_award_period"] <= period_value)
+    ].copy()
+    if rows.empty:
+        return ""
+    rows = rows.sort_values("_award_period")
+    exact = rows[rows["_award_period"] == period_value]
+    if not exact.empty:
+        rows = exact
+    return full_team_name_to_key(rows.iloc[-1].get("team_name", ""))
+
+
+def award_base_rows(year, award, mode="single"):
+    if award_history is None or award_history.empty or not {"Award", "Year", "Winner"}.issubset(award_history.columns):
+        return pd.DataFrame(columns=["Award", "Year", "Winner", "Week"])
+    work = award_year_filter(award_history, year)
+    if work.empty:
+        return pd.DataFrame(columns=["Award", "Year", "Winner", "Week"])
+    work = work.copy()
+    if mode == "short":
+        work["Week"] = work["Award"].astype(str).str.extract(r"(Week \d+|January|February|March|April|May|June|July|August|September|October|November|December)")[0]
+        work["Award_clean"] = work["Award"].astype(str).apply(lambda value: " ".join([value.split()[0], value.split()[-1]]) if value.split() else "")
+        work = work[work["Award_clean"] == award].copy()
+    else:
+        work = work[work["Award"].astype(str) == award].copy()
+        work["Week"] = ""
+    work = work[~work["Winner"].astype(str).str.strip().isin(["", "Not Awarded"])].copy()
+    return work
+
+
+def award_team_override(year, award):
+    if award == "Champion":
+        return team_award_winner(team_award_history, year, "Champion")
+    if award == "Cup Winner":
+        return team_award_winner(team_award_history, year, "Cup Winner")
+    return ""
+
+
+def player_award_table(year, award, mode="single"):
+    rows = award_base_rows(year, award, mode)
+    if rows.empty:
+        return pd.DataFrame(columns=["Week", "logo", "Winner", "Picture_Online"])
+    players = ft_players.copy() if ft_players is not None else pd.DataFrame()
+    pictures = pics.copy() if pics is not None else pd.DataFrame()
+    if "name" in players.columns:
+        players["_player_key"] = players["name"].apply(award_player_key)
+    else:
+        players["_player_key"] = ""
+    if "Player" in pictures.columns:
+        pictures["_player_key"] = pictures["Player"].apply(award_player_key)
+    else:
+        pictures["_player_key"] = ""
+    rows["_player_key"] = rows["Winner"].apply(award_player_key)
+    if {"_player_key", "fantraxId"}.issubset(players.columns):
+        rows = rows.merge(players[["_player_key", "fantraxId"]], on="_player_key", how="left")
+    else:
+        rows["fantraxId"] = ""
+    if {"_player_key", "Picture_Online"}.issubset(pictures.columns):
+        rows = rows.merge(pictures[["_player_key", "Picture_Online"]], on="_player_key", how="left")
+    else:
+        rows["Picture_Online"] = ""
+    forced_team = award_team_override(year, award)
+    logos = []
+    for _, row in rows.iterrows():
+        team_key = forced_team if forced_team in team_info else ""
+        if not team_key:
+            snapshot_period = award_snapshot_period(year, award, mode, row.get("Week", ""))
+            team_key = award_roster_team_for_player(row.get("fantraxId", ""), year, snapshot_period)
+        logos.append(logo_for_team_key(team_key))
+    rows["logo"] = logos
+    if mode == "short":
+        categories = ["November", "December", "January", "February", "March"] + [f"Week {i}" for i in range(1, 39)]
+        rows["Week"] = pd.Categorical(rows["Week"], categories=categories, ordered=True)
+        rows = rows.sort_values("Week")
+    else:
+        rows = rows.sort_values("Winner")
+    return rows[["Week", "logo", "Winner", "Picture_Online"]] if mode == "short" else rows[["logo", "Winner", "Picture_Online"]]
 
 
 def render_award_player_rows(data, compact=False):
@@ -14621,12 +15006,13 @@ def render_player_award(title, award, year, mode="single", tone="blue", compact=
     """)
 
 
-def render_team_award_card(title, award, year, tone="blue", feature=False):
+def render_team_award_card(title, award, year, tone="blue", feature=False, stacked=False):
     winner = team_award_winner(team_award_history, year, award)
     if winner in team_info:
         visuals = team_visuals(winner)
+        spotlight_class = "sbc-award-team-spotlight sbc-award-team-spotlight-stacked" if stacked else "sbc-award-team-spotlight"
         team_content = f"""
-            <div class="sbc-award-team-spotlight">
+            <div class="{spotlight_class}">
                 <img src="{escape(str(visuals["logo"]), quote=True)}" alt="{escape(live_team_full_name(winner), quote=True)} logo" referrerpolicy="no-referrer">
                 <strong style="--award-team-font:{escape(str(visuals["font"]), quote=True)};">{escape(live_team_full_name(winner))}</strong>
             </div>
@@ -14730,21 +15116,21 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         render_player_award("Western Conference MVP", "WCF MVP", AwardYears, tone="green")
         div_cols = st.columns(3)
         with div_cols[0]:
-            render_team_award_card("Pacific Champion", "Pacific Champion", AwardYears, "green")
+            render_team_award_card("Pacific Champion", "Pacific Champion", AwardYears, "green", stacked=True)
         with div_cols[1]:
-            render_team_award_card("Northwest Champion", "Northwest Champion", AwardYears, "green")
+            render_team_award_card("Northwest Champion", "Northwest Champion", AwardYears, "green", stacked=True)
         with div_cols[2]:
-            render_team_award_card("Southwest Champion", "Southwest Champion", AwardYears, "green")
+            render_team_award_card("Southwest Champion", "Southwest Champion", AwardYears, "green", stacked=True)
     with east_col:
         render_team_award_card("Eastern Conference Champion", "EC Champion", AwardYears, "blue")
         render_player_award("Eastern Conference MVP", "ECF MVP", AwardYears, tone="blue")
         div_cols = st.columns(3)
         with div_cols[0]:
-            render_team_award_card("Central Champion", "Central Champion", AwardYears, "blue")
+            render_team_award_card("Central Champion", "Central Champion", AwardYears, "blue", stacked=True)
         with div_cols[1]:
-            render_team_award_card("Atlantic Champion", "Atlantic Champion", AwardYears, "blue")
+            render_team_award_card("Atlantic Champion", "Atlantic Champion", AwardYears, "blue", stacked=True)
         with div_cols[2]:
-            render_team_award_card("Southeast Champion", "Southeast Champion", AwardYears, "blue")
+            render_team_award_card("Southeast Champion", "Southeast Champion", AwardYears, "blue", stacked=True)
 
     cols = render_awards_section("Individual Hardware", "The season's headliners and category kings.", [1, 1, 1])
     individual_awards = [
