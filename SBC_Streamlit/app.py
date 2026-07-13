@@ -1551,18 +1551,21 @@ def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team
         player_key = player_name_match_key(player_name)
         contract = contract_lookup.get(player_key, {})
         row_style = ""
+        row_class = ""
         contract_team = contract.get("team_key")
         team_matches_scope = not highlight_team_key or contract_team == highlight_team_key
         if player_key in highlight_keys:
             row_style = f' style="--ledger-team-color:{escape(str(team_color_for_name(highlight_team_key)), quote=True)};"'
+            row_class = ' class="sbc-ledger-active-row"'
         elif contract.get("active_roster") and contract_team in team_info and team_matches_scope:
             row_style = f' style="--ledger-team-color:{escape(str(team_color_for_name(contract.get("team_key"))), quote=True)};"'
+            row_class = ' class="sbc-ledger-active-row"'
         team_html = history_team_mark_html(row.get("sbc_team_key", row.get("sbc_team", ""))) if show_team else ""
         cells = "".join(stat_cell_html(row, stat, show_gp=(stat != "MP")) for stat in stats)
         season_cell = f"<td>{escape(stat_number(row.get('_seasons', 0)))}</td>" if show_seasons else ""
         team_cell = f"<td>{team_html}</td>" if show_team else ""
         body.append(f"""
-            <tr{row_style}>
+            <tr{row_class}{row_style}>
                 <td><strong>{rank}</strong></td>
                 <td>{player_history_cell_html(row)}</td>
                 {season_cell}
@@ -1696,7 +1699,7 @@ need_history_awards = need_history and requested_history_page in ["Awards", "Ove
 need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
 
-need_df = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page == "Player Stats")
+need_df = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
 need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft or (need_history and requested_history_page == "Player Stats")
 need_exceptions = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
 need_base_cap = need_team_data or need_trade_data or need_checks_data or need_league_overview
@@ -6547,6 +6550,110 @@ def render_history_all_time_stats_table(data):
     """)
 
 
+FRANCHISE_CHASER_STATS = ["PTS", "DREB", "AST", "OREB", "ST", "BLK", "3PTM", "2PTM", "FTM", "MP", "GP"]
+
+
+def active_franchise_record_chasers(matchup_archive, cap_df):
+    if matchup_archive is None or matchup_archive.empty or cap_df is None or cap_df.empty:
+        return pd.DataFrame()
+    needed = {"sbc_team_key", "fantrax_name", "sbc_matchup_type"}
+    if not needed.issubset(matchup_archive.columns):
+        return pd.DataFrame()
+    stats = [stat for stat in FRANCHISE_CHASER_STATS if stat in matchup_archive.columns]
+    if not stats:
+        return pd.DataFrame()
+    rows = matchup_archive[matchup_archive["sbc_matchup_type"].astype(str) == "Regular Season"].copy()
+    if rows.empty:
+        return pd.DataFrame()
+    rows["_player_key"] = rows["fantrax_name"].apply(player_name_match_key)
+    group_cols = ["sbc_team_key", "fantrax_name", "_player_key"]
+    if "espn_player_id" in rows.columns:
+        group_cols.append("espn_player_id")
+    grouped = rows.groupby(group_cols, dropna=False, as_index=False)[stats].sum()
+    active_key_map = {team: current_active_player_keys_for_team(cap_df, team) for team in team_info}
+    records = []
+    for team, team_rows in grouped.groupby("sbc_team_key", dropna=False):
+        team_key = resolve_team_key(team)
+        if team_key not in team_info:
+            continue
+        active_keys = active_key_map.get(team_key, set())
+        if not active_keys:
+            continue
+        active_rows = team_rows[team_rows["_player_key"].isin(active_keys)].copy()
+        if active_rows.empty:
+            continue
+        for stat in stats:
+            stat_values = pd.to_numeric(team_rows[stat], errors="coerce").fillna(0)
+            if stat_values.max() <= 0:
+                continue
+            leader_idx = stat_values.idxmax()
+            leader = team_rows.loc[leader_idx]
+            leader_value = float(stat_values.loc[leader_idx])
+            for _, player in active_rows.iterrows():
+                current_value = float(pd.to_numeric(pd.Series([player.get(stat, 0)]), errors="coerce").fillna(0).iloc[0])
+                gap = leader_value - current_value
+                if gap <= 0:
+                    continue
+                records.append({
+                    "Team": team_key,
+                    "fantrax_name": player.get("fantrax_name", ""),
+                    "espn_player_id": player.get("espn_player_id", ""),
+                    "Stat": stat,
+                    "Current": current_value,
+                    "Leader": leader.get("fantrax_name", ""),
+                    "LeaderValue": leader_value,
+                    "Gap": gap,
+                    "Progress": current_value / leader_value if leader_value else 0,
+                })
+    if not records:
+        return pd.DataFrame()
+    chasers = pd.DataFrame(records)
+    chasers["_gap_sort"] = pd.to_numeric(chasers["Gap"], errors="coerce").fillna(999999999)
+    chasers["_progress_sort"] = pd.to_numeric(chasers["Progress"], errors="coerce").fillna(0)
+    return chasers.sort_values(["_progress_sort", "_gap_sort"], ascending=[False, True]).reset_index(drop=True)
+
+
+def render_franchise_record_chasers(chasers):
+    if chasers is None or chasers.empty:
+        render_html('<div class="sbc-empty-state">No active franchise record chases are available yet.</div>')
+        return
+    stat_options = ["All Categories"] + [stat for stat in FRANCHISE_CHASER_STATS if stat in set(chasers["Stat"].astype(str))]
+    selected_stat = st.selectbox("Record Chase Category", stat_options, key="league_history_record_chase_stat")
+    work = chasers.copy()
+    if selected_stat != "All Categories":
+        work = work[work["Stat"].astype(str) == selected_stat].copy()
+        work = work.sort_values(["Gap", "Progress"], ascending=[True, False])
+    else:
+        work = work.sort_values(["Progress", "Gap"], ascending=[False, True])
+    body = []
+    for rank, (_, row) in enumerate(work.head(30).iterrows(), start=1):
+        team = resolve_team_key(row.get("Team", ""))
+        gap_text = stat_number(row.get("Gap", 0))
+        stat = str(row.get("Stat", ""))
+        leader_text = f"{row.get('Leader', '')}: {stat_number(row.get('LeaderValue', 0))}"
+        current_text = stat_number(row.get("Current", 0))
+        progress = float(row.get("Progress", 0) or 0)
+        progress_text = f"{progress * 100:.1f}%"
+        body.append(f"""
+            <tr style="--record-team-color:{escape(str(team_color_for_name(team)), quote=True)};">
+                <td><strong>{rank}</strong></td>
+                <td>{history_team_mark_html(team)}</td>
+                <td>{player_history_cell_html(row)}</td>
+                <td><strong>{escape(boxscore_stat_label(stat))}</strong><em>{escape(gap_text)} away</em></td>
+                <td><strong>{escape(current_text)}</strong><em>{escape(progress_text)} of record</em></td>
+                <td><strong>{escape(str(leader_text))}</strong></td>
+            </tr>
+        """)
+    render_html(f"""
+        <div class="sbc-box-table-scroll">
+            <table class="sbc-history-overview-table sbc-matchup-high-table sbc-record-chase-table">
+                <thead><tr><th>#</th><th>Team</th><th>Active Player</th><th>Record Chase</th><th>Current</th><th>Franchise Leader</th></tr></thead>
+                <tbody>{''.join(body)}</tbody>
+            </table>
+        </div>
+    """)
+
+
 def render_league_history_overview():
     regular_games = history_completed_games(all_time_schedule, ["Regular Season"])
     all_games = history_completed_games(all_time_schedule)
@@ -6577,6 +6684,9 @@ def render_league_history_overview():
             <div class="sbc-draft-tile"><div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">Cup</div><div class="sbc-draft-tile-value">{escape(str(cup_total))}</div></div><div class="sbc-draft-tile-label">SBC Cup Winners</div><div class="sbc-draft-tile-note">Cup championship results in history.</div></div>
         </div>
     """)
+    matchup_archive = load_sbc_player_matchup_stats_archive()
+    render_html('<div class="sbc-awards-section-head"><span>Active Record Chasers</span><em>Current roster players closest to becoming their franchise leader in a regular-season counting stat.</em></div>')
+    render_franchise_record_chasers(active_franchise_record_chasers(matchup_archive, df))
     render_html('<div class="sbc-awards-section-head"><span>All-Time Franchise Ledger</span><em>Regular season record with title seasons from the awards archive.</em></div>')
     ledger = summary[["Team", "Record", "WinPct", "PF", "PA", "Diff", "Championships", "Finals Appearances", "SBC Cup Wins", "Division Championships"]].copy()
     render_history_overview_table(
@@ -9562,6 +9672,10 @@ st.markdown(
         padding: 1.15rem;
     }}
 
+    .sbc-player-profile-hero-no-accolades {{
+        grid-template-columns: 18rem minmax(0, 1fr);
+    }}
+
     .sbc-player-profile-hero-current {{
         border-color: color-mix(in srgb, var(--profile-current-team-color) 36%, rgba(23,32,42,0.12));
         background:
@@ -10048,16 +10162,28 @@ st.markdown(
         outline-offset: -5px;
     }}
 
-    .sbc-ledger-table tr[style*="--ledger-team-color"] td {{
-        background: color-mix(in srgb, var(--ledger-team-color) 10%, #ffffff) !important;
+    .sbc-ledger-table tr.sbc-ledger-active-row td {{
+        background: color-mix(in srgb, var(--ledger-team-color) 18%, #ffffff) !important;
     }}
 
-    .sbc-ledger-table tr:nth-child(even)[style*="--ledger-team-color"] td {{
-        background: color-mix(in srgb, var(--ledger-team-color) 13%, #ffffff) !important;
+    .sbc-ledger-table tr.sbc-ledger-active-row:nth-child(even) td {{
+        background: color-mix(in srgb, var(--ledger-team-color) 22%, #ffffff) !important;
     }}
 
-    .sbc-ledger-table tr[style*="--ledger-team-color"] td:first-child {{
+    .sbc-ledger-table tr.sbc-ledger-active-row td:first-child {{
         border-left: 0.24rem solid var(--ledger-team-color);
+    }}
+
+    .sbc-ledger-table tr.sbc-ledger-active-row .sbc-history-player-cell strong {{
+        color: color-mix(in srgb, var(--ledger-team-color) 82%, #111827) !important;
+    }}
+
+    .sbc-record-chase-table tr[style*="--record-team-color"] td {{
+        background: color-mix(in srgb, var(--record-team-color) 7%, #ffffff) !important;
+    }}
+
+    .sbc-record-chase-table tr[style*="--record-team-color"] td:first-child {{
+        border-left: 0.24rem solid var(--record-team-color);
     }}
 
     .sbc-history-player-cell {{
@@ -13960,7 +14086,13 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         career_team_values = sorted(set(career_team_values))
         profile_team_key = team_key if active_roster and team_key in team_info else (career_team_values[0] if len(career_team_values) == 1 else "")
         team_text = live_team_full_name(team_key) if active_roster and team_key in team_info else "Not currently rostered"
-        profile_class = "sbc-player-profile-hero sbc-player-profile-hero-current" if profile_team_key in team_info else "sbc-player-profile-hero"
+        has_accolades = awards_table is not None and not awards_table.empty
+        profile_classes = ["sbc-player-profile-hero"]
+        if profile_team_key in team_info:
+            profile_classes.append("sbc-player-profile-hero-current")
+        if not has_accolades:
+            profile_classes.append("sbc-player-profile-hero-no-accolades")
+        profile_class = " ".join(profile_classes)
         if profile_team_key in team_info:
             profile_visuals = team_visuals(profile_team_key)
             profile_style = (
@@ -13974,7 +14106,13 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         active_years = sorted(pd.to_numeric(player_rows.get("sbc_year", pd.Series(dtype=float)), errors="coerce").dropna().astype(int).unique().tolist()) if not player_rows.empty else []
         season_text = player_season_count_text(active_years, active_roster=active_roster)
         headshot = espn_headshot_url(espn_player_id)
-        award_html = award_summary_chips(awards_table)
+        award_html = award_summary_chips(awards_table) if has_accolades else ""
+        accolades_html = f"""
+                <div class="sbc-player-profile-accolades">
+                    <div class="sbc-player-profile-accolades-label">Accolades</div>
+                    <div class="sbc-player-profile-awards">{award_html}</div>
+                </div>
+        """ if has_accolades else ""
         render_html(f"""
             <section class="{profile_class}"{profile_style}>
                 <div class="sbc-player-profile-photo">
@@ -13989,10 +14127,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
                         <span>{escape(season_text)}</span>
                     </div>
                 </div>
-                <div class="sbc-player-profile-accolades">
-                    <div class="sbc-player-profile-accolades-label">Accolades</div>
-                    <div class="sbc-player-profile-awards">{award_html}</div>
-                </div>
+                {accolades_html}
             </section>
         """)
         stat_mode = st.radio(
