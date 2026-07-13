@@ -1086,9 +1086,39 @@ def selected_player_matchup_rows(fantrax_id, rosters_df, schedule_df):
     return selected_player_game_rows(fantrax_id, rosters_df, schedule_df)
 
 
+def dedupe_matchup_archive_for_totals(rows):
+    if rows is None or rows.empty or "nba_game_ids" not in rows.columns:
+        return rows
+    work = rows.copy()
+    period_col = "sbc_period" if "sbc_period" in work.columns else "_period"
+    team_col = "sbc_team_key" if "sbc_team_key" in work.columns else "sbc_team"
+    key_cols = [col for col in ["fantrax_id", "sbc_year", period_col, team_col] if col in work.columns]
+    if len(key_cols) < 3:
+        return work
+    sort_cols = key_cols + [col for col in ["sbc_matchup_type", "Game_ID"] if col in work.columns]
+    work = work.sort_values(sort_cols)
+    first_rows = work.drop_duplicates(key_cols, keep="first").copy()
+    if "sbc_opponent" in work.columns:
+        opponents = (
+            work.groupby(key_cols)["sbc_opponent"]
+            .apply(lambda values: " / ".join(team_abbrev_for_name(resolve_team_key(value)) for value in pd.Series(values).dropna().astype(str).drop_duplicates() if not is_blank_value(value)))
+            .reset_index()
+        )
+        first_rows = first_rows.drop(columns=["sbc_opponent"], errors="ignore").merge(opponents, on=key_cols, how="left")
+    if "Game_ID" in work.columns:
+        game_ids = (
+            work.groupby(key_cols)["Game_ID"]
+            .apply(lambda values: " / ".join(pd.Series(values).dropna().astype(str).drop_duplicates()))
+            .reset_index()
+        )
+        first_rows = first_rows.drop(columns=["Game_ID"], errors="ignore").merge(game_ids, on=key_cols, how="left")
+    return first_rows
+
+
 def aggregate_player_season_rows(rows, basis="per_nba"):
     if rows.empty:
         return pd.DataFrame()
+    rows = dedupe_matchup_archive_for_totals(rows)
     per_sbc_game = basis == "per_sbc"
     total_basis = basis == "total"
     group_cols = ["sbc_year", "sbc_team"]
@@ -1205,6 +1235,11 @@ def top_matchup_rows(rows, stat, limit=25):
     if rows is None or rows.empty or stat not in rows.columns:
         return pd.DataFrame()
     work = rows.copy()
+    if "sbc_opponent" in work.columns:
+        work = work[~work["sbc_opponent"].apply(is_blank_value)].copy()
+    if "Game_ID" in work.columns:
+        work = work[~work["Game_ID"].apply(is_blank_value)].copy()
+    work = dedupe_matchup_archive_for_totals(work)
     if stat in ["TS%", "2PT%", "3PT%", "FT%"]:
         work = work[work.apply(lambda row: stat_has_shooting_volume(row, stat), axis=1)].copy()
     work["_stat_sort"] = pd.to_numeric(work[stat], errors="coerce")
@@ -1325,6 +1360,7 @@ def render_player_matchup_highs(rows, empty_text):
 def aggregate_matchup_player_rows(rows, basis="total"):
     if rows is None or rows.empty:
         return pd.DataFrame()
+    rows = dedupe_matchup_archive_for_totals(rows)
     group_cols = ["fantrax_id", "fantrax_name", "sbc_team", "sbc_team_key"]
     grouped = rows.groupby(group_cols, as_index=False)[BOX_SCORE_SUM_STATS].sum()
     matchups = (
@@ -13446,15 +13482,14 @@ if main_page == "Team Hub" and selected_team_page == "History":
         with col1:
             team_scope = st.selectbox("Season", season_options, key="team_history_all_time_scope")
         with col2:
-            team_type = st.selectbox("Stat Type", ["All", "Regular Season", "Playoffs", "Play-In", "In-Season Tournament"], key="team_history_all_time_type")
+            team_type = st.selectbox("Stat Type", ["Regular Season", "Playoffs", "Play-In", "In-Season Tournament"], key="team_history_all_time_type_v2")
         with col3:
             team_basis = st.selectbox("Stat Basis", ["Total", "Per NBA Game", "Per SBCFBL Matchup"], key="team_history_all_time_basis")
         filtered_team_archive = team_archive.copy()
         if team_scope != "Career":
             selected_year = seasons[season_options.index(team_scope) - 1]
             filtered_team_archive = filtered_team_archive[pd.to_numeric(filtered_team_archive["sbc_year"], errors="coerce") == selected_year].copy()
-        if team_type != "All":
-            filtered_team_archive = filtered_team_archive[filtered_team_archive["sbc_matchup_type"].astype(str) == team_type].copy()
+        filtered_team_archive = filtered_team_archive[filtered_team_archive["sbc_matchup_type"].astype(str) == team_type].copy()
         basis_key = {"Total": "total", "Per NBA Game": "per_nba", "Per SBCFBL Matchup": "per_sbc"}[team_basis]
         render_html('<div class="sbc-awards-section-head"><span>Player Ledger</span><em>Sorted by points, with percentages recalculated from summed makes and attempts.</em></div>')
         render_all_time_player_aggregate_table(
@@ -13711,13 +13746,12 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         with col2:
             league_scope = st.selectbox("Season", season_options, key="league_history_all_time_scope")
         with col3:
-            league_type = st.selectbox("Stat Type", ["All", "Regular Season", "Playoffs", "Play-In", "In-Season Tournament"], key="league_history_all_time_type")
+            league_type = st.selectbox("Stat Type", ["Regular Season", "Playoffs", "Play-In", "In-Season Tournament"], key="league_history_all_time_type_v2")
         filtered_archive = matchup_archive.copy()
         if league_scope != "Career":
             selected_year = seasons[season_options.index(league_scope) - 1]
             filtered_archive = filtered_archive[pd.to_numeric(filtered_archive["sbc_year"], errors="coerce") == selected_year].copy()
-        if league_type != "All":
-            filtered_archive = filtered_archive[filtered_archive["sbc_matchup_type"].astype(str) == league_type].copy()
+        filtered_archive = filtered_archive[filtered_archive["sbc_matchup_type"].astype(str) == league_type].copy()
         render_html(f'<div class="sbc-awards-section-head"><span>{escape(boxscore_stat_label(league_stat))} Single-Matchup Leaders</span><em>One row is one player in one SBCFBL matchup period.</em></div>')
         render_matchup_leaderboard(filtered_archive, league_stat, "No single-matchup leaders match this filter.", limit=50, show_team=True)
 
