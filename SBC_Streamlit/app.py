@@ -987,8 +987,14 @@ def award_summary_chips(awards_table):
 def render_award_detail_ledger(awards_table):
     if awards_table is None or awards_table.empty:
         return
+    work = awards_table.copy()
+    work["_award_family"] = work["Award"].apply(award_family_label)
+    family_order = ["Champion", "MVP", "Finals MVP", "All-Star", "All-SBC", "All-Defense", "All-Rookie", "POM", "POW", "ROM"]
+    order_lookup = {name: idx for idx, name in enumerate(family_order)}
+    work["_family_order"] = work["_award_family"].map(order_lookup).fillna(999)
+    work = work.sort_values(["_family_order", "Award", "_year"], ascending=[True, True, False])
     rows = []
-    for _, row in awards_table.iterrows():
+    for _, row in work.iterrows():
         year_text = str(int(row["_year"])) if pd.notna(row.get("_year")) else str(row.get("Year", ""))
         rows.append(f"""
             <tr>
@@ -1225,10 +1231,28 @@ def matchup_date_text(row):
     return f"{start.strftime('%b %d').replace(' 0', ' ')}-{end.strftime('%b %d').replace(' 0', ' ')}"
 
 
+def player_history_cell_html(row):
+    name = str(row.get("fantrax_name", row.get("player_name", "")))
+    player_id = row.get("espn_player_id", "")
+    image = espn_headshot_url(player_id) if not is_blank_value(player_id) else DRAFT_SILHOUETTE
+    return f"""
+        <span class="sbc-history-player-cell">
+            <img src="{escape(str(image), quote=True)}" alt="{escape(name, quote=True)} headshot">
+            <strong>{escape(name)}</strong>
+        </span>
+    """
+
+
 def matchup_context_text(row):
     opponent = row.get("sbc_opponent", row.get("opponent", ""))
     period_text = f"P{int(row.get('sbc_period', row.get('_period', 0)))}" if pd.notna(row.get("sbc_period", row.get("_period", pd.NA))) else ""
-    return " / ".join(part for part in [str(row.get("season", "")), period_text, matchup_date_text(row), f"vs {live_team_full_name(opponent)}" if opponent else ""] if part)
+    try:
+        period_label = period_date_label(int(row.get("sbc_year", 0)), int(row.get("sbc_period", row.get("_period", 0))), matchup_date_text(row))
+    except (TypeError, ValueError):
+        period_label = matchup_date_text(row)
+    if opponent and "/" not in str(opponent):
+        opponent = team_abbrev_for_name(resolve_team_key(opponent))
+    return " / ".join(part for part in [str(row.get("season", "")), period_text, period_label, f"vs {opponent}" if opponent else ""] if part)
 
 
 def top_matchup_rows(rows, stat, limit=25):
@@ -1267,7 +1291,7 @@ def render_matchup_leaderboard(rows, stat, empty_text, limit=25, show_team=True)
         body.append(f"""
             <tr>
                 <td><strong>{rank}</strong></td>
-                <td>{escape(str(row.get('fantrax_name', row.get('player_name', ''))))}</td>
+                <td>{player_history_cell_html(row)}</td>
                 {f'<td>{team_html}</td>' if show_team else ''}
                 <td><strong>{escape(value_text)}</strong><em>{escape(sub_text)}</em></td>
                 <td>{escape(matchup_context_text(row))}</td>
@@ -1309,7 +1333,7 @@ def render_player_season_leaders(rows, empty_text):
         body.append(f"""
             <tr>
                 <td><strong>{escape(boxscore_stat_label(stat))}</strong></td>
-                <td><strong>{escape(display_stat_value(row, stat))}</strong><em>{escape(stat_subtext(row, stat, show_gp=True))}</em></td>
+                <td><strong>{escape(display_stat_value(row, stat))}</strong><em>{escape(stat_subtext(row, stat, show_gp=(stat != "MP")))}</em></td>
                 <td>{escape(season_context)}</td>
             </tr>
         """)
@@ -1318,7 +1342,7 @@ def render_player_season_leaders(rows, empty_text):
         return
     render_html(f"""
         <div class="sbc-box-table-scroll">
-            <table class="sbc-history-overview-table">
+            <table class="sbc-history-overview-table sbc-matchup-high-table">
                 <thead><tr><th>Category</th><th>Best Season</th><th>Season</th></tr></thead>
                 <tbody>{''.join(body)}</tbody>
             </table>
@@ -1361,14 +1385,20 @@ def aggregate_matchup_player_rows(rows, basis="total"):
     if rows is None or rows.empty:
         return pd.DataFrame()
     rows = dedupe_matchup_archive_for_totals(rows)
-    group_cols = ["fantrax_id", "fantrax_name", "sbc_team", "sbc_team_key"]
-    grouped = rows.groupby(group_cols, as_index=False)[BOX_SCORE_SUM_STATS].sum()
+    group_cols = ["fantrax_id", "fantrax_name", "espn_player_id", "sbc_team", "sbc_team_key"]
+    grouped = rows.groupby(group_cols, dropna=False, as_index=False)[BOX_SCORE_SUM_STATS].sum()
     matchups = (
-        rows.groupby(group_cols, as_index=False)
+        rows.groupby(group_cols, dropna=False, as_index=False)
         .size()
         .rename(columns={"size": "_matchups"})
     )
     grouped = grouped.merge(matchups, on=group_cols, how="left")
+    seasons = (
+        rows.groupby(group_cols, dropna=False)["sbc_year"]
+        .nunique()
+        .reset_index(name="_seasons")
+    )
+    grouped = grouped.merge(seasons, on=group_cols, how="left")
     grouped["_denom_gp"] = grouped["_matchups"] if basis == "per_sbc" else grouped["GP"]
     grouped = recalc_shooting_stats(grouped)
     if basis != "total":
@@ -1379,30 +1409,38 @@ def aggregate_matchup_player_rows(rows, basis="total"):
     return grouped
 
 
-def render_all_time_player_aggregate_table(rows, empty_text, limit=50):
+def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team=True, show_seasons=False, sort_stat="PTS"):
     if rows is None or rows.empty:
         render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
         return
-    work = rows.sort_values(["PTS", "MP", "GP"], ascending=[False, False, False]).head(limit).copy()
-    stats = ["GP", "MP", "TS%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+    if sort_stat in rows.columns:
+        work = rows.sort_values([sort_stat, "MP", "GP"], ascending=[stat_sort_ascending(sort_stat), False, False]).head(limit).copy()
+    else:
+        work = rows.sort_values(["PTS", "MP", "GP"], ascending=[False, False, False]).head(limit).copy()
+    stats = ["GP", "MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     header = "".join(f"<th>{escape(boxscore_stat_label(stat))}</th>" for stat in stats)
     body = []
     for rank, (_, row) in enumerate(work.iterrows(), start=1):
-        team_html = history_team_mark_html(row.get("sbc_team_key", row.get("sbc_team", "")))
-        cells = "".join(stat_cell_html(row, stat) for stat in stats)
+        team_html = history_team_mark_html(row.get("sbc_team_key", row.get("sbc_team", ""))) if show_team else ""
+        cells = "".join(stat_cell_html(row, stat, show_gp=(stat != "MP")) for stat in stats)
+        season_cell = f"<td>{escape(stat_number(row.get('_seasons', 0)))}</td>" if show_seasons else ""
+        team_cell = f"<td>{team_html}</td>" if show_team else ""
         body.append(f"""
             <tr>
                 <td><strong>{rank}</strong></td>
-                <td>{escape(str(row.get('fantrax_name', '')))}</td>
-                <td>{team_html}</td>
+                <td>{player_history_cell_html(row)}</td>
+                {season_cell}
+                {team_cell}
                 <td>{escape(stat_number(row.get('_matchups', 0)))} </td>
                 {cells}
             </tr>
         """)
+    season_header = "<th>Seasons</th>" if show_seasons else ""
+    team_header = "<th>Team</th>" if show_team else ""
     render_html(f"""
         <div class="sbc-box-table-scroll">
-            <table class="sbc-history-overview-table">
-                <thead><tr><th>#</th><th>Player</th><th>Team</th><th>Matchups</th>{header}</tr></thead>
+            <table class="sbc-history-overview-table sbc-matchup-high-table sbc-ledger-table">
+                <thead><tr><th>#</th><th>Player</th>{season_header}{team_header}<th>Matchups</th>{header}</tr></thead>
                 <tbody>{''.join(body)}</tbody>
             </table>
         </div>
@@ -1490,6 +1528,7 @@ HISTORY_NAV_LABELS = {
     "Awards": "⭐ Awards",
     "Draft History": "🎓 Draft History",
 }
+HISTORY_NAV_LABELS["All-Time Stats"] = "📊 All-Time Stats"
 
 FREE_AGENCY_NAV_LABELS = {
     "League View": "🌐 League View",
@@ -3603,6 +3642,8 @@ def resolve_team_key(team):
     if value in team_info:
         return value
     lowered = value.lower()
+    if lowered == "san diego wave":
+        return "San Diego"
     for key, info in team_info.items():
         nickname = str(info.get("nickname", "")).strip()
         full_name = f"{key} {nickname}".strip()
@@ -9829,6 +9870,37 @@ st.markdown(
         font-weight: 850;
     }}
 
+    .sbc-ledger-table {{
+        outline: 1px solid rgba(255,255,255,0.9);
+        outline-offset: -5px;
+    }}
+
+    .sbc-history-player-cell {{
+        display: inline-grid;
+        grid-template-columns: 2rem minmax(8rem, 1fr);
+        gap: 0.48rem;
+        align-items: center;
+        min-width: 11rem;
+    }}
+
+    .sbc-history-player-cell img {{
+        width: 2rem;
+        height: 2rem;
+        border-radius: 999px;
+        background: #eef2f7;
+        object-fit: cover;
+    }}
+
+    .sbc-history-player-cell strong {{
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.82rem;
+        font-weight: 950;
+        line-height: 1.05;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
     .sbc-history-overview-table .sbc-draft-team-mark {{
         min-width: 11.5rem;
     }}
@@ -13478,27 +13550,34 @@ if main_page == "Team Hub" and selected_team_page == "History":
     else:
         seasons = sorted(pd.to_numeric(team_archive["sbc_year"], errors="coerce").dropna().astype(int).unique().tolist())
         season_options = ["Career"] + [season_label_from_year(year) for year in seasons]
-        col1, col2, col3 = st.columns([1, 1, 1])
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
         with col1:
             team_scope = st.selectbox("Season", season_options, key="team_history_all_time_scope")
         with col2:
             team_type = st.selectbox("Stat Type", ["Regular Season", "Playoffs", "Play-In", "In-Season Tournament"], key="team_history_all_time_type_v2")
         with col3:
             team_basis = st.selectbox("Stat Basis", ["Total", "Per NBA Game", "Per SBCFBL Matchup"], key="team_history_all_time_basis")
+        with col4:
+            leader_stat = st.selectbox("Sort / Leaderboard Stat", BOX_SCORE_CATEGORY_ORDER, index=BOX_SCORE_CATEGORY_ORDER.index("PTS"), key="team_history_matchup_stat")
         filtered_team_archive = team_archive.copy()
         if team_scope != "Career":
             selected_year = seasons[season_options.index(team_scope) - 1]
             filtered_team_archive = filtered_team_archive[pd.to_numeric(filtered_team_archive["sbc_year"], errors="coerce") == selected_year].copy()
         filtered_team_archive = filtered_team_archive[filtered_team_archive["sbc_matchup_type"].astype(str) == team_type].copy()
+        player_filter = st.text_input("Filter players", key="team_history_player_filter", placeholder="Type a player name...")
+        if player_filter.strip():
+            filtered_team_archive = filtered_team_archive[filtered_team_archive["fantrax_name"].astype(str).str.contains(player_filter.strip(), case=False, na=False)].copy()
         basis_key = {"Total": "total", "Per NBA Game": "per_nba", "Per SBCFBL Matchup": "per_sbc"}[team_basis]
         render_html('<div class="sbc-awards-section-head"><span>Player Ledger</span><em>Sorted by points, with percentages recalculated from summed makes and attempts.</em></div>')
         render_all_time_player_aggregate_table(
             aggregate_matchup_player_rows(filtered_team_archive, basis=basis_key),
             "No player stats match this team history filter.",
             limit=75,
+            show_team=False,
+            show_seasons=(team_scope == "Career"),
+            sort_stat=leader_stat,
         )
         render_html('<div class="sbc-awards-section-head"><span>Franchise Single-Matchup Leaders</span><em>Best individual matchup performances for the selected stat.</em></div>')
-        leader_stat = st.selectbox("Leaderboard Stat", BOX_SCORE_CATEGORY_ORDER, index=BOX_SCORE_CATEGORY_ORDER.index("PTS"), key="team_history_matchup_stat")
         render_matchup_leaderboard(filtered_team_archive, leader_stat, "No single-matchup leaders match this filter.", limit=25, show_team=False)
 
 if main_page == "League Hub" and selected_league_page == "Scoreboard":
@@ -13740,20 +13819,33 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
     else:
         seasons = sorted(pd.to_numeric(matchup_archive["sbc_year"], errors="coerce").dropna().astype(int).unique().tolist())
         season_options = ["Career"] + [season_label_from_year(year) for year in seasons]
-        col1, col2, col3 = st.columns([1, 1, 1])
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
         with col1:
             league_stat = st.selectbox("Category", BOX_SCORE_CATEGORY_ORDER, index=BOX_SCORE_CATEGORY_ORDER.index("PTS"), key="league_history_all_time_stat")
         with col2:
             league_scope = st.selectbox("Season", season_options, key="league_history_all_time_scope")
         with col3:
             league_type = st.selectbox("Stat Type", ["Regular Season", "Playoffs", "Play-In", "In-Season Tournament"], key="league_history_all_time_type_v2")
+        with col4:
+            league_mode = st.selectbox("View", ["Single Game", "SBCFBL Matchup Average"], key="league_history_all_time_mode")
         filtered_archive = matchup_archive.copy()
         if league_scope != "Career":
             selected_year = seasons[season_options.index(league_scope) - 1]
             filtered_archive = filtered_archive[pd.to_numeric(filtered_archive["sbc_year"], errors="coerce") == selected_year].copy()
         filtered_archive = filtered_archive[filtered_archive["sbc_matchup_type"].astype(str) == league_type].copy()
-        render_html(f'<div class="sbc-awards-section-head"><span>{escape(boxscore_stat_label(league_stat))} Single-Matchup Leaders</span><em>One row is one player in one SBCFBL matchup period.</em></div>')
-        render_matchup_leaderboard(filtered_archive, league_stat, "No single-matchup leaders match this filter.", limit=50, show_team=True)
+        if league_mode == "Single Game":
+            render_html(f'<div class="sbc-awards-section-head"><span>{escape(boxscore_stat_label(league_stat))} Single-Matchup Leaders</span><em>One row is one player in one SBCFBL matchup period.</em></div>')
+            render_matchup_leaderboard(filtered_archive, league_stat, "No single-matchup leaders match this filter.", limit=50, show_team=True)
+        else:
+            render_html(f'<div class="sbc-awards-section-head"><span>{escape(boxscore_stat_label(league_stat))} Matchup Average Leaders</span><em>Player averages per SBCFBL matchup in the selected scope.</em></div>')
+            render_all_time_player_aggregate_table(
+                aggregate_matchup_player_rows(filtered_archive, basis="per_sbc"),
+                "No matchup average leaders match this filter.",
+                limit=50,
+                show_team=True,
+                show_seasons=(league_scope == "Career"),
+                sort_stat=league_stat,
+            )
 
 if main_page == "League Hub" and selected_league_page == "Standings":
     render_html(f"""
