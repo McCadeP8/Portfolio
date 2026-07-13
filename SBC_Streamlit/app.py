@@ -1699,7 +1699,8 @@ need_history_awards = need_history and requested_history_page in ["Awards", "Ove
 need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
 
-need_df = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
+need_team_history = requested_main_page == "Team Hub" and requested_team_page == "History"
+need_df = need_team_data or need_team_history or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
 need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft or (need_history and requested_history_page == "Player Stats")
 need_exceptions = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
 need_base_cap = need_team_data or need_trade_data or need_checks_data or need_league_overview
@@ -6550,7 +6551,7 @@ def render_history_all_time_stats_table(data):
     """)
 
 
-FRANCHISE_CHASER_STATS = ["PTS", "DREB", "AST", "OREB", "ST", "BLK", "3PTM", "2PTM", "FTM", "MP", "GP"]
+FRANCHISE_CHASER_STATS = ["GP", "MP", "TS%", "2PTM", "2PTA", "2PT%", "3PTM", "3PTA", "3PT%", "FTM", "FTA", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 
 
 def active_franchise_record_chasers(matchup_archive, cap_df):
@@ -6559,8 +6560,8 @@ def active_franchise_record_chasers(matchup_archive, cap_df):
     needed = {"sbc_team_key", "fantrax_name", "sbc_matchup_type"}
     if not needed.issubset(matchup_archive.columns):
         return pd.DataFrame()
-    stats = [stat for stat in FRANCHISE_CHASER_STATS if stat in matchup_archive.columns]
-    if not stats:
+    sum_stats = [stat for stat in BOX_SCORE_SUM_STATS if stat in matchup_archive.columns]
+    if not sum_stats:
         return pd.DataFrame()
     rows = matchup_archive[matchup_archive["sbc_matchup_type"].astype(str) == "Regular Season"].copy()
     if rows.empty:
@@ -6569,7 +6570,9 @@ def active_franchise_record_chasers(matchup_archive, cap_df):
     group_cols = ["sbc_team_key", "fantrax_name", "_player_key"]
     if "espn_player_id" in rows.columns:
         group_cols.append("espn_player_id")
-    grouped = rows.groupby(group_cols, dropna=False, as_index=False)[stats].sum()
+    grouped = rows.groupby(group_cols, dropna=False, as_index=False)[sum_stats].sum()
+    grouped = recalc_shooting_stats(grouped)
+    stats = [stat for stat in FRANCHISE_CHASER_STATS if stat in grouped.columns]
     active_key_map = {team: current_active_player_keys_for_team(cap_df, team) for team in team_info}
     records = []
     for team, team_rows in grouped.groupby("sbc_team_key", dropna=False):
@@ -6583,13 +6586,21 @@ def active_franchise_record_chasers(matchup_archive, cap_df):
         if active_rows.empty:
             continue
         for stat in stats:
-            stat_values = pd.to_numeric(team_rows[stat], errors="coerce").fillna(0)
-            if stat_values.max() <= 0:
+            stat_pool = team_rows.copy()
+            if stat in ["TS%", "2PT%", "3PT%", "FT%"]:
+                stat_pool = stat_pool[stat_pool.apply(lambda row: stat_has_shooting_volume(row, stat), axis=1)].copy()
+            if stat_pool.empty:
+                continue
+            stat_values = pd.to_numeric(stat_pool[stat], errors="coerce").fillna(0)
+            if stat_values.max() <= 0 and stat != "+/-":
                 continue
             leader_idx = stat_values.idxmax()
-            leader = team_rows.loc[leader_idx]
+            leader = stat_pool.loc[leader_idx]
             leader_value = float(stat_values.loc[leader_idx])
+            leader_active = player_name_match_key(leader.get("fantrax_name", "")) in active_keys
             for _, player in active_rows.iterrows():
+                if stat in ["TS%", "2PT%", "3PT%", "FT%"] and not stat_has_shooting_volume(player, stat):
+                    continue
                 current_value = float(pd.to_numeric(pd.Series([player.get(stat, 0)]), errors="coerce").fillna(0).iloc[0])
                 gap = leader_value - current_value
                 if gap <= 0:
@@ -6602,6 +6613,7 @@ def active_franchise_record_chasers(matchup_archive, cap_df):
                     "Current": current_value,
                     "Leader": leader.get("fantrax_name", ""),
                     "LeaderValue": leader_value,
+                    "LeaderActive": leader_active,
                     "Gap": gap,
                     "Progress": current_value / leader_value if leader_value else 0,
                 })
@@ -6628,10 +6640,12 @@ def render_franchise_record_chasers(chasers):
     body = []
     for rank, (_, row) in enumerate(work.head(30).iterrows(), start=1):
         team = resolve_team_key(row.get("Team", ""))
-        gap_text = stat_number(row.get("Gap", 0))
         stat = str(row.get("Stat", ""))
-        leader_text = f"{row.get('Leader', '')}: {stat_number(row.get('LeaderValue', 0))}"
-        current_text = stat_number(row.get("Current", 0))
+        is_pct = stat in ["TS%", "2PT%", "3PT%", "FT%"]
+        gap_text = f"{float(row.get('Gap', 0) or 0) * 100:.1f} pct pts" if is_pct else stat_number(row.get("Gap", 0), signed=(stat == "+/-"))
+        leader_marker = " *" if bool(row.get("LeaderActive", False)) else ""
+        leader_text = f"{row.get('Leader', '')}{leader_marker}: {stat_number(row.get('LeaderValue', 0), pct=is_pct, signed=(stat == '+/-'))}"
+        current_text = stat_number(row.get("Current", 0), pct=is_pct, signed=(stat == "+/-"))
         progress = float(row.get("Progress", 0) or 0)
         progress_text = f"{progress * 100:.1f}%"
         body.append(f"""
@@ -6684,9 +6698,6 @@ def render_league_history_overview():
             <div class="sbc-draft-tile"><div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">Cup</div><div class="sbc-draft-tile-value">{escape(str(cup_total))}</div></div><div class="sbc-draft-tile-label">SBC Cup Winners</div><div class="sbc-draft-tile-note">Cup championship results in history.</div></div>
         </div>
     """)
-    matchup_archive = load_sbc_player_matchup_stats_archive()
-    render_html('<div class="sbc-awards-section-head"><span>Active Record Chasers</span><em>Current roster players closest to becoming their franchise leader in a regular-season counting stat.</em></div>')
-    render_franchise_record_chasers(active_franchise_record_chasers(matchup_archive, df))
     render_html('<div class="sbc-awards-section-head"><span>All-Time Franchise Ledger</span><em>Regular season record with title seasons from the awards archive.</em></div>')
     ledger = summary[["Team", "Record", "WinPct", "PF", "PA", "Diff", "Championships", "Finals Appearances", "SBC Cup Wins", "Division Championships"]].copy()
     render_history_overview_table(
@@ -6699,6 +6710,9 @@ def render_league_history_overview():
     render_html('<div class="sbc-awards-section-head"><span>All-Time Team Stats</span><em>Regular season totals by franchise; percentages are recalculated from makes and attempts.</em></div>')
     all_time_stats = history_all_time_team_stats_table(all_time_team_stats)
     render_history_all_time_stats_table(all_time_stats)
+    matchup_archive = load_sbc_player_matchup_stats_archive()
+    render_html('<div class="sbc-awards-section-head"><span>Active Record Chasers</span><em>Current roster players closest to becoming their franchise leader. * means the leader is also active, so the target can move.</em></div>')
+    render_franchise_record_chasers(active_franchise_record_chasers(matchup_archive, df))
 
 
 def ist_group_games(selected_year):
