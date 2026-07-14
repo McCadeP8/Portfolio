@@ -6563,7 +6563,9 @@ def active_franchise_record_chasers(matchup_archive, cap_df):
     sum_stats = [stat for stat in BOX_SCORE_SUM_STATS if stat in matchup_archive.columns]
     if not sum_stats:
         return pd.DataFrame()
-    rows = matchup_archive[matchup_archive["sbc_matchup_type"].astype(str) == "Regular Season"].copy()
+    rows = valid_matchup_archive_rows(matchup_archive)
+    rows = dedupe_matchup_archive_for_totals(rows)
+    rows = rows[rows["sbc_matchup_type"].astype(str) == "Regular Season"].copy()
     if rows.empty:
         return pd.DataFrame()
     rows["_player_key"] = rows["fantrax_name"].apply(player_name_match_key)
