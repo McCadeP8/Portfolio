@@ -682,7 +682,7 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
             </tr>
         """)
     render_html(f"""
-        <section class="sbc-box-panel sbc-box-category-panel" style="--cat-a:{escape(str(info_a.get('bg', '#111827')), quote=True)};--cat-b:{escape(str(info_b.get('bg', '#334155')), quote=True)};--cat-font-a:{escape(str(font_a), quote=True)};--cat-font-b:{escape(str(font_b), quote=True)};">
+        <section class="sbc-box-panel sbc-box-category-panel" style="--cat-a:{escape(str(info_a.get('bg', '#111827')), quote=True)};--cat-b:{escape(str(info_b.get('bg', '#334155')), quote=True)};--cat-a-secondary:{escape(str(info_a.get('bg2', info_a.get('bg', '#111827'))), quote=True)};--cat-b-secondary:{escape(str(info_b.get('bg2', info_b.get('bg', '#334155'))), quote=True)};--cat-font-a:{escape(str(font_a), quote=True)};--cat-font-b:{escape(str(font_b), quote=True)};">
             <div class="sbc-box-panel-head">
                 <span>Category Points</span>
             </div>
@@ -6620,6 +6620,53 @@ def active_franchise_record_chasers(matchup_archive, cap_df):
                     "Gap": gap,
                     "Progress": current_value / leader_value if leader_value else 0,
                 })
+    league_group_cols = ["fantrax_name", "_player_key"]
+    if "espn_player_id" in rows.columns:
+        league_group_cols.append("espn_player_id")
+    league_grouped = rows.groupby(league_group_cols, dropna=False, as_index=False)[sum_stats].sum()
+    league_grouped = recalc_shooting_stats(league_grouped)
+    active_league_keys = set().union(*active_key_map.values()) if active_key_map else set()
+    active_league_rows = league_grouped[league_grouped["_player_key"].isin(active_league_keys)].copy()
+    if not active_league_rows.empty:
+        for stat in stats:
+            stat_pool = league_grouped.copy()
+            if stat in ["TS%", "2PT%", "3PT%", "FT%"]:
+                stat_pool = stat_pool[stat_pool.apply(lambda row: stat_has_shooting_volume(row, stat), axis=1)].copy()
+            if stat_pool.empty:
+                continue
+            stat_values = pd.to_numeric(stat_pool[stat], errors="coerce").fillna(0)
+            if stat_values.max() <= 0 and stat != "+/-":
+                continue
+            leader_idx = stat_values.idxmax()
+            leader = stat_pool.loc[leader_idx]
+            leader_value = float(stat_values.loc[leader_idx])
+            leader_active = player_name_match_key(leader.get("fantrax_name", "")) in active_league_keys
+            candidates = active_league_rows.copy()
+            if stat in ["TS%", "2PT%", "3PT%", "FT%"]:
+                candidates = candidates[candidates.apply(lambda row: stat_has_shooting_volume(row, stat), axis=1)].copy()
+            if candidates.empty:
+                continue
+            candidates["_current_value"] = pd.to_numeric(candidates[stat], errors="coerce").fillna(0)
+            candidates["_gap"] = leader_value - candidates["_current_value"]
+            candidates = candidates[candidates["_gap"] > 0].copy()
+            if candidates.empty:
+                continue
+            candidates["_progress"] = candidates["_current_value"].apply(lambda value: value / leader_value if leader_value else 0)
+            player = candidates.sort_values(["_gap", "_progress"], ascending=[True, False]).iloc[0]
+            records.append({
+                "Team": "League",
+                "fantrax_name": player.get("fantrax_name", ""),
+                "espn_player_id": player.get("espn_player_id", ""),
+                "Stat": stat,
+                "Current": float(player.get("_current_value", 0)),
+                "Leader": leader.get("fantrax_name", ""),
+                "LeaderEspnId": leader.get("espn_player_id", ""),
+                "LeaderValue": leader_value,
+                "LeaderActive": leader_active,
+                "Gap": float(player.get("_gap", 0)),
+                "Progress": float(player.get("_progress", 0)),
+                "Scope": "League",
+            })
     if not records:
         return pd.DataFrame()
     chasers = pd.DataFrame(records)
@@ -6637,12 +6684,16 @@ def render_franchise_record_chasers(chasers):
     work = chasers.copy()
     if selected_stat != "All Categories":
         work = work[work["Stat"].astype(str) == selected_stat].copy()
-        work = work.sort_values(["Gap", "Progress"], ascending=[True, False])
-        work = work.drop_duplicates("Team", keep="first")
+        league_work = work[work["Team"].astype(str) == "League"].sort_values(["Gap", "Progress"], ascending=[True, False]).head(1)
+        work = work[work["Team"].astype(str) != "League"].sort_values(["Gap", "Progress"], ascending=[True, False])
+        work = pd.concat([work.drop_duplicates("Team", keep="first").head(30), league_work], ignore_index=True)
     else:
-        work = work.sort_values(["Progress", "Gap"], ascending=[False, True])
+        league_work = work[work["Team"].astype(str) == "League"].sort_values(["Progress", "Gap"], ascending=[False, True]).head(1)
+        work = work[work["Team"].astype(str) != "League"].sort_values(["Progress", "Gap"], ascending=[False, True]).head(30)
+        work = pd.concat([work, league_work], ignore_index=True)
     body = []
-    for rank, (_, row) in enumerate(work.head(30).iterrows(), start=1):
+    for rank, (_, row) in enumerate(work.iterrows(), start=1):
+        is_league_row = str(row.get("Team", "")) == "League"
         team = resolve_team_key(row.get("Team", ""))
         stat = str(row.get("Stat", ""))
         is_pct = stat in ["TS%", "2PT%", "3PT%", "FT%"]
@@ -6657,13 +6708,18 @@ def render_franchise_record_chasers(chasers):
                 <strong>{escape(str(leader_name))}{leader_marker}</strong>
             </span>
         """
+        team_html = (
+            f'<span class="sbc-player-profile-team-mark sbc-player-profile-team-total"><img src="{league_logo_html}" alt="SBCFBL logo"><strong>League</strong><em>Career</em></span>'
+            if is_league_row else history_team_mark_html(team)
+        )
+        row_color = LEAGUE_PRIMARY if is_league_row else team_color_for_name(team)
         current_text = stat_number(row.get("Current", 0), pct=is_pct, signed=(stat == "+/-"))
         progress = float(row.get("Progress", 0) or 0)
         progress_text = f"{progress * 100:.1f}%"
         body.append(f"""
-            <tr style="--record-team-color:{escape(str(team_color_for_name(team)), quote=True)};">
+            <tr style="--record-team-color:{escape(str(row_color), quote=True)};">
                 <td><strong>{rank}</strong></td>
-                <td>{history_team_mark_html(team)}</td>
+                <td>{team_html}</td>
                 <td>{player_history_cell_html(row)}</td>
                 <td><strong>{escape(boxscore_stat_label(stat))}</strong><em>{escape(gap_text)} away</em></td>
                 <td><strong>{escape(current_text)}</strong><em>{escape(progress_text)} of record</em></td>
@@ -9460,7 +9516,7 @@ st.markdown(
         min-height: 4.35rem;
         border-left: 0;
         background:
-            linear-gradient(135deg, color-mix(in srgb, var(--box-team) 92%, #000000), color-mix(in srgb, var(--box-team-secondary) 74%, #111827));
+            linear-gradient(135deg, color-mix(in srgb, var(--box-team-secondary) 88%, #111827), color-mix(in srgb, var(--box-team) 68%, #111827));
         color: #ffffff;
         padding: 0.72rem 0.85rem;
     }}
@@ -9527,12 +9583,12 @@ st.markdown(
     }}
 
     .sbc-box-category-team-a {{
-        color: var(--cat-a);
+        color: color-mix(in srgb, var(--cat-a) 82%, #111827);
         font-family: var(--cat-font-a), "Poppins", "Segoe UI", sans-serif;
     }}
 
     .sbc-box-category-team-b {{
-        color: var(--cat-b);
+        color: color-mix(in srgb, var(--cat-b) 82%, #111827);
         font-family: var(--cat-font-b), "Poppins", "Segoe UI", sans-serif;
     }}
 
@@ -9542,11 +9598,11 @@ st.markdown(
     }}
 
     .sbc-box-category-team-header-a {{
-        background: color-mix(in srgb, var(--cat-a) 12%, #f3f5f8) !important;
+        background: color-mix(in srgb, var(--cat-a-secondary) 42%, #ffffff) !important;
     }}
 
     .sbc-box-category-team-header-b {{
-        background: color-mix(in srgb, var(--cat-b) 12%, #f3f5f8) !important;
+        background: color-mix(in srgb, var(--cat-b-secondary) 42%, #ffffff) !important;
     }}
 
     .sbc-box-category-table th,
