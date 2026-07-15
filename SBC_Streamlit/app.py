@@ -12956,11 +12956,6 @@ st.markdown(
         font-variant-numeric: tabular-nums;
     }}
 
-    [data-testid="stMetricDelta"],
-    [data-testid="stMetricDelta"] * {{
-        color: #4b5563 !important;
-    }}
-
     h1, h2, h3 {{
         color: var(--sbc-ink);
         letter-spacing: 0;
@@ -13518,6 +13513,11 @@ if main_page == "Team Hub" and selected_team_page == "Cap":
     season_label = f"{current_year-1}-{str(current_year)[-2:]}"
     cap_total = get_cap_total(df, exceptions, SelectedTeam)
     tax_total = get_tax_total(df, SelectedTeam)
+    cap_space_delta = current_salary_cap - cap_total
+    tax_space_delta = current_luxury_tax - tax_total
+    apron_space_delta = team_hard_cap_n(df, SelectedTeam, base_cap)
+    if apron_space_delta is not None:
+        apron_space_delta = -apron_space_delta
     active_count = active_player_n(df, SelectedTeam)
     inactive_count = inactive_player_n(df, SelectedTeam)
 
@@ -13548,11 +13548,11 @@ if main_page == "Team Hub" and selected_team_page == "Cap":
     render_html('<div class="sbc-section-label">Team Snapshot</div>')
     snap1, snap2, snap3 = st.columns([1, 1, 2])
     with snap1:
-        st.metric(label="Cap Total", value=cap_total, delta=cap_total-current_salary_cap, delta_color="inverse", help="The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap.", border=True, format="dollar")
+        st.metric(label="Cap Total", value=cap_total, delta=cap_space_delta, delta_color="normal", help="The first number shows total team salary, including all active and inactive player salaries, cap holds for unrenounced free agents, incomplete roster charges, and all exceptions (Mid-Level, Bi-Annual, Disabled Player, and Trade). The second number shows how much room remains relative to the Salary Cap; green is under, red is over.", border=True, format="dollar")
     with snap2:
-        st.metric(label="Tax Total", value=tax_total, delta=tax_total-current_luxury_tax, delta_color="inverse", help="The first number shows total team salary against the luxury tax, including all active and inactive player salaries and incomplete roster charges. Unlike the real NBA, rookie and second-year undrafted fees are not included. The second number shows remaining space relative to the Luxury Tax.", border=True, format="dollar")
+        st.metric(label="Tax Total", value=tax_total, delta=tax_space_delta, delta_color="normal", help="The first number shows total team salary against the luxury tax, including all active and inactive player salaries and incomplete roster charges. Unlike the real NBA, rookie and second-year undrafted fees are not included. The second number shows remaining space relative to the Luxury Tax; green is under, red is over.", border=True, format="dollar")
     with snap3:
-        st.metric(label="Apron Space", value=team_hard_cap(base_cap, SelectedTeam), delta=team_hard_cap_n(df, SelectedTeam, base_cap), help="The first value indicates whether the team is uncapped, capped at the first apron, or capped at the second apron while the second value shows how far the team is from the applicable cap.", border=True, format="dollar")
+        st.metric(label="Apron Space", value=team_hard_cap(base_cap, SelectedTeam), delta=apron_space_delta, delta_color="normal", help="The first value indicates whether the team is uncapped, capped at the first apron, or capped at the second apron while the second value shows space from the applicable cap; green is under, red is over.", border=True, format="dollar")
 
     snap4, snap5, snap6 = st.columns(3)
     with snap4:
