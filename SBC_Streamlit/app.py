@@ -63,10 +63,8 @@ if getattr(st.metric, "__name__", "") != "_sbc_metric":
 
 def render_html(markup):
     markup = dedent(str(markup)).strip()
-    if hasattr(st, "html"):
-        st.html(markup)
-    else:
-        st.markdown(markup, unsafe_allow_html=True)
+    markup = "\n".join(line.strip() for line in markup.splitlines() if line.strip())
+    st.markdown(markup, unsafe_allow_html=True)
 
 
 APP_DIR = Path(__file__).resolve().parent
