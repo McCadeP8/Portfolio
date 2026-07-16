@@ -7696,22 +7696,6 @@ st.markdown(
         color: var(--sbc-ink);
     }}
 
-    html,
-    body,
-    .stApp,
-    [data-testid="stAppViewContainer"],
-    [data-testid="stMain"] {{
-        width: 100%;
-        max-width: 100%;
-        overflow-x: hidden;
-    }}
-
-    [data-testid="stAppViewContainer"],
-    [data-testid="stMain"] {{
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-    }}
-
     html[data-sbc-main-tab="team"] .stApp {{
         background:
             radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--sbc-selected-primary) 42%, transparent) 0, transparent 38rem),
@@ -7723,11 +7707,15 @@ st.markdown(
     [data-testid="stMainBlockContainer"] {{
         box-sizing: border-box;
         width: 100%;
-        max-width: 1500px;
+        max-width: min(1500px, 100%);
         margin-left: auto !important;
         margin-right: auto !important;
         padding-top: 5.25rem;
         padding-bottom: 3rem;
+    }}
+
+    [data-testid="stMainBlockContainer"] > div {{
+        max-width: 100%;
     }}
 
     header[data-testid="stHeader"] {{
