@@ -4621,13 +4621,13 @@ def render_payout_cards(cards):
     for label, value, note in cards:
         payout_value = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
         payout_display = f"${payout_value:,.2f}" if not pd.isna(payout_value) else format_money(value)
-        card_html.append(f"""
-            <div class="sbc-payout-card">
-                <div class="sbc-payout-label">{escape(str(label))}</div>
-                <div class="sbc-payout-value">{escape(str(payout_display))}</div>
-                <div class="sbc-payout-note">{escape(str(note))}</div>
-            </div>
-        """)
+        card_html.append(
+            '<div class="sbc-payout-card">'
+            f'<div class="sbc-payout-label">{escape(str(label))}</div>'
+            f'<div class="sbc-payout-value">{escape(str(payout_display))}</div>'
+            f'<div class="sbc-payout-note">{escape(str(note))}</div>'
+            '</div>'
+        )
     render_html(f'<div class="sbc-payout-grid">{"".join(card_html)}</div>')
 
 
@@ -7695,6 +7695,22 @@ st.markdown(
         color: var(--sbc-ink);
     }}
 
+    html,
+    body,
+    .stApp,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"] {{
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }}
+
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"] {{
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }}
+
     html[data-sbc-main-tab="team"] .stApp {{
         background:
             radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--sbc-selected-primary) 42%, transparent) 0, transparent 38rem),
@@ -7702,10 +7718,13 @@ st.markdown(
             linear-gradient(180deg, color-mix(in srgb, var(--sbc-selected-primary) 12%, #ffffff) 0%, rgba(244, 246, 248, 0.94) 34%, color-mix(in srgb, var(--sbc-selected-secondary) 9%, #eef2f6) 100%);
     }}
 
-    .block-container {{
+    .block-container,
+    [data-testid="stMainBlockContainer"] {{
+        box-sizing: border-box;
+        width: 100%;
         max-width: 1500px;
-        margin-left: auto;
-        margin-right: auto;
+        margin-left: auto !important;
+        margin-right: auto !important;
         padding-top: 5.25rem;
         padding-bottom: 3rem;
     }}
@@ -7734,8 +7753,14 @@ st.markdown(
         filter: brightness(0) saturate(100%) !important;
     }}
 
-    [data-testid="stSidebar"] {{
-        display: none;
+    [data-testid="stSidebar"],
+    section[data-testid="stSidebar"],
+    [data-testid="stSidebarCollapsedControl"] {{
+        display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        flex: 0 0 0 !important;
     }}
 
     .sbc-app-masthead {{
@@ -13205,7 +13230,8 @@ st.markdown(
     }}
 
     @media (max-width: 850px) {{
-        .block-container {{
+        .block-container,
+        [data-testid="stMainBlockContainer"] {{
             padding-top: 5.6rem;
             padding-left: 1rem;
             padding-right: 1rem;
