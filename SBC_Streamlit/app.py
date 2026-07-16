@@ -63,10 +63,7 @@ if getattr(st.metric, "__name__", "") != "_sbc_metric":
 
 def render_html(markup):
     markup = dedent(str(markup)).strip()
-    if hasattr(st, "html"):
-        st.html(markup)
-    else:
-        st.markdown(markup, unsafe_allow_html=True)
+    st.markdown(markup, unsafe_allow_html=True)
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -7707,6 +7704,8 @@ st.markdown(
 
     .block-container {{
         max-width: 1500px;
+        margin-left: auto;
+        margin-right: auto;
         padding-top: 5.25rem;
         padding-bottom: 3rem;
     }}

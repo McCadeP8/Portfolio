@@ -666,24 +666,31 @@ def overall_cap_table(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: p
         "Amount Paid": [amount_paid(base_cap, team) for team in team_info.keys()]})
     return df
 
-def unit_payout(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
+LEAGUE_FANTRAX_FEE = 130
+LEAGUE_LARRY_COON_FEE = 100
+LEAGUE_IST_POOL = 90
+BASE_PAYOUT_UNITS = 24
+
+
+def unit_payout(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> float:
     df = overall_cap_table(df, exceptions_df, base_cap)
     total_fee = df["Base Fee"].sum()
-    total_fee = total_fee-130-100-90
-    total_fee = total_fee/24
+    total_fee = total_fee - LEAGUE_FANTRAX_FEE - LEAGUE_LARRY_COON_FEE - LEAGUE_IST_POOL
+    total_fee = total_fee / BASE_PAYOUT_UNITS
     return total_fee
 
-def tax_payout_champ(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
+def tax_payout_champ(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> float:
     df = overall_cap_table(df, exceptions_df, base_cap)
-    total_fee = df["Base Fee"].sum()
+    total_fee = df["Luxury Fee"].sum()
     total_fee = total_fee/2
     return total_fee
 
-def tax_payout_split(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> pd.DataFrame:
+def tax_payout_split(df: pd.DataFrame, exceptions_df: pd.DataFrame, base_cap: pd.DataFrame) -> float:
     df = overall_cap_table(df, exceptions_df, base_cap)
-    total_fee = df["Base Fee"].sum()
+    total_fee = df["Luxury Fee"].sum()
     total_fee = total_fee/2
-    total_fee = total_fee / (df["Luxury Fee"] == 0).sum()
+    non_tax_teams = (df["Luxury Fee"] == 0).sum()
+    total_fee = total_fee / non_tax_teams if non_tax_teams else 0
     return total_fee
 
 def style_overall_cap(row):
