@@ -23,11 +23,15 @@ from data import team_info, type_colors, current_salary_cap, current_luxury_tax,
 _native_metric = st.metric
 
 
-def _format_metric_money(value):
+def _format_metric_money(value, decimals=0):
     try:
         if value is None or value == "":
             return value
-        return f"${float(value):,.0f}"
+        numeric_value = float(value)
+        precision = int(decimals)
+        if numeric_value < 0:
+            return f"-${abs(numeric_value):,.{precision}f}"
+        return f"${numeric_value:,.{precision}f}"
     except (TypeError, ValueError):
         return value
 
@@ -35,15 +39,19 @@ def _format_metric_money(value):
 def _sbc_metric(*args, **kwargs):
     metric_format = kwargs.pop("format", None)
     kwargs.pop("delta_arrow", None)
+    metric_decimals = 0
+    if metric_format == "dollar2":
+        metric_format = "dollar"
+        metric_decimals = 2
     if metric_format == "dollar":
         if "value" in kwargs:
-            kwargs["value"] = _format_metric_money(kwargs["value"])
+            kwargs["value"] = _format_metric_money(kwargs["value"], metric_decimals)
         elif len(args) >= 2:
-            args = (args[0], _format_metric_money(args[1]), *args[2:])
+            args = (args[0], _format_metric_money(args[1], metric_decimals), *args[2:])
         if "delta" in kwargs:
-            kwargs["delta"] = _format_metric_money(kwargs["delta"])
+            kwargs["delta"] = _format_metric_money(kwargs["delta"], metric_decimals)
         elif len(args) >= 3:
-            args = (*args[:2], _format_metric_money(args[2]), *args[3:])
+            args = (*args[:2], _format_metric_money(args[2], metric_decimals), *args[3:])
     return _native_metric(*args, **kwargs)
 
 
@@ -13106,6 +13114,46 @@ st.markdown(
         line-height: 1.1;
     }}
 
+    .sbc-player-count-metric {{
+        background: var(--sbc-panel);
+        border: 1px solid color-mix(in srgb, var(--sbc-team-primary) 20%, var(--sbc-border));
+        border-top: 4px solid var(--sbc-team-primary);
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(18, 25, 38, 0.06);
+        padding: 0.65rem 0.75rem;
+        min-height: 6.75rem;
+    }}
+
+    .sbc-player-count-label {{
+        color: var(--sbc-muted);
+        font-size: 0.78rem;
+        font-weight: 850;
+        line-height: 1.1;
+        margin-bottom: 0.35rem;
+    }}
+
+    .sbc-player-count-value {{
+        color: var(--sbc-ink);
+        font-size: clamp(1.05rem, 1.45vw, 1.55rem);
+        font-weight: 900;
+        line-height: 1.05;
+        margin-bottom: 0.55rem;
+    }}
+
+    .sbc-player-count-pill {{
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.45rem;
+        border-radius: 999px;
+        background: #e5e7eb;
+        color: #111827 !important;
+        border: 1px solid #cbd5e1;
+        padding: 0.12rem 0.55rem;
+        font-size: 0.78rem;
+        font-weight: 850;
+        line-height: 1.1;
+    }}
+
     [data-testid="stDataFrame"] {{
         border-radius: 8px;
         overflow: hidden;
@@ -13556,11 +13604,17 @@ if main_page == "Team Hub" and selected_team_page == "Cap":
 
     snap4, snap5, snap6 = st.columns(3)
     with snap4:
-        st.metric(label="Players", value=active_count, delta=inactive_count, delta_color="off", help="The first number shows active roster players (up to 14, plus up to 3 IR). Teams must carry at least 12 active players, or face penalties after 14 days. The second number represents non-active players, including overseas players, draft rights, retired, and waived players and there is no limit. To qualify as overseas, a drafted player must have spent their entire SBC career abroad, with status locking on opening night.", border=True, format="plain", delta_arrow="off")
+        render_html(f"""
+            <div class="sbc-player-count-metric" title="The first number shows active roster players (up to 14, plus up to 3 IR). Teams must carry at least 12 active players, or face penalties after 14 days. The second number represents non-active players, including overseas players, draft rights, retired, and waived players and there is no limit. To qualify as overseas, a drafted player must have spent their entire SBC career abroad, with status locking on opening night.">
+                <div class="sbc-player-count-label">Players</div>
+                <div class="sbc-player-count-value">{active_count}</div>
+                <div class="sbc-player-count-pill">{inactive_count}</div>
+            </div>
+            """)
     with snap5:
-        st.metric(label="Entry Fee", value=base_fee(df, SelectedTeam, base_cap), delta=luxury_fee(df, SelectedTeam, base_cap), delta_color="inverse", help="The SBCFBL uses a 3,000,000-1 scale. The first number is the base entry fee, calculated from the Tax Total plus a $3.00 In-Season Tournament fee. The second number shows the Luxury Tax penalty for the season, scaled as a payable fee.", border=True, format="dollar")
+        st.metric(label="Entry Fee", value=base_fee(df, SelectedTeam, base_cap), delta=luxury_fee(df, SelectedTeam, base_cap), delta_color="inverse", help="The SBCFBL uses a 3,000,000-1 scale. The first number is the base entry fee, calculated from the Tax Total plus a $3.00 In-Season Tournament fee. The second number shows the Luxury Tax penalty for the season, scaled as a payable fee.", border=True, format="dollar2")
     with snap6:
-        st.metric(label="Balance", value=net_fee(df, SelectedTeam, base_cap), delta=amount_paid(base_cap, SelectedTeam), delta_color="normal", help="The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border=True, format="dollar")
+        st.metric(label="Balance", value=net_fee(df, SelectedTeam, base_cap), delta=amount_paid(base_cap, SelectedTeam), delta_color="normal", help="The first number shows current total owed for the season, including base payment, In-Season Tournament fee, tax penalties, winnings, and tax payouts. The second number shows how much has been paid so far.", border=True, format="dollar2")
 
     render_html('<div class="sbc-section-label">Team Rosters</div>')
     render_html("""
