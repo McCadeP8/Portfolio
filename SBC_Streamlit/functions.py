@@ -747,6 +747,7 @@ def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned'] == False]  # noqa: E712
+    df = df[df['PickSwap'] == False]  # noqa: E712
     df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df = df.rename(columns={'TeamTouched': 'Contacted'})
@@ -811,6 +812,7 @@ def all_swap_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
 def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=["TwoYearLimit"])
     df = df[df['FullyOwned'] == False]  # noqa: E712
+    df = df[df['PickSwap'] == False]  # noqa: E712
     df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df = df.rename(columns={'TeamTouched': 'Contacted'})
