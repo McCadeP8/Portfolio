@@ -20,7 +20,10 @@ from functions import read_csv_snapshot, get_data, get_pictures, active_players,
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 
 
-_native_metric = st.metric
+if not hasattr(st, "_sbc_native_metric"):
+    st._sbc_native_metric = st.metric
+
+_native_metric = st._sbc_native_metric
 
 
 def _format_metric_money(value, decimals=0):
@@ -55,7 +58,8 @@ def _sbc_metric(*args, **kwargs):
     return _native_metric(*args, **kwargs)
 
 
-st.metric = _sbc_metric
+if getattr(st.metric, "__name__", "") != "_sbc_metric":
+    st.metric = _sbc_metric
 
 def render_html(markup):
     markup = dedent(str(markup)).strip()
