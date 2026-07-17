@@ -1337,19 +1337,10 @@ def pbp_slate_day_bounds(events):
 
 
 def pbp_full_slate_day_bounds(events):
-    if events.empty or "game_date" not in events.columns:
-        return pbp_slate_day_bounds(events)
-    game_dates = events["game_date"].dropna().astype(str)
-    game_dates = sorted(date for date in game_dates.unique() if date and date.lower() != "nan")
-    if not game_dates:
-        return pbp_slate_day_bounds(events)
     archive = load_pbp_stat_events_archive(pbp_archive_mtime())
     if archive.empty or "game_date" not in archive.columns:
         return pbp_slate_day_bounds(events)
-    slate_events = archive[archive["game_date"].astype(str).isin(game_dates)].copy()
-    if slate_events.empty:
-        return pbp_slate_day_bounds(events)
-    return pbp_slate_day_bounds(slate_events)
+    return pbp_slate_day_bounds(archive)
 
 
 def add_pbp_day_positions(df, day_bounds=None):
@@ -1473,9 +1464,14 @@ def pbp_hour_axis_values(day_bounds):
     else:
         start = int(math.floor(float(start_value)))
         end = int(math.ceil(float(end_value)))
-    if start >= end:
+    domain_start = float(start_value)
+    domain_end = float(end_value)
+    if not math.isfinite(domain_start) or not math.isfinite(domain_end) or domain_start >= domain_end:
+        domain_start, domain_end = 17, 25
         start, end = 17, 25
-    return list(range(start, end + 1)), [start, end]
+    elif start >= end:
+        start, end = int(math.floor(domain_start)), int(math.ceil(domain_end))
+    return list(range(start, end + 1)), [domain_start, domain_end]
 
 
 def pbp_time_axis(values=None, grid=False):
@@ -1700,8 +1696,11 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         tickColor="#d0d5dd",
         domain=False,
     )
+    y_axis_owner = base.mark_line(opacity=0).encode(
+        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis),
+    )
     top_area = base.mark_area(color=team_color_for_name(team_a), opacity=0.28, interpolate="step-after", clip=True).encode(
-        y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis, stack=None),
+        y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=None, stack=None),
         y2=alt.Y2("value:Q"),
     )
     bottom_area = base.mark_area(color=team_color_for_name(team_b), opacity=0.28, interpolate="step-after", clip=True).encode(
@@ -1712,13 +1711,13 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         y=alt.Y("score_mid:Q", scale=alt.Scale(domain=[0, 413]), axis=None),
     )
     line = base.mark_line(color="#111827", strokeWidth=2.8, interpolate="step-after", clip=True).encode(
-        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis),
+        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=None),
         tooltip=[
             alt.Tooltip("wallclock_et:T", title="Time (ET)", format="%b %d, %I:%M %p"),
             alt.Tooltip("value:Q", title=live_team_full_name(team_b), format=".1f"),
         ],
     )
-    chart = (top_area + bottom_area + midpoint + line).properties(width=day_width, height=220).facet(
+    chart = (y_axis_owner + top_area + bottom_area + midpoint + line).properties(width=day_width, height=220).facet(
         column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
