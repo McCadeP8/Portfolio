@@ -1410,7 +1410,7 @@ def add_pbp_score_day_boundaries(chart_data, day_bounds, team_a, team_b):
 
 def pbp_time_axis(grid=False):
     return alt.Axis(
-        title="Time",
+        title="Time (ET)",
         format="%I:%M",
         labelColor="#667085",
         titleColor="#667085",
@@ -1434,7 +1434,16 @@ def pbp_category_y_axis(selected_category):
     values = [0, 25, 50, 75, 100] if selected_category in ["2PT%", "3PT%", "FT%"] else None
     if selected_category == "TS%":
         values = [0, 50, 100, 150]
-    return alt.Axis(values=values, labelColor="#475467", grid=True, gridColor="#eef2f7", domain=False, title=None)
+    axis_kwargs = {
+        "labelColor": "#475467",
+        "grid": True,
+        "gridColor": "#eef2f7",
+        "domain": False,
+        "title": None,
+    }
+    if values is not None:
+        axis_kwargs["values"] = values
+    return alt.Axis(**axis_kwargs)
 
 
 def render_pbp_category_movement_charts(events, team_a, team_b, selected_category):
@@ -1533,22 +1542,21 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     chart_data = chart_data.sort_values("wallclock").drop_duplicates(["game_day", "wallclock"], keep="last").reset_index(drop=True)
     day_width = pbp_day_panel_width(chart_data["game_day"].nunique())
     chart_data["score_top"] = 413
-    chart_data["score_mid"] = 206.5
     chart_data["score_bottom"] = 0
 
     base = alt.Chart(chart_data).encode(
         x=alt.X(
             "wallclock:T",
-            title="Time",
-            axis=pbp_time_axis(grid=False),
+            title="Time (ET)",
+            axis=pbp_time_axis(grid=True),
         )
     )
-    top_band = base.mark_area(color=team_color_for_name(team_b), opacity=0.12, interpolate="step-after").encode(
+    top_band = base.mark_area(color=team_color_for_name(team_b), opacity=0.12, interpolate="monotone", clip=True).encode(
         y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False), stack=None),
-        y2=alt.Y2("score_mid:Q"),
+        y2=alt.Y2("team_a_score:Q"),
     )
-    bottom_band = base.mark_area(color=team_color_for_name(team_a), opacity=0.12, interpolate="step-after").encode(
-        y=alt.Y("score_mid:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False), stack=None),
+    bottom_band = base.mark_area(color=team_color_for_name(team_a), opacity=0.12, interpolate="monotone", clip=True).encode(
+        y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False), stack=None),
         y2=alt.Y2("score_bottom:Q"),
     )
     line = base.mark_line(color="#111827", strokeWidth=3, interpolate="monotone").encode(
