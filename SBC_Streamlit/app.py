@@ -1604,6 +1604,7 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
         category_chart["game_day_label"] = category_chart["game_day"]
     else:
         category_chart["game_day_label"] = category_chart["game_day_label"].fillna(category_chart["game_day"])
+    day_label_order = day_bounds.sort_values("day_start")["game_day_label"].dropna().astype(str).tolist() if "game_day_label" in day_bounds.columns else None
     category_chart = category_chart.sort_values(["game_day", "chart_hour", "team"]).drop_duplicates(["game_day", "chart_hour", "team"], keep="last").reset_index(drop=True)
     hour_ticks, hour_domain = pbp_hour_axis_values(day_bounds)
     category_chart = add_pbp_chart_hour_edges(category_chart, hour_domain, "value", group_cols=["team"])
@@ -1660,7 +1661,7 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
         ],
     )
     mini = (area + line).properties(width=day_width, height=170).facet(
-        column=alt.Column("game_day_label:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
+        column=alt.Column("game_day_label:N", title=None, sort=day_label_order, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
         background="#ffffff",
@@ -1698,6 +1699,7 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         chart_data["game_day_label"] = chart_data["game_day"]
     else:
         chart_data["game_day_label"] = chart_data["game_day_label"].fillna(chart_data["game_day"])
+    day_label_order = day_bounds.sort_values("day_start")["game_day_label"].dropna().astype(str).tolist() if "game_day_label" in day_bounds.columns else None
     score_chart = chart_data[["wallclock", "wallclock_et", "chart_hour", "game_day", "game_day_label", "team_b_score"]].copy()
     score_chart = score_chart.rename(columns={"team_b_score": "value"})
     score_chart["score_top"] = 413
@@ -1748,7 +1750,7 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         ],
     )
     chart = (top_area + bottom_area + midpoint + line).properties(width=day_width, height=220).facet(
-        column=alt.Column("game_day_label:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
+        column=alt.Column("game_day_label:N", title=None, sort=day_label_order, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
         background="#ffffff",
