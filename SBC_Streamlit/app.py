@@ -1336,6 +1336,22 @@ def pbp_slate_day_bounds(events):
     return grouped.sort_values("day_start").reset_index(drop=True)
 
 
+def pbp_full_slate_day_bounds(events):
+    if events.empty or "game_date" not in events.columns:
+        return pbp_slate_day_bounds(events)
+    game_dates = events["game_date"].dropna().astype(str)
+    game_dates = sorted(date for date in game_dates.unique() if date and date.lower() != "nan")
+    if not game_dates:
+        return pbp_slate_day_bounds(events)
+    archive = load_pbp_stat_events_archive(pbp_archive_mtime())
+    if archive.empty or "game_date" not in archive.columns:
+        return pbp_slate_day_bounds(events)
+    slate_events = archive[archive["game_date"].astype(str).isin(game_dates)].copy()
+    if slate_events.empty:
+        return pbp_slate_day_bounds(events)
+    return pbp_slate_day_bounds(slate_events)
+
+
 def add_pbp_day_positions(df, day_bounds=None):
     out = df.copy()
     out["wallclock"] = pd.to_datetime(out["wallclock"], errors="coerce", utc=True)
@@ -1418,7 +1434,7 @@ def pbp_time_axis(grid=False):
         gridColor="#f2f4f7",
         domainColor="#d0d5dd",
         tickColor="#d0d5dd",
-        tickMinStep=3600000,
+        tickCount={"interval": "hour", "step": 1},
     )
 
 
@@ -1461,7 +1477,7 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
     category_chart = category_chart[category_chart["category"].astype(str) == selected_label].copy()
     if category_chart.empty:
         return
-    day_bounds = pbp_slate_day_bounds(events)
+    day_bounds = pbp_full_slate_day_bounds(events)
     category_chart = add_pbp_category_day_boundaries(category_chart, day_bounds, team_a, team_b, selected_label)
     category_chart = add_pbp_day_positions(category_chart, day_bounds)
     if category_chart.empty:
@@ -1536,7 +1552,7 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     chart_cols = ["wallclock", team_a, team_b] + (["game_date"] if "game_date" in chart_table.columns else [])
     chart_data = chart_table[chart_cols].copy()
     day_source = events if events is not None and not events.empty else chart_data
-    day_bounds = pbp_slate_day_bounds(day_source)
+    day_bounds = pbp_full_slate_day_bounds(day_source)
     chart_data = add_pbp_score_day_boundaries(chart_data, day_bounds, team_a, team_b)
     chart_data = add_pbp_day_positions(chart_data, day_bounds)
     if chart_data.empty:
@@ -1553,6 +1569,7 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     chart_data["score_top"] = 413
     chart_data["score_bottom"] = 0
     chart_data["score_mid"] = 206.5
+    chart_data = chart_data.sort_values(["game_day", "wallclock_et"]).drop_duplicates(["game_day", "wallclock_et"], keep="last").reset_index(drop=True)
 
     base = alt.Chart(chart_data).encode(
         x=alt.X(
@@ -1560,6 +1577,16 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
             title="Time (ET)",
             axis=pbp_time_axis(grid=True),
         )
+    )
+    y_axis = alt.Axis(
+        values=[0, 100, 206.5, 313, 413],
+        labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value",
+        title=None,
+        labelColor="#475467",
+        grid=True,
+        gridColor="#eef2f7",
+        tickColor="#d0d5dd",
+        domain=False,
     )
     top_band = base.mark_area(color=team_color_for_name(team_b), opacity=0.12, interpolate="monotone", clip=True).encode(
         y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=None, stack=None),
@@ -1569,18 +1596,21 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=None, stack=None),
         y2=alt.Y2("score_bottom:Q"),
     )
+    axis_owner = base.mark_line(opacity=0).encode(
+        y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis),
+    )
     line = base.mark_line(color="#111827", strokeWidth=3, interpolate="monotone").encode(
-        y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(values=[0, 100, 206.5, 313, 413], labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value", title=None, labelColor="#475467", grid=True, gridColor="#eef2f7", tickColor="#d0d5dd", domain=False)),
+        y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=None),
         tooltip=[
             alt.Tooltip("wallclock_et:T", title="Time (ET)", format="%b %d, %I:%M %p"),
             alt.Tooltip("team_a_score:Q", title=live_team_full_name(team_a), format=".1f"),
             alt.Tooltip("team_b_score:Q", title=live_team_full_name(team_b), format=".1f"),
         ],
     )
-    midpoint = base.mark_rule(color="#111827", strokeWidth=1).encode(
+    midpoint = base.mark_line(color="#111827", strokeWidth=1, opacity=0.75).encode(
         y=alt.Y("score_mid:Q", scale=alt.Scale(domain=[0, 413]), axis=None)
     )
-    chart = (top_band + bottom_band + midpoint + line).properties(width=day_width, height=260).facet(
+    chart = (axis_owner + top_band + bottom_band + midpoint + line).properties(width=day_width, height=260).facet(
         column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
