@@ -1297,6 +1297,19 @@ def pbp_row_class(row):
     return ""
 
 
+def pbp_chart_game_day(wallclock_series):
+    ts = pd.to_datetime(wallclock_series, errors="coerce", utc=True)
+    return (ts.dt.tz_convert(ZoneInfo("America/New_York")) - pd.Timedelta(hours=4)).dt.strftime("%b %d")
+
+
+def pbp_day_panel_width(day_count):
+    try:
+        count = max(1, int(day_count))
+    except (TypeError, ValueError):
+        count = 1
+    return max(110, min(360, int(900 / count)))
+
+
 def render_pbp_category_movement_charts(events, team_a, team_b, selected_category):
     category_chart = build_pbp_category_chart_data(events, team_a, team_b)
     if category_chart.empty:
@@ -1310,7 +1323,8 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
     category_chart = category_chart.dropna(subset=["wallclock"]).sort_values("wallclock").reset_index(drop=True)
     if category_chart.empty:
         return
-    category_chart["game_day"] = category_chart["wallclock"].dt.tz_convert(ZoneInfo("America/New_York")).dt.strftime("%b %d")
+    category_chart["game_day"] = pbp_chart_game_day(category_chart["wallclock"])
+    day_width = pbp_day_panel_width(category_chart["game_day"].nunique())
     render_html(f'<div class="sbc-pbp-mini-chart-title">{escape(selected_label)} Movement</div>')
     mini = alt.Chart(category_chart).mark_line(strokeWidth=2, interpolate="step-after").encode(
         x=alt.X(
@@ -1332,7 +1346,7 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
             alt.Tooltip("value:Q", title="Value", format=".1f"),
             alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
         ],
-    ).properties(width=120, height=150).facet(
+    ).properties(width=day_width, height=150).facet(
         column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
@@ -1359,14 +1373,16 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, expected_
     if expected_score_a is not None and expected_score_b is not None and not chart_data.empty:
         chart_data.loc[chart_data.index[-1], "team_a_score"] = expected_score_a
         chart_data.loc[chart_data.index[-1], "team_b_score"] = expected_score_b
+    chart_data["game_day"] = pbp_chart_game_day(chart_data["wallclock"])
+    day_width = pbp_day_panel_width(chart_data["game_day"].nunique())
     chart_data["above"] = chart_data["team_a_score"].clip(lower=206.5)
     chart_data["below"] = chart_data["team_a_score"].clip(upper=206.5)
 
     base = alt.Chart(chart_data).encode(
         x=alt.X(
             "wallclock:T",
-            title="Matchup Time",
-            axis=alt.Axis(format="%b %d, %I %p", labelAngle=-30, labelColor="#475467", titleColor="#344054", domainColor="#d0d5dd", grid=False, labelOverlap=True),
+            title=None,
+            axis=alt.Axis(format="%I %p", labelAngle=0, labelColor="#475467", titleColor="#344054", domainColor="#d0d5dd", grid=False, labelOverlap=True),
         )
     )
     above_area = base.mark_area(color=team_color_for_name(team_a), opacity=0.12, interpolate="step-after").encode(
@@ -1385,7 +1401,13 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, expected_
             alt.Tooltip("team_b_score:Q", title=live_team_full_name(team_b), format=".1f"),
         ],
     )
-    chart = (below_area + above_area + line).properties(height=280).configure(
+    midpoint = base.mark_rule(color="#111827", strokeWidth=1).encode(
+        y=alt.Y(datum=206.5, axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False))
+    )
+    chart = (below_area + above_area + midpoint + line).properties(width=day_width, height=260).facet(
+        column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
+        spacing=6,
+    ).resolve_scale(x="independent").configure(
         background="#ffffff",
         axis=alt.AxisConfig(labelColor="#344054", titleColor="#344054", gridColor="#eef2f7", domainColor="#d0d5dd"),
         view=alt.ViewConfig(strokeOpacity=0),
