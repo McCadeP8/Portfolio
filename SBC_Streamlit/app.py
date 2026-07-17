@@ -394,8 +394,20 @@ def load_nba_player_boxscores_archive():
     return df
 
 
+def pbp_archive_mtime():
+    candidates = [
+        APP_DIR / "data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet",
+        APP_DIR.parent / "data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet",
+        Path("data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet"),
+    ]
+    for path in candidates:
+        if path.exists():
+            return path.stat().st_mtime
+    return 0
+
+
 @st.cache_data(ttl=86400)
-def load_pbp_stat_events_archive():
+def load_pbp_stat_events_archive(mtime=None):
     df = _read_local_parquet("data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet")
     if df.empty:
         return df
@@ -1007,7 +1019,7 @@ def pbp_categories_for_event(row):
 
 
 def matchup_pbp_events(rows, team_a, team_b):
-    pbp = load_pbp_stat_events_archive()
+    pbp = load_pbp_stat_events_archive(pbp_archive_mtime())
     if pbp.empty or rows.empty:
         return pd.DataFrame()
     mapping = rows[["nba_game_id", "espn_player_id", "sbc_team", "display_player"]].dropna(subset=["nba_game_id", "espn_player_id", "sbc_team"]).drop_duplicates().copy()
@@ -1028,7 +1040,109 @@ def matchup_pbp_events(rows, team_a, team_b):
     if merged.empty:
         return pd.DataFrame()
     merged["display_player"] = merged["display_player"].fillna(merged["player"])
+    merged = append_matchup_pbp_total_adjustments(merged, rows, team_a, team_b)
     return merged.sort_values(["wallclock", "game_id", "stat", "player"]).reset_index(drop=True)
+
+
+def append_matchup_pbp_total_adjustments(events, box_rows, team_a, team_b):
+    if events.empty or box_rows.empty:
+        return events
+    totals = team_boxscore_totals(box_rows)
+    if totals.empty:
+        return events
+    totals = totals.set_index("sbc_team")
+    output = [events]
+    max_time = pd.to_datetime(events["wallclock"], errors="coerce", utc=True).max()
+    if pd.isna(max_time):
+        max_time = pd.Timestamp.utcnow()
+    adjustment_time = max_time + pd.Timedelta(seconds=1)
+
+    def current(team, stat):
+        subset = events[(events["sbc_team"].astype(str) == str(team)) & (events["stat"].astype(str) == stat)]
+        return float(pd.to_numeric(subset["value"], errors="coerce").fillna(0).sum())
+
+    adjustment_rows = []
+    simple_stats = [
+        ("MP", "minutes played"),
+        ("PTS", "points"),
+        ("OREB", "offensive_rebound"),
+        ("DREB", "defensive_rebound"),
+        ("AST", "assist"),
+        ("ST", "steal"),
+        ("BLK", "block"),
+        ("TO", "turnover"),
+        ("+/-", "+/-"),
+    ]
+    shot_stats = [
+        ("2PTM", "2PTA", "two-point make", "two-point miss"),
+        ("3PTM", "3PTA", "three-point make", "three-point miss"),
+        ("FTM", "FTA", "free-throw make", "free-throw miss"),
+    ]
+    for team in [team_a, team_b]:
+        if team not in totals.index:
+            continue
+        team_total = totals.loc[team]
+        for official_col, stat in simple_stats:
+            target = float(pd.to_numeric(pd.Series([team_total.get(official_col, 0)]), errors="coerce").fillna(0).iloc[0])
+            diff = target - current(team, stat)
+            if abs(diff) >= 0.0001:
+                adjustment_rows.append({
+                    "game_id": "matchup_adjustment",
+                    "game_date": "",
+                    "stat": stat,
+                    "player_id": f"{team}_adjustment",
+                    "player": "Team Adjustment",
+                    "wallclock": adjustment_time,
+                    "value": round(diff, 4),
+                    "scored": None,
+                    "description": f"{live_team_full_name(team)} {boxscore_stat_label(official_col)} adjustment {stat_number(diff, signed=True)}",
+                    "nba_game_id": "matchup_adjustment",
+                    "espn_player_id": f"{team}_adjustment",
+                    "sbc_team": team,
+                    "display_player": "Team Adjustment",
+                })
+        for made_col, attempt_col, make_stat, miss_stat in shot_stats:
+            target_made = float(pd.to_numeric(pd.Series([team_total.get(made_col, 0)]), errors="coerce").fillna(0).iloc[0])
+            target_attempts = float(pd.to_numeric(pd.Series([team_total.get(attempt_col, 0)]), errors="coerce").fillna(0).iloc[0])
+            made_diff = target_made - current(team, make_stat)
+            if abs(made_diff) >= 0.0001:
+                adjustment_rows.append({
+                    "game_id": "matchup_adjustment",
+                    "game_date": "",
+                    "stat": make_stat,
+                    "player_id": f"{team}_adjustment",
+                    "player": "Team Adjustment",
+                    "wallclock": adjustment_time,
+                    "value": round(made_diff, 4),
+                    "scored": None,
+                    "description": f"{live_team_full_name(team)} {boxscore_stat_label(made_col)} adjustment {stat_number(made_diff, signed=True)}",
+                    "nba_game_id": "matchup_adjustment",
+                    "espn_player_id": f"{team}_adjustment",
+                    "sbc_team": team,
+                    "display_player": "Team Adjustment",
+                })
+            current_attempts_after_make = current(team, make_stat) + made_diff + current(team, miss_stat)
+            miss_diff = target_attempts - current_attempts_after_make
+            if abs(miss_diff) >= 0.0001:
+                adjustment_rows.append({
+                    "game_id": "matchup_adjustment",
+                    "game_date": "",
+                    "stat": miss_stat,
+                    "player_id": f"{team}_adjustment",
+                    "player": "Team Adjustment",
+                    "wallclock": adjustment_time,
+                    "value": round(miss_diff, 4),
+                    "scored": None,
+                    "description": f"{live_team_full_name(team)} {boxscore_stat_label(attempt_col)} adjustment {stat_number(miss_diff, signed=True)}",
+                    "nba_game_id": "matchup_adjustment",
+                    "espn_player_id": f"{team}_adjustment",
+                    "sbc_team": team,
+                    "display_player": "Team Adjustment",
+                })
+
+    if adjustment_rows:
+        output.append(pd.DataFrame(adjustment_rows))
+    return pd.concat(output, ignore_index=True, sort=False)
 
 
 def build_pbp_running_table(events, category, team_a, team_b):
@@ -1173,44 +1287,75 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
         if not chart_data.empty:
             chart_data = chart_data.sort_values("wallclock").reset_index(drop=True)
             chart_data["matchup_time"] = range(len(chart_data))
-            chart_data["Score"] = chart_data[team_a]
-            chart_data["OpponentScore"] = chart_data[team_b]
-            chart_data["above"] = chart_data["Score"].clip(lower=206.5)
-            chart_data["below"] = chart_data["Score"].clip(upper=206.5)
+            chart_data["team_a_score"] = chart_data[team_a]
+            chart_data["team_b_score"] = chart_data[team_b]
+            chart_data["above"] = chart_data["team_a_score"].clip(lower=206.5)
+            chart_data["below"] = chart_data["team_a_score"].clip(upper=206.5)
+            line_data = pd.concat(
+                [
+                    chart_data[["matchup_time", "wallclock", "team_a_score", "team_b_score"]].assign(
+                        Team=live_team_full_name(team_a),
+                        Score=chart_data["team_a_score"],
+                    ),
+                    chart_data[["matchup_time", "wallclock", "team_a_score", "team_b_score"]].assign(
+                        Team=live_team_full_name(team_b),
+                        Score=chart_data["team_b_score"],
+                    ),
+                ],
+                ignore_index=True,
+            )
             midpoint = pd.DataFrame({"y": [206.5], "Label": ["Win line 206.5"]})
             base = alt.Chart(chart_data).encode(
-                x=alt.X("matchup_time:Q", title="Matchup Time", axis=alt.Axis(labels=False, ticks=False)),
+                x=alt.X(
+                    "matchup_time:Q",
+                    title="Matchup Time",
+                    axis=alt.Axis(labels=False, ticks=False, titleColor="#344054", domainColor="#d0d5dd", grid=False),
+                ),
             )
             above_area = base.mark_area(
                 color=team_color_for_name(team_a),
-                opacity=0.16,
+                opacity=0.12,
                 interpolate="step-after",
             ).encode(
-                y=alt.Y("above:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False)),
+                y=alt.Y("above:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
                 y2=alt.Y2(datum=206.5),
             )
             below_area = base.mark_area(
                 color=team_color_for_name(team_b),
-                opacity=0.16,
+                opacity=0.12,
                 interpolate="step-after",
             ).encode(
-                y=alt.Y("below:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False)),
+                y=alt.Y("below:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
                 y2=alt.Y2(datum=206.5),
             )
-            line = base.mark_line(
-                color=LEAGUE_PRIMARY,
+            line = alt.Chart(line_data).mark_line(
                 strokeWidth=3,
                 interpolate="step-after",
             ).encode(
-                y=alt.Y("Score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False)),
+                x=alt.X(
+                    "matchup_time:Q",
+                    title="Matchup Time",
+                    axis=alt.Axis(labels=False, ticks=False, titleColor="#344054", domainColor="#d0d5dd", grid=False),
+                ),
+                y=alt.Y("Score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
+                color=alt.Color(
+                    "Team:N",
+                    scale=alt.Scale(
+                        domain=[live_team_full_name(team_a), live_team_full_name(team_b)],
+                        range=[team_color_for_name(team_a), team_color_for_name(team_b)],
+                    ),
+                    legend=None,
+                ),
                 tooltip=[
                     alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
-                    alt.Tooltip("Score:Q", title=live_team_full_name(team_a), format=".1f"),
-                    alt.Tooltip("OpponentScore:Q", title=live_team_full_name(team_b), format=".1f"),
+                    alt.Tooltip("Team:N", title="Team"),
+                    alt.Tooltip("Score:Q", title="Score", format=".1f"),
+                    alt.Tooltip("team_a_score:Q", title=live_team_full_name(team_a), format=".1f"),
+                    alt.Tooltip("team_b_score:Q", title=live_team_full_name(team_b), format=".1f"),
                 ],
             )
             threshold = alt.Chart(midpoint).mark_rule(color="#C9A227", strokeDash=[6, 4], strokeWidth=2).encode(
-                y=alt.Y("y:Q", axis=alt.Axis(title=None, labels=False, ticks=False)),
+                y=alt.Y("y:Q", axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
                 tooltip=[alt.Tooltip("Label:N", title="Marker"), alt.Tooltip("y:Q", title="Points")],
             )
             render_html(f"""
@@ -1226,7 +1371,12 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
                     </span>
                 </div>
             """)
-            st.altair_chart((below_area + above_area + line + threshold).properties(height=280), use_container_width=True)
+            chart = (below_area + above_area + line + threshold).properties(height=280).configure(
+                background="#ffffff",
+                axis=alt.AxisConfig(labelColor="#344054", titleColor="#344054", gridColor="#eaecf0", domainColor="#d0d5dd"),
+                view=alt.ViewConfig(strokeOpacity=0),
+            )
+            st.altair_chart(chart, use_container_width=True)
 
         if lead_table.empty:
             render_html('<div class="sbc-empty-state">No category lead changes or lead ties have happened yet in this matchup.</div>')
