@@ -355,7 +355,7 @@ HISTORY_LEADERBOARD_STATS = BOX_SCORE_CATEGORY_ORDER + ["Matchups", "Games Playe
 PBP_STAT_LABELS = {
     "ALL": "All Categories",
     "MP": "Minutes Played",
-    "TS%": "True Shooting",
+    "TS%": "TS%",
     "2PT%": "2PT%",
     "3PT%": "3PT%",
     "FT%": "FT%",
@@ -921,9 +921,10 @@ def pbp_running_display(state, category):
         points = state.get("points", 0)
         fga = state.get("fga", 0)
         fta = state.get("fta", 0)
-        denom = 2 * (fga + 0.44 * fta)
+        tsa = fga + 0.44 * fta
+        denom = 2 * tsa
         ts = points / denom if denom else 0
-        return f"{points:.0f} pts ({ts * 100:.1f}%)"
+        return f"{tsa:.1f} TSA ({ts * 100:.1f}%)"
     value = state.get("value", 0)
     if category == "MP":
         total_seconds = int(round(value * 60))
@@ -952,11 +953,11 @@ def pbp_winner(states, category, team_a, team_b):
     return team_a if val_a > val_b else team_b
 
 
-def pbp_category_score(states, team_a, team_b):
+def pbp_category_score(category_states, team_a, team_b):
     score_a = 0.0
     score_b = 0.0
     for category, weight in BOX_SCORE_WEIGHTS.items():
-        winner = pbp_winner(states, category, team_a, team_b)
+        winner = pbp_winner(category_states.get(category, {}), category, team_a, team_b)
         if winner == team_a:
             score_a += weight
         elif winner == team_b:
@@ -1048,7 +1049,7 @@ def build_pbp_running_table(events, category, team_a, team_b):
         for key, amount in delta.items():
             states[sbc_team][key] = states[sbc_team].get(key, 0) + amount
         winner = pbp_winner(states, category, team_a, team_b)
-        lead_change = previous_winner not in ["", "Tie", winner] and winner != "Tie"
+        lead_change = previous_winner != winner and winner != "Tie"
         if winner != "Tie":
             previous_winner = winner
         rows.append({
@@ -1059,6 +1060,7 @@ def build_pbp_running_table(events, category, team_a, team_b):
             "team_b_total": pbp_running_display(states[team_b], category),
             "winner": winner,
             "lead_change": lead_change,
+            "tied": winner == "Tie",
         })
     return pd.DataFrame(rows)
 
@@ -1099,8 +1101,9 @@ def build_pbp_all_category_leads(events, team_a, team_b):
             if winner != "Tie":
                 previous_winners[category] = winner
             chart_rows.append({"wallclock": row.get("wallclock"), team_a: score_a, team_b: score_b})
-            lead_change = winner_before not in ["", "Tie", winner] and winner != "Tie"
-            if lead_change:
+            lead_change = winner_before != winner and winner != "Tie"
+            lead_tied = winner == "Tie" and winner_before not in ["", "Tie"]
+            if lead_change or lead_tied:
                 rows.append({
                     "wallclock": row.get("wallclock"),
                     "category": category,
@@ -1111,10 +1114,40 @@ def build_pbp_all_category_leads(events, team_a, team_b):
                     "winner": winner,
                     "overall_a": score_a,
                     "overall_b": score_b,
-                    "lead_change": True,
+                    "lead_change": lead_change,
+                    "tied": lead_tied,
                 })
 
     return pd.DataFrame(rows), pd.DataFrame(chart_rows)
+
+
+def pbp_team_header_html(team):
+    logo = team_logo_for_name(team)
+    return f"""
+        <span class="sbc-pbp-team-head">
+            <img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
+            <strong>{escape(team_abbrev_for_name(team))}</strong>
+        </span>
+    """
+
+
+def pbp_leader_html(winner):
+    if winner == "Tie":
+        return '<span class="sbc-pbp-tie-text">Tie</span>'
+    logo = team_logo_for_name(winner)
+    return f"""
+        <span class="sbc-pbp-leader-logo">
+            <img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(winner), quote=True)} logo">
+        </span>
+    """
+
+
+def pbp_row_class(row):
+    if bool(row.get("lead_change")):
+        return "sbc-pbp-lead-change-row"
+    if bool(row.get("tied")) or str(row.get("winner", "")) == "Tie":
+        return "sbc-pbp-tied-row"
+    return ""
 
 
 def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
@@ -1159,14 +1192,14 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
                     alt.Tooltip("Score:Q", title="Score", format=".1f"),
                 ],
             )
-            threshold = alt.Chart(midpoint).mark_rule(color="#111827", strokeDash=[6, 4], strokeWidth=2).encode(
+            threshold = alt.Chart(midpoint).mark_rule(color="#C9A227", strokeDash=[6, 4], strokeWidth=2).encode(
                 y="y:Q",
                 tooltip=[alt.Tooltip("Label:N", title="Marker"), alt.Tooltip("y:Q", title="Points")],
             )
             st.altair_chart((line + threshold).properties(height=280), use_container_width=True)
 
         if lead_table.empty:
-            render_html('<div class="sbc-empty-state">No category lead changes have happened yet in this matchup.</div>')
+            render_html('<div class="sbc-empty-state">No category lead changes or lead ties have happened yet in this matchup.</div>')
             return
         table = lead_table
         color_a = team_color_for_name(team_a)
@@ -1174,19 +1207,19 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
         rows_html = []
         for _, row in table.iterrows():
             sbc_team = str(row.get("sbc_team", ""))
-            row_color = color_a if sbc_team == team_a else color_b if sbc_team == team_b else "#94a3b8"
             winner = str(row.get("winner", "Tie"))
-            winner_text = "Tie" if winner == "Tie" else live_team_full_name(winner)
             overall = f"{stat_number(row.get('overall_a', 0))}-{stat_number(row.get('overall_b', 0))}"
+            row_class = pbp_row_class(row)
+            team_a_active = "sbc-pbp-updated-total" if sbc_team == team_a else ""
+            team_b_active = "sbc-pbp-updated-total" if sbc_team == team_b else ""
             rows_html.append(f"""
-                <tr style="--pbp-row-color:{escape(str(row_color), quote=True)};">
+                <tr class="{row_class}" style="--pbp-active-color:{escape(str(team_color_for_name(sbc_team)), quote=True)};">
                     <td>{escape(format_pbp_wallclock(row.get('wallclock')))}</td>
                     <td><strong>{escape(PBP_STAT_LABELS.get(str(row.get('category', '')), str(row.get('category', ''))))}</strong></td>
-                    <td class="sbc-pbp-description">{escape(str(row.get('description', '')))}<span class="sbc-pbp-lead-badge">Lead change</span></td>
-                    <td><strong>{escape(live_team_full_name(sbc_team))}</strong></td>
-                    <td>{escape(str(row.get('team_a_total', '')))}</td>
-                    <td>{escape(str(row.get('team_b_total', '')))}</td>
-                    <td>{escape(winner_text)}</td>
+                    <td class="sbc-pbp-description">{escape(str(row.get('description', '')))}</td>
+                    <td class="sbc-pbp-total-cell {team_a_active}">{escape(str(row.get('team_a_total', '')))}</td>
+                    <td class="sbc-pbp-total-cell {team_b_active}">{escape(str(row.get('team_b_total', '')))}</td>
+                    <td>{pbp_leader_html(winner)}</td>
                     <td>{escape(overall)}</td>
                 </tr>
             """)
@@ -1194,7 +1227,7 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
             <section class="sbc-box-panel sbc-pbp-panel" style="--pbp-a:{escape(str(color_a), quote=True)};--pbp-b:{escape(str(color_b), quote=True)};">
                 <div class="sbc-box-panel-head">
                     <span>All Category Lead Changes</span>
-                    <em>{escape(str(len(table)))} lead changes</em>
+                    <em>{escape(str(len(table)))} moments</em>
                 </div>
                 <div class="sbc-box-table-scroll">
                     <table class="sbc-pbp-table sbc-pbp-all-table">
@@ -1203,9 +1236,8 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
                                 <th>Wallclock</th>
                                 <th>Category</th>
                                 <th>Description</th>
-                                <th>SBC Team</th>
-                                <th>{escape(live_team_full_name(team_a))}</th>
-                                <th>{escape(live_team_full_name(team_b))}</th>
+                                <th>{pbp_team_header_html(team_a)}</th>
+                                <th>{pbp_team_header_html(team_b)}</th>
                                 <th>Leader</th>
                                 <th>Overall</th>
                             </tr>
@@ -1237,18 +1269,17 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
     rows_html = []
     for _, row in table.iterrows():
         sbc_team = str(row.get("sbc_team", ""))
-        row_color = color_a if sbc_team == team_a else color_b if sbc_team == team_b else "#94a3b8"
         winner = str(row.get("winner", "Tie"))
-        lead_badge = '<span class="sbc-pbp-lead-badge">Lead change</span>' if bool(row.get("lead_change")) else ""
-        winner_text = "Tie" if winner == "Tie" else live_team_full_name(winner)
+        row_class = pbp_row_class(row)
+        team_a_active = "sbc-pbp-updated-total" if sbc_team == team_a else ""
+        team_b_active = "sbc-pbp-updated-total" if sbc_team == team_b else ""
         rows_html.append(f"""
-            <tr style="--pbp-row-color:{escape(str(row_color), quote=True)};">
+            <tr class="{row_class}" style="--pbp-active-color:{escape(str(team_color_for_name(sbc_team)), quote=True)};">
                 <td>{escape(format_pbp_wallclock(row.get('wallclock')))}</td>
-                <td class="sbc-pbp-description">{escape(str(row.get('description', '')))}{lead_badge}</td>
-                <td><strong>{escape(live_team_full_name(sbc_team))}</strong></td>
-                <td>{escape(str(row.get('team_a_total', '')))}</td>
-                <td>{escape(str(row.get('team_b_total', '')))}</td>
-                <td>{escape(winner_text)}</td>
+                <td class="sbc-pbp-description">{escape(str(row.get('description', '')))}</td>
+                <td class="sbc-pbp-total-cell {team_a_active}">{escape(str(row.get('team_a_total', '')))}</td>
+                <td class="sbc-pbp-total-cell {team_b_active}">{escape(str(row.get('team_b_total', '')))}</td>
+                <td>{pbp_leader_html(winner)}</td>
             </tr>
         """)
 
@@ -1264,9 +1295,8 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
                         <tr>
                             <th>Wallclock</th>
                             <th>Description</th>
-                            <th>SBC Team</th>
-                            <th>{escape(live_team_full_name(team_a))}</th>
-                            <th>{escape(live_team_full_name(team_b))}</th>
+                            <th>{pbp_team_header_html(team_a)}</th>
+                            <th>{pbp_team_header_html(team_b)}</th>
                             <th>Leader</th>
                         </tr>
                     </thead>
@@ -10098,6 +10128,10 @@ st.markdown(
         width: 16%;
     }}
 
+    .sbc-box-category-table th {{
+        text-align: center;
+    }}
+
     .sbc-box-category-team-name {{
         display: inline-block;
         max-width: 100%;
@@ -10265,11 +10299,11 @@ st.markdown(
     }}
 
     .sbc-pbp-panel {{
-        border-color: color-mix(in srgb, var(--pbp-a) 16%, rgba(23, 32, 42, 0.10));
+        border-color: rgba(23, 32, 42, 0.10);
     }}
 
     .sbc-pbp-table {{
-        min-width: 72rem;
+        min-width: 60rem;
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
@@ -10285,19 +10319,24 @@ st.markdown(
         font-weight: 950;
         letter-spacing: 0.06em;
         padding: 0.42rem 0.55rem;
-        text-align: left;
+        text-align: center;
         text-transform: uppercase;
         white-space: nowrap;
     }}
 
     .sbc-pbp-table td {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.06);
-        background:
-            linear-gradient(90deg, color-mix(in srgb, var(--pbp-row-color) 13%, #ffffff) 0%, #ffffff 86%);
+        background: #ffffff;
         font-size: 0.76rem;
         font-weight: 850;
         padding: 0.46rem 0.55rem;
+        text-align: center;
         vertical-align: middle;
+    }}
+
+    .sbc-pbp-table th:nth-child(2),
+    .sbc-pbp-table td:nth-child(2) {{
+        text-align: center;
     }}
 
     .sbc-pbp-table td:first-child {{
@@ -10306,7 +10345,7 @@ st.markdown(
         white-space: nowrap;
     }}
 
-    .sbc-pbp-table td:nth-child(3),
+    .sbc-pbp-table td:nth-child(2),
     .sbc-pbp-table td:nth-child(4),
     .sbc-pbp-table td:nth-child(5),
     .sbc-pbp-table td:nth-child(6) {{
@@ -10318,21 +10357,68 @@ st.markdown(
         color: var(--sbc-ink);
         font-weight: 850;
         line-height: 1.25;
+        text-align: left !important;
+        white-space: normal !important;
     }}
 
-    .sbc-pbp-lead-badge {{
+    .sbc-pbp-lead-change-row td {{
+        background: color-mix(in srgb, #facc15 26%, #ffffff);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 color-mix(in srgb, #facc15 38%, rgba(23, 32, 42, 0.06));
+    }}
+
+    .sbc-pbp-tied-row td {{
+        background: color-mix(in srgb, #93c5fd 18%, #ffffff);
+    }}
+
+    .sbc-pbp-total-cell {{
+        font-weight: 950 !important;
+    }}
+
+    .sbc-pbp-updated-total {{
+        outline: 2px solid color-mix(in srgb, var(--pbp-active-color) 70%, #ffffff);
+        outline-offset: -3px;
+        background: color-mix(in srgb, var(--pbp-active-color) 11%, #ffffff) !important;
+        color: var(--sbc-ink);
+    }}
+
+    .sbc-pbp-team-head {{
+        display: inline-grid;
+        grid-template-columns: 1.5rem auto;
+        gap: 0.35rem;
+        align-items: center;
+        justify-content: center;
+        min-width: 3.25rem;
+    }}
+
+    .sbc-pbp-team-head img,
+    .sbc-pbp-leader-logo img {{
+        width: 1.45rem;
+        height: 1.45rem;
+        object-fit: contain;
+        filter: drop-shadow(0 2px 4px rgba(18,25,38,0.12));
+    }}
+
+    .sbc-pbp-team-head strong {{
+        color: var(--sbc-ink);
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0;
+    }}
+
+    .sbc-pbp-leader-logo {{
         display: inline-grid;
         place-items: center;
-        margin-left: 0.45rem;
+    }}
+
+    .sbc-pbp-tie-text {{
+        display: inline-grid;
+        place-items: center;
         border-radius: 999px;
-        background: #111827;
-        color: #ffffff;
-        font-size: 0.58rem;
+        background: color-mix(in srgb, #93c5fd 26%, #ffffff);
+        color: #1e3a8a;
+        font-size: 0.66rem;
         font-weight: 950;
-        letter-spacing: 0.06em;
-        line-height: 1;
-        padding: 0.24rem 0.42rem;
-        text-transform: uppercase;
+        padding: 0.22rem 0.42rem;
         white-space: nowrap;
     }}
 
