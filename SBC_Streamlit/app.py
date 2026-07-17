@@ -702,7 +702,7 @@ def stat_subtext(row, stat, show_gp=True):
     return ""
 
 
-def stat_cell_html(row, stat, winner=False, align="center", show_gp=True):
+def stat_cell_html(row, stat, winner=False, tie=False, align="center", show_gp=True):
     is_pct = stat in ["TS%", "2PT%", "3PT%", "FT%"]
     if is_pct and not stat_has_shooting_volume(row, stat):
         value = "-"
@@ -710,8 +710,9 @@ def stat_cell_html(row, stat, winner=False, align="center", show_gp=True):
         value = stat_number(row.get(stat, 0), pct=is_pct, signed=(stat == "+/-"))
     sub = stat_subtext(row, stat, show_gp=show_gp)
     sub_html = f"<em>{escape(sub)}</em>" if sub else ""
+    cell_class = "sbc-box-stat-tie" if tie else "sbc-box-stat-win" if winner else ""
     return f"""
-        <td class="sbc-box-stat-cell {'sbc-box-stat-win' if winner else ''}" style="text-align:{align};">
+        <td class="sbc-box-stat-cell {cell_class}" style="text-align:{align};">
             <strong>{escape(value)}</strong>
             {sub_html}
         </td>
@@ -742,14 +743,15 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
         winner = cat_row.get("Winner", "Tie")
         team_a_win = winner == team_a
         team_b_win = winner == team_b
+        tied_category = winner == "Tie"
         rows_html.append(f"""
             <tr>
-                {stat_cell_html(totals.loc[team_a], stat, winner=team_a_win)}
+                {stat_cell_html(totals.loc[team_a], stat, winner=team_a_win, tie=tied_category)}
                 <td class="sbc-box-category-name">
                     <strong>{escape(boxscore_stat_label(stat))}</strong>
                     <em>{escape(str(BOX_SCORE_WEIGHTS.get(stat, '')))} points</em>
                 </td>
-                {stat_cell_html(totals.loc[team_b], stat, winner=team_b_win)}
+                {stat_cell_html(totals.loc[team_b], stat, winner=team_b_win, tie=tied_category)}
             </tr>
         """)
     render_html(f"""
@@ -1538,7 +1540,7 @@ def add_pbp_chart_time(df):
     return out
 
 
-def add_pbp_chart_hour_edges(df, hour_domain, value_col, group_cols=None):
+def add_pbp_chart_hour_edges(df, hour_domain, value_col, group_cols=None, start_value=None):
     if df.empty or value_col not in df.columns or "game_day" not in df.columns or "chart_hour" not in df.columns:
         return df
     if not hour_domain or len(hour_domain) < 2:
@@ -1552,7 +1554,7 @@ def add_pbp_chart_hour_edges(df, hour_domain, value_col, group_cols=None):
             continue
         first = group.iloc[0].copy()
         first["chart_hour"] = start_hour
-        first[value_col] = group[value_col].iloc[0]
+        first[value_col] = start_value if start_value is not None else group[value_col].iloc[0]
         last = group.iloc[-1].copy()
         last["chart_hour"] = end_hour
         last[value_col] = group[value_col].iloc[-1]
@@ -1707,7 +1709,7 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     score_chart["score_mid"] = 206.5
     score_chart = score_chart.dropna(subset=["value", "chart_hour"])
     score_chart = score_chart.sort_values(["game_day", "chart_hour"]).drop_duplicates(["game_day", "chart_hour"], keep="last").reset_index(drop=True)
-    score_chart = add_pbp_chart_hour_edges(score_chart, hour_domain, "value")
+    score_chart = add_pbp_chart_hour_edges(score_chart, hour_domain, "value", start_value=206.5)
     score_chart["score_top"] = 413
     score_chart["score_bottom"] = 0
     score_chart["score_mid"] = 206.5
@@ -1722,8 +1724,8 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         )
     )
     y_axis = alt.Axis(
-        values=[0, 100, 206.5, 313, 413],
-        labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value",
+        values=[0, 113, 206.5, 300, 413],
+        labelExpr="datum.value == 113 ? '300' : datum.value == 300 ? '300' : datum.value == 413 ? '0' : datum.value",
         title=None,
         labelColor="#475467",
         grid=True,
@@ -10840,6 +10842,11 @@ st.markdown(
     .sbc-box-stat-win {{
         background: color-mix(in srgb, #58a76b 26%, #ffffff) !important;
         box-shadow: inset 0 0 0 1px color-mix(in srgb, #58a76b 44%, transparent);
+    }}
+
+    .sbc-box-stat-tie {{
+        background: color-mix(in srgb, #facc15 24%, #ffffff) !important;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, #d4a90b 58%, transparent);
     }}
 
     .sbc-box-category-name {{
