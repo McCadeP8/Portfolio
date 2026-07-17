@@ -1540,7 +1540,7 @@ def add_pbp_chart_time(df):
     return out
 
 
-def add_pbp_chart_hour_edges(df, hour_domain, value_col, group_cols=None, start_value=None):
+def add_pbp_chart_hour_edges(df, hour_domain, value_col, group_cols=None, start_value=None, start_overrides=None):
     if df.empty or value_col not in df.columns or "game_day" not in df.columns or "chart_hour" not in df.columns:
         return df
     if not hour_domain or len(hour_domain) < 2:
@@ -1552,9 +1552,11 @@ def add_pbp_chart_hour_edges(df, hour_domain, value_col, group_cols=None, start_
     for _, group in df.sort_values("chart_hour").groupby(key_cols, dropna=False):
         if group.empty:
             continue
+        group_day = group["game_day"].iloc[0]
+        override_start = start_overrides.get(group_day) if start_overrides else None
         first = group.iloc[0].copy()
         first["chart_hour"] = start_hour
-        first[value_col] = start_value if start_value is not None else group[value_col].iloc[0]
+        first[value_col] = override_start if override_start is not None else start_value if start_value is not None else group[value_col].iloc[0]
         last = group.iloc[-1].copy()
         last["chart_hour"] = end_hour
         last[value_col] = group[value_col].iloc[-1]
@@ -1709,7 +1711,9 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     score_chart["score_mid"] = 206.5
     score_chart = score_chart.dropna(subset=["value", "chart_hour"])
     score_chart = score_chart.sort_values(["game_day", "chart_hour"]).drop_duplicates(["game_day", "chart_hour"], keep="last").reset_index(drop=True)
-    score_chart = add_pbp_chart_hour_edges(score_chart, hour_domain, "value", start_value=206.5)
+    first_game_day = day_bounds.sort_values("day_start")["game_day"].iloc[0] if not day_bounds.empty else None
+    start_overrides = {first_game_day: 206.5} if first_game_day is not None else None
+    score_chart = add_pbp_chart_hour_edges(score_chart, hour_domain, "value", start_overrides=start_overrides)
     score_chart["score_top"] = 413
     score_chart["score_bottom"] = 0
     score_chart["score_mid"] = 206.5
