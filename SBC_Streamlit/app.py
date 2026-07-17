@@ -1517,6 +1517,30 @@ def add_pbp_chart_time(df):
     return out
 
 
+def add_pbp_chart_hour_edges(df, hour_domain, value_col, group_cols=None):
+    if df.empty or value_col not in df.columns or "game_day" not in df.columns or "chart_hour" not in df.columns:
+        return df
+    if not hour_domain or len(hour_domain) < 2:
+        return df
+    start_hour, end_hour = hour_domain[0], hour_domain[1]
+    group_cols = group_cols or []
+    key_cols = ["game_day"] + [col for col in group_cols if col in df.columns]
+    additions = []
+    for _, group in df.sort_values("chart_hour").groupby(key_cols, dropna=False):
+        if group.empty:
+            continue
+        first = group.iloc[0].copy()
+        first["chart_hour"] = start_hour
+        first[value_col] = group[value_col].iloc[0]
+        last = group.iloc[-1].copy()
+        last["chart_hour"] = end_hour
+        last[value_col] = group[value_col].iloc[-1]
+        additions.extend([first, last])
+    if additions:
+        df = pd.concat([df, pd.DataFrame(additions)], ignore_index=True, sort=False)
+    return df.sort_values(key_cols + ["chart_hour"]).drop_duplicates(key_cols + ["chart_hour"], keep="last").reset_index(drop=True)
+
+
 def pbp_category_y_scale(selected_category):
     if selected_category in ["2PT%", "3PT%", "FT%"]:
         return alt.Scale(domain=[0, 100], clamp=True)
@@ -1557,6 +1581,7 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
     category_chart = add_pbp_chart_time(category_chart)
     category_chart = category_chart.sort_values(["game_day", "chart_hour", "team"]).drop_duplicates(["game_day", "chart_hour", "team"], keep="last").reset_index(drop=True)
     hour_ticks, hour_domain = pbp_hour_axis_values(day_bounds)
+    category_chart = add_pbp_chart_hour_edges(category_chart, hour_domain, "value", group_cols=["team"])
     day_width = pbp_day_panel_width(category_chart["game_day"].nunique())
     render_html(f'<div class="sbc-pbp-mini-chart-title">{escape(selected_label)} Movement</div>')
     render_html(f"""
@@ -1651,6 +1676,10 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     score_chart["score_mid"] = 206.5
     score_chart = score_chart.dropna(subset=["value", "chart_hour"])
     score_chart = score_chart.sort_values(["game_day", "chart_hour"]).drop_duplicates(["game_day", "chart_hour"], keep="last").reset_index(drop=True)
+    score_chart = add_pbp_chart_hour_edges(score_chart, hour_domain, "value")
+    score_chart["score_top"] = 413
+    score_chart["score_bottom"] = 0
+    score_chart["score_mid"] = 206.5
 
     render_html('<div class="sbc-pbp-mini-chart-title">Overall Score</div>')
     base = alt.Chart(score_chart).encode(
@@ -1672,7 +1701,7 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         domain=False,
     )
     top_area = base.mark_area(color=team_color_for_name(team_a), opacity=0.28, interpolate="step-after", clip=True).encode(
-        y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=None, stack=None),
+        y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis, stack=None),
         y2=alt.Y2("value:Q"),
     )
     bottom_area = base.mark_area(color=team_color_for_name(team_b), opacity=0.28, interpolate="step-after", clip=True).encode(
