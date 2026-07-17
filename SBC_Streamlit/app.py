@@ -1196,7 +1196,8 @@ def build_pbp_all_category_leads(events, team_a, team_b):
     rows = []
     chart_rows = []
     score_a, score_b = pbp_category_score(states, team_a, team_b)
-    chart_rows.append({"wallclock": filtered["wallclock"].min(), team_a: score_a, team_b: score_b})
+    first_row = filtered.iloc[0] if not filtered.empty else {}
+    chart_rows.append({"wallclock": filtered["wallclock"].min(), "game_date": first_row.get("game_date", ""), team_a: score_a, team_b: score_b})
 
     for _, row in filtered.iterrows():
         sbc_team = str(row.get("sbc_team", ""))
@@ -1212,14 +1213,14 @@ def build_pbp_all_category_leads(events, team_a, team_b):
                 states[category][sbc_team][key] = states[category][sbc_team].get(key, 0) + amount
             winner = pbp_winner(states[category], category, team_a, team_b)
             score_a, score_b = pbp_category_score(states, team_a, team_b)
-            if winner != "Tie":
-                previous_winners[category] = winner
-            chart_rows.append({"wallclock": row.get("wallclock"), team_a: score_a, team_b: score_b})
+            chart_rows.append({"wallclock": row.get("wallclock"), "game_date": row.get("game_date", ""), team_a: score_a, team_b: score_b})
             lead_change = winner_before != winner and winner != "Tie"
             lead_tied = winner == "Tie" and winner_before not in ["", "Tie"]
+            previous_winners[category] = winner
             if lead_change or lead_tied:
                 rows.append({
                     "wallclock": row.get("wallclock"),
+                    "game_date": row.get("game_date", ""),
                     "category": category,
                     "description": row.get("description", ""),
                     "sbc_team": sbc_team,
@@ -1261,6 +1262,7 @@ def build_pbp_category_chart_data(events, team_a, team_b):
                     value = state.get("value", 0)
                 rows.append({
                     "wallclock": row.get("wallclock"),
+                    "game_date": row.get("game_date", ""),
                     "category": PBP_STAT_LABELS.get(category, category),
                     "team": live_team_full_name(team),
                     "value": value,
@@ -1297,7 +1299,13 @@ def pbp_row_class(row):
     return ""
 
 
-def pbp_chart_game_day(wallclock_series):
+def pbp_chart_game_day(wallclock_series, game_date_series=None):
+    if game_date_series is not None:
+        dates = pd.to_datetime(game_date_series.astype(str), format="%Y%m%d", errors="coerce")
+        labels = dates.dt.strftime("%b %d")
+        if labels.notna().any():
+            fallback = pbp_chart_game_day(wallclock_series)
+            return labels.fillna(fallback)
     ts = pd.to_datetime(wallclock_series, errors="coerce", utc=True)
     return (ts.dt.tz_convert(ZoneInfo("America/New_York")) - pd.Timedelta(hours=4)).dt.strftime("%b %d")
 
@@ -1307,7 +1315,20 @@ def pbp_day_panel_width(day_count):
         count = max(1, int(day_count))
     except (TypeError, ValueError):
         count = 1
-    return max(110, min(360, int(900 / count)))
+    return max(145, min(420, int(1180 / count)))
+
+
+def add_pbp_day_positions(df):
+    out = df.copy()
+    out["wallclock"] = pd.to_datetime(out["wallclock"], errors="coerce", utc=True)
+    out = out.dropna(subset=["wallclock"]).sort_values("wallclock").reset_index(drop=True)
+    if out.empty:
+        out["game_day"] = []
+        out["day_event_index"] = []
+        return out
+    out["game_day"] = pbp_chart_game_day(out["wallclock"], out["game_date"] if "game_date" in out.columns else None)
+    out["day_event_index"] = out.groupby("game_day").cumcount()
+    return out
 
 
 def render_pbp_category_movement_charts(events, team_a, team_b, selected_category):
@@ -1318,19 +1339,16 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
     category_chart = category_chart[category_chart["category"].astype(str) == selected_label].copy()
     if category_chart.empty:
         return
-    category_chart = category_chart.dropna(subset=["wallclock"]).copy()
-    category_chart["wallclock"] = pd.to_datetime(category_chart["wallclock"], errors="coerce")
-    category_chart = category_chart.dropna(subset=["wallclock"]).sort_values("wallclock").reset_index(drop=True)
+    category_chart = add_pbp_day_positions(category_chart)
     if category_chart.empty:
         return
-    category_chart["game_day"] = pbp_chart_game_day(category_chart["wallclock"])
     day_width = pbp_day_panel_width(category_chart["game_day"].nunique())
     render_html(f'<div class="sbc-pbp-mini-chart-title">{escape(selected_label)} Movement</div>')
     mini = alt.Chart(category_chart).mark_line(strokeWidth=2, interpolate="step-after").encode(
         x=alt.X(
-            "wallclock:T",
+            "day_event_index:Q",
             title=None,
-            axis=alt.Axis(format="%I %p", labelAngle=0, labelColor="#475467", grid=False, domainColor="#d0d5dd", labelOverlap=True),
+            axis=alt.Axis(labels=False, ticks=False, grid=True, gridColor="#f2f4f7", domainColor="#d0d5dd"),
         ),
         y=alt.Y("value:Q", title=None, axis=alt.Axis(labelColor="#475467", grid=True, gridColor="#eef2f7", domain=False)),
         color=alt.Color(
@@ -1361,28 +1379,26 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
 def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, expected_score_a=None, expected_score_b=None):
     if chart_table.empty:
         return
-    chart_data = chart_table[["wallclock", team_a, team_b]].copy()
-    chart_data["wallclock"] = pd.to_datetime(chart_data["wallclock"], errors="coerce")
-    chart_data = chart_data.dropna(subset=["wallclock"]).sort_values("wallclock").reset_index(drop=True)
+    chart_cols = ["wallclock", team_a, team_b] + (["game_date"] if "game_date" in chart_table.columns else [])
+    chart_data = chart_table[chart_cols].copy()
+    chart_data = add_pbp_day_positions(chart_data)
     if chart_data.empty:
         return
-    chart_data["event_index"] = chart_data.index
     chart_data["tick_label"] = chart_data["wallclock"].dt.tz_convert(ZoneInfo("America/New_York")).dt.strftime("%b %d, %I:%M %p")
     chart_data["team_a_score"] = pd.to_numeric(chart_data[team_a], errors="coerce").fillna(206.5)
     chart_data["team_b_score"] = pd.to_numeric(chart_data[team_b], errors="coerce").fillna(206.5)
     if expected_score_a is not None and expected_score_b is not None and not chart_data.empty:
         chart_data.loc[chart_data.index[-1], "team_a_score"] = expected_score_a
         chart_data.loc[chart_data.index[-1], "team_b_score"] = expected_score_b
-    chart_data["game_day"] = pbp_chart_game_day(chart_data["wallclock"])
     day_width = pbp_day_panel_width(chart_data["game_day"].nunique())
     chart_data["above"] = chart_data["team_a_score"].clip(lower=206.5)
     chart_data["below"] = chart_data["team_a_score"].clip(upper=206.5)
 
     base = alt.Chart(chart_data).encode(
         x=alt.X(
-            "wallclock:T",
+            "day_event_index:Q",
             title=None,
-            axis=alt.Axis(format="%I %p", labelAngle=0, labelColor="#475467", titleColor="#344054", domainColor="#d0d5dd", grid=False, labelOverlap=True),
+            axis=alt.Axis(labels=False, ticks=False, grid=True, gridColor="#f2f4f7", domainColor="#d0d5dd"),
         )
     )
     above_area = base.mark_area(color=team_color_for_name(team_a), opacity=0.12, interpolate="step-after").encode(
@@ -1446,8 +1462,6 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=No
         if chart_table.empty:
             render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet.</div>')
             return
-        render_pbp_all_categories_score_chart(chart_table, team_a, team_b, expected_score_a=expected_score_a, expected_score_b=expected_score_b)
-
         if lead_table.empty:
             render_html('<div class="sbc-empty-state">No category lead changes or lead ties have happened yet in this matchup.</div>')
             return
@@ -1459,6 +1473,7 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=No
                     table,
                     pd.DataFrame([{
                         "wallclock": final_time,
+                        "game_date": chart_table["game_date"].dropna().astype(str).iloc[-1] if "game_date" in chart_table.columns and not chart_table["game_date"].dropna().empty else "",
                         "category": "Final",
                         "description": "Final SBC category score",
                         "sbc_team": "",
@@ -1473,6 +1488,13 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=No
                 ],
                 ignore_index=True,
             )
+        render_pbp_all_categories_score_chart(
+            table[["wallclock", "game_date", "overall_a", "overall_b"]].rename(columns={"overall_a": team_a, "overall_b": team_b}),
+            team_a,
+            team_b,
+            expected_score_a=expected_score_a,
+            expected_score_b=expected_score_b,
+        )
         color_a = team_color_for_name(team_a)
         color_b = team_color_for_name(team_b)
         rows_html = []
