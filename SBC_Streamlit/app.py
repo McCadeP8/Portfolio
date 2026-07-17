@@ -1310,9 +1310,14 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
     category_chart = category_chart.dropna(subset=["wallclock"]).sort_values("wallclock").reset_index(drop=True)
     if category_chart.empty:
         return
+    category_chart["game_day"] = category_chart["wallclock"].dt.tz_convert(ZoneInfo("America/New_York")).dt.strftime("%b %d")
     render_html(f'<div class="sbc-pbp-mini-chart-title">{escape(selected_label)} Movement</div>')
     mini = alt.Chart(category_chart).mark_line(strokeWidth=2, interpolate="step-after").encode(
-        x=alt.X("wallclock:T", title="Matchup Time", axis=alt.Axis(format="%b %d, %I %p", labelAngle=-30, labelColor="#475467", titleColor="#344054", grid=False, domainColor="#d0d5dd")),
+        x=alt.X(
+            "wallclock:T",
+            title=None,
+            axis=alt.Axis(format="%I %p", labelAngle=0, labelColor="#475467", grid=False, domainColor="#d0d5dd", labelOverlap=True),
+        ),
         y=alt.Y("value:Q", title=None, axis=alt.Axis(labelColor="#475467", grid=True, gridColor="#eef2f7", domain=False)),
         color=alt.Color(
             "team:N",
@@ -1327,7 +1332,10 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
             alt.Tooltip("value:Q", title="Value", format=".1f"),
             alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
         ],
-    ).properties(height=210).configure(
+    ).properties(width=120, height=150).facet(
+        column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
+        spacing=6,
+    ).resolve_scale(x="independent").configure(
         background="#ffffff",
         view=alt.ViewConfig(strokeOpacity=0),
         axis=alt.AxisConfig(labelColor="#344054", titleColor="#344054"),
@@ -1336,7 +1344,7 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
         st.altair_chart(mini, use_container_width=True)
 
 
-def render_pbp_all_categories_score_chart(chart_table, team_a, team_b):
+def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, expected_score_a=None, expected_score_b=None):
     if chart_table.empty:
         return
     chart_data = chart_table[["wallclock", team_a, team_b]].copy()
@@ -1345,20 +1353,24 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b):
     if chart_data.empty:
         return
     chart_data["event_index"] = chart_data.index
+    chart_data["tick_label"] = chart_data["wallclock"].dt.tz_convert(ZoneInfo("America/New_York")).dt.strftime("%b %d, %I:%M %p")
     chart_data["team_a_score"] = pd.to_numeric(chart_data[team_a], errors="coerce").fillna(206.5)
     chart_data["team_b_score"] = pd.to_numeric(chart_data[team_b], errors="coerce").fillna(206.5)
+    if expected_score_a is not None and expected_score_b is not None and not chart_data.empty:
+        chart_data.loc[chart_data.index[-1], "team_a_score"] = expected_score_a
+        chart_data.loc[chart_data.index[-1], "team_b_score"] = expected_score_b
     chart_data["above"] = chart_data["team_a_score"].clip(lower=206.5)
     chart_data["below"] = chart_data["team_a_score"].clip(upper=206.5)
 
     base = alt.Chart(chart_data).encode(
         x=alt.X(
-            "event_index:Q",
+            "wallclock:T",
             title="Matchup Time",
-            axis=alt.Axis(labels=False, ticks=False, titleColor="#344054", domainColor="#d0d5dd", grid=False),
+            axis=alt.Axis(format="%b %d, %I %p", labelAngle=-30, labelColor="#475467", titleColor="#344054", domainColor="#d0d5dd", grid=False, labelOverlap=True),
         )
     )
     above_area = base.mark_area(color=team_color_for_name(team_a), opacity=0.12, interpolate="step-after").encode(
-        y=alt.Y("above:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(values=[0, 100, 206.5, 313, 413], labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value", title=None, labelColor="#475467", grid=True, gridColor="#eef2f7", domain=False)),
+        y=alt.Y("above:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
         y2=alt.Y2(datum=206.5),
     )
     below_area = base.mark_area(color=team_color_for_name(team_b), opacity=0.12, interpolate="step-after").encode(
@@ -1366,17 +1378,14 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b):
         y2=alt.Y2(datum=206.5),
     )
     line = base.mark_line(color="#111827", strokeWidth=3, interpolate="step-after").encode(
-        y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
+        y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(values=[0, 100, 206.5, 313, 413], labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value", title=None, labelColor="#475467", grid=True, gridColor="#eef2f7", tickColor="#d0d5dd", domain=False)),
         tooltip=[
             alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
             alt.Tooltip("team_a_score:Q", title=live_team_full_name(team_a), format=".1f"),
             alt.Tooltip("team_b_score:Q", title=live_team_full_name(team_b), format=".1f"),
         ],
     )
-    threshold = base.mark_rule(color="#C9A227", strokeDash=[6, 4], strokeWidth=2).encode(
-        y=alt.Y(datum=206.5, axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False))
-    )
-    chart = (below_area + above_area + line + threshold).properties(height=280).configure(
+    chart = (below_area + above_area + line).properties(height=280).configure(
         background="#ffffff",
         axis=alt.AxisConfig(labelColor="#344054", titleColor="#344054", gridColor="#eef2f7", domainColor="#d0d5dd"),
         view=alt.ViewConfig(strokeOpacity=0),
@@ -1398,7 +1407,7 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b):
         st.altair_chart(chart, use_container_width=True)
 
 
-def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
+def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=None, expected_score_b=None):
     events = matchup_pbp_events(rows, team_a, team_b)
     if events.empty:
         render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet. The current PBP sample only covers the first 2024-25 matchup period.</div>')
@@ -1415,12 +1424,33 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
         if chart_table.empty:
             render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet.</div>')
             return
-        render_pbp_all_categories_score_chart(chart_table, team_a, team_b)
+        render_pbp_all_categories_score_chart(chart_table, team_a, team_b, expected_score_a=expected_score_a, expected_score_b=expected_score_b)
 
         if lead_table.empty:
             render_html('<div class="sbc-empty-state">No category lead changes or lead ties have happened yet in this matchup.</div>')
             return
         table = lead_table
+        if expected_score_a is not None and expected_score_b is not None:
+            final_time = pd.to_datetime(chart_table["wallclock"], errors="coerce", utc=True).max()
+            table = pd.concat(
+                [
+                    table,
+                    pd.DataFrame([{
+                        "wallclock": final_time,
+                        "category": "Final",
+                        "description": "Final SBC category score",
+                        "sbc_team": "",
+                        "team_a_total": "",
+                        "team_b_total": "",
+                        "winner": team_a if expected_score_a > expected_score_b else team_b if expected_score_b > expected_score_a else "Tie",
+                        "overall_a": expected_score_a,
+                        "overall_b": expected_score_b,
+                        "lead_change": False,
+                        "tied": expected_score_a == expected_score_b,
+                    }]),
+                ],
+                ignore_index=True,
+            )
         color_a = team_color_for_name(team_a)
         color_b = team_color_for_name(team_b)
         rows_html = []
@@ -1611,6 +1641,8 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
             team_a,
             team_b,
             key_prefix=f"{key_prefix}_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}_{team_a}_{team_b}",
+            expected_score_a=score_numeric(score_a),
+            expected_score_b=score_numeric(score_b),
         )
 
 
