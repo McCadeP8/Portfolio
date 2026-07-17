@@ -1198,6 +1198,7 @@ def build_pbp_all_category_leads(events, team_a, team_b):
     score_a, score_b = pbp_category_score(states, team_a, team_b)
     first_row = filtered.iloc[0] if not filtered.empty else {}
     chart_rows.append({"wallclock": filtered["wallclock"].min(), "game_date": first_row.get("game_date", ""), team_a: score_a, team_b: score_b})
+    previous_score = (score_a, score_b)
 
     for _, row in filtered.iterrows():
         sbc_team = str(row.get("sbc_team", ""))
@@ -1213,10 +1214,13 @@ def build_pbp_all_category_leads(events, team_a, team_b):
                 states[category][sbc_team][key] = states[category][sbc_team].get(key, 0) + amount
             winner = pbp_winner(states[category], category, team_a, team_b)
             score_a, score_b = pbp_category_score(states, team_a, team_b)
-            chart_rows.append({"wallclock": row.get("wallclock"), "game_date": row.get("game_date", ""), team_a: score_a, team_b: score_b})
             lead_change = winner_before != winner and winner != "Tie"
             lead_tied = winner == "Tie" and winner_before not in ["", "Tie"]
             previous_winners[category] = winner
+            current_score = (score_a, score_b)
+            if current_score != previous_score:
+                chart_rows.append({"wallclock": row.get("wallclock"), "game_date": row.get("game_date", ""), team_a: score_a, team_b: score_b})
+                previous_score = current_score
             if lead_change or lead_tied:
                 rows.append({
                     "wallclock": row.get("wallclock"),
@@ -1318,7 +1322,22 @@ def pbp_day_panel_width(day_count):
     return max(145, min(420, int(1180 / count)))
 
 
-def add_pbp_day_positions(df):
+def pbp_slate_day_bounds(events):
+    if events.empty:
+        return pd.DataFrame(columns=["game_day", "day_start", "day_end"])
+    bounds = events[["wallclock"] + (["game_date"] if "game_date" in events.columns else [])].copy()
+    bounds["wallclock"] = pd.to_datetime(bounds["wallclock"], errors="coerce", utc=True)
+    bounds = bounds.dropna(subset=["wallclock"])
+    if bounds.empty:
+        return pd.DataFrame(columns=["game_day", "day_start", "day_end"])
+    bounds["game_day"] = pbp_chart_game_day(bounds["wallclock"], bounds["game_date"] if "game_date" in bounds.columns else None)
+    grouped = bounds.groupby("game_day", as_index=False)["wallclock"].agg(day_start="min", day_end="max")
+    same_time = grouped["day_start"] >= grouped["day_end"]
+    grouped.loc[same_time, "day_end"] = grouped.loc[same_time, "day_start"] + pd.Timedelta(hours=1)
+    return grouped.sort_values("day_start").reset_index(drop=True)
+
+
+def add_pbp_day_positions(df, day_bounds=None):
     out = df.copy()
     out["wallclock"] = pd.to_datetime(out["wallclock"], errors="coerce", utc=True)
     out = out.dropna(subset=["wallclock"]).sort_values("wallclock").reset_index(drop=True)
@@ -1328,7 +1347,66 @@ def add_pbp_day_positions(df):
         return out
     out["game_day"] = pbp_chart_game_day(out["wallclock"], out["game_date"] if "game_date" in out.columns else None)
     out["day_event_index"] = out.groupby("game_day").cumcount()
+    if day_bounds is None or day_bounds.empty:
+        day_bounds = pbp_slate_day_bounds(out)
+    if day_bounds is not None and not day_bounds.empty:
+        out = out.merge(day_bounds, on="game_day", how="left")
     return out
+
+
+def add_pbp_category_day_boundaries(chart_data, day_bounds, team_a, team_b, selected_label):
+    if chart_data.empty or day_bounds.empty:
+        return chart_data
+    base = chart_data.copy()
+    base["wallclock"] = pd.to_datetime(base["wallclock"], errors="coerce", utc=True)
+    additions = []
+    for team in [live_team_full_name(team_a), live_team_full_name(team_b)]:
+        team_rows = base[base["team"] == team].sort_values("wallclock")
+        for _, bound in day_bounds.iterrows():
+            for boundary in ["day_start", "day_end"]:
+                ts = bound.get(boundary)
+                if pd.isna(ts):
+                    continue
+                prior = team_rows[team_rows["wallclock"] <= ts]
+                value = prior["value"].iloc[-1] if not prior.empty else 0
+                additions.append({
+                    "wallclock": ts,
+                    "game_date": "",
+                    "category": selected_label,
+                    "team": team,
+                    "value": value,
+                    "game_day": bound.get("game_day", ""),
+                })
+    if additions:
+        base = pd.concat([base, pd.DataFrame(additions)], ignore_index=True)
+    return base.sort_values(["wallclock", "team"]).drop_duplicates(["game_day", "wallclock", "team"], keep="last").reset_index(drop=True)
+
+
+def add_pbp_score_day_boundaries(chart_data, day_bounds, team_a, team_b):
+    if chart_data.empty or day_bounds.empty:
+        return chart_data
+    base = chart_data.copy()
+    base["wallclock"] = pd.to_datetime(base["wallclock"], errors="coerce", utc=True)
+    additions = []
+    sorted_rows = base.sort_values("wallclock")
+    for _, bound in day_bounds.iterrows():
+        for boundary in ["day_start", "day_end"]:
+            ts = bound.get(boundary)
+            if pd.isna(ts):
+                continue
+            prior = sorted_rows[sorted_rows["wallclock"] <= ts]
+            score_a = prior[team_a].iloc[-1] if not prior.empty else 206.5
+            score_b = prior[team_b].iloc[-1] if not prior.empty else 206.5
+            additions.append({
+                "wallclock": ts,
+                "game_date": "",
+                team_a: score_a,
+                team_b: score_b,
+                "game_day": bound.get("game_day", ""),
+            })
+    if additions:
+        base = pd.concat([base, pd.DataFrame(additions)], ignore_index=True)
+    return base.sort_values("wallclock").drop_duplicates(["game_day", "wallclock"], keep="last").reset_index(drop=True)
 
 
 def render_pbp_category_movement_charts(events, team_a, team_b, selected_category):
@@ -1339,17 +1417,44 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
     category_chart = category_chart[category_chart["category"].astype(str) == selected_label].copy()
     if category_chart.empty:
         return
-    category_chart = add_pbp_day_positions(category_chart)
+    day_bounds = pbp_slate_day_bounds(events)
+    category_chart = add_pbp_category_day_boundaries(category_chart, day_bounds, team_a, team_b, selected_label)
+    category_chart = add_pbp_day_positions(category_chart, day_bounds)
     if category_chart.empty:
         return
     day_width = pbp_day_panel_width(category_chart["game_day"].nunique())
     render_html(f'<div class="sbc-pbp-mini-chart-title">{escape(selected_label)} Movement</div>')
-    mini = alt.Chart(category_chart).mark_line(strokeWidth=2, interpolate="step-after").encode(
+    render_html(f"""
+        <div class="sbc-pbp-chart-key sbc-pbp-chart-key-subtle">
+            <span style="--chart-team-color:{escape(str(team_color_for_name(team_a)), quote=True)};">
+                <img src="{escape(str(team_logo_for_name(team_a)), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
+                <strong>{escape(team_abbrev_for_name(team_a))}</strong>
+            </span>
+            <span style="--chart-team-color:{escape(str(team_color_for_name(team_b)), quote=True)};">
+                <img src="{escape(str(team_logo_for_name(team_b)), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
+                <strong>{escape(team_abbrev_for_name(team_b))}</strong>
+            </span>
+        </div>
+    """)
+    base = alt.Chart(category_chart).encode(
         x=alt.X(
-            "day_event_index:Q",
-            title=None,
-            axis=alt.Axis(labels=False, ticks=False, grid=True, gridColor="#f2f4f7", domainColor="#d0d5dd"),
+            "wallclock:T",
+            title="Time",
+            axis=alt.Axis(format="%I %p", labelColor="#667085", titleColor="#667085", grid=True, gridColor="#f2f4f7", domainColor="#d0d5dd"),
         ),
+    )
+    area = base.mark_area(opacity=0.10, interpolate="step-after").encode(
+        y=alt.Y("value:Q", title=None, axis=alt.Axis(labelColor="#475467", grid=True, gridColor="#eef2f7", domain=False)),
+        color=alt.Color(
+            "team:N",
+            scale=alt.Scale(
+                domain=[live_team_full_name(team_a), live_team_full_name(team_b)],
+                range=[team_color_for_name(team_a), team_color_for_name(team_b)],
+            ),
+            legend=None,
+        ),
+    )
+    line = base.mark_line(strokeWidth=2.35, interpolate="step-after").encode(
         y=alt.Y("value:Q", title=None, axis=alt.Axis(labelColor="#475467", grid=True, gridColor="#eef2f7", domain=False)),
         color=alt.Color(
             "team:N",
@@ -1364,7 +1469,8 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
             alt.Tooltip("value:Q", title="Value", format=".1f"),
             alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
         ],
-    ).properties(width=day_width, height=150).facet(
+    )
+    mini = (area + line).properties(width=day_width, height=170).facet(
         column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
@@ -1376,12 +1482,15 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
         st.altair_chart(mini, use_container_width=True)
 
 
-def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, expected_score_a=None, expected_score_b=None):
+def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=None, expected_score_a=None, expected_score_b=None):
     if chart_table.empty:
         return
     chart_cols = ["wallclock", team_a, team_b] + (["game_date"] if "game_date" in chart_table.columns else [])
     chart_data = chart_table[chart_cols].copy()
-    chart_data = add_pbp_day_positions(chart_data)
+    day_source = events if events is not None and not events.empty else chart_data
+    day_bounds = pbp_slate_day_bounds(day_source)
+    chart_data = add_pbp_score_day_boundaries(chart_data, day_bounds, team_a, team_b)
+    chart_data = add_pbp_day_positions(chart_data, day_bounds)
     if chart_data.empty:
         return
     chart_data["tick_label"] = chart_data["wallclock"].dt.tz_convert(ZoneInfo("America/New_York")).dt.strftime("%b %d, %I:%M %p")
@@ -1390,26 +1499,27 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, expected_
     if expected_score_a is not None and expected_score_b is not None and not chart_data.empty:
         chart_data.loc[chart_data.index[-1], "team_a_score"] = expected_score_a
         chart_data.loc[chart_data.index[-1], "team_b_score"] = expected_score_b
+    chart_data = chart_data.sort_values("wallclock").drop_duplicates(["game_day", "wallclock"], keep="last").reset_index(drop=True)
     day_width = pbp_day_panel_width(chart_data["game_day"].nunique())
     chart_data["above"] = chart_data["team_a_score"].clip(lower=206.5)
     chart_data["below"] = chart_data["team_a_score"].clip(upper=206.5)
 
     base = alt.Chart(chart_data).encode(
         x=alt.X(
-            "day_event_index:Q",
-            title=None,
-            axis=alt.Axis(labels=False, ticks=False, grid=True, gridColor="#f2f4f7", domainColor="#d0d5dd"),
+            "wallclock:T",
+            title="Time",
+            axis=alt.Axis(format="%I %p", labelColor="#667085", titleColor="#667085", grid=False, domainColor="#d0d5dd"),
         )
     )
-    above_area = base.mark_area(color=team_color_for_name(team_a), opacity=0.12, interpolate="step-after").encode(
+    above_area = base.mark_area(color=team_color_for_name(team_a), opacity=0.13, interpolate="monotone").encode(
         y=alt.Y("above:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
         y2=alt.Y2(datum=206.5),
     )
-    below_area = base.mark_area(color=team_color_for_name(team_b), opacity=0.12, interpolate="step-after").encode(
+    below_area = base.mark_area(color=team_color_for_name(team_b), opacity=0.13, interpolate="monotone").encode(
         y=alt.Y("below:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
         y2=alt.Y2(datum=206.5),
     )
-    line = base.mark_line(color="#111827", strokeWidth=3, interpolate="step-after").encode(
+    line = base.mark_line(color="#111827", strokeWidth=3, interpolate="monotone").encode(
         y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(values=[0, 100, 206.5, 313, 413], labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value", title=None, labelColor="#475467", grid=True, gridColor="#eef2f7", tickColor="#d0d5dd", domain=False)),
         tooltip=[
             alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
@@ -1492,6 +1602,7 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=No
             table[["wallclock", "game_date", "overall_a", "overall_b"]].rename(columns={"overall_a": team_a, "overall_b": team_b}),
             team_a,
             team_b,
+            events=events,
             expected_score_a=expected_score_a,
             expected_score_b=expected_score_b,
         )
