@@ -169,7 +169,7 @@ def get_fantrax_players() -> pd.DataFrame:
         players_df = pd.concat([players_df, new_row], ignore_index=True)
         players_df['name'] = players_df['name'].str.split(', ').str[1] + ' ' + players_df['name'].str.split(', ').str[0]
         players_df.loc[players_df['name'] == 'Amari Bailey', 'fantraxId'] = '06cbt'
-        players_df.loc[players_df['name'] == 'Tarik Biberovic', 'fantraxId'] = '06ccr'
+        players_df.loc[players_df['name'] == 'Tarik Biberovic', 'fantraxId'] = '06cdi'
         players_df = players_df[players_df['fantraxId'] != "067x0"]
         players_df = players_df[players_df['fantraxId'] != "06ps6"]
     else:
@@ -1188,7 +1188,24 @@ def no_bae_mle_check(df: pd.DataFrame, PlayersIn: list[str], PlayersOut: list[st
 def stepien_check(dp: pd.DataFrame, DraftPicksIn: list[str], DraftPicksOut: list[str], SelectedTeam: str):
     return "A"
 
+def _ensure_check_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    df = df.copy() if df is not None else pd.DataFrame()
+    for column in columns:
+        if column not in df.columns:
+            df[column] = pd.NA
+    return df
+
 def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
+    df = _ensure_check_columns(df, ['Player', 'Trade.Restriction']).copy()
+    ft_players = _ensure_check_columns(ft_players, ['name', 'fantraxId'])
+    ft_roster = _ensure_check_columns(ft_roster, ['id', 'team_name'])
+    if ft_players['fantraxId'].dropna().empty or ft_roster['id'].dropna().empty:
+        return pd.DataFrame([{
+            'Cap Sheet Name': 'Fantrax data unavailable',
+            'Fantrax Name': pd.NA,
+            'id': pd.NA,
+            'team_name': 'Refresh Fantrax data and rerun checks',
+        }])
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
@@ -1202,6 +1219,16 @@ def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster:
     return df
 
 def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
+    df = _ensure_check_columns(df, ['Player', 'Trade.Restriction', 'Type']).copy()
+    ft_players = _ensure_check_columns(ft_players, ['name', 'fantraxId'])
+    ft_roster = _ensure_check_columns(ft_roster, ['id', 'team_name', 'status'])
+    if ft_players['fantraxId'].dropna().empty or ft_roster['id'].dropna().empty:
+        return pd.DataFrame([{
+            'Player': 'Fantrax data unavailable',
+            'team_name': 'Refresh Fantrax data and rerun checks',
+            'Cap Sheet Location': pd.NA,
+            'Fantrax Locatoin': pd.NA,
+        }])
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
@@ -1217,6 +1244,14 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: 
 
 def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
     df = get_data()
+    df = _ensure_check_columns(df, ['Player', 'Type', 'Team']).copy()
+    ft_players = _ensure_check_columns(ft_players, ['name', 'fantraxId'])
+    ft_rosters = _ensure_check_columns(ft_rosters, ['id', 'position', 'status'])
+    if ft_players['fantraxId'].dropna().empty or ft_rosters['id'].dropna().empty:
+        return pd.DataFrame([{
+            'Team': 'Fantrax data unavailable',
+            'Type': 'Refresh Fantrax data and rerun checks',
+        }])
     df_players = pd.DataFrame({
         "Team": list(team_info.keys()),
         "Active Players": [active_player_n(df, team) for team in team_info.keys()],})
