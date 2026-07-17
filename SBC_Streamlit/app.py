@@ -352,6 +352,22 @@ BOX_SCORE_SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA",
 BOX_SCORE_WEIGHTS = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
 BOX_SCORE_CATEGORY_ORDER = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 HISTORY_LEADERBOARD_STATS = BOX_SCORE_CATEGORY_ORDER + ["Matchups", "Games Played"]
+PBP_STAT_LABELS = {
+    "ALL": "All Categories",
+    "MP": "Minutes Played",
+    "TS%": "True Shooting",
+    "2PT%": "2PT%",
+    "3PT%": "3PT%",
+    "FT%": "FT%",
+    "PTS": "Points",
+    "OREB": "Offensive Rebounds",
+    "DREB": "Defensive Rebounds",
+    "AST": "Assists",
+    "ST": "Steals",
+    "BLK": "Blocks",
+    "TO": "Turnovers",
+    "+/-": "Plus/Minus",
+}
 
 
 def _read_local_parquet(filename):
@@ -375,6 +391,21 @@ def load_nba_player_boxscores_archive():
     df = _read_local_parquet("nba_player_game_boxscores_2021_2026.parquet")
     if not df.empty and "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
+    return df
+
+
+@st.cache_data(ttl=86400)
+def load_pbp_stat_events_archive():
+    df = _read_local_parquet("data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet")
+    if df.empty:
+        return df
+    for col in ["game_id", "player_id"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str)
+    if "wallclock" in df.columns:
+        df["wallclock"] = pd.to_datetime(df["wallclock"], errors="coerce", utc=True)
+    if "value" in df.columns:
+        df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
     return df
 
 
@@ -802,6 +833,450 @@ def render_player_boxscore_split(rows, team_a, team_b, aggregate=False):
     """)
 
 
+def format_pbp_wallclock(value):
+    ts = pd.to_datetime(value, errors="coerce", utc=True)
+    if pd.isna(ts):
+        return ""
+    eastern = ts.tz_convert(ZoneInfo("America/New_York"))
+    text = eastern.strftime("%b %d, %I:%M %p ET") if hasattr(eastern, "strftime") else ""
+    if not text:
+        return ""
+    text = re.sub(r", 0(\d):", r", \1:", text)
+    return text.replace(" 0", " ").replace("AM", "a.m.").replace("PM", "p.m.")
+
+
+def pbp_event_filter(df, category):
+    if df.empty:
+        return df
+    stat = df["stat"].astype(str)
+    descriptions = df["description"].astype(str).str.lower()
+    if category == "MP":
+        return df[stat == "minutes played"].copy()
+    if category == "+/-":
+        return df[stat == "+/-"].copy()
+    if category == "PTS":
+        return df[stat == "points"].copy()
+    if category == "OREB":
+        return df[stat == "offensive_rebound"].copy()
+    if category == "DREB":
+        return df[stat == "defensive_rebound"].copy()
+    if category == "AST":
+        return df[stat == "assist"].copy()
+    if category == "ST":
+        return df[stat == "steal"].copy()
+    if category == "BLK":
+        return df[stat == "block"].copy()
+    if category == "TO":
+        return df[stat == "turnover"].copy()
+    if category == "2PT%":
+        is_make = (stat == "points") & (pd.to_numeric(df["value"], errors="coerce") == 2)
+        return df[is_make | (stat == "two-point miss")].copy()
+    if category == "3PT%":
+        is_make = (stat == "points") & (pd.to_numeric(df["value"], errors="coerce") == 3)
+        return df[is_make | (stat == "three-point miss")].copy()
+    if category == "FT%":
+        is_make = (stat == "points") & (pd.to_numeric(df["value"], errors="coerce") == 1) & descriptions.str.contains("free throw", na=False)
+        return df[is_make | (stat == "free-throw miss")].copy()
+    if category == "TS%":
+        return df[stat.isin(["points", "two-point miss", "three-point miss", "free-throw miss"])].copy()
+    return df.iloc[0:0].copy()
+
+
+def pbp_category_delta(row, category):
+    stat = str(row.get("stat", ""))
+    value = float(row.get("value", 0) or 0)
+    description = str(row.get("description", "")).lower()
+    if category == "MP":
+        return {"value": value}
+    if category == "+/-":
+        return {"value": value}
+    if category == "PTS":
+        return {"value": value if stat == "points" else 0}
+    if category in ["OREB", "DREB", "AST", "ST", "BLK", "TO"]:
+        return {"value": value}
+    if category == "2PT%":
+        return {"made": 1 if stat == "points" and value == 2 else 0, "att": 1}
+    if category == "3PT%":
+        return {"made": 1 if stat == "points" and value == 3 else 0, "att": 1}
+    if category == "FT%":
+        made_ft = stat == "points" and value == 1 and "free throw" in description
+        return {"made": 1 if made_ft else 0, "att": 1}
+    if category == "TS%":
+        if stat == "points":
+            return {"points": value, "fga": 1 if value in [2, 3] else 0, "fta": 1 if value == 1 and "free throw" in description else 0}
+        if stat in ["two-point miss", "three-point miss"]:
+            return {"points": 0, "fga": 1, "fta": 0}
+        if stat == "free-throw miss":
+            return {"points": 0, "fga": 0, "fta": 1}
+    return {"value": 0}
+
+
+def pbp_running_display(state, category):
+    if category in ["2PT%", "3PT%", "FT%"]:
+        made = state.get("made", 0)
+        att = state.get("att", 0)
+        pct = made / att if att else 0
+        return f"{int(made)}/{int(att)} ({pct * 100:.1f}%)"
+    if category == "TS%":
+        points = state.get("points", 0)
+        fga = state.get("fga", 0)
+        fta = state.get("fta", 0)
+        denom = 2 * (fga + 0.44 * fta)
+        ts = points / denom if denom else 0
+        return f"{points:.0f} pts ({ts * 100:.1f}%)"
+    value = state.get("value", 0)
+    if category == "MP":
+        total_seconds = int(round(value * 60))
+        minutes, seconds = divmod(max(0, total_seconds), 60)
+        return f"{minutes}:{seconds:02d}"
+    return stat_number(value, signed=(category == "+/-"))
+
+
+def pbp_winner(states, category, team_a, team_b):
+    def numeric(team):
+        state = states.get(team, {})
+        if category in ["2PT%", "3PT%", "FT%"]:
+            att = state.get("att", 0)
+            return state.get("made", 0) / att if att else 0
+        if category == "TS%":
+            denom = 2 * (state.get("fga", 0) + 0.44 * state.get("fta", 0))
+            return state.get("points", 0) / denom if denom else 0
+        return state.get("value", 0)
+
+    val_a = numeric(team_a)
+    val_b = numeric(team_b)
+    if abs(val_a - val_b) < 0.000001:
+        return "Tie"
+    if category == "TO":
+        return team_a if val_a < val_b else team_b
+    return team_a if val_a > val_b else team_b
+
+
+def pbp_category_score(states, team_a, team_b):
+    score_a = 0.0
+    score_b = 0.0
+    for category, weight in BOX_SCORE_WEIGHTS.items():
+        winner = pbp_winner(states, category, team_a, team_b)
+        if winner == team_a:
+            score_a += weight
+        elif winner == team_b:
+            score_b += weight
+        else:
+            score_a += weight / 2
+            score_b += weight / 2
+    return score_a, score_b
+
+
+def pbp_categories_for_event(row):
+    stat = str(row.get("stat", ""))
+    value = float(row.get("value", 0) or 0)
+    description = str(row.get("description", "")).lower()
+    categories = []
+    if stat == "minutes played":
+        categories.append("MP")
+    elif stat == "+/-":
+        categories.append("+/-")
+    elif stat == "points":
+        categories.extend(["PTS", "TS%"])
+        if value == 2:
+            categories.append("2PT%")
+        elif value == 3:
+            categories.append("3PT%")
+        elif value == 1 and "free throw" in description:
+            categories.append("FT%")
+    elif stat == "two-point miss":
+        categories.extend(["2PT%", "TS%"])
+    elif stat == "three-point miss":
+        categories.extend(["3PT%", "TS%"])
+    elif stat == "free-throw miss":
+        categories.extend(["FT%", "TS%"])
+    elif stat == "offensive_rebound":
+        categories.append("OREB")
+    elif stat == "defensive_rebound":
+        categories.append("DREB")
+    elif stat == "assist":
+        categories.append("AST")
+    elif stat == "steal":
+        categories.append("ST")
+    elif stat == "block":
+        categories.append("BLK")
+    elif stat == "turnover":
+        categories.append("TO")
+    return categories
+
+
+def matchup_pbp_events(rows, team_a, team_b):
+    pbp = load_pbp_stat_events_archive()
+    if pbp.empty or rows.empty:
+        return pd.DataFrame()
+    mapping = rows[["nba_game_id", "espn_player_id", "sbc_team", "display_player"]].dropna(subset=["nba_game_id", "espn_player_id", "sbc_team"]).drop_duplicates().copy()
+    if mapping.empty:
+        return pd.DataFrame()
+    mapping["nba_game_id"] = mapping["nba_game_id"].astype(str)
+    mapping["espn_player_id"] = mapping["espn_player_id"].astype(str)
+    mapping = mapping[mapping["sbc_team"].isin([team_a, team_b])].copy()
+    events = pbp[pbp["game_id"].astype(str).isin(mapping["nba_game_id"].unique())].copy()
+    if events.empty:
+        return pd.DataFrame()
+    merged = events.merge(
+        mapping,
+        left_on=["game_id", "player_id"],
+        right_on=["nba_game_id", "espn_player_id"],
+        how="inner",
+    )
+    if merged.empty:
+        return pd.DataFrame()
+    merged["display_player"] = merged["display_player"].fillna(merged["player"])
+    return merged.sort_values(["wallclock", "game_id", "stat", "player"]).reset_index(drop=True)
+
+
+def build_pbp_running_table(events, category, team_a, team_b):
+    filtered = pbp_event_filter(events, category)
+    if filtered.empty:
+        return filtered
+    states = {
+        team_a: {"value": 0, "made": 0, "att": 0, "points": 0, "fga": 0, "fta": 0},
+        team_b: {"value": 0, "made": 0, "att": 0, "points": 0, "fga": 0, "fta": 0},
+    }
+    rows = []
+    previous_winner = ""
+    for _, row in filtered.iterrows():
+        sbc_team = str(row.get("sbc_team", ""))
+        if sbc_team not in states:
+            continue
+        delta = pbp_category_delta(row, category)
+        for key, amount in delta.items():
+            states[sbc_team][key] = states[sbc_team].get(key, 0) + amount
+        winner = pbp_winner(states, category, team_a, team_b)
+        lead_change = previous_winner not in ["", "Tie", winner] and winner != "Tie"
+        if winner != "Tie":
+            previous_winner = winner
+        rows.append({
+            "wallclock": row.get("wallclock"),
+            "description": row.get("description", ""),
+            "sbc_team": sbc_team,
+            "team_a_total": pbp_running_display(states[team_a], category),
+            "team_b_total": pbp_running_display(states[team_b], category),
+            "winner": winner,
+            "lead_change": lead_change,
+        })
+    return pd.DataFrame(rows)
+
+
+def empty_pbp_category_states(team_a, team_b):
+    base = {"value": 0, "made": 0, "att": 0, "points": 0, "fga": 0, "fta": 0}
+    return {
+        category: {team_a: base.copy(), team_b: base.copy()}
+        for category in BOX_SCORE_CATEGORY_ORDER
+    }
+
+
+def build_pbp_all_category_leads(events, team_a, team_b):
+    if events.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    filtered = events.copy().sort_values(["wallclock", "game_id", "stat", "player"]).reset_index(drop=True)
+    states = empty_pbp_category_states(team_a, team_b)
+    previous_winners = {category: "" for category in BOX_SCORE_CATEGORY_ORDER}
+    rows = []
+    chart_rows = []
+    score_a, score_b = pbp_category_score(states, team_a, team_b)
+    chart_rows.append({"wallclock": filtered["wallclock"].min(), team_a: score_a, team_b: score_b})
+
+    for _, row in filtered.iterrows():
+        sbc_team = str(row.get("sbc_team", ""))
+        if sbc_team not in [team_a, team_b]:
+            continue
+        changed_categories = pbp_categories_for_event(row)
+        if not changed_categories:
+            continue
+        for category in changed_categories:
+            winner_before = previous_winners.get(category, "")
+            delta = pbp_category_delta(row, category)
+            for key, amount in delta.items():
+                states[category][sbc_team][key] = states[category][sbc_team].get(key, 0) + amount
+            winner = pbp_winner(states[category], category, team_a, team_b)
+            score_a, score_b = pbp_category_score(states, team_a, team_b)
+            if winner != "Tie":
+                previous_winners[category] = winner
+            chart_rows.append({"wallclock": row.get("wallclock"), team_a: score_a, team_b: score_b})
+            lead_change = winner_before not in ["", "Tie", winner] and winner != "Tie"
+            if lead_change:
+                rows.append({
+                    "wallclock": row.get("wallclock"),
+                    "category": category,
+                    "description": row.get("description", ""),
+                    "sbc_team": sbc_team,
+                    "team_a_total": pbp_running_display(states[category][team_a], category),
+                    "team_b_total": pbp_running_display(states[category][team_b], category),
+                    "winner": winner,
+                    "overall_a": score_a,
+                    "overall_b": score_b,
+                    "lead_change": True,
+                })
+
+    return pd.DataFrame(rows), pd.DataFrame(chart_rows)
+
+
+def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
+    events = matchup_pbp_events(rows, team_a, team_b)
+    if events.empty:
+        render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet. The current PBP sample only covers the first 2024-25 matchup period.</div>')
+        return
+
+    category = st.selectbox(
+        "Play-by-play category",
+        options=["ALL"] + BOX_SCORE_CATEGORY_ORDER,
+        format_func=lambda stat: PBP_STAT_LABELS.get(stat, boxscore_stat_label(stat)),
+        key=f"{key_prefix}_pbp_category",
+    )
+    if category == "ALL":
+        lead_table, chart_table = build_pbp_all_category_leads(events, team_a, team_b)
+        if chart_table.empty:
+            render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet.</div>')
+            return
+        perspective = st.radio(
+            "Chart perspective",
+            options=[team_a, team_b],
+            format_func=live_team_full_name,
+            index=0,
+            horizontal=True,
+            key=f"{key_prefix}_pbp_chart_perspective",
+        )
+        chart_data = chart_table[["wallclock", perspective]].rename(columns={perspective: "Score"}).copy()
+        chart_data["wallclock"] = pd.to_datetime(chart_data["wallclock"], errors="coerce")
+        chart_data = chart_data.dropna(subset=["wallclock"])
+        if not chart_data.empty:
+            midpoint = pd.DataFrame({"y": [206.5], "Label": ["Win line 206.5"]})
+            line = alt.Chart(chart_data).mark_line(
+                color=team_color_for_name(perspective),
+                strokeWidth=3,
+                interpolate="step-after",
+            ).encode(
+                x=alt.X("wallclock:T", title="Matchup Time"),
+                y=alt.Y("Score:Q", title=f"{live_team_full_name(perspective)} Points", scale=alt.Scale(domain=[0, 413])),
+                tooltip=[
+                    alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
+                    alt.Tooltip("Score:Q", title="Score", format=".1f"),
+                ],
+            )
+            threshold = alt.Chart(midpoint).mark_rule(color="#111827", strokeDash=[6, 4], strokeWidth=2).encode(
+                y="y:Q",
+                tooltip=[alt.Tooltip("Label:N", title="Marker"), alt.Tooltip("y:Q", title="Points")],
+            )
+            st.altair_chart((line + threshold).properties(height=280), use_container_width=True)
+
+        if lead_table.empty:
+            render_html('<div class="sbc-empty-state">No category lead changes have happened yet in this matchup.</div>')
+            return
+        table = lead_table
+        color_a = team_color_for_name(team_a)
+        color_b = team_color_for_name(team_b)
+        rows_html = []
+        for _, row in table.iterrows():
+            sbc_team = str(row.get("sbc_team", ""))
+            row_color = color_a if sbc_team == team_a else color_b if sbc_team == team_b else "#94a3b8"
+            winner = str(row.get("winner", "Tie"))
+            winner_text = "Tie" if winner == "Tie" else live_team_full_name(winner)
+            overall = f"{stat_number(row.get('overall_a', 0))}-{stat_number(row.get('overall_b', 0))}"
+            rows_html.append(f"""
+                <tr style="--pbp-row-color:{escape(str(row_color), quote=True)};">
+                    <td>{escape(format_pbp_wallclock(row.get('wallclock')))}</td>
+                    <td><strong>{escape(PBP_STAT_LABELS.get(str(row.get('category', '')), str(row.get('category', ''))))}</strong></td>
+                    <td class="sbc-pbp-description">{escape(str(row.get('description', '')))}<span class="sbc-pbp-lead-badge">Lead change</span></td>
+                    <td><strong>{escape(live_team_full_name(sbc_team))}</strong></td>
+                    <td>{escape(str(row.get('team_a_total', '')))}</td>
+                    <td>{escape(str(row.get('team_b_total', '')))}</td>
+                    <td>{escape(winner_text)}</td>
+                    <td>{escape(overall)}</td>
+                </tr>
+            """)
+        render_html(f"""
+            <section class="sbc-box-panel sbc-pbp-panel" style="--pbp-a:{escape(str(color_a), quote=True)};--pbp-b:{escape(str(color_b), quote=True)};">
+                <div class="sbc-box-panel-head">
+                    <span>All Category Lead Changes</span>
+                    <em>{escape(str(len(table)))} lead changes</em>
+                </div>
+                <div class="sbc-box-table-scroll">
+                    <table class="sbc-pbp-table sbc-pbp-all-table">
+                        <thead>
+                            <tr>
+                                <th>Wallclock</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th>SBC Team</th>
+                                <th>{escape(live_team_full_name(team_a))}</th>
+                                <th>{escape(live_team_full_name(team_b))}</th>
+                                <th>Leader</th>
+                                <th>Overall</th>
+                            </tr>
+                        </thead>
+                        <tbody>{''.join(rows_html)}</tbody>
+                    </table>
+                </div>
+            </section>
+        """)
+        return
+
+    play_filter = st.radio(
+        "Play filter",
+        options=["All plays", "Lead changes only"],
+        index=0,
+        horizontal=True,
+        key=f"{key_prefix}_pbp_play_filter",
+    )
+    lead_changes_only = play_filter == "Lead changes only"
+    table = build_pbp_running_table(events, category, team_a, team_b)
+    if lead_changes_only and not table.empty:
+        table = table[table["lead_change"]].copy()
+    if table.empty:
+        render_html('<div class="sbc-empty-state">No plays matched that category for this matchup.</div>')
+        return
+
+    color_a = team_color_for_name(team_a)
+    color_b = team_color_for_name(team_b)
+    rows_html = []
+    for _, row in table.iterrows():
+        sbc_team = str(row.get("sbc_team", ""))
+        row_color = color_a if sbc_team == team_a else color_b if sbc_team == team_b else "#94a3b8"
+        winner = str(row.get("winner", "Tie"))
+        lead_badge = '<span class="sbc-pbp-lead-badge">Lead change</span>' if bool(row.get("lead_change")) else ""
+        winner_text = "Tie" if winner == "Tie" else live_team_full_name(winner)
+        rows_html.append(f"""
+            <tr style="--pbp-row-color:{escape(str(row_color), quote=True)};">
+                <td>{escape(format_pbp_wallclock(row.get('wallclock')))}</td>
+                <td class="sbc-pbp-description">{escape(str(row.get('description', '')))}{lead_badge}</td>
+                <td><strong>{escape(live_team_full_name(sbc_team))}</strong></td>
+                <td>{escape(str(row.get('team_a_total', '')))}</td>
+                <td>{escape(str(row.get('team_b_total', '')))}</td>
+                <td>{escape(winner_text)}</td>
+            </tr>
+        """)
+
+    render_html(f"""
+        <section class="sbc-box-panel sbc-pbp-panel" style="--pbp-a:{escape(str(color_a), quote=True)};--pbp-b:{escape(str(color_b), quote=True)};">
+            <div class="sbc-box-panel-head">
+                <span>{escape(PBP_STAT_LABELS.get(category, category))} Play-by-Play</span>
+                <em>{escape(str(len(table)))} plays</em>
+            </div>
+            <div class="sbc-box-table-scroll">
+                <table class="sbc-pbp-table">
+                    <thead>
+                        <tr>
+                            <th>Wallclock</th>
+                            <th>Description</th>
+                            <th>SBC Team</th>
+                            <th>{escape(live_team_full_name(team_a))}</th>
+                            <th>{escape(live_team_full_name(team_b))}</th>
+                            <th>Leader</th>
+                        </tr>
+                    </thead>
+                    <tbody>{''.join(rows_html)}</tbody>
+                </table>
+            </div>
+        </section>
+    """)
+
+
 @st.dialog("SBCFBL Box Score", width="large")
 def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     render_matchup_boxscore(matchup_row, rosters_df, key_prefix="dialog")
@@ -868,15 +1343,24 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     if not show_players:
         return
 
-    view_mode = st.radio(
-        "Box score view",
-        options=["Game rows", "Aggregate players"],
-        index=0,
-        horizontal=True,
-        key=f"{key_prefix}_box_view_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}_{team_a}_{team_b}",
-    )
-    aggregate = view_mode == "Aggregate players"
-    render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
+    box_tab, pbp_tab = st.tabs(["Box Score", "Play-by-play"])
+    with box_tab:
+        view_mode = st.radio(
+            "Box score view",
+            options=["Game rows", "Aggregate players"],
+            index=0,
+            horizontal=True,
+            key=f"{key_prefix}_box_view_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}_{team_a}_{team_b}",
+        )
+        aggregate = view_mode == "Aggregate players"
+        render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
+    with pbp_tab:
+        render_matchup_pbp_tab(
+            rows,
+            team_a,
+            team_b,
+            key_prefix=f"{key_prefix}_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}_{team_a}_{team_b}",
+        )
 
 
 def render_selected_team_player_boxscore(schedule_rows, selected_team, rosters_df, key_prefix):
@@ -9777,6 +10261,78 @@ st.markdown(
         font-weight: 950;
         line-height: 1.08;
         text-overflow: ellipsis;
+        white-space: nowrap;
+    }}
+
+    .sbc-pbp-panel {{
+        border-color: color-mix(in srgb, var(--pbp-a) 16%, rgba(23, 32, 42, 0.10));
+    }}
+
+    .sbc-pbp-table {{
+        min-width: 72rem;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        color: var(--sbc-ink);
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .sbc-pbp-table th {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.08);
+        background: #f3f5f8;
+        color: var(--sbc-muted);
+        font-size: 0.66rem;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        padding: 0.42rem 0.55rem;
+        text-align: left;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-pbp-table td {{
+        border-bottom: 1px solid rgba(23, 32, 42, 0.06);
+        background:
+            linear-gradient(90deg, color-mix(in srgb, var(--pbp-row-color) 13%, #ffffff) 0%, #ffffff 86%);
+        font-size: 0.76rem;
+        font-weight: 850;
+        padding: 0.46rem 0.55rem;
+        vertical-align: middle;
+    }}
+
+    .sbc-pbp-table td:first-child {{
+        width: 9.5rem;
+        color: var(--sbc-muted);
+        white-space: nowrap;
+    }}
+
+    .sbc-pbp-table td:nth-child(3),
+    .sbc-pbp-table td:nth-child(4),
+    .sbc-pbp-table td:nth-child(5),
+    .sbc-pbp-table td:nth-child(6) {{
+        white-space: nowrap;
+    }}
+
+    .sbc-pbp-description {{
+        min-width: 28rem;
+        color: var(--sbc-ink);
+        font-weight: 850;
+        line-height: 1.25;
+    }}
+
+    .sbc-pbp-lead-badge {{
+        display: inline-grid;
+        place-items: center;
+        margin-left: 0.45rem;
+        border-radius: 999px;
+        background: #111827;
+        color: #ffffff;
+        font-size: 0.58rem;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        line-height: 1;
+        padding: 0.24rem 0.42rem;
+        text-transform: uppercase;
         white-space: nowrap;
     }}
 
