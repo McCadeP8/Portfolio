@@ -1313,6 +1313,17 @@ def pbp_chart_game_day(wallclock_series, game_date_series=None):
     return (ts.dt.tz_convert(ZoneInfo("America/New_York")) - pd.Timedelta(hours=4)).dt.strftime("%b %d")
 
 
+def pbp_slate_day_label(game_day, game_date=None, game_count=0):
+    parsed = pd.to_datetime(str(game_date), format="%Y%m%d", errors="coerce") if game_date is not None else pd.NaT
+    if pd.notna(parsed):
+        label = re.sub(r" 0(\d)", r" \1", parsed.strftime("%a, %b %d"))
+    else:
+        label = str(game_day)
+    count = int(game_count or 0)
+    game_word = "game" if count == 1 else "games"
+    return f"{label} ({count} {game_word})"
+
+
 def pbp_day_panel_width(day_count):
     try:
         count = max(1, int(day_count))
@@ -1323,14 +1334,26 @@ def pbp_day_panel_width(day_count):
 
 def pbp_slate_day_bounds(events):
     if events.empty:
-        return pd.DataFrame(columns=["game_day", "day_start", "day_end"])
-    bounds = events[["wallclock"] + (["game_date"] if "game_date" in events.columns else [])].copy()
+        return pd.DataFrame(columns=["game_day", "game_day_label", "day_start", "day_end", "game_count"])
+    bounds = events[["wallclock"] + (["game_date"] if "game_date" in events.columns else []) + (["game_id"] if "game_id" in events.columns else [])].copy()
     bounds["wallclock"] = pd.to_datetime(bounds["wallclock"], errors="coerce", utc=True)
     bounds = bounds.dropna(subset=["wallclock"])
     if bounds.empty:
-        return pd.DataFrame(columns=["game_day", "day_start", "day_end"])
+        return pd.DataFrame(columns=["game_day", "game_day_label", "day_start", "day_end", "game_count"])
     bounds["game_day"] = pbp_chart_game_day(bounds["wallclock"], bounds["game_date"] if "game_date" in bounds.columns else None)
-    grouped = bounds.groupby("game_day", as_index=False)["wallclock"].agg(day_start="min", day_end="max")
+    agg = {"wallclock": ["min", "max"]}
+    if "game_date" in bounds.columns:
+        agg["game_date"] = "first"
+    if "game_id" in bounds.columns:
+        agg["game_id"] = pd.Series.nunique
+    grouped = bounds.groupby("game_day").agg(agg)
+    grouped.columns = ["day_start", "day_end"] + (["game_date"] if "game_date" in bounds.columns else []) + (["game_count"] if "game_id" in bounds.columns else [])
+    grouped = grouped.reset_index()
+    if "game_count" not in grouped.columns:
+        grouped["game_count"] = 0
+    if "game_date" not in grouped.columns:
+        grouped["game_date"] = ""
+    grouped["game_day_label"] = grouped.apply(lambda row: pbp_slate_day_label(row.get("game_day"), row.get("game_date"), row.get("game_count")), axis=1)
     same_time = grouped["day_start"] >= grouped["day_end"]
     grouped.loc[same_time, "day_end"] = grouped.loc[same_time, "day_start"] + pd.Timedelta(hours=1)
     return grouped.sort_values("day_start").reset_index(drop=True)
@@ -1397,6 +1420,7 @@ def add_pbp_line_day_boundaries(chart_data, day_bounds, value_col):
     additions = []
     for _, bound in day_bounds.iterrows():
         game_day = bound.get("game_day", "")
+        game_day_label = bound.get("game_day_label", game_day)
         for boundary in ["day_start", "day_end"]:
             ts = bound.get(boundary)
             if pd.isna(ts):
@@ -1407,6 +1431,7 @@ def add_pbp_line_day_boundaries(chart_data, day_bounds, value_col):
                 "wallclock": ts,
                 "game_date": "",
                 "game_day": game_day,
+                "game_day_label": game_day_label,
                 value_col: value,
             })
     if additions:
@@ -1575,6 +1600,10 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
     if category_chart.empty:
         return
     category_chart = add_pbp_chart_time(category_chart)
+    if "game_day_label" not in category_chart.columns:
+        category_chart["game_day_label"] = category_chart["game_day"]
+    else:
+        category_chart["game_day_label"] = category_chart["game_day_label"].fillna(category_chart["game_day"])
     category_chart = category_chart.sort_values(["game_day", "chart_hour", "team"]).drop_duplicates(["game_day", "chart_hour", "team"], keep="last").reset_index(drop=True)
     hour_ticks, hour_domain = pbp_hour_axis_values(day_bounds)
     category_chart = add_pbp_chart_hour_edges(category_chart, hour_domain, "value", group_cols=["team"])
@@ -1631,7 +1660,7 @@ def render_pbp_category_movement_charts(events, team_a, team_b, selected_categor
         ],
     )
     mini = (area + line).properties(width=day_width, height=170).facet(
-        column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
+        column=alt.Column("game_day_label:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
         background="#ffffff",
@@ -1665,7 +1694,11 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     hour_ticks, hour_domain = pbp_hour_axis_values(day_bounds)
     day_width = pbp_day_panel_width(chart_data["game_day"].nunique())
     chart_data = chart_data.sort_values(["game_day", "wallclock_et"]).drop_duplicates(["game_day", "wallclock_et"], keep="last").reset_index(drop=True)
-    score_chart = chart_data[["wallclock", "wallclock_et", "chart_hour", "game_day", "team_b_score"]].copy()
+    if "game_day_label" not in chart_data.columns:
+        chart_data["game_day_label"] = chart_data["game_day"]
+    else:
+        chart_data["game_day_label"] = chart_data["game_day_label"].fillna(chart_data["game_day"])
+    score_chart = chart_data[["wallclock", "wallclock_et", "chart_hour", "game_day", "game_day_label", "team_b_score"]].copy()
     score_chart = score_chart.rename(columns={"team_b_score": "value"})
     score_chart["score_top"] = 413
     score_chart["score_bottom"] = 0
@@ -1696,29 +1729,26 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         tickColor="#d0d5dd",
         domain=False,
     )
-    y_axis_owner = base.mark_line(opacity=0).encode(
-        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis),
-    )
     top_area = base.mark_area(color=team_color_for_name(team_a), opacity=0.28, interpolate="step-after", clip=True).encode(
-        y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=None, stack=None),
+        y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis, stack=None),
         y2=alt.Y2("value:Q"),
     )
     bottom_area = base.mark_area(color=team_color_for_name(team_b), opacity=0.28, interpolate="step-after", clip=True).encode(
-        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=None, stack=None),
+        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis, stack=None),
         y2=alt.Y2("score_bottom:Q"),
     )
     midpoint = base.mark_line(color="#111827", strokeWidth=1.2, opacity=0.82, interpolate="step-after").encode(
-        y=alt.Y("score_mid:Q", scale=alt.Scale(domain=[0, 413]), axis=None),
+        y=alt.Y("score_mid:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis),
     )
     line = base.mark_line(color="#111827", strokeWidth=2.8, interpolate="step-after", clip=True).encode(
-        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=None),
+        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis),
         tooltip=[
             alt.Tooltip("wallclock_et:T", title="Time (ET)", format="%b %d, %I:%M %p"),
             alt.Tooltip("value:Q", title=live_team_full_name(team_b), format=".1f"),
         ],
     )
-    chart = (y_axis_owner + top_area + bottom_area + midpoint + line).properties(width=day_width, height=220).facet(
-        column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
+    chart = (top_area + bottom_area + midpoint + line).properties(width=day_width, height=220).facet(
+        column=alt.Column("game_day_label:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
         background="#ffffff",
