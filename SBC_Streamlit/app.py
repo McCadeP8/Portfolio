@@ -869,16 +869,13 @@ def pbp_event_filter(df, category):
     if category == "TO":
         return df[stat == "turnover"].copy()
     if category == "2PT%":
-        is_make = (stat == "points") & (pd.to_numeric(df["value"], errors="coerce") == 2)
-        return df[is_make | (stat == "two-point miss")].copy()
+        return df[stat.isin(["two-point make", "two-point miss"])].copy()
     if category == "3PT%":
-        is_make = (stat == "points") & (pd.to_numeric(df["value"], errors="coerce") == 3)
-        return df[is_make | (stat == "three-point miss")].copy()
+        return df[stat.isin(["three-point make", "three-point miss"])].copy()
     if category == "FT%":
-        is_make = (stat == "points") & (pd.to_numeric(df["value"], errors="coerce") == 1) & descriptions.str.contains("free throw", na=False)
-        return df[is_make | (stat == "free-throw miss")].copy()
+        return df[stat.isin(["free-throw make", "free-throw miss"])].copy()
     if category == "TS%":
-        return df[stat.isin(["points", "two-point miss", "three-point miss", "free-throw miss"])].copy()
+        return df[stat.isin(["two-point make", "two-point miss", "three-point make", "three-point miss", "free-throw make", "free-throw miss"])].copy()
     return df.iloc[0:0].copy()
 
 
@@ -895,19 +892,22 @@ def pbp_category_delta(row, category):
     if category in ["OREB", "DREB", "AST", "ST", "BLK", "TO"]:
         return {"value": value}
     if category == "2PT%":
-        return {"made": 1 if stat == "points" and value == 2 else 0, "att": 1}
+        return {"made": value if stat == "two-point make" else 0, "att": value}
     if category == "3PT%":
-        return {"made": 1 if stat == "points" and value == 3 else 0, "att": 1}
+        return {"made": value if stat == "three-point make" else 0, "att": value}
     if category == "FT%":
-        made_ft = stat == "points" and value == 1 and "free throw" in description
-        return {"made": 1 if made_ft else 0, "att": 1}
+        return {"made": value if stat == "free-throw make" else 0, "att": value}
     if category == "TS%":
-        if stat == "points":
-            return {"points": value, "fga": 1 if value in [2, 3] else 0, "fta": 1 if value == 1 and "free throw" in description else 0}
+        if stat == "two-point make":
+            return {"points": 2 * value, "fga": value, "fta": 0}
+        if stat == "three-point make":
+            return {"points": 3 * value, "fga": value, "fta": 0}
+        if stat == "free-throw make":
+            return {"points": value, "fga": 0, "fta": value}
         if stat in ["two-point miss", "three-point miss"]:
-            return {"points": 0, "fga": 1, "fta": 0}
+            return {"points": 0, "fga": value, "fta": 0}
         if stat == "free-throw miss":
-            return {"points": 0, "fga": 0, "fta": 1}
+            return {"points": 0, "fga": 0, "fta": value}
     return {"value": 0}
 
 
@@ -978,13 +978,13 @@ def pbp_categories_for_event(row):
     elif stat == "+/-":
         categories.append("+/-")
     elif stat == "points":
-        categories.extend(["PTS", "TS%"])
-        if value == 2:
-            categories.append("2PT%")
-        elif value == 3:
-            categories.append("3PT%")
-        elif value == 1 and "free throw" in description:
-            categories.append("FT%")
+        categories.append("PTS")
+    elif stat == "two-point make":
+        categories.extend(["2PT%", "TS%"])
+    elif stat == "three-point make":
+        categories.extend(["3PT%", "TS%"])
+    elif stat == "free-throw make":
+        categories.extend(["FT%", "TS%"])
     elif stat == "two-point miss":
         categories.extend(["2PT%", "TS%"])
     elif stat == "three-point miss":
@@ -1167,36 +1167,66 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
         if chart_table.empty:
             render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet.</div>')
             return
-        perspective = st.radio(
-            "Chart perspective",
-            options=[team_a, team_b],
-            format_func=live_team_full_name,
-            index=0,
-            horizontal=True,
-            key=f"{key_prefix}_pbp_chart_perspective",
-        )
-        chart_data = chart_table[["wallclock", perspective]].rename(columns={perspective: "Score"}).copy()
+        chart_data = chart_table[["wallclock", team_a, team_b]].copy()
         chart_data["wallclock"] = pd.to_datetime(chart_data["wallclock"], errors="coerce")
         chart_data = chart_data.dropna(subset=["wallclock"])
         if not chart_data.empty:
+            chart_data = chart_data.sort_values("wallclock").reset_index(drop=True)
+            chart_data["matchup_time"] = range(len(chart_data))
+            chart_data["Score"] = chart_data[team_a]
+            chart_data["OpponentScore"] = chart_data[team_b]
+            chart_data["above"] = chart_data["Score"].clip(lower=206.5)
+            chart_data["below"] = chart_data["Score"].clip(upper=206.5)
             midpoint = pd.DataFrame({"y": [206.5], "Label": ["Win line 206.5"]})
-            line = alt.Chart(chart_data).mark_line(
-                color=team_color_for_name(perspective),
+            base = alt.Chart(chart_data).encode(
+                x=alt.X("matchup_time:Q", title="Matchup Time", axis=alt.Axis(labels=False, ticks=False)),
+            )
+            above_area = base.mark_area(
+                color=team_color_for_name(team_a),
+                opacity=0.16,
+                interpolate="step-after",
+            ).encode(
+                y=alt.Y("above:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False)),
+                y2=alt.Y2(datum=206.5),
+            )
+            below_area = base.mark_area(
+                color=team_color_for_name(team_b),
+                opacity=0.16,
+                interpolate="step-after",
+            ).encode(
+                y=alt.Y("below:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False)),
+                y2=alt.Y2(datum=206.5),
+            )
+            line = base.mark_line(
+                color=LEAGUE_PRIMARY,
                 strokeWidth=3,
                 interpolate="step-after",
             ).encode(
-                x=alt.X("wallclock:T", title="Matchup Time"),
-                y=alt.Y("Score:Q", title=f"{live_team_full_name(perspective)} Points", scale=alt.Scale(domain=[0, 413])),
+                y=alt.Y("Score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False)),
                 tooltip=[
                     alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
-                    alt.Tooltip("Score:Q", title="Score", format=".1f"),
+                    alt.Tooltip("Score:Q", title=live_team_full_name(team_a), format=".1f"),
+                    alt.Tooltip("OpponentScore:Q", title=live_team_full_name(team_b), format=".1f"),
                 ],
             )
             threshold = alt.Chart(midpoint).mark_rule(color="#C9A227", strokeDash=[6, 4], strokeWidth=2).encode(
-                y="y:Q",
+                y=alt.Y("y:Q", axis=alt.Axis(title=None, labels=False, ticks=False)),
                 tooltip=[alt.Tooltip("Label:N", title="Marker"), alt.Tooltip("y:Q", title="Points")],
             )
-            st.altair_chart((line + threshold).properties(height=280), use_container_width=True)
+            render_html(f"""
+                <div class="sbc-pbp-chart-key">
+                    <span style="--chart-team-color:{escape(str(team_color_for_name(team_b)), quote=True)};">
+                        <img src="{escape(str(team_logo_for_name(team_b)), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
+                        <strong>Below 206.5</strong>
+                    </span>
+                    <span class="sbc-pbp-chart-mid">206.5</span>
+                    <span style="--chart-team-color:{escape(str(team_color_for_name(team_a)), quote=True)};">
+                        <img src="{escape(str(team_logo_for_name(team_a)), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
+                        <strong>Above 206.5</strong>
+                    </span>
+                </div>
+            """)
+            st.altair_chart((below_area + above_area + line + threshold).properties(height=280), use_container_width=True)
 
         if lead_table.empty:
             render_html('<div class="sbc-empty-state">No category lead changes or lead ties have happened yet in this matchup.</div>')
@@ -10300,6 +10330,41 @@ st.markdown(
 
     .sbc-pbp-panel {{
         border-color: rgba(23, 32, 42, 0.10);
+    }}
+
+    .sbc-pbp-chart-key {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        border: 1px solid rgba(23, 32, 42, 0.08);
+        border-radius: 8px;
+        background: #ffffff;
+        margin: 0.75rem 0 0.35rem;
+        padding: 0.5rem 0.65rem;
+    }}
+
+    .sbc-pbp-chart-key span {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--chart-team-color) 12%, #ffffff);
+        color: color-mix(in srgb, var(--chart-team-color) 72%, #111827);
+        font-size: 0.7rem;
+        font-weight: 950;
+        padding: 0.3rem 0.55rem;
+    }}
+
+    .sbc-pbp-chart-key img {{
+        width: 1.35rem;
+        height: 1.35rem;
+        object-fit: contain;
+    }}
+
+    .sbc-pbp-chart-key .sbc-pbp-chart-mid {{
+        background: color-mix(in srgb, #C9A227 22%, #ffffff);
+        color: #6b4f00;
     }}
 
     .sbc-pbp-table {{

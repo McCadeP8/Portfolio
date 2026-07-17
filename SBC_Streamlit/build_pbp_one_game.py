@@ -11,6 +11,7 @@ import requests
 
 ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
 ESPN_SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary"
+OFFICIAL_BOXSCORE_PATH = Path("nba_player_game_boxscores_2021_2026.parquet")
 
 STAT_COLUMNS = [
     "game_id",
@@ -142,6 +143,27 @@ def event_row(
         "scored": scored,
         "description": description,
         "_sequence_number": int(play.get("sequenceNumber") or 0),
+    }
+
+
+def adjustment_row(
+    end_play: dict[str, Any],
+    stat: str,
+    player_id: str,
+    player: str,
+    value: float,
+    sequence_suffix: float,
+) -> dict[str, Any]:
+    signed = f"+{value:g}" if value > 0 else f"{value:g}"
+    return {
+        "stat": stat,
+        "player_id": str(player_id),
+        "player": player,
+        "wallclock": end_play.get("wallclock"),
+        "value": value,
+        "scored": None,
+        "description": f"{player} {stat} adjustment {signed}",
+        "_sequence_number": int(end_play.get("sequenceNumber") or 999999) + sequence_suffix,
     }
 
 
@@ -323,6 +345,10 @@ def build_shift_events(
 def missed_shot_stat(play: dict[str, Any]) -> str | None:
     play_text = (play.get("text") or "").lower()
     type_text = ((play.get("type") or {}).get("text") or "").lower()
+    if "blocks" in play_text:
+        if "three point" in play_text or "three pointer" in play_text:
+            return "three-point miss"
+        return "two-point miss"
     if "misses" not in play_text:
         return None
     if "free throw" in type_text:
@@ -330,6 +356,110 @@ def missed_shot_stat(play: dict[str, Any]) -> str | None:
     if "three point" in play_text or "three pointer" in play_text:
         return "three-point miss"
     return "two-point miss"
+
+
+def made_shot_stat(play: dict[str, Any], score_value: int) -> str | None:
+    play_text = (play.get("text") or "").lower()
+    type_text = ((play.get("type") or {}).get("text") or "").lower()
+    if score_value == 3:
+        return "three-point make"
+    if score_value == 2:
+        return "two-point make"
+    if score_value == 1 and ("free throw" in play_text or "free throw" in type_text):
+        return "free-throw make"
+    return None
+
+
+def is_turnover_play(play: dict[str, Any]) -> bool:
+    type_text = ((play.get("type") or {}).get("text") or "").lower()
+    play_text = (play.get("text") or "").lower()
+    if "turnover" in type_text:
+        return True
+    turnover_types = [
+        "traveling",
+        "offensive charge",
+        "offensive goaltending",
+        "lane violation",
+        "palming",
+        "discontinue dribble",
+        "double dribble",
+        "illegal assist",
+        "illegal screen",
+        "backcourt violation",
+        "jump ball violation",
+        "5-second violation",
+    ]
+    if any(token in type_text for token in turnover_types):
+        return True
+    return "traveling" in play_text
+
+
+def read_official_boxscore_game(game_id: str) -> pd.DataFrame:
+    if not OFFICIAL_BOXSCORE_PATH.exists():
+        return pd.DataFrame()
+    box = pd.read_parquet(OFFICIAL_BOXSCORE_PATH)
+    if "nba_game_id" not in box.columns:
+        return pd.DataFrame()
+    return box[box["nba_game_id"].astype(str) == str(game_id)].copy()
+
+
+def row_stat_sum(rows: list[dict[str, Any]], player_id: str, stat: str) -> float:
+    return sum(float(row.get("value", 0) or 0) for row in rows if str(row.get("player_id")) == str(player_id) and row.get("stat") == stat)
+
+
+def add_official_adjustments(
+    rows: list[dict[str, Any]],
+    game_id: str,
+    end_play: dict[str, Any],
+) -> None:
+    box = read_official_boxscore_game(game_id)
+    if box.empty:
+        return
+
+    stat_pairs = [
+        ("PTS", "points"),
+        ("OREB", "offensive_rebound"),
+        ("DREB", "defensive_rebound"),
+        ("AST", "assist"),
+        ("ST", "steal"),
+        ("BLK", "block"),
+        ("TO", "turnover"),
+        ("+/-", "+/-"),
+        ("MP", "minutes played"),
+        ("2PTM", "two-point make"),
+        ("3PTM", "three-point make"),
+        ("FTM", "free-throw make"),
+    ]
+    suffix = 1000.0
+    for _, official in box.iterrows():
+        player_id = str(official.get("nba_player_id", ""))
+        player = str(official.get("player_name", ""))
+        if not player_id or player_id == "nan":
+            continue
+        for official_col, stat in stat_pairs:
+            if official_col not in official:
+                continue
+            official_value = float(pd.to_numeric(pd.Series([official.get(official_col)]), errors="coerce").fillna(0).iloc[0])
+            current_value = row_stat_sum(rows, player_id, stat)
+            diff = official_value - current_value
+            if abs(diff) >= 0.0001:
+                rows.append(adjustment_row(end_play, stat, player_id, player, round(diff, 4), suffix))
+                suffix += 0.001
+
+        shot_specs = [
+            ("2PTA", "two-point make", "two-point miss"),
+            ("3PTA", "three-point make", "three-point miss"),
+            ("FTA", "free-throw make", "free-throw miss"),
+        ]
+        for attempt_col, make_stat, miss_stat in shot_specs:
+            if attempt_col not in official:
+                continue
+            official_attempts = float(pd.to_numeric(pd.Series([official.get(attempt_col)]), errors="coerce").fillna(0).iloc[0])
+            current_attempts = row_stat_sum(rows, player_id, make_stat) + row_stat_sum(rows, player_id, miss_stat)
+            diff = official_attempts - current_attempts
+            if abs(diff) >= 0.0001:
+                rows.append(adjustment_row(end_play, miss_stat, player_id, player, round(diff, 4), suffix))
+                suffix += 0.001
 
 
 def build_stat_events(game_id: str, game_date: str | None = None) -> pd.DataFrame:
@@ -355,6 +485,19 @@ def build_stat_events(game_id: str, game_date: str | None = None) -> pd.DataFram
             )
             if row:
                 rows.append(row)
+            make_stat = made_shot_stat(play, score_value)
+            if make_stat:
+                row = event_row(
+                    play,
+                    make_stat,
+                    participant_id(play, 0),
+                    player_names,
+                    player_teams,
+                    1,
+                    True,
+                )
+                if row:
+                    rows.append(row)
 
         miss_stat = missed_shot_stat(play)
         if miss_stat:
@@ -435,7 +578,7 @@ def build_stat_events(game_id: str, game_date: str | None = None) -> pd.DataFram
             if row:
                 rows.append(row)
 
-        if "turnover" in type_text:
+        if is_turnover_play(play):
             row = event_row(
                 play,
                 "turnover",
@@ -449,6 +592,8 @@ def build_stat_events(game_id: str, game_date: str | None = None) -> pd.DataFram
                 rows.append(row)
 
     rows.extend(build_shift_events(plays, summary, player_names, player_teams))
+    end_play = next((play for play in reversed(plays) if ((play.get("type") or {}).get("text") or "").lower() in ["end game", "end period"]), plays[-1] if plays else {})
+    add_official_adjustments(rows, game_id, end_play)
 
     events = pd.DataFrame(rows)
     if not events.empty:
