@@ -1297,6 +1297,43 @@ def pbp_row_class(row):
     return ""
 
 
+def render_pbp_category_movement_charts(events, team_a, team_b):
+    category_chart = build_pbp_category_chart_data(events, team_a, team_b)
+    if category_chart.empty:
+        return
+    category_chart = category_chart.dropna(subset=["wallclock"]).copy()
+    category_chart["wallclock"] = pd.to_datetime(category_chart["wallclock"], errors="coerce")
+    category_chart = category_chart.dropna(subset=["wallclock"]).sort_values("wallclock").reset_index(drop=True)
+    if category_chart.empty:
+        return
+    render_html('<div class="sbc-pbp-mini-chart-title">Category Movement</div>')
+    mini = alt.Chart(category_chart).mark_line(strokeWidth=2, interpolate="step-after").encode(
+        x=alt.X("wallclock:T", title=None, axis=alt.Axis(labels=False, ticks=False, grid=False, domain=False)),
+        y=alt.Y("value:Q", title=None, axis=alt.Axis(labels=False, ticks=False, grid=True, gridColor="#eef2f7", domain=False)),
+        color=alt.Color(
+            "team:N",
+            scale=alt.Scale(
+                domain=[live_team_full_name(team_a), live_team_full_name(team_b)],
+                range=[team_color_for_name(team_a), team_color_for_name(team_b)],
+            ),
+            legend=None,
+        ),
+        facet=alt.Facet("category:N", columns=4, title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
+        tooltip=[
+            alt.Tooltip("category:N", title="Category"),
+            alt.Tooltip("team:N", title="Team"),
+            alt.Tooltip("value:Q", title="Value", format=".1f"),
+            alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
+        ],
+    ).properties(height=95).configure(
+        background="#ffffff",
+        view=alt.ViewConfig(stroke="#eaecf0", strokeOpacity=1),
+        axis=alt.AxisConfig(labelColor="#344054", titleColor="#344054"),
+    )
+    with st.container(border=True):
+        st.altair_chart(mini, use_container_width=True)
+
+
 def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
     events = matchup_pbp_events(rows, team_a, team_b)
     if events.empty:
@@ -1314,120 +1351,6 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
         if chart_table.empty:
             render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet.</div>')
             return
-        chart_data = chart_table[["wallclock", team_a, team_b]].copy()
-        chart_data["wallclock"] = pd.to_datetime(chart_data["wallclock"], errors="coerce")
-        chart_data = chart_data.dropna(subset=["wallclock"])
-        if not chart_data.empty:
-            chart_data = chart_data.sort_values("wallclock").reset_index(drop=True)
-            chart_data["game_day"] = chart_data["wallclock"].dt.tz_convert(ZoneInfo("America/New_York")).dt.strftime("%b %d")
-            chart_data["team_a_score"] = chart_data[team_a]
-            chart_data["team_b_score"] = chart_data[team_b]
-            chart_data["above"] = chart_data["team_a_score"].clip(lower=206.5)
-            chart_data["below"] = chart_data["team_a_score"].clip(upper=206.5)
-            base = alt.Chart(chart_data).encode(
-                x=alt.X(
-                    "wallclock:T",
-                    title="Matchup Time",
-                    axis=alt.Axis(
-                        format="%b %d, %I %p",
-                        labelAngle=-35,
-                        labelOverlap=True,
-                        titleColor="#344054",
-                        labelColor="#475467",
-                        domainColor="#d0d5dd",
-                        grid=False,
-                    ),
-                ),
-            )
-            above_area = base.mark_area(
-                color=team_color_for_name(team_a),
-                opacity=0.12,
-                interpolate="step-after",
-            ).encode(
-                y=alt.Y("above:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
-                y2=alt.Y2(datum=206.5),
-            )
-            below_area = base.mark_area(
-                color=team_color_for_name(team_b),
-                opacity=0.12,
-                interpolate="step-after",
-            ).encode(
-                y=alt.Y("below:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
-                y2=alt.Y2(datum=206.5),
-            )
-            line = base.mark_line(
-                color="#111827",
-                strokeWidth=3,
-                interpolate="step-after",
-            ).encode(
-                y=alt.Y(
-                    "team_a_score:Q",
-                    scale=alt.Scale(domain=[0, 413]),
-                    axis=alt.Axis(values=[0, 100, 206.5, 313, 413], labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value", title=None, labelColor="#475467", grid=True, gridColor="#eaecf0", tickColor="#d0d5dd", domain=False),
-                ),
-                tooltip=[
-                    alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
-                    alt.Tooltip("team_a_score:Q", title=live_team_full_name(team_a), format=".1f"),
-                    alt.Tooltip("team_b_score:Q", title=live_team_full_name(team_b), format=".1f"),
-                ],
-            )
-            threshold = base.mark_rule(color="#C9A227", strokeDash=[6, 4], strokeWidth=2).encode(
-                y=alt.Y(datum=206.5, axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
-            )
-            chart = (below_area + above_area + line + threshold).properties(height=300).facet(
-                column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
-                spacing=8,
-            ).resolve_scale(x="independent").configure(
-                background="#ffffff",
-                axis=alt.AxisConfig(labelColor="#344054", titleColor="#344054", gridColor="#eaecf0", domainColor="#d0d5dd"),
-                view=alt.ViewConfig(strokeOpacity=0),
-            )
-            with st.container(border=True):
-                render_html(f"""
-                    <div class="sbc-pbp-chart-key">
-                        <span style="--chart-team-color:{escape(str(team_color_for_name(team_b)), quote=True)};">
-                            <img src="{escape(str(team_logo_for_name(team_b)), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
-                            <strong>Below 206.5</strong>
-                        </span>
-                        <span class="sbc-pbp-chart-mid">206.5</span>
-                        <span style="--chart-team-color:{escape(str(team_color_for_name(team_a)), quote=True)};">
-                            <img src="{escape(str(team_logo_for_name(team_a)), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
-                            <strong>Above 206.5</strong>
-                        </span>
-                    </div>
-                """)
-                st.altair_chart(chart, use_container_width=True)
-
-            category_chart = build_pbp_category_chart_data(events, team_a, team_b)
-            if not category_chart.empty:
-                category_chart = category_chart.dropna(subset=["wallclock"]).copy()
-                category_chart["wallclock"] = pd.to_datetime(category_chart["wallclock"], errors="coerce")
-                category_chart = category_chart.sort_values("wallclock").reset_index(drop=True)
-                render_html('<div class="sbc-pbp-mini-chart-title">Category Movement</div>')
-                mini = alt.Chart(category_chart).mark_line(strokeWidth=2, interpolate="step-after").encode(
-                    x=alt.X("wallclock:T", title=None, axis=alt.Axis(labels=False, ticks=False, grid=False, domain=False)),
-                    y=alt.Y("value:Q", title=None, axis=alt.Axis(labels=False, ticks=False, grid=True, gridColor="#eef2f7", domain=False)),
-                    color=alt.Color(
-                        "team:N",
-                        scale=alt.Scale(
-                            domain=[live_team_full_name(team_a), live_team_full_name(team_b)],
-                            range=[team_color_for_name(team_a), team_color_for_name(team_b)],
-                        ),
-                        legend=None,
-                    ),
-                    facet=alt.Facet("category:N", columns=4, title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
-                    tooltip=[
-                        alt.Tooltip("category:N", title="Category"),
-                        alt.Tooltip("team:N", title="Team"),
-                        alt.Tooltip("value:Q", title="Value", format=".1f"),
-                        alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
-                    ],
-                ).properties(height=95).configure(
-                    background="#ffffff",
-                    view=alt.ViewConfig(stroke="#eaecf0", strokeOpacity=1),
-                    axis=alt.AxisConfig(labelColor="#344054", titleColor="#344054"),
-                )
-                st.altair_chart(mini, use_container_width=True)
 
         if lead_table.empty:
             render_html('<div class="sbc-empty-state">No category lead changes or lead ties have happened yet in this matchup.</div>')
@@ -1479,6 +1402,8 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
             </section>
         """)
         return
+
+    render_pbp_category_movement_charts(events, team_a, team_b)
 
     play_filter = st.radio(
         "Play filter",
