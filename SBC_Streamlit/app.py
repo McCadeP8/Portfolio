@@ -1411,7 +1411,7 @@ def add_pbp_score_day_boundaries(chart_data, day_bounds, team_a, team_b):
 def pbp_time_axis(grid=False):
     return alt.Axis(
         title="Time",
-        labelExpr="timeFormat(datum.value, '%I:%M').replace(/^0/, '')",
+        format="%I:%M",
         labelColor="#667085",
         titleColor="#667085",
         grid=grid,
@@ -1532,40 +1532,26 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         chart_data.loc[chart_data.index[-1], "team_b_score"] = expected_score_b
     chart_data = chart_data.sort_values("wallclock").drop_duplicates(["game_day", "wallclock"], keep="last").reset_index(drop=True)
     day_width = pbp_day_panel_width(chart_data["game_day"].nunique())
-    band_rows = []
-    for _, bound in day_bounds.iterrows():
-        if pd.isna(bound.get("day_start")) or pd.isna(bound.get("day_end")):
-            continue
-        band_rows.extend([
-            {"game_day": bound.get("game_day", ""), "day_start": bound.get("day_start"), "day_end": bound.get("day_end"), "y0": 206.5, "y1": 413, "band": "top", "layer": "band"},
-            {"game_day": bound.get("game_day", ""), "day_start": bound.get("day_start"), "day_end": bound.get("day_end"), "y0": 0, "y1": 206.5, "band": "bottom", "layer": "band"},
-        ])
-    band_data = pd.DataFrame(band_rows)
-    line_data = chart_data.copy()
-    line_data["layer"] = "line"
-    for col in ["day_start", "day_end", "y0", "y1", "band"]:
-        line_data[col] = pd.NA
-    for col in ["wallclock", team_a, team_b, "team_a_score", "team_b_score"]:
-        if col not in band_data.columns:
-            band_data[col] = pd.NA
-    chart_layers = pd.concat([band_data, line_data], ignore_index=True, sort=False)
+    chart_data["score_top"] = 413
+    chart_data["score_mid"] = 206.5
+    chart_data["score_bottom"] = 0
 
-    base = alt.Chart(chart_layers).encode(
+    base = alt.Chart(chart_data).encode(
         x=alt.X(
             "wallclock:T",
             title="Time",
             axis=pbp_time_axis(grid=False),
         )
     )
-    band_scale = alt.Scale(domain=["top", "bottom"], range=[team_color_for_name(team_b), team_color_for_name(team_a)])
-    bands = alt.Chart(chart_layers).transform_filter(alt.datum.layer == "band").mark_rect(opacity=0.12).encode(
-        x=alt.X("day_start:T", title="Time", axis=pbp_time_axis(grid=False)),
-        x2=alt.X2("day_end:T"),
-        y=alt.Y("y1:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
-        y2=alt.Y2("y0:Q"),
-        color=alt.Color("band:N", scale=band_scale, legend=None),
+    top_band = base.mark_area(color=team_color_for_name(team_b), opacity=0.12, interpolate="step-after").encode(
+        y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False), stack=None),
+        y2=alt.Y2("score_mid:Q"),
     )
-    line = base.transform_filter(alt.datum.layer == "line").mark_line(color="#111827", strokeWidth=3, interpolate="monotone").encode(
+    bottom_band = base.mark_area(color=team_color_for_name(team_a), opacity=0.12, interpolate="step-after").encode(
+        y=alt.Y("score_mid:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False), stack=None),
+        y2=alt.Y2("score_bottom:Q"),
+    )
+    line = base.mark_line(color="#111827", strokeWidth=3, interpolate="monotone").encode(
         y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=alt.Axis(values=[0, 100, 206.5, 313, 413], labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value", title=None, labelColor="#475467", grid=True, gridColor="#eef2f7", tickColor="#d0d5dd", domain=False)),
         tooltip=[
             alt.Tooltip("wallclock:T", title="Time", format="%b %d, %I:%M %p"),
@@ -1573,10 +1559,10 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
             alt.Tooltip("team_b_score:Q", title=live_team_full_name(team_b), format=".1f"),
         ],
     )
-    midpoint = alt.Chart(chart_layers).transform_filter(alt.datum.layer == "line").mark_rule(color="#111827", strokeWidth=1).encode(
+    midpoint = alt.Chart(chart_data).mark_rule(color="#111827", strokeWidth=1).encode(
         y=alt.Y(datum=206.5, axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False))
     )
-    chart = (bands + midpoint + line).properties(width=day_width, height=260).facet(
+    chart = (top_band + bottom_band + midpoint + line).properties(width=day_width, height=260).facet(
         column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
