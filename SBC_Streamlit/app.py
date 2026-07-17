@@ -1373,7 +1373,6 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix):
             )
             threshold = base.mark_rule(color="#C9A227", strokeDash=[6, 4], strokeWidth=2).encode(
                 y=alt.Y(datum=206.5, axis=alt.Axis(title=None, labels=False, ticks=False, domain=False, grid=False)),
-                tooltip=[alt.value("Win line 206.5")],
             )
             chart = (below_area + above_area + line + threshold).properties(height=300).facet(
                 column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
