@@ -1615,12 +1615,19 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     chart_data = add_pbp_chart_time(chart_data)
     hour_ticks, hour_domain = pbp_hour_axis_values(day_bounds)
     day_width = pbp_day_panel_width(chart_data["game_day"].nunique())
-    chart_data["score_top"] = 413
-    chart_data["score_bottom"] = 0
-    chart_data["score_mid"] = 206.5
     chart_data = chart_data.sort_values(["game_day", "wallclock_et"]).drop_duplicates(["game_day", "wallclock_et"], keep="last").reset_index(drop=True)
+    score_chart = chart_data.melt(
+        id_vars=["wallclock", "wallclock_et", "chart_hour", "game_day"],
+        value_vars=["team_a_score", "team_b_score"],
+        var_name="score_side",
+        value_name="value",
+    )
+    score_chart["team"] = score_chart["score_side"].map({"team_a_score": live_team_full_name(team_a), "team_b_score": live_team_full_name(team_b)})
+    score_chart = score_chart.dropna(subset=["team", "value", "chart_hour"])
+    score_chart = score_chart.sort_values(["game_day", "chart_hour", "team"]).drop_duplicates(["game_day", "chart_hour", "team"], keep="last").reset_index(drop=True)
 
-    base = alt.Chart(chart_data).encode(
+    render_html(f'<div class="sbc-pbp-mini-chart-title">{escape(team_abbrev_for_name(team_b))} Perspective Overall Score</div>')
+    base = alt.Chart(score_chart).encode(
         x=alt.X(
             "chart_hour:Q",
             scale=alt.Scale(domain=hour_domain),
@@ -1630,7 +1637,6 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     )
     y_axis = alt.Axis(
         values=[0, 100, 206.5, 313, 413],
-        labelExpr="datum.value == 313 ? '100' : datum.value == 413 ? '0' : datum.value",
         title=None,
         labelColor="#475467",
         grid=True,
@@ -1638,26 +1644,35 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         tickColor="#d0d5dd",
         domain=False,
     )
-    top_band = base.mark_area(color=team_color_for_name(team_b), opacity=0.12, interpolate="monotone", clip=True).encode(
-        y=alt.Y("score_top:Q", scale=alt.Scale(domain=[0, 413]), axis=None, stack=None),
-        y2=alt.Y2("team_a_score:Q"),
+    area = base.mark_area(opacity=0.10, interpolate="step-after", clip=True).encode(
+        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis, stack=None),
+        y2=alt.Y2(datum=0),
+        color=alt.Color(
+            "team:N",
+            scale=alt.Scale(
+                domain=[live_team_full_name(team_a), live_team_full_name(team_b)],
+                range=[team_color_for_name(team_a), team_color_for_name(team_b)],
+            ),
+            legend=None,
+        ),
     )
-    bottom_band = base.mark_area(color=team_color_for_name(team_a), opacity=0.12, interpolate="monotone", clip=True).encode(
-        y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=None, stack=None),
-        y2=alt.Y2("score_bottom:Q"),
-    )
-    line = base.mark_line(color="#111827", strokeWidth=3, interpolate="monotone").encode(
-        y=alt.Y("team_a_score:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis),
+    line = base.mark_line(strokeWidth=2.65, interpolate="step-after", clip=True).encode(
+        y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 413]), axis=y_axis),
+        color=alt.Color(
+            "team:N",
+            scale=alt.Scale(
+                domain=[live_team_full_name(team_a), live_team_full_name(team_b)],
+                range=[team_color_for_name(team_a), team_color_for_name(team_b)],
+            ),
+            legend=None,
+        ),
         tooltip=[
             alt.Tooltip("wallclock_et:T", title="Time (ET)", format="%b %d, %I:%M %p"),
-            alt.Tooltip("team_a_score:Q", title=live_team_full_name(team_a), format=".1f"),
-            alt.Tooltip("team_b_score:Q", title=live_team_full_name(team_b), format=".1f"),
+            alt.Tooltip("team:N", title="Team"),
+            alt.Tooltip("value:Q", title="Score", format=".1f"),
         ],
     )
-    midpoint = base.mark_line(color="#111827", strokeWidth=1, opacity=0.75).encode(
-        y=alt.Y("score_mid:Q", scale=alt.Scale(domain=[0, 413]), axis=None)
-    )
-    chart = (top_band + bottom_band + midpoint + line).properties(width=day_width, height=260).facet(
+    chart = (area + line).properties(width=day_width, height=220).facet(
         column=alt.Column("game_day:N", title=None, header=alt.Header(labelColor="#344054", labelFontWeight="bold")),
         spacing=6,
     ).resolve_scale(x="independent").configure(
@@ -1667,15 +1682,14 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
     )
     with st.container(border=True):
         render_html(f"""
-            <div class="sbc-pbp-chart-key">
-                <span style="--chart-team-color:{escape(str(team_color_for_name(team_b)), quote=True)};">
-                    <img src="{escape(str(team_logo_for_name(team_b)), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
-                    <strong>Below 206.5</strong>
-                </span>
-                <span class="sbc-pbp-chart-mid">206.5</span>
+            <div class="sbc-pbp-chart-key sbc-pbp-chart-key-subtle">
                 <span style="--chart-team-color:{escape(str(team_color_for_name(team_a)), quote=True)};">
                     <img src="{escape(str(team_logo_for_name(team_a)), quote=True)}" alt="{escape(live_team_full_name(team_a), quote=True)} logo">
-                    <strong>Above 206.5</strong>
+                    <strong>{escape(team_abbrev_for_name(team_a))}</strong>
+                </span>
+                <span style="--chart-team-color:{escape(str(team_color_for_name(team_b)), quote=True)};">
+                    <img src="{escape(str(team_logo_for_name(team_b)), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
+                    <strong>{escape(team_abbrev_for_name(team_b))}</strong>
                 </span>
             </div>
         """)
