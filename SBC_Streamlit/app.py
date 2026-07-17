@@ -1440,9 +1440,14 @@ def pbp_hour_axis_values(day_bounds):
         return list(range(17, 25)), [17, 25]
     starts = day_bounds["day_start"].apply(pbp_chart_hour)
     ends = day_bounds["day_end"].apply(pbp_chart_hour)
-    start = int(np.floor(pd.to_numeric(starts, errors="coerce").min()))
-    end = int(np.ceil(pd.to_numeric(ends, errors="coerce").max()))
-    if not np.isfinite(start) or not np.isfinite(end) or start >= end:
+    start_value = pd.to_numeric(starts, errors="coerce").min()
+    end_value = pd.to_numeric(ends, errors="coerce").max()
+    if pd.isna(start_value) or pd.isna(end_value) or not math.isfinite(float(start_value)) or not math.isfinite(float(end_value)):
+        start, end = 17, 25
+    else:
+        start = int(math.floor(float(start_value)))
+        end = int(math.ceil(float(end_value)))
+    if start >= end:
         start, end = 17, 25
     return list(range(start, end + 1)), [start, end]
 
