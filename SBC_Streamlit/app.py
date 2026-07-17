@@ -25,6 +25,11 @@ if not hasattr(st, "_sbc_native_metric"):
 
 _native_metric = st._sbc_native_metric
 
+if not hasattr(st, "_sbc_native_dataframe"):
+    st._sbc_native_dataframe = st.dataframe
+
+_native_dataframe = st._sbc_native_dataframe
+
 
 def _format_metric_money(value, decimals=0):
     try:
@@ -60,6 +65,19 @@ def _sbc_metric(*args, **kwargs):
 
 if getattr(st.metric, "__name__", "") != "_sbc_metric":
     st.metric = _sbc_metric
+
+
+def _sbc_dataframe(*args, **kwargs):
+    if kwargs.get("width") == "stretch":
+        kwargs.pop("width", None)
+        kwargs.setdefault("use_container_width", True)
+    if kwargs.get("height") == "content":
+        kwargs.pop("height", None)
+    return _native_dataframe(*args, **kwargs)
+
+
+if getattr(st.dataframe, "__name__", "") != "_sbc_dataframe":
+    st.dataframe = _sbc_dataframe
 
 def render_html(markup):
     markup = dedent(str(markup)).strip()
