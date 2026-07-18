@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
+import time
 from typing import Any
 
 import pandas as pd
@@ -26,10 +27,21 @@ STAT_COLUMNS = [
 ]
 
 
-def fetch_json(url: str, **params: Any) -> dict[str, Any]:
-    response = requests.get(url, params=params, timeout=30)
-    response.raise_for_status()
-    return response.json()
+def fetch_json(url: str, retries: int = 5, timeout: int = 30, backoff_seconds: float = 2.0, **params: Any) -> dict[str, Any]:
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            return response.json()
+        except Exception as exc:
+            last_error = exc
+            if attempt >= retries:
+                break
+            sleep_for = backoff_seconds * attempt
+            print(f"    retry {attempt}/{retries} after {sleep_for:.1f}s for {url} {params}")
+            time.sleep(sleep_for)
+    raise RuntimeError(f"Request failed for {url} with params={params}") from last_error
 
 
 def first_game_id_for_date(date: str) -> str:
@@ -620,16 +632,102 @@ def build_games_for_dates(start_date: str, end_date: str) -> pd.DataFrame:
     return combined.sort_values(["game_date", "game_id", "wallclock", "stat"]).reset_index(drop=True)
 
 
+def load_regular_season_game_index() -> pd.DataFrame:
+    if not OFFICIAL_BOXSCORE_PATH.exists():
+        raise FileNotFoundError(f"Missing box score archive: {OFFICIAL_BOXSCORE_PATH}")
+    box = pd.read_parquet(OFFICIAL_BOXSCORE_PATH)
+    required = ["Date", "nba_game_id", "nba_season"]
+    missing = [col for col in required if col not in box.columns]
+    if missing:
+        raise ValueError(f"Box score archive missing required columns: {missing}")
+    games = box[required].copy()
+    games["Date"] = pd.to_datetime(games["Date"], errors="coerce")
+    games["nba_game_id"] = games["nba_game_id"].astype(str)
+    games["nba_season"] = games["nba_season"].astype(str)
+    games = games.dropna(subset=["Date", "nba_game_id", "nba_season"]).drop_duplicates()
+    return games.sort_values(["Date", "nba_game_id"]).reset_index(drop=True)
+
+
+def build_games_from_index(
+    seasons: list[str] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    checkpoint_dir: Path | None = None,
+) -> pd.DataFrame:
+    games = load_regular_season_game_index()
+    if seasons:
+        season_set = {str(season) for season in seasons}
+        games = games[games["nba_season"].isin(season_set)].copy()
+    if start_date:
+        start = datetime.strptime(start_date, "%Y%m%d").date()
+        games = games[games["Date"].dt.date >= start].copy()
+    if end_date:
+        end = datetime.strptime(end_date, "%Y%m%d").date()
+        games = games[games["Date"].dt.date <= end].copy()
+    if games.empty:
+        return pd.DataFrame(columns=STAT_COLUMNS)
+
+    frames: list[pd.DataFrame] = []
+    if checkpoint_dir is not None:
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    game_checkpoint_dir = checkpoint_dir / "games" if checkpoint_dir is not None else None
+    if game_checkpoint_dir is not None:
+        game_checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    grouped = games.groupby(games["Date"].dt.strftime("%Y%m%d"), sort=True)
+    for game_date, date_rows in grouped:
+        checkpoint_path = checkpoint_dir / f"{game_date}.parquet" if checkpoint_dir is not None else None
+        if checkpoint_path is not None and checkpoint_path.exists():
+            print(f"{game_date}: using checkpoint")
+            frames.append(pd.read_parquet(checkpoint_path))
+            continue
+        print(f"{game_date}: {len(date_rows):,} games")
+        day_frames: list[pd.DataFrame] = []
+        for _, game in date_rows.iterrows():
+            game_id = str(game["nba_game_id"])
+            game_checkpoint_path = game_checkpoint_dir / f"{game_id}.parquet" if game_checkpoint_dir is not None else None
+            if game_checkpoint_path is not None and game_checkpoint_path.exists():
+                print(f"  using game checkpoint {game_id}")
+                frame = pd.read_parquet(game_checkpoint_path)
+            else:
+                print(f"  building {game_id}")
+                frame = build_stat_events(game_id, game_date=game_date)
+                if game_checkpoint_path is not None and not frame.empty:
+                    frame.to_parquet(game_checkpoint_path, index=False)
+            if not frame.empty:
+                day_frames.append(frame)
+        if day_frames:
+            day_frame = pd.concat(day_frames, ignore_index=True).sort_values(["game_date", "game_id", "wallclock", "stat"]).reset_index(drop=True)
+            if checkpoint_path is not None:
+                day_frame.to_parquet(checkpoint_path, index=False)
+            frames.append(day_frame)
+    if not frames:
+        return pd.DataFrame(columns=STAT_COLUMNS)
+    combined = pd.concat(frames, ignore_index=True)
+    return combined.sort_values(["game_date", "game_id", "wallclock", "stat"]).reset_index(drop=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build NBA PBP stat event files.")
     parser.add_argument("--game-id", default=None, help="ESPN game/event id. Defaults to first game on --date.")
     parser.add_argument("--date", default="20241022", help="YYYYMMDD scoreboard date used when --game-id is omitted.")
     parser.add_argument("--start-date", default=None, help="YYYYMMDD first scoreboard date for multi-game output.")
     parser.add_argument("--end-date", default=None, help="YYYYMMDD last scoreboard date for multi-game output.")
+    parser.add_argument("--seasons", nargs="*", default=None, help="NBA seasons like 2020-21 2021-22. Uses local box score archive index.")
+    parser.add_argument("--use-boxscore-index", action="store_true", help="Drive event fetches from the local regular-season box score archive.")
     parser.add_argument("--out-dir", default="data_snapshots/pbp", help="Output directory for parquet files.")
+    parser.add_argument("--checkpoint-dir", default=None, help="Optional directory for per-day parquet checkpoints.")
     args = parser.parse_args()
 
-    if args.start_date or args.end_date:
+    if args.use_boxscore_index or args.seasons:
+        checkpoint_dir = Path(args.checkpoint_dir) if args.checkpoint_dir else None
+        events = build_games_from_index(seasons=args.seasons, start_date=args.start_date, end_date=args.end_date, checkpoint_dir=checkpoint_dir)
+        season_label = "_".join((args.seasons or ["all_regular_season"])).replace("-", "")
+        date_label = ""
+        if args.start_date or args.end_date:
+            date_label = f"_{args.start_date or 'start'}_{args.end_date or args.start_date or 'end'}"
+        output_stem = f"pbp_stat_events_{season_label}{date_label}"
+        label = "boxscore-index"
+    elif args.start_date or args.end_date:
         start_date = args.start_date or args.date
         end_date = args.end_date or start_date
         events = build_games_for_dates(start_date, end_date)

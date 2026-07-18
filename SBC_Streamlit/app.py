@@ -6,6 +6,7 @@ import streamlit.components.v1 as components
 from streamlit_folium import st_folium
 import pandas as pd
 import altair as alt
+import pyarrow.parquet as pq
 import re as re
 import json
 import math
@@ -395,20 +396,56 @@ def load_nba_player_boxscores_archive():
 
 
 def pbp_archive_mtime():
-    candidates = [
-        APP_DIR / "data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet",
-        APP_DIR.parent / "data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet",
-        Path("data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet"),
+    candidates = pbp_archive_candidates()
+    mtimes = [path.stat().st_mtime for path in candidates if path.exists()]
+    return max(mtimes) if mtimes else 0
+
+
+def pbp_archive_paths():
+    return [path for path in pbp_archive_candidates() if path.exists()]
+
+
+def pbp_archive_candidates():
+    patterns = [
+        "data_snapshots/pbp/pbp_stat_events_all_regular_season*.parquet",
+        "data_snapshots/pbp/pbp_stat_events_202021.parquet",
+        "data_snapshots/pbp/pbp_stat_events_202122.parquet",
+        "data_snapshots/pbp/pbp_stat_events_202223.parquet",
+        "data_snapshots/pbp/pbp_stat_events_202324.parquet",
+        "data_snapshots/pbp/pbp_stat_events_202425.parquet",
+        "data_snapshots/pbp/pbp_stat_events_202526.parquet",
+        "data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet",
     ]
-    for path in candidates:
-        if path.exists():
-            return path.stat().st_mtime
-    return 0
+    roots = [APP_DIR, APP_DIR.parent, Path(".")]
+    candidates: list[Path] = []
+    for root in roots:
+        for pattern in patterns:
+            matches = sorted(root.glob(pattern), key=lambda path: path.stat().st_mtime if path.exists() else 0, reverse=True)
+            candidates.extend(matches)
+            direct = root / pattern
+            if direct.exists():
+                candidates.append(direct)
+    seen: set[Path] = set()
+    ordered: list[Path] = []
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            resolved = candidate
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        ordered.append(candidate)
+    return ordered
 
 
 @st.cache_data(ttl=86400)
 def load_pbp_stat_events_archive(mtime=None):
-    df = _read_local_parquet("data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet")
+    df = pd.DataFrame()
+    candidates = pbp_archive_paths()
+    if candidates:
+        frames = [pd.read_parquet(candidate) for candidate in candidates]
+        df = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0]
     if df.empty:
         return df
     for col in ["game_id", "player_id"]:
@@ -418,6 +455,87 @@ def load_pbp_stat_events_archive(mtime=None):
         df["wallclock"] = pd.to_datetime(df["wallclock"], errors="coerce", utc=True)
     if "value" in df.columns:
         df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
+    return df
+
+
+def _pbp_archive_read(columns=None, filters=None):
+    candidates = pbp_archive_paths()
+    if not candidates:
+        return pd.DataFrame()
+    read_columns = list(columns) if columns else None
+    try:
+        dataset = pq.ParquetDataset([str(candidate) for candidate in candidates], filters=filters)
+        table = dataset.read(columns=read_columns)
+        return table.to_pandas()
+    except Exception:
+        if filters:
+            fallback_frames = [pd.read_parquet(candidate, columns=read_columns) for candidate in candidates]
+            fallback = pd.concat(fallback_frames, ignore_index=True) if len(fallback_frames) > 1 else fallback_frames[0]
+            for column, op, values in filters:
+                if op == "in":
+                    fallback = fallback[fallback[column].astype(str).isin({str(value) for value in values})]
+            return fallback
+        raise
+
+
+def _normalize_pbp_game_ids(game_ids):
+    return sorted({str(game_id).strip() for game_id in game_ids if pd.notna(game_id) and str(game_id).strip()})
+
+
+def _normalize_pbp_game_dates(game_dates):
+    values = set()
+    for game_date in game_dates:
+        if pd.isna(game_date):
+            continue
+        value = str(game_date).strip()
+        if not value:
+            continue
+        if len(value) == 10 and value[4] == "-" and value[7] == "-":
+            value = value.replace("-", "")
+        values.add(value)
+    return sorted(values)
+
+
+@st.cache_data(ttl=86400)
+def load_pbp_stat_events_for_games(game_ids_key, mtime=None):
+    game_ids = _normalize_pbp_game_ids(game_ids_key)
+    if not game_ids:
+        return pd.DataFrame()
+    df = _pbp_archive_read(
+        columns=["game_id", "game_date", "stat", "player_id", "player", "wallclock", "value", "scored", "description"],
+        filters=[("game_id", "in", game_ids)],
+    )
+    if df.empty:
+        return df
+    for col in ["game_id", "player_id"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str)
+    if "game_date" in df.columns:
+        df["game_date"] = df["game_date"].astype(str)
+    if "wallclock" in df.columns:
+        df["wallclock"] = pd.to_datetime(df["wallclock"], errors="coerce", utc=True)
+    if "value" in df.columns:
+        df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
+    return df
+
+
+@st.cache_data(ttl=86400)
+def load_pbp_slate_bounds_for_dates(game_dates_key, mtime=None):
+    game_dates = _normalize_pbp_game_dates(game_dates_key)
+    if not game_dates:
+        return pd.DataFrame(columns=["game_id", "game_date", "wallclock"])
+    df = _pbp_archive_read(
+        columns=["game_id", "game_date", "wallclock"],
+        filters=[("game_date", "in", game_dates)],
+    )
+    if df.empty:
+        return df
+    if "game_id" in df.columns:
+        df["game_id"] = df["game_id"].astype(str)
+    if "game_date" in df.columns:
+        df["game_date"] = df["game_date"].astype(str)
+    if "wallclock" in df.columns:
+        df["wallclock"] = pd.to_datetime(df["wallclock"], errors="coerce", utc=True)
     return df
 
 
@@ -1021,8 +1139,7 @@ def pbp_categories_for_event(row):
 
 
 def matchup_pbp_events(rows, team_a, team_b):
-    pbp = load_pbp_stat_events_archive(pbp_archive_mtime())
-    if pbp.empty or rows.empty:
+    if rows.empty:
         return pd.DataFrame()
     mapping = rows[["nba_game_id", "espn_player_id", "sbc_team", "display_player"]].dropna(subset=["nba_game_id", "espn_player_id", "sbc_team"]).drop_duplicates().copy()
     if mapping.empty:
@@ -1030,7 +1147,8 @@ def matchup_pbp_events(rows, team_a, team_b):
     mapping["nba_game_id"] = mapping["nba_game_id"].astype(str)
     mapping["espn_player_id"] = mapping["espn_player_id"].astype(str)
     mapping = mapping[mapping["sbc_team"].isin([team_a, team_b])].copy()
-    events = pbp[pbp["game_id"].astype(str).isin(mapping["nba_game_id"].unique())].copy()
+    game_ids = tuple(sorted(mapping["nba_game_id"].dropna().astype(str).unique()))
+    events = load_pbp_stat_events_for_games(game_ids, pbp_archive_mtime())
     if events.empty:
         return pd.DataFrame()
     merged = events.merge(
@@ -1362,7 +1480,10 @@ def pbp_slate_day_bounds(events):
 
 
 def pbp_full_slate_day_bounds(events):
-    archive = load_pbp_stat_events_archive(pbp_archive_mtime())
+    if events.empty or "game_date" not in events.columns:
+        return pbp_slate_day_bounds(events)
+    game_dates = tuple(sorted(events["game_date"].dropna().astype(str).unique()))
+    archive = load_pbp_slate_bounds_for_dates(game_dates, pbp_archive_mtime())
     if archive.empty or "game_date" not in archive.columns:
         return pbp_slate_day_bounds(events)
     return pbp_slate_day_bounds(archive)
@@ -1836,6 +1957,9 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=No
         for _, row in table.iterrows():
             sbc_team = str(row.get("sbc_team", ""))
             winner = str(row.get("winner", "Tie"))
+            overall_a = score_numeric(row.get("overall_a", 0))
+            overall_b = score_numeric(row.get("overall_b", 0))
+            overall_winner = team_a if overall_a > overall_b else team_b if overall_b > overall_a else "Tie"
             overall = f"{stat_number(row.get('overall_a', 0))}-{stat_number(row.get('overall_b', 0))}"
             row_class = pbp_row_class(row)
             team_a_active = "sbc-pbp-updated-total" if sbc_team == team_a else ""
@@ -1848,6 +1972,7 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=No
                     <td class="sbc-pbp-total-cell {team_a_active}">{escape(str(row.get('team_a_total', '')))}</td>
                     <td class="sbc-pbp-total-cell {team_b_active}">{escape(str(row.get('team_b_total', '')))}</td>
                     <td>{pbp_leader_html(winner)}</td>
+                    <td>{pbp_leader_html(overall_winner)}</td>
                     <td>{escape(overall)}</td>
                 </tr>
             """)
@@ -1867,6 +1992,7 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=No
                                 <th>{pbp_team_header_html(team_a)}</th>
                                 <th>{pbp_team_header_html(team_b)}</th>
                                 <th>Leader</th>
+                                <th>Overall Leader</th>
                                 <th>Overall</th>
                             </tr>
                         </thead>

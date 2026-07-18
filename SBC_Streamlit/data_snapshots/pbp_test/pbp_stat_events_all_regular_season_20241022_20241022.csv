@@ -1,0 +1,1325 @@
+game_id,game_date,stat,player_id,player,wallclock,value,scored,description
+401704627,20241022,assist,3078576,Derrick White,2024-10-22T23:36:07Z,1.0,,"Jayson Tatum makes 26-foot three pointer (Derrick White assists) (1st Quarter, 11:48)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-22T23:36:07Z,3.0,True,"Jayson Tatum makes 26-foot three pointer (Derrick White assists) (1st Quarter, 11:48)"
+401704627,20241022,three-point make,4065648,Jayson Tatum,2024-10-22T23:36:07Z,1.0,True,"Jayson Tatum makes 26-foot three pointer (Derrick White assists) (1st Quarter, 11:48)"
+401704627,20241022,assist,3934672,Jalen Brunson,2024-10-22T23:36:28Z,1.0,,"OG Anunoby makes driving layup (Jalen Brunson assists) (1st Quarter, 11:27)"
+401704627,20241022,points,3934719,OG Anunoby,2024-10-22T23:36:28Z,2.0,True,"OG Anunoby makes driving layup (Jalen Brunson assists) (1st Quarter, 11:27)"
+401704627,20241022,two-point make,3934719,OG Anunoby,2024-10-22T23:36:28Z,1.0,True,"OG Anunoby makes driving layup (Jalen Brunson assists) (1st Quarter, 11:27)"
+401704627,20241022,three-point miss,4065648,Jayson Tatum,2024-10-22T23:36:38Z,1.0,False,"Jayson Tatum misses 25-foot three point pullup jump shot (1st Quarter, 11:16)"
+401704627,20241022,defensive_rebound,3934719,OG Anunoby,2024-10-22T23:36:39Z,1.0,,"OG Anunoby defensive rebound (1st Quarter, 11:15)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-22T23:36:46Z,2.0,True,"Jalen Brunson makes two point shot (1st Quarter, 11:09)"
+401704627,20241022,two-point make,3934672,Jalen Brunson,2024-10-22T23:36:46Z,1.0,True,"Jalen Brunson makes two point shot (1st Quarter, 11:09)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-22T23:37:01Z,1.0,,"Derrick White makes 5-foot driving floating jump shot (Jayson Tatum assists) (1st Quarter, 10:54)"
+401704627,20241022,points,3078576,Derrick White,2024-10-22T23:37:01Z,2.0,True,"Derrick White makes 5-foot driving floating jump shot (Jayson Tatum assists) (1st Quarter, 10:54)"
+401704627,20241022,two-point make,3078576,Derrick White,2024-10-22T23:37:01Z,1.0,True,"Derrick White makes 5-foot driving floating jump shot (Jayson Tatum assists) (1st Quarter, 10:54)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-22T23:37:19Z,2.0,True,"Jalen Brunson makes 13-foot pullup jump shot (1st Quarter, 10:35)"
+401704627,20241022,two-point make,3934672,Jalen Brunson,2024-10-22T23:37:19Z,1.0,True,"Jalen Brunson makes 13-foot pullup jump shot (1st Quarter, 10:35)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-22T23:37:33Z,1.0,,"Al Horford makes 25-foot three point jumper (Jayson Tatum assists) (1st Quarter, 10:21)"
+401704627,20241022,points,3213,Al Horford,2024-10-22T23:37:33Z,3.0,True,"Al Horford makes 25-foot three point jumper (Jayson Tatum assists) (1st Quarter, 10:21)"
+401704627,20241022,three-point make,3213,Al Horford,2024-10-22T23:37:33Z,1.0,True,"Al Horford makes 25-foot three point jumper (Jayson Tatum assists) (1st Quarter, 10:21)"
+401704627,20241022,points,3136195,Karl-Anthony Towns,2024-10-22T23:38:01Z,2.0,True,"Karl-Anthony Towns makes 11-foot two point shot (1st Quarter, 9:53)"
+401704627,20241022,two-point make,3136195,Karl-Anthony Towns,2024-10-22T23:38:01Z,1.0,True,"Karl-Anthony Towns makes 11-foot two point shot (1st Quarter, 9:53)"
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-22T23:38:12Z,1.0,False,"Jaylen Brown misses 20-foot pullup jump shot (1st Quarter, 9:42)"
+401704627,20241022,offensive_rebound,3995,Jrue Holiday,2024-10-22T23:38:16Z,1.0,,"Jrue Holiday offensive rebound (1st Quarter, 9:38)"
+401704627,20241022,assist,3995,Jrue Holiday,2024-10-22T23:38:21Z,1.0,,"Derrick White makes 23-foot three point jumper (Jrue Holiday assists) (1st Quarter, 9:34)"
+401704627,20241022,points,3078576,Derrick White,2024-10-22T23:38:21Z,3.0,True,"Derrick White makes 23-foot three point jumper (Jrue Holiday assists) (1st Quarter, 9:34)"
+401704627,20241022,three-point make,3078576,Derrick White,2024-10-22T23:38:21Z,1.0,True,"Derrick White makes 23-foot three point jumper (Jrue Holiday assists) (1st Quarter, 9:34)"
+401704627,20241022,assist,3934719,OG Anunoby,2024-10-22T23:42:08Z,1.0,,"Josh Hart makes 5-foot layup (OG Anunoby assists) (1st Quarter, 9:17)"
+401704627,20241022,points,3062679,Josh Hart,2024-10-22T23:42:08Z,2.0,True,"Josh Hart makes 5-foot layup (OG Anunoby assists) (1st Quarter, 9:17)"
+401704627,20241022,two-point make,3062679,Josh Hart,2024-10-22T23:42:08Z,1.0,True,"Josh Hart makes 5-foot layup (OG Anunoby assists) (1st Quarter, 9:17)"
+401704627,20241022,three-point miss,3917376,Jaylen Brown,2024-10-22T23:42:15Z,1.0,False,"Jaylen Brown misses 26-foot three point jumper (1st Quarter, 9:08)"
+401704627,20241022,defensive_rebound,3934672,Jalen Brunson,2024-10-22T23:42:16Z,1.0,,"Jalen Brunson defensive rebound (1st Quarter, 9:07)"
+401704627,20241022,two-point miss,3136195,Karl-Anthony Towns,2024-10-22T23:42:33Z,1.0,False,"Karl-Anthony Towns misses 15-foot two point shot (1st Quarter, 8:51)"
+401704627,20241022,defensive_rebound,3213,Al Horford,2024-10-22T23:42:34Z,1.0,,"Al Horford defensive rebound (1st Quarter, 8:50)"
+401704627,20241022,two-point miss,3078576,Derrick White,2024-10-22T23:42:40Z,1.0,False,"Derrick White misses two point shot (1st Quarter, 8:44)"
+401704627,20241022,defensive_rebound,3062679,Josh Hart,2024-10-22T23:42:41Z,1.0,,"Josh Hart defensive rebound (1st Quarter, 8:43)"
+401704627,20241022,steal,4065648,Jayson Tatum,2024-10-22T23:42:51Z,1.0,,"Jalen Brunson lost ball turnover (Jayson Tatum steals) (1st Quarter, 8:33)"
+401704627,20241022,turnover,3934672,Jalen Brunson,2024-10-22T23:42:51Z,1.0,,"Jalen Brunson lost ball turnover (Jayson Tatum steals) (1st Quarter, 8:33)"
+401704627,20241022,assist,3078576,Derrick White,2024-10-22T23:42:54Z,1.0,,"Jayson Tatum makes 1-foot dunk (Derrick White assists) (1st Quarter, 8:30)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-22T23:42:54Z,2.0,True,"Jayson Tatum makes 1-foot dunk (Derrick White assists) (1st Quarter, 8:30)"
+401704627,20241022,two-point make,4065648,Jayson Tatum,2024-10-22T23:42:54Z,1.0,True,"Jayson Tatum makes 1-foot dunk (Derrick White assists) (1st Quarter, 8:30)"
+401704627,20241022,assist,3147657,Mikal Bridges,2024-10-22T23:43:12Z,1.0,,"Josh Hart makes driving layup (Mikal Bridges assists) (1st Quarter, 8:12)"
+401704627,20241022,points,3062679,Josh Hart,2024-10-22T23:43:12Z,2.0,True,"Josh Hart makes driving layup (Mikal Bridges assists) (1st Quarter, 8:12)"
+401704627,20241022,two-point make,3062679,Josh Hart,2024-10-22T23:43:12Z,1.0,True,"Josh Hart makes driving layup (Mikal Bridges assists) (1st Quarter, 8:12)"
+401704627,20241022,three-point miss,3995,Jrue Holiday,2024-10-22T23:43:20Z,1.0,False,"Jrue Holiday misses 25-foot three point jumper (1st Quarter, 8:03)"
+401704627,20241022,three-point miss,3078576,Derrick White,2024-10-22T23:43:49Z,1.0,False,"Derrick White misses 28-foot three point pullup jump shot (1st Quarter, 7:57)"
+401704627,20241022,defensive_rebound,3136195,Karl-Anthony Towns,2024-10-22T23:43:51Z,1.0,,"Karl-Anthony Towns defensive rebound (1st Quarter, 7:55)"
+401704627,20241022,three-point miss,3147657,Mikal Bridges,2024-10-22T23:43:58Z,1.0,False,"Mikal Bridges misses 25-foot three point jumper (1st Quarter, 7:47)"
+401704627,20241022,defensive_rebound,3078576,Derrick White,2024-10-22T23:44:00Z,1.0,,"Derrick White defensive rebound (1st Quarter, 7:45)"
+401704627,20241022,assist,3995,Jrue Holiday,2024-10-22T23:44:08Z,1.0,,"Jaylen Brown makes 27-foot three point jumper (Jrue Holiday assists) (1st Quarter, 7:36)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-22T23:44:08Z,3.0,True,"Jaylen Brown makes 27-foot three point jumper (Jrue Holiday assists) (1st Quarter, 7:36)"
+401704627,20241022,three-point make,3917376,Jaylen Brown,2024-10-22T23:44:08Z,1.0,True,"Jaylen Brown makes 27-foot three point jumper (Jrue Holiday assists) (1st Quarter, 7:36)"
+401704627,20241022,two-point miss,3934719,OG Anunoby,2024-10-22T23:44:29Z,1.0,False,"OG Anunoby misses 20-foot pullup jump shot (1st Quarter, 7:16)"
+401704627,20241022,defensive_rebound,3917376,Jaylen Brown,2024-10-22T23:44:30Z,1.0,,"Jaylen Brown defensive rebound (1st Quarter, 7:15)"
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-22T23:44:41Z,1.0,False,"Jaylen Brown misses layup (1st Quarter, 7:03)"
+401704627,20241022,offensive_rebound,3917376,Jaylen Brown,2024-10-22T23:44:42Z,1.0,,"Jaylen Brown offensive rebound (1st Quarter, 7:02)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-22T23:44:43Z,2.0,True,"Jaylen Brown makes tip shot (1st Quarter, 7:02)"
+401704627,20241022,two-point make,3917376,Jaylen Brown,2024-10-22T23:44:43Z,1.0,True,"Jaylen Brown makes tip shot (1st Quarter, 7:02)"
+401704627,20241022,two-point miss,3147657,Mikal Bridges,2024-10-22T23:45:00Z,1.0,False,"Mikal Bridges misses 12-foot two point shot (1st Quarter, 6:45)"
+401704627,20241022,defensive_rebound,4065648,Jayson Tatum,2024-10-22T23:45:01Z,1.0,,"Jayson Tatum defensive rebound (1st Quarter, 6:44)"
+401704627,20241022,free-throw miss,4065648,Jayson Tatum,2024-10-22T23:45:43Z,1.0,False,"Jayson Tatum misses free throw 1 of 2 (1st Quarter, 6:35)"
+401704627,20241022,+/-,3995,Jrue Holiday,2024-10-22T23:45:44Z,6.0,,Jrue Holiday checked out after a +6 shift
+401704627,20241022,+/-,3917376,Jaylen Brown,2024-10-22T23:45:44Z,6.0,,Jaylen Brown checked out after a +6 shift
+401704627,20241022,+/-,3136195,Karl-Anthony Towns,2024-10-22T23:45:44Z,-6.0,,Karl-Anthony Towns checked out after a -6 shift
+401704627,20241022,minutes played,3995,Jrue Holiday,2024-10-22T23:45:44Z,5.4167,,Jrue Holiday checked out after playing 5:25
+401704627,20241022,minutes played,3917376,Jaylen Brown,2024-10-22T23:45:44Z,5.4167,,Jaylen Brown checked out after playing 5:25
+401704627,20241022,minutes played,3136195,Karl-Anthony Towns,2024-10-22T23:45:44Z,5.4167,,Karl-Anthony Towns checked out after playing 5:25
+401704627,20241022,free-throw make,4065648,Jayson Tatum,2024-10-22T23:46:13Z,1.0,True,"Jayson Tatum makes free throw 2 of 2 (1st Quarter, 6:35)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-22T23:46:13Z,1.0,True,"Jayson Tatum makes free throw 2 of 2 (1st Quarter, 6:35)"
+401704627,20241022,steal,3064560,Luke Kornet,2024-10-22T23:46:28Z,1.0,,"Josh Hart bad pass (Luke Kornet steals) (1st Quarter, 6:21)"
+401704627,20241022,turnover,3062679,Josh Hart,2024-10-22T23:46:28Z,1.0,,"Josh Hart bad pass (Luke Kornet steals) (1st Quarter, 6:21)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-22T23:46:37Z,1.0,,"Luke Kornet makes driving layup (Jayson Tatum assists) (1st Quarter, 6:11)"
+401704627,20241022,points,3064560,Luke Kornet,2024-10-22T23:46:37Z,2.0,True,"Luke Kornet makes driving layup (Jayson Tatum assists) (1st Quarter, 6:11)"
+401704627,20241022,two-point make,3064560,Luke Kornet,2024-10-22T23:46:37Z,1.0,True,"Luke Kornet makes driving layup (Jayson Tatum assists) (1st Quarter, 6:11)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-22T23:46:51Z,2.0,True,"Jalen Brunson makes 3-foot two point shot (1st Quarter, 5:57)"
+401704627,20241022,two-point make,3934672,Jalen Brunson,2024-10-22T23:46:51Z,1.0,True,"Jalen Brunson makes 3-foot two point shot (1st Quarter, 5:57)"
+401704627,20241022,three-point miss,4065648,Jayson Tatum,2024-10-22T23:47:05Z,1.0,False,"Jayson Tatum misses 25-foot three point step back jumpshot (1st Quarter, 5:43)"
+401704627,20241022,offensive_rebound,3064560,Luke Kornet,2024-10-22T23:47:07Z,1.0,,"Luke Kornet offensive rebound (1st Quarter, 5:41)"
+401704627,20241022,block,4277922,Jericho Sims,2024-10-22T23:47:11Z,1.0,,"Jericho Sims blocks Luke Kornet 's 2-foot two point shot (1st Quarter, 5:39)"
+401704627,20241022,two-point miss,3064560,Luke Kornet,2024-10-22T23:47:11Z,1.0,False,"Jericho Sims blocks Luke Kornet 's 2-foot two point shot (1st Quarter, 5:39)"
+401704627,20241022,defensive_rebound,4277922,Jericho Sims,2024-10-22T23:47:12Z,1.0,,"Jericho Sims defensive rebound (1st Quarter, 5:38)"
+401704627,20241022,three-point miss,3062679,Josh Hart,2024-10-22T23:47:22Z,1.0,False,"Josh Hart misses 25-foot three point jumper (1st Quarter, 5:27)"
+401704627,20241022,defensive_rebound,3213,Al Horford,2024-10-22T23:47:23Z,1.0,,"Al Horford defensive rebound (1st Quarter, 5:26)"
+401704627,20241022,steal,3934719,OG Anunoby,2024-10-22T23:47:39Z,1.0,,"Jayson Tatum bad pass (OG Anunoby steals) (1st Quarter, 5:09)"
+401704627,20241022,turnover,4065648,Jayson Tatum,2024-10-22T23:47:39Z,1.0,,"Jayson Tatum bad pass (OG Anunoby steals) (1st Quarter, 5:09)"
+401704627,20241022,+/-,3934719,OG Anunoby,2024-10-22T23:47:54Z,-7.0,,OG Anunoby checked out after a -7 shift
+401704627,20241022,minutes played,3934719,OG Anunoby,2024-10-22T23:47:54Z,6.9333,,OG Anunoby checked out after playing 6:56
+401704627,20241022,points,4431823,Miles McBride,2024-10-22T23:48:23Z,2.0,True,"Miles McBride makes 18-foot step back jumpshot (1st Quarter, 4:53)"
+401704627,20241022,two-point make,4431823,Miles McBride,2024-10-22T23:48:23Z,1.0,True,"Miles McBride makes 18-foot step back jumpshot (1st Quarter, 4:53)"
+401704627,20241022,+/-,3213,Al Horford,2024-10-22T23:51:12Z,5.0,,Al Horford checked out after a +5 shift
+401704627,20241022,minutes played,3213,Al Horford,2024-10-22T23:51:12Z,7.15,,Al Horford checked out after playing 7:09
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-22T23:52:04Z,3.0,True,"Jayson Tatum makes 29-foot three pointer (1st Quarter, 4:38)"
+401704627,20241022,three-point make,4065648,Jayson Tatum,2024-10-22T23:52:04Z,1.0,True,"Jayson Tatum makes 29-foot three pointer (1st Quarter, 4:38)"
+401704627,20241022,free-throw make,3062679,Josh Hart,2024-10-22T23:54:06Z,1.0,True,"Josh Hart makes free throw 1 of 2 (1st Quarter, 4:10)"
+401704627,20241022,free-throw miss,3062679,Josh Hart,2024-10-22T23:54:06Z,1.0,False,"Josh Hart misses free throw 2 of 2 (1st Quarter, 4:10)"
+401704627,20241022,points,3062679,Josh Hart,2024-10-22T23:54:06Z,1.0,True,"Josh Hart makes free throw 1 of 2 (1st Quarter, 4:10)"
+401704627,20241022,defensive_rebound,3078576,Derrick White,2024-10-22T23:54:07Z,1.0,,"Derrick White defensive rebound (1st Quarter, 4:09)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-22T23:54:27Z,3.0,True,"Jayson Tatum makes 25-foot three pointer (1st Quarter, 3:57)"
+401704627,20241022,three-point make,4065648,Jayson Tatum,2024-10-22T23:54:27Z,1.0,True,"Jayson Tatum makes 25-foot three pointer (1st Quarter, 3:57)"
+401704627,20241022,steal,3078576,Derrick White,2024-10-22T23:54:38Z,1.0,,"Jalen Brunson bad pass (Derrick White steals) (1st Quarter, 3:37)"
+401704627,20241022,turnover,3934672,Jalen Brunson,2024-10-22T23:54:38Z,1.0,,"Jalen Brunson bad pass (Derrick White steals) (1st Quarter, 3:37)"
+401704627,20241022,two-point miss,3078576,Derrick White,2024-10-22T23:54:54Z,1.0,False,"Derrick White misses running pullup jump shot (1st Quarter, 3:30)"
+401704627,20241022,defensive_rebound,4277922,Jericho Sims,2024-10-22T23:54:56Z,1.0,,"Jericho Sims defensive rebound (1st Quarter, 3:28)"
+401704627,20241022,three-point miss,3147657,Mikal Bridges,2024-10-22T23:55:09Z,1.0,False,"Mikal Bridges misses 24-foot three point jumper (1st Quarter, 3:14)"
+401704627,20241022,offensive_rebound,4277922,Jericho Sims,2024-10-22T23:55:11Z,1.0,,"Jericho Sims offensive rebound (1st Quarter, 3:12)"
+401704627,20241022,three-point miss,3062679,Josh Hart,2024-10-22T23:55:22Z,1.0,False,"Josh Hart misses 26-foot three point jumper (1st Quarter, 3:01)"
+401704627,20241022,defensive_rebound,4065648,Jayson Tatum,2024-10-22T23:55:24Z,1.0,,"Jayson Tatum defensive rebound (1st Quarter, 2:59)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-22T23:55:33Z,3.0,True,"Jayson Tatum makes 25-foot three pointer (1st Quarter, 2:50)"
+401704627,20241022,three-point make,4065648,Jayson Tatum,2024-10-22T23:55:33Z,1.0,True,"Jayson Tatum makes 25-foot three pointer (1st Quarter, 2:50)"
+401704627,20241022,+/-,3078576,Derrick White,2024-10-22T23:56:43Z,13.0,,Derrick White checked out after a +13 shift
+401704627,20241022,+/-,3062679,Josh Hart,2024-10-22T23:56:43Z,-13.0,,Josh Hart checked out after a -13 shift
+401704627,20241022,+/-,3934672,Jalen Brunson,2024-10-22T23:56:43Z,-13.0,,Jalen Brunson checked out after a -13 shift
+401704627,20241022,+/-,4277922,Jericho Sims,2024-10-22T23:56:43Z,-7.0,,Jericho Sims checked out after a -7 shift
+401704627,20241022,minutes played,3078576,Derrick White,2024-10-22T23:56:43Z,9.3167,,Derrick White checked out after playing 9:19
+401704627,20241022,minutes played,3062679,Josh Hart,2024-10-22T23:56:43Z,9.3167,,Josh Hart checked out after playing 9:19
+401704627,20241022,minutes played,3934672,Jalen Brunson,2024-10-22T23:56:43Z,9.3167,,Jalen Brunson checked out after playing 9:19
+401704627,20241022,minutes played,4277922,Jericho Sims,2024-10-22T23:56:43Z,3.9,,Jericho Sims checked out after playing 3:54
+401704627,20241022,steal,3995,Jrue Holiday,2024-10-22T23:57:40Z,1.0,,"Cameron Payne bad pass (Jrue Holiday steals) (1st Quarter, 2:27)"
+401704627,20241022,turnover,3064230,Cameron Payne,2024-10-22T23:57:40Z,1.0,,"Cameron Payne bad pass (Jrue Holiday steals) (1st Quarter, 2:27)"
+401704627,20241022,points,3995,Jrue Holiday,2024-10-22T23:57:44Z,2.0,True,"Jrue Holiday makes two point shot (1st Quarter, 2:24)"
+401704627,20241022,two-point make,3995,Jrue Holiday,2024-10-22T23:57:44Z,1.0,True,"Jrue Holiday makes two point shot (1st Quarter, 2:24)"
+401704627,20241022,assist,3934719,OG Anunoby,2024-10-22T23:58:03Z,1.0,,"Miles McBride makes 25-foot three point step back jumpshot (OG Anunoby assists) (1st Quarter, 2:05)"
+401704627,20241022,points,4431823,Miles McBride,2024-10-22T23:58:03Z,3.0,True,"Miles McBride makes 25-foot three point step back jumpshot (OG Anunoby assists) (1st Quarter, 2:05)"
+401704627,20241022,three-point make,4431823,Miles McBride,2024-10-22T23:58:03Z,1.0,True,"Miles McBride makes 25-foot three point step back jumpshot (OG Anunoby assists) (1st Quarter, 2:05)"
+401704627,20241022,defensive_rebound,4065804,Sam Hauser,2024-10-22T23:58:38Z,1.0,,"Sam Hauser defensive rebound (1st Quarter, 2:05)"
+401704627,20241022,free-throw miss,4431823,Miles McBride,2024-10-22T23:58:38Z,1.0,False,"Miles McBride misses free throw 1 of 1 (1st Quarter, 2:05)"
+401704627,20241022,assist,3064560,Luke Kornet,2024-10-22T23:58:57Z,1.0,,"Jrue Holiday makes 25-foot three point step back jumpshot (Luke Kornet assists) (1st Quarter, 1:45)"
+401704627,20241022,points,3995,Jrue Holiday,2024-10-22T23:58:57Z,3.0,True,"Jrue Holiday makes 25-foot three point step back jumpshot (Luke Kornet assists) (1st Quarter, 1:45)"
+401704627,20241022,three-point make,3995,Jrue Holiday,2024-10-22T23:58:57Z,1.0,True,"Jrue Holiday makes 25-foot three point step back jumpshot (Luke Kornet assists) (1st Quarter, 1:45)"
+401704627,20241022,three-point miss,3064230,Cameron Payne,2024-10-22T23:59:12Z,1.0,False,"Cameron Payne misses 26-foot three point pullup jump shot (1st Quarter, 1:29)"
+401704627,20241022,defensive_rebound,4065648,Jayson Tatum,2024-10-22T23:59:13Z,1.0,,"Jayson Tatum defensive rebound (1st Quarter, 1:28)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-22T23:59:48Z,1.0,,"Sam Hauser makes 25-foot three pointer (Jayson Tatum assists) (1st Quarter, 1:22)"
+401704627,20241022,points,4065804,Sam Hauser,2024-10-22T23:59:48Z,3.0,True,"Sam Hauser makes 25-foot three pointer (Jayson Tatum assists) (1st Quarter, 1:22)"
+401704627,20241022,three-point make,4065804,Sam Hauser,2024-10-22T23:59:48Z,1.0,True,"Sam Hauser makes 25-foot three pointer (Jayson Tatum assists) (1st Quarter, 1:22)"
+401704627,20241022,three-point miss,3147657,Mikal Bridges,2024-10-23T00:00:04Z,1.0,False,"Mikal Bridges misses 25-foot three point pullup jump shot (1st Quarter, 1:06)"
+401704627,20241022,defensive_rebound,4065804,Sam Hauser,2024-10-23T00:00:05Z,1.0,,"Sam Hauser defensive rebound (1st Quarter, 1:05)"
+401704627,20241022,assist,4066354,Payton Pritchard,2024-10-23T00:00:15Z,1.0,,"Jrue Holiday makes 1-foot layup (Payton Pritchard assists) (1st Quarter, 56.0)"
+401704627,20241022,points,3995,Jrue Holiday,2024-10-23T00:00:15Z,2.0,True,"Jrue Holiday makes 1-foot layup (Payton Pritchard assists) (1st Quarter, 56.0)"
+401704627,20241022,two-point make,3995,Jrue Holiday,2024-10-23T00:00:15Z,1.0,True,"Jrue Holiday makes 1-foot layup (Payton Pritchard assists) (1st Quarter, 56.0)"
+401704627,20241022,points,3136195,Karl-Anthony Towns,2024-10-23T00:00:43Z,2.0,True,"Karl-Anthony Towns makes 5-foot two point shot (1st Quarter, 39.1)"
+401704627,20241022,two-point make,3136195,Karl-Anthony Towns,2024-10-23T00:00:43Z,1.0,True,"Karl-Anthony Towns makes 5-foot two point shot (1st Quarter, 39.1)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-23T00:00:56Z,1.0,,"Payton Pritchard makes 23-foot three point jumper (Jayson Tatum assists) (1st Quarter, 30.0)"
+401704627,20241022,points,4066354,Payton Pritchard,2024-10-23T00:00:56Z,3.0,True,"Payton Pritchard makes 23-foot three point jumper (Jayson Tatum assists) (1st Quarter, 30.0)"
+401704627,20241022,three-point make,4066354,Payton Pritchard,2024-10-23T00:00:56Z,1.0,True,"Payton Pritchard makes 23-foot three point jumper (Jayson Tatum assists) (1st Quarter, 30.0)"
+401704627,20241022,points,4431823,Miles McBride,2024-10-23T00:01:25Z,2.0,True,"Miles McBride makes 19-foot step back jumpshot (1st Quarter, 5.1)"
+401704627,20241022,two-point make,4431823,Miles McBride,2024-10-23T00:01:25Z,1.0,True,"Miles McBride makes 19-foot step back jumpshot (1st Quarter, 5.1)"
+401704627,20241022,three-point miss,4066354,Payton Pritchard,2024-10-23T00:01:32Z,1.0,False,"Payton Pritchard misses 32-foot three point pullup jump shot (1st Quarter, 1.2)"
+401704627,20241022,+/-,4065648,Jayson Tatum,2024-10-23T00:04:40Z,19.0,,Jayson Tatum checked out after a +19 shift
+401704627,20241022,+/-,4066354,Payton Pritchard,2024-10-23T00:04:40Z,13.0,,Payton Pritchard checked out after a +13 shift
+401704627,20241022,+/-,3064560,Luke Kornet,2024-10-23T00:04:40Z,13.0,,Luke Kornet checked out after a +13 shift
+401704627,20241022,minutes played,4065648,Jayson Tatum,2024-10-23T00:04:40Z,12.0,,Jayson Tatum checked out after playing 12:00
+401704627,20241022,minutes played,4066354,Payton Pritchard,2024-10-23T00:04:40Z,6.5833,,Payton Pritchard checked out after playing 6:35
+401704627,20241022,minutes played,3064560,Luke Kornet,2024-10-23T00:04:40Z,6.5833,,Luke Kornet checked out after playing 6:35
+401704627,20241022,points,4431823,Miles McBride,2024-10-23T00:05:34Z,2.0,True,"Miles McBride makes 21-foot step back jumpshot (2nd Quarter, 11:39)"
+401704627,20241022,two-point make,4431823,Miles McBride,2024-10-23T00:05:34Z,1.0,True,"Miles McBride makes 21-foot step back jumpshot (2nd Quarter, 11:39)"
+401704627,20241022,three-point miss,4065804,Sam Hauser,2024-10-23T00:05:50Z,1.0,False,"Sam Hauser misses 26-foot three point jumper (2nd Quarter, 11:23)"
+401704627,20241022,defensive_rebound,3136195,Karl-Anthony Towns,2024-10-23T00:05:52Z,1.0,,"Karl-Anthony Towns defensive rebound (2nd Quarter, 11:21)"
+401704627,20241022,three-point miss,3147657,Mikal Bridges,2024-10-23T00:06:02Z,1.0,False,"Mikal Bridges misses 24-foot three point jumper (2nd Quarter, 11:10)"
+401704627,20241022,defensive_rebound,4277964,Xavier Tillman,2024-10-23T00:06:03Z,1.0,,"Xavier Tillman defensive rebound (2nd Quarter, 11:09)"
+401704627,20241022,two-point miss,4065804,Sam Hauser,2024-10-23T00:06:08Z,1.0,False,"Sam Hauser misses two point shot (2nd Quarter, 11:05)"
+401704627,20241022,defensive_rebound,3934719,OG Anunoby,2024-10-23T00:06:09Z,1.0,,"OG Anunoby defensive rebound (2nd Quarter, 11:04)"
+401704627,20241022,points,3136195,Karl-Anthony Towns,2024-10-23T00:06:24Z,2.0,True,"Karl-Anthony Towns makes 13-foot two point shot (2nd Quarter, 10:49)"
+401704627,20241022,two-point make,3136195,Karl-Anthony Towns,2024-10-23T00:06:24Z,1.0,True,"Karl-Anthony Towns makes 13-foot two point shot (2nd Quarter, 10:49)"
+401704627,20241022,turnover,3917376,Jaylen Brown,2024-10-23T00:06:44Z,1.0,,"Jaylen Brown offensive charge (2nd Quarter, 10:33)"
+401704627,20241022,turnover,3917376,Jaylen Brown,2024-10-23T00:06:44Z,1.0,,"Jaylen Brown turnover (2nd Quarter, 10:33)"
+401704627,20241022,+/-,3147657,Mikal Bridges,2024-10-23T00:06:50Z,-15.0,,Mikal Bridges checked out after a -15 shift
+401704627,20241022,minutes played,3147657,Mikal Bridges,2024-10-23T00:06:50Z,13.45,,Mikal Bridges checked out after playing 13:27
+401704627,20241022,three-point miss,3136195,Karl-Anthony Towns,2024-10-23T00:07:17Z,1.0,False,"Karl-Anthony Towns misses 23-foot three point jumper (2nd Quarter, 10:20)"
+401704627,20241022,defensive_rebound,3995,Jrue Holiday,2024-10-23T00:07:18Z,1.0,,"Jrue Holiday defensive rebound (2nd Quarter, 10:19)"
+401704627,20241022,three-point miss,3995,Jrue Holiday,2024-10-23T00:07:57Z,1.0,False,"Jrue Holiday misses 24-foot three point jumper (2nd Quarter, 10:00)"
+401704627,20241022,defensive_rebound,3136195,Karl-Anthony Towns,2024-10-23T00:07:58Z,1.0,,"Karl-Anthony Towns defensive rebound (2nd Quarter, 9:59)"
+401704627,20241022,two-point miss,3064230,Cameron Payne,2024-10-23T00:08:09Z,1.0,False,"Cameron Payne misses driving floating jump shot (2nd Quarter, 9:48)"
+401704627,20241022,defensive_rebound,4065804,Sam Hauser,2024-10-23T00:08:10Z,1.0,,"Sam Hauser defensive rebound (2nd Quarter, 9:47)"
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-23T00:08:16Z,1.0,False,"Jaylen Brown misses running pullup jump shot (2nd Quarter, 9:41)"
+401704627,20241022,offensive_rebound,3995,Jrue Holiday,2024-10-23T00:08:18Z,1.0,,"Jrue Holiday offensive rebound (2nd Quarter, 9:39)"
+401704627,20241022,two-point miss,4277964,Xavier Tillman,2024-10-23T00:08:27Z,1.0,False,"Xavier Tillman misses 9-foot two point shot (2nd Quarter, 9:30)"
+401704627,20241022,offensive_rebound,4277964,Xavier Tillman,2024-10-23T00:08:28Z,1.0,,"Xavier Tillman offensive rebound (2nd Quarter, 9:29)"
+401704627,20241022,assist,4277964,Xavier Tillman,2024-10-23T00:08:31Z,1.0,,"Al Horford makes 23-foot three point jumper (Xavier Tillman assists) (2nd Quarter, 9:26)"
+401704627,20241022,points,3213,Al Horford,2024-10-23T00:08:31Z,3.0,True,"Al Horford makes 23-foot three point jumper (Xavier Tillman assists) (2nd Quarter, 9:26)"
+401704627,20241022,three-point make,3213,Al Horford,2024-10-23T00:08:31Z,1.0,True,"Al Horford makes 23-foot three point jumper (Xavier Tillman assists) (2nd Quarter, 9:26)"
+401704627,20241022,free-throw make,4431823,Miles McBride,2024-10-23T00:09:08Z,1.0,True,"Miles McBride makes free throw 1 of 2 (2nd Quarter, 9:14)"
+401704627,20241022,points,4431823,Miles McBride,2024-10-23T00:09:08Z,1.0,True,"Miles McBride makes free throw 1 of 2 (2nd Quarter, 9:14)"
+401704627,20241022,free-throw make,4431823,Miles McBride,2024-10-23T00:09:23Z,1.0,True,"Miles McBride makes free throw 2 of 2 (2nd Quarter, 9:14)"
+401704627,20241022,points,4431823,Miles McBride,2024-10-23T00:09:23Z,1.0,True,"Miles McBride makes free throw 2 of 2 (2nd Quarter, 9:14)"
+401704627,20241022,assist,3917376,Jaylen Brown,2024-10-23T00:09:47Z,1.0,,"Jrue Holiday makes 26-foot three pointer (Jaylen Brown assists) (2nd Quarter, 8:52)"
+401704627,20241022,points,3995,Jrue Holiday,2024-10-23T00:09:47Z,3.0,True,"Jrue Holiday makes 26-foot three pointer (Jaylen Brown assists) (2nd Quarter, 8:52)"
+401704627,20241022,three-point make,3995,Jrue Holiday,2024-10-23T00:09:47Z,1.0,True,"Jrue Holiday makes 26-foot three pointer (Jaylen Brown assists) (2nd Quarter, 8:52)"
+401704627,20241022,turnover,4431823,Miles McBride,2024-10-23T00:10:07Z,1.0,,"Miles McBride steps out of bounds turnover (2nd Quarter, 8:36)"
+401704627,20241022,three-point miss,3213,Al Horford,2024-10-23T00:10:29Z,1.0,False,"Al Horford misses 26-foot three point jumper (2nd Quarter, 8:20)"
+401704627,20241022,offensive_rebound,4065804,Sam Hauser,2024-10-23T00:10:32Z,1.0,,"Sam Hauser offensive rebound (2nd Quarter, 8:17)"
+401704627,20241022,assist,4065804,Sam Hauser,2024-10-23T00:10:34Z,1.0,,"Jaylen Brown makes 26-foot three point jumper (Sam Hauser assists) (2nd Quarter, 8:14)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T00:10:34Z,3.0,True,"Jaylen Brown makes 26-foot three point jumper (Sam Hauser assists) (2nd Quarter, 8:14)"
+401704627,20241022,three-point make,3917376,Jaylen Brown,2024-10-23T00:10:34Z,1.0,True,"Jaylen Brown makes 26-foot three point jumper (Sam Hauser assists) (2nd Quarter, 8:14)"
+401704627,20241022,three-point miss,5211983,Pacome Dadiet,2024-10-23T00:10:53Z,1.0,False,"Pacome Dadiet misses 25-foot three point jumper (2nd Quarter, 7:56)"
+401704627,20241022,defensive_rebound,3917376,Jaylen Brown,2024-10-23T00:10:55Z,1.0,,"Jaylen Brown defensive rebound (2nd Quarter, 7:54)"
+401704627,20241022,three-point miss,4277964,Xavier Tillman,2024-10-23T00:11:01Z,1.0,False,"Xavier Tillman misses 24-foot three point jumper (2nd Quarter, 7:47)"
+401704627,20241022,defensive_rebound,3064230,Cameron Payne,2024-10-23T00:11:03Z,1.0,,"Cameron Payne defensive rebound (2nd Quarter, 7:45)"
+401704627,20241022,three-point miss,3934719,OG Anunoby,2024-10-23T00:11:09Z,1.0,False,"OG Anunoby misses 23-foot three point shot (2nd Quarter, 7:39)"
+401704627,20241022,defensive_rebound,4065804,Sam Hauser,2024-10-23T00:11:10Z,1.0,,"Sam Hauser defensive rebound (2nd Quarter, 7:38)"
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-23T00:11:31Z,1.0,False,"Jaylen Brown misses 16-foot two point shot (2nd Quarter, 7:18)"
+401704627,20241022,defensive_rebound,3136195,Karl-Anthony Towns,2024-10-23T00:11:33Z,1.0,,"Karl-Anthony Towns defensive rebound (2nd Quarter, 7:16)"
+401704627,20241022,points,4431823,Miles McBride,2024-10-23T00:11:54Z,3.0,True,"Miles McBride makes 25-foot three point step back jumpshot (2nd Quarter, 6:54)"
+401704627,20241022,three-point make,4431823,Miles McBride,2024-10-23T00:11:54Z,1.0,True,"Miles McBride makes 25-foot three point step back jumpshot (2nd Quarter, 6:54)"
+401704627,20241022,assist,3213,Al Horford,2024-10-23T00:12:14Z,1.0,,"Sam Hauser makes 16-foot pullup jump shot (Al Horford assists) (2nd Quarter, 6:34)"
+401704627,20241022,points,4065804,Sam Hauser,2024-10-23T00:12:14Z,2.0,True,"Sam Hauser makes 16-foot pullup jump shot (Al Horford assists) (2nd Quarter, 6:34)"
+401704627,20241022,two-point make,4065804,Sam Hauser,2024-10-23T00:12:14Z,1.0,True,"Sam Hauser makes 16-foot pullup jump shot (Al Horford assists) (2nd Quarter, 6:34)"
+401704627,20241022,points,3064230,Cameron Payne,2024-10-23T00:12:29Z,2.0,True,"Cameron Payne makes 5-foot two point shot (2nd Quarter, 6:18)"
+401704627,20241022,two-point make,3064230,Cameron Payne,2024-10-23T00:12:29Z,1.0,True,"Cameron Payne makes 5-foot two point shot (2nd Quarter, 6:18)"
+401704627,20241022,+/-,3995,Jrue Holiday,2024-10-23T00:15:23Z,6.0,,Jrue Holiday checked out after a +6 shift
+401704627,20241022,+/-,4277964,Xavier Tillman,2024-10-23T00:15:23Z,0.0,,Xavier Tillman checked out after a 0 shift
+401704627,20241022,+/-,4065804,Sam Hauser,2024-10-23T00:15:23Z,14.0,,Sam Hauser checked out after a +14 shift
+401704627,20241022,+/-,3213,Al Horford,2024-10-23T00:15:23Z,0.0,,Al Horford checked out after a 0 shift
+401704627,20241022,+/-,3064230,Cameron Payne,2024-10-23T00:15:23Z,-6.0,,Cameron Payne checked out after a -6 shift
+401704627,20241022,+/-,3934719,OG Anunoby,2024-10-23T00:15:23Z,-6.0,,OG Anunoby checked out after a -6 shift
+401704627,20241022,+/-,3136195,Karl-Anthony Towns,2024-10-23T00:15:23Z,-6.0,,Karl-Anthony Towns checked out after a -6 shift
+401704627,20241022,minutes played,3995,Jrue Holiday,2024-10-23T00:15:23Z,8.3833,,Jrue Holiday checked out after playing 8:23
+401704627,20241022,minutes played,4277964,Xavier Tillman,2024-10-23T00:15:23Z,5.7,,Xavier Tillman checked out after playing 5:42
+401704627,20241022,minutes played,4065804,Sam Hauser,2024-10-23T00:15:23Z,10.55,,Sam Hauser checked out after playing 10:33
+401704627,20241022,minutes played,3213,Al Horford,2024-10-23T00:15:23Z,5.7,,Al Horford checked out after playing 5:42
+401704627,20241022,minutes played,3064230,Cameron Payne,2024-10-23T00:15:23Z,8.3833,,Cameron Payne checked out after playing 8:23
+401704627,20241022,minutes played,3934719,OG Anunoby,2024-10-23T00:15:23Z,8.3833,,OG Anunoby checked out after playing 8:23
+401704627,20241022,minutes played,3136195,Karl-Anthony Towns,2024-10-23T00:15:23Z,8.3833,,Karl-Anthony Towns checked out after playing 8:23
+401704627,20241022,three-point miss,4066354,Payton Pritchard,2024-10-23T00:16:14Z,1.0,False,"Payton Pritchard misses 26-foot three point jumper (2nd Quarter, 6:01)"
+401704627,20241022,defensive_rebound,4277922,Jericho Sims,2024-10-23T00:16:16Z,1.0,,"Jericho Sims defensive rebound (2nd Quarter, 5:59)"
+401704627,20241022,+/-,5211983,Pacome Dadiet,2024-10-23T00:17:01Z,-3.0,,Pacome Dadiet checked out after a -3 shift
+401704627,20241022,free-throw make,3934672,Jalen Brunson,2024-10-23T00:17:01Z,1.0,True,"Jalen Brunson makes free throw 1 of 2 (2nd Quarter, 5:45)"
+401704627,20241022,minutes played,5211983,Pacome Dadiet,2024-10-23T00:17:01Z,4.8,,Pacome Dadiet checked out after playing 4:48
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T00:17:01Z,1.0,True,"Jalen Brunson makes free throw 1 of 2 (2nd Quarter, 5:45)"
+401704627,20241022,free-throw make,3934672,Jalen Brunson,2024-10-23T00:17:24Z,1.0,True,"Jalen Brunson makes free throw 2 of 2 (2nd Quarter, 5:45)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T00:17:24Z,1.0,True,"Jalen Brunson makes free throw 2 of 2 (2nd Quarter, 5:45)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T00:17:44Z,3.0,True,"Jayson Tatum makes 26-foot three point step back jumpshot (2nd Quarter, 5:26)"
+401704627,20241022,three-point make,4065648,Jayson Tatum,2024-10-23T00:17:44Z,1.0,True,"Jayson Tatum makes 26-foot three point step back jumpshot (2nd Quarter, 5:26)"
+401704627,20241022,steal,3917376,Jaylen Brown,2024-10-23T00:18:09Z,1.0,,"Jalen Brunson lost ball turnover (Jaylen Brown steals) (2nd Quarter, 5:01)"
+401704627,20241022,turnover,3934672,Jalen Brunson,2024-10-23T00:18:09Z,1.0,,"Jalen Brunson lost ball turnover (Jaylen Brown steals) (2nd Quarter, 5:01)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T00:18:11Z,2.0,True,"Jaylen Brown makes dunk (2nd Quarter, 4:58)"
+401704627,20241022,two-point make,3917376,Jaylen Brown,2024-10-23T00:18:11Z,1.0,True,"Jaylen Brown makes dunk (2nd Quarter, 4:58)"
+401704627,20241022,assist,3062679,Josh Hart,2024-10-23T00:18:29Z,1.0,,"Jericho Sims makes 1-foot dunk (Josh Hart assists) (2nd Quarter, 4:40)"
+401704627,20241022,points,4277922,Jericho Sims,2024-10-23T00:18:29Z,2.0,True,"Jericho Sims makes 1-foot dunk (Josh Hart assists) (2nd Quarter, 4:40)"
+401704627,20241022,two-point make,4277922,Jericho Sims,2024-10-23T00:18:29Z,1.0,True,"Jericho Sims makes 1-foot dunk (Josh Hart assists) (2nd Quarter, 4:40)"
+401704627,20241022,assist,4066354,Payton Pritchard,2024-10-23T00:18:50Z,1.0,,"Derrick White makes 23-foot three point jumper (Payton Pritchard assists) (2nd Quarter, 4:19)"
+401704627,20241022,points,3078576,Derrick White,2024-10-23T00:18:50Z,3.0,True,"Derrick White makes 23-foot three point jumper (Payton Pritchard assists) (2nd Quarter, 4:19)"
+401704627,20241022,three-point make,3078576,Derrick White,2024-10-23T00:18:50Z,1.0,True,"Derrick White makes 23-foot three point jumper (Payton Pritchard assists) (2nd Quarter, 4:19)"
+401704627,20241022,assist,3062679,Josh Hart,2024-10-23T00:19:00Z,1.0,,"Jalen Brunson makes 8-foot layup (Josh Hart assists) (2nd Quarter, 4:09)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T00:19:00Z,2.0,True,"Jalen Brunson makes 8-foot layup (Josh Hart assists) (2nd Quarter, 4:09)"
+401704627,20241022,two-point make,3934672,Jalen Brunson,2024-10-23T00:19:00Z,1.0,True,"Jalen Brunson makes 8-foot layup (Josh Hart assists) (2nd Quarter, 4:09)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-23T00:19:19Z,1.0,,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (2nd Quarter, 3:50)"
+401704627,20241022,points,3078576,Derrick White,2024-10-23T00:19:19Z,3.0,True,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (2nd Quarter, 3:50)"
+401704627,20241022,three-point make,3078576,Derrick White,2024-10-23T00:19:19Z,1.0,True,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (2nd Quarter, 3:50)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T00:19:33Z,2.0,True,"Jalen Brunson makes 6-foot driving floating jump shot (2nd Quarter, 3:36)"
+401704627,20241022,two-point make,3934672,Jalen Brunson,2024-10-23T00:19:33Z,1.0,True,"Jalen Brunson makes 6-foot driving floating jump shot (2nd Quarter, 3:36)"
+401704627,20241022,free-throw make,3917376,Jaylen Brown,2024-10-23T00:20:32Z,1.0,True,"Jaylen Brown makes free throw 1 of 2 (2nd Quarter, 3:15)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T00:20:32Z,1.0,True,"Jaylen Brown makes free throw 1 of 2 (2nd Quarter, 3:15)"
+401704627,20241022,+/-,4066354,Payton Pritchard,2024-10-23T00:20:33Z,4.0,,Payton Pritchard checked out after a +4 shift
+401704627,20241022,+/-,3064560,Luke Kornet,2024-10-23T00:20:33Z,4.0,,Luke Kornet checked out after a +4 shift
+401704627,20241022,+/-,4431823,Miles McBride,2024-10-23T00:20:33Z,-16.0,,Miles McBride checked out after a -16 shift
+401704627,20241022,+/-,4277922,Jericho Sims,2024-10-23T00:20:33Z,-4.0,,Jericho Sims checked out after a -4 shift
+401704627,20241022,minutes played,4066354,Payton Pritchard,2024-10-23T00:20:33Z,3.05,,Payton Pritchard checked out after playing 3:03
+401704627,20241022,minutes played,3064560,Luke Kornet,2024-10-23T00:20:33Z,3.05,,Luke Kornet checked out after playing 3:03
+401704627,20241022,minutes played,4431823,Miles McBride,2024-10-23T00:20:33Z,13.8167,,Miles McBride checked out after playing 13:49
+401704627,20241022,minutes played,4277922,Jericho Sims,2024-10-23T00:20:33Z,3.05,,Jericho Sims checked out after playing 3:03
+401704627,20241022,free-throw make,3917376,Jaylen Brown,2024-10-23T00:21:07Z,1.0,True,"Jaylen Brown makes free throw 2 of 2 (2nd Quarter, 3:15)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T00:21:07Z,1.0,True,"Jaylen Brown makes free throw 2 of 2 (2nd Quarter, 3:15)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T00:21:18Z,3.0,True,"Jalen Brunson makes 26-foot three pointer (2nd Quarter, 3:05)"
+401704627,20241022,three-point make,3934672,Jalen Brunson,2024-10-23T00:21:18Z,1.0,True,"Jalen Brunson makes 26-foot three pointer (2nd Quarter, 3:05)"
+401704627,20241022,three-point miss,3917376,Jaylen Brown,2024-10-23T00:21:34Z,1.0,False,"Jaylen Brown misses 26-foot three point jumper (2nd Quarter, 2:48)"
+401704627,20241022,defensive_rebound,3136195,Karl-Anthony Towns,2024-10-23T00:21:35Z,1.0,,"Karl-Anthony Towns defensive rebound (2nd Quarter, 2:47)"
+401704627,20241022,assist,3147657,Mikal Bridges,2024-10-23T00:21:50Z,1.0,,"Karl-Anthony Towns makes 26-foot three point jumper (Mikal Bridges assists) (2nd Quarter, 2:32)"
+401704627,20241022,points,3136195,Karl-Anthony Towns,2024-10-23T00:21:50Z,3.0,True,"Karl-Anthony Towns makes 26-foot three point jumper (Mikal Bridges assists) (2nd Quarter, 2:32)"
+401704627,20241022,three-point make,3136195,Karl-Anthony Towns,2024-10-23T00:21:50Z,1.0,True,"Karl-Anthony Towns makes 26-foot three point jumper (Mikal Bridges assists) (2nd Quarter, 2:32)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T00:22:15Z,2.0,True,"Jayson Tatum makes driving layup (2nd Quarter, 2:07)"
+401704627,20241022,two-point make,4065648,Jayson Tatum,2024-10-23T00:22:15Z,1.0,True,"Jayson Tatum makes driving layup (2nd Quarter, 2:07)"
+401704627,20241022,two-point miss,3934672,Jalen Brunson,2024-10-23T00:22:22Z,1.0,False,"Jalen Brunson misses driving layup (2nd Quarter, 2:01)"
+401704627,20241022,defensive_rebound,3917376,Jaylen Brown,2024-10-23T00:22:23Z,1.0,,"Jaylen Brown defensive rebound (2nd Quarter, 2:00)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T00:26:28Z,3.0,True,"Jayson Tatum makes 25-foot three point jumper (2nd Quarter, 1:37)"
+401704627,20241022,three-point make,4065648,Jayson Tatum,2024-10-23T00:26:28Z,1.0,True,"Jayson Tatum makes 25-foot three point jumper (2nd Quarter, 1:37)"
+401704627,20241022,defensive_rebound,3917376,Jaylen Brown,2024-10-23T00:27:15Z,1.0,,"Jaylen Brown defensive rebound (2nd Quarter, 1:17)"
+401704627,20241022,free-throw make,3062679,Josh Hart,2024-10-23T00:27:15Z,1.0,True,"Josh Hart makes free throw 1 of 2 (2nd Quarter, 1:17)"
+401704627,20241022,free-throw miss,3062679,Josh Hart,2024-10-23T00:27:15Z,1.0,False,"Josh Hart misses free throw 2 of 2 (2nd Quarter, 1:17)"
+401704627,20241022,points,3062679,Josh Hart,2024-10-23T00:27:15Z,1.0,True,"Josh Hart makes free throw 1 of 2 (2nd Quarter, 1:17)"
+401704627,20241022,three-point miss,4065648,Jayson Tatum,2024-10-23T00:27:49Z,1.0,False,"Jayson Tatum misses 26-foot three point jumper (2nd Quarter, 59.1)"
+401704627,20241022,defensive_rebound,3934719,OG Anunoby,2024-10-23T00:27:51Z,1.0,,"OG Anunoby defensive rebound (2nd Quarter, 57.1)"
+401704627,20241022,block,3213,Al Horford,2024-10-23T00:28:10Z,1.0,,"Al Horford blocks Karl-Anthony Towns 's 10-foot two point shot (2nd Quarter, 40.1)"
+401704627,20241022,two-point miss,3136195,Karl-Anthony Towns,2024-10-23T00:28:10Z,1.0,False,"Al Horford blocks Karl-Anthony Towns 's 10-foot two point shot (2nd Quarter, 40.1)"
+401704627,20241022,points,3136195,Karl-Anthony Towns,2024-10-23T00:28:38Z,2.0,True,"Karl-Anthony Towns makes 9-foot two point shot (2nd Quarter, 34.0)"
+401704627,20241022,two-point make,3136195,Karl-Anthony Towns,2024-10-23T00:28:38Z,1.0,True,"Karl-Anthony Towns makes 9-foot two point shot (2nd Quarter, 34.0)"
+401704627,20241022,free-throw make,3136195,Karl-Anthony Towns,2024-10-23T00:29:12Z,1.0,True,"Karl-Anthony Towns makes free throw 1 of 1 (2nd Quarter, 34.0)"
+401704627,20241022,points,3136195,Karl-Anthony Towns,2024-10-23T00:29:12Z,1.0,True,"Karl-Anthony Towns makes free throw 1 of 1 (2nd Quarter, 34.0)"
+401704627,20241022,assist,3995,Jrue Holiday,2024-10-23T00:29:39Z,1.0,,"Jayson Tatum makes driving layup (Jrue Holiday assists) (2nd Quarter, 12.0)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T00:29:39Z,2.0,True,"Jayson Tatum makes driving layup (Jrue Holiday assists) (2nd Quarter, 12.0)"
+401704627,20241022,two-point make,4065648,Jayson Tatum,2024-10-23T00:29:39Z,1.0,True,"Jayson Tatum makes driving layup (Jrue Holiday assists) (2nd Quarter, 12.0)"
+401704627,20241022,assist,3934672,Jalen Brunson,2024-10-23T00:29:54Z,1.0,,"Josh Hart makes two point shot (Jalen Brunson assists) (2nd Quarter, 1.1)"
+401704627,20241022,points,3062679,Josh Hart,2024-10-23T00:29:54Z,2.0,True,"Josh Hart makes two point shot (Jalen Brunson assists) (2nd Quarter, 1.1)"
+401704627,20241022,two-point make,3062679,Josh Hart,2024-10-23T00:29:54Z,1.0,True,"Josh Hart makes two point shot (Jalen Brunson assists) (2nd Quarter, 1.1)"
+401704627,20241022,+/-,3917376,Jaylen Brown,2024-10-23T00:30:10Z,0.0,,Jaylen Brown checked out after a 0 shift
+401704627,20241022,+/-,4065648,Jayson Tatum,2024-10-23T00:30:10Z,0.0,,Jayson Tatum checked out after a 0 shift
+401704627,20241022,+/-,3078576,Derrick White,2024-10-23T00:30:10Z,0.0,,Derrick White checked out after a 0 shift
+401704627,20241022,+/-,3062679,Josh Hart,2024-10-23T00:30:10Z,0.0,,Josh Hart checked out after a 0 shift
+401704627,20241022,+/-,3934672,Jalen Brunson,2024-10-23T00:30:10Z,0.0,,Jalen Brunson checked out after a 0 shift
+401704627,20241022,+/-,3147657,Mikal Bridges,2024-10-23T00:30:10Z,-1.0,,Mikal Bridges checked out after a -1 shift
+401704627,20241022,+/-,3213,Al Horford,2024-10-23T00:30:10Z,-4.0,,Al Horford checked out after a -4 shift
+401704627,20241022,+/-,3995,Jrue Holiday,2024-10-23T00:30:10Z,-4.0,,Jrue Holiday checked out after a -4 shift
+401704627,20241022,+/-,3934719,OG Anunoby,2024-10-23T00:30:10Z,4.0,,OG Anunoby checked out after a +4 shift
+401704627,20241022,+/-,3136195,Karl-Anthony Towns,2024-10-23T00:30:10Z,4.0,,Karl-Anthony Towns checked out after a +4 shift
+401704627,20241022,minutes played,3917376,Jaylen Brown,2024-10-23T00:30:10Z,12.0,,Jaylen Brown checked out after playing 12:00
+401704627,20241022,minutes played,4065648,Jayson Tatum,2024-10-23T00:30:10Z,6.3,,Jayson Tatum checked out after playing 6:18
+401704627,20241022,minutes played,3078576,Derrick White,2024-10-23T00:30:10Z,6.3,,Derrick White checked out after playing 6:18
+401704627,20241022,minutes played,3062679,Josh Hart,2024-10-23T00:30:10Z,6.3,,Josh Hart checked out after playing 6:18
+401704627,20241022,minutes played,3934672,Jalen Brunson,2024-10-23T00:30:10Z,6.3,,Jalen Brunson checked out after playing 6:18
+401704627,20241022,minutes played,3147657,Mikal Bridges,2024-10-23T00:30:10Z,5.75,,Mikal Bridges checked out after playing 5:45
+401704627,20241022,minutes played,3213,Al Horford,2024-10-23T00:30:10Z,3.25,,Al Horford checked out after playing 3:15
+401704627,20241022,minutes played,3995,Jrue Holiday,2024-10-23T00:30:10Z,3.25,,Jrue Holiday checked out after playing 3:15
+401704627,20241022,minutes played,3934719,OG Anunoby,2024-10-23T00:30:10Z,3.25,,OG Anunoby checked out after playing 3:15
+401704627,20241022,minutes played,3136195,Karl-Anthony Towns,2024-10-23T00:30:10Z,3.25,,Karl-Anthony Towns checked out after playing 3:15
+401704627,20241022,two-point miss,3934719,OG Anunoby,2024-10-23T00:46:47Z,1.0,False,"OG Anunoby misses 18-foot two point shot (3rd Quarter, 11:46)"
+401704627,20241022,defensive_rebound,4065648,Jayson Tatum,2024-10-23T00:46:48Z,1.0,,"Jayson Tatum defensive rebound (3rd Quarter, 11:45)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-23T00:46:56Z,1.0,,"Jaylen Brown makes 26-foot three point step back jumpshot (Jayson Tatum assists) (3rd Quarter, 11:38)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T00:46:56Z,3.0,True,"Jaylen Brown makes 26-foot three point step back jumpshot (Jayson Tatum assists) (3rd Quarter, 11:38)"
+401704627,20241022,three-point make,3917376,Jaylen Brown,2024-10-23T00:46:56Z,1.0,True,"Jaylen Brown makes 26-foot three point step back jumpshot (Jayson Tatum assists) (3rd Quarter, 11:38)"
+401704627,20241022,turnover,3934672,Jalen Brunson,2024-10-23T00:47:09Z,1.0,,"Jalen Brunson out of bounds lost ball turnover (3rd Quarter, 11:26)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-23T00:47:21Z,1.0,,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (3rd Quarter, 11:16)"
+401704627,20241022,points,3078576,Derrick White,2024-10-23T00:47:21Z,3.0,True,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (3rd Quarter, 11:16)"
+401704627,20241022,three-point make,3078576,Derrick White,2024-10-23T00:47:21Z,1.0,True,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (3rd Quarter, 11:16)"
+401704627,20241022,free-throw miss,3147657,Mikal Bridges,2024-10-23T00:48:10Z,1.0,False,"Mikal Bridges misses technical free throw (3rd Quarter, 10:55)"
+401704627,20241022,assist,3136195,Karl-Anthony Towns,2024-10-23T00:48:38Z,1.0,,"Josh Hart makes 3-foot layup (Karl-Anthony Towns assists) (3rd Quarter, 10:40)"
+401704627,20241022,points,3062679,Josh Hart,2024-10-23T00:48:38Z,2.0,True,"Josh Hart makes 3-foot layup (Karl-Anthony Towns assists) (3rd Quarter, 10:40)"
+401704627,20241022,two-point make,3062679,Josh Hart,2024-10-23T00:48:38Z,1.0,True,"Josh Hart makes 3-foot layup (Karl-Anthony Towns assists) (3rd Quarter, 10:40)"
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-23T00:49:33Z,1.0,False,"Jaylen Brown misses two point shot (3rd Quarter, 10:10)"
+401704627,20241022,offensive_rebound,3917376,Jaylen Brown,2024-10-23T00:49:35Z,1.0,,"Jaylen Brown offensive rebound (3rd Quarter, 10:08)"
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-23T00:49:36Z,1.0,False,"Jaylen Brown misses two point shot (3rd Quarter, 10:06)"
+401704627,20241022,defensive_rebound,3136195,Karl-Anthony Towns,2024-10-23T00:49:37Z,1.0,,"Karl-Anthony Towns defensive rebound (3rd Quarter, 10:05)"
+401704627,20241022,steal,3213,Al Horford,2024-10-23T00:49:54Z,1.0,,"Mikal Bridges bad pass (Al Horford steals) (3rd Quarter, 9:48)"
+401704627,20241022,turnover,3147657,Mikal Bridges,2024-10-23T00:49:54Z,1.0,,"Mikal Bridges bad pass (Al Horford steals) (3rd Quarter, 9:48)"
+401704627,20241022,points,3995,Jrue Holiday,2024-10-23T00:49:59Z,3.0,True,"Jrue Holiday makes 24-foot running pullup jump shot (3rd Quarter, 9:43)"
+401704627,20241022,three-point make,3995,Jrue Holiday,2024-10-23T00:49:59Z,1.0,True,"Jrue Holiday makes 24-foot running pullup jump shot (3rd Quarter, 9:43)"
+401704627,20241022,assist,3136195,Karl-Anthony Towns,2024-10-23T00:53:56Z,1.0,,"Mikal Bridges makes 23-foot three point jumper (Karl-Anthony Towns assists) (3rd Quarter, 9:24)"
+401704627,20241022,points,3147657,Mikal Bridges,2024-10-23T00:53:56Z,3.0,True,"Mikal Bridges makes 23-foot three point jumper (Karl-Anthony Towns assists) (3rd Quarter, 9:24)"
+401704627,20241022,three-point make,3147657,Mikal Bridges,2024-10-23T00:53:56Z,1.0,True,"Mikal Bridges makes 23-foot three point jumper (Karl-Anthony Towns assists) (3rd Quarter, 9:24)"
+401704627,20241022,assist,3213,Al Horford,2024-10-23T00:54:34Z,1.0,,"Jrue Holiday makes 25-foot three point jumper (Al Horford assists) (3rd Quarter, 9:00)"
+401704627,20241022,points,3995,Jrue Holiday,2024-10-23T00:54:34Z,3.0,True,"Jrue Holiday makes 25-foot three point jumper (Al Horford assists) (3rd Quarter, 9:00)"
+401704627,20241022,three-point make,3995,Jrue Holiday,2024-10-23T00:54:34Z,1.0,True,"Jrue Holiday makes 25-foot three point jumper (Al Horford assists) (3rd Quarter, 9:00)"
+401704627,20241022,assist,3213,Al Horford,2024-10-23T00:55:14Z,1.0,,"Jayson Tatum makes 21-foot pullup jump shot (Al Horford assists) (3rd Quarter, 8:35)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T00:55:14Z,2.0,True,"Jayson Tatum makes 21-foot pullup jump shot (Al Horford assists) (3rd Quarter, 8:35)"
+401704627,20241022,two-point make,4065648,Jayson Tatum,2024-10-23T00:55:14Z,1.0,True,"Jayson Tatum makes 21-foot pullup jump shot (Al Horford assists) (3rd Quarter, 8:35)"
+401704627,20241022,free-throw make,3062679,Josh Hart,2024-10-23T00:55:55Z,1.0,True,"Josh Hart makes free throw 1 of 2 (3rd Quarter, 8:28)"
+401704627,20241022,points,3062679,Josh Hart,2024-10-23T00:55:55Z,1.0,True,"Josh Hart makes free throw 1 of 2 (3rd Quarter, 8:28)"
+401704627,20241022,free-throw make,3062679,Josh Hart,2024-10-23T00:56:09Z,1.0,True,"Josh Hart makes free throw 2 of 2 (3rd Quarter, 8:28)"
+401704627,20241022,points,3062679,Josh Hart,2024-10-23T00:56:09Z,1.0,True,"Josh Hart makes free throw 2 of 2 (3rd Quarter, 8:28)"
+401704627,20241022,two-point miss,3213,Al Horford,2024-10-23T00:56:27Z,1.0,False,"Al Horford misses driving floating jump shot (3rd Quarter, 8:12)"
+401704627,20241022,defensive_rebound,3136195,Karl-Anthony Towns,2024-10-23T00:56:28Z,1.0,,"Karl-Anthony Towns defensive rebound (3rd Quarter, 8:11)"
+401704627,20241022,two-point miss,3934672,Jalen Brunson,2024-10-23T00:56:43Z,1.0,False,"Jalen Brunson misses driving floating jump shot (3rd Quarter, 7:56)"
+401704627,20241022,defensive_rebound,3917376,Jaylen Brown,2024-10-23T00:56:44Z,1.0,,"Jaylen Brown defensive rebound (3rd Quarter, 7:55)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T00:57:27Z,2.0,True,"Jayson Tatum makes 12-foot two point shot (3rd Quarter, 7:39)"
+401704627,20241022,two-point make,4065648,Jayson Tatum,2024-10-23T00:57:27Z,1.0,True,"Jayson Tatum makes 12-foot two point shot (3rd Quarter, 7:39)"
+401704627,20241022,assist,3136195,Karl-Anthony Towns,2024-10-23T00:57:46Z,1.0,,"Mikal Bridges makes 2-foot layup (Karl-Anthony Towns assists) (3rd Quarter, 7:20)"
+401704627,20241022,points,3147657,Mikal Bridges,2024-10-23T00:57:46Z,2.0,True,"Mikal Bridges makes 2-foot layup (Karl-Anthony Towns assists) (3rd Quarter, 7:20)"
+401704627,20241022,two-point make,3147657,Mikal Bridges,2024-10-23T00:57:46Z,1.0,True,"Mikal Bridges makes 2-foot layup (Karl-Anthony Towns assists) (3rd Quarter, 7:20)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T00:57:56Z,3.0,True,"Jayson Tatum makes 25-foot three pointer (3rd Quarter, 7:09)"
+401704627,20241022,three-point make,4065648,Jayson Tatum,2024-10-23T00:57:56Z,1.0,True,"Jayson Tatum makes 25-foot three pointer (3rd Quarter, 7:09)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T00:58:09Z,2.0,True,"Jalen Brunson makes 17-foot two point shot (3rd Quarter, 6:57)"
+401704627,20241022,two-point make,3934672,Jalen Brunson,2024-10-23T00:58:09Z,1.0,True,"Jalen Brunson makes 17-foot two point shot (3rd Quarter, 6:57)"
+401704627,20241022,three-point miss,3213,Al Horford,2024-10-23T00:58:22Z,1.0,False,"Al Horford misses 26-foot three point jumper (3rd Quarter, 6:44)"
+401704627,20241022,defensive_rebound,3062679,Josh Hart,2024-10-23T00:58:24Z,1.0,,"Josh Hart defensive rebound (3rd Quarter, 6:42)"
+401704627,20241022,assist,3062679,Josh Hart,2024-10-23T00:58:30Z,1.0,,"Jalen Brunson makes two point shot (Josh Hart assists) (3rd Quarter, 6:36)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T00:58:30Z,2.0,True,"Jalen Brunson makes two point shot (Josh Hart assists) (3rd Quarter, 6:36)"
+401704627,20241022,two-point make,3934672,Jalen Brunson,2024-10-23T00:58:30Z,1.0,True,"Jalen Brunson makes two point shot (Josh Hart assists) (3rd Quarter, 6:36)"
+401704627,20241022,assist,3213,Al Horford,2024-10-23T00:58:46Z,1.0,,"Derrick White makes 23-foot three point jumper (Al Horford assists) (3rd Quarter, 6:21)"
+401704627,20241022,points,3078576,Derrick White,2024-10-23T00:58:46Z,3.0,True,"Derrick White makes 23-foot three point jumper (Al Horford assists) (3rd Quarter, 6:21)"
+401704627,20241022,three-point make,3078576,Derrick White,2024-10-23T00:58:46Z,1.0,True,"Derrick White makes 23-foot three point jumper (Al Horford assists) (3rd Quarter, 6:21)"
+401704627,20241022,two-point miss,3136195,Karl-Anthony Towns,2024-10-23T00:59:04Z,1.0,False,"Karl-Anthony Towns misses driving layup (3rd Quarter, 6:02)"
+401704627,20241022,offensive_rebound,3062679,Josh Hart,2024-10-23T00:59:05Z,1.0,,"Josh Hart offensive rebound (3rd Quarter, 6:01)"
+401704627,20241022,points,3147657,Mikal Bridges,2024-10-23T00:59:15Z,2.0,True,"Mikal Bridges makes 17-foot step back jumpshot (3rd Quarter, 5:51)"
+401704627,20241022,two-point make,3147657,Mikal Bridges,2024-10-23T00:59:15Z,1.0,True,"Mikal Bridges makes 17-foot step back jumpshot (3rd Quarter, 5:51)"
+401704627,20241022,assist,3078576,Derrick White,2024-10-23T00:59:38Z,1.0,,"Jaylen Brown makes 24-foot three point jumper (Derrick White assists) (3rd Quarter, 5:28)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T00:59:38Z,3.0,True,"Jaylen Brown makes 24-foot three point jumper (Derrick White assists) (3rd Quarter, 5:28)"
+401704627,20241022,three-point make,3917376,Jaylen Brown,2024-10-23T00:59:38Z,1.0,True,"Jaylen Brown makes 24-foot three point jumper (Derrick White assists) (3rd Quarter, 5:28)"
+401704627,20241022,+/-,3917376,Jaylen Brown,2024-10-23T01:02:37Z,10.0,,Jaylen Brown checked out after a +10 shift
+401704627,20241022,+/-,3213,Al Horford,2024-10-23T01:02:37Z,10.0,,Al Horford checked out after a +10 shift
+401704627,20241022,+/-,3995,Jrue Holiday,2024-10-23T01:02:37Z,10.0,,Jrue Holiday checked out after a +10 shift
+401704627,20241022,+/-,3934719,OG Anunoby,2024-10-23T01:02:37Z,-10.0,,OG Anunoby checked out after a -10 shift
+401704627,20241022,+/-,3136195,Karl-Anthony Towns,2024-10-23T01:02:37Z,-10.0,,Karl-Anthony Towns checked out after a -10 shift
+401704627,20241022,minutes played,3917376,Jaylen Brown,2024-10-23T01:02:37Z,6.5667,,Jaylen Brown checked out after playing 6:34
+401704627,20241022,minutes played,3213,Al Horford,2024-10-23T01:02:37Z,6.5667,,Al Horford checked out after playing 6:34
+401704627,20241022,minutes played,3995,Jrue Holiday,2024-10-23T01:02:37Z,6.5667,,Jrue Holiday checked out after playing 6:34
+401704627,20241022,minutes played,3934719,OG Anunoby,2024-10-23T01:02:37Z,6.5667,,OG Anunoby checked out after playing 6:34
+401704627,20241022,minutes played,3136195,Karl-Anthony Towns,2024-10-23T01:02:37Z,6.5667,,Karl-Anthony Towns checked out after playing 6:34
+401704627,20241022,block,3064560,Luke Kornet,2024-10-23T01:03:29Z,1.0,,"Luke Kornet blocks Jalen Brunson 's 16-foot driving floating jump shot (3rd Quarter, 5:11)"
+401704627,20241022,two-point miss,3934672,Jalen Brunson,2024-10-23T01:03:29Z,1.0,False,"Luke Kornet blocks Jalen Brunson 's 16-foot driving floating jump shot (3rd Quarter, 5:11)"
+401704627,20241022,offensive_rebound,4277922,Jericho Sims,2024-10-23T01:03:30Z,1.0,,"Jericho Sims offensive rebound (3rd Quarter, 5:10)"
+401704627,20241022,points,4431823,Miles McBride,2024-10-23T01:03:36Z,3.0,True,"Miles McBride makes 25-foot three pointer (3rd Quarter, 5:04)"
+401704627,20241022,three-point make,4431823,Miles McBride,2024-10-23T01:03:36Z,1.0,True,"Miles McBride makes 25-foot three pointer (3rd Quarter, 5:04)"
+401704627,20241022,three-point miss,4066354,Payton Pritchard,2024-10-23T01:03:57Z,1.0,False,"Payton Pritchard misses 23-foot three point jumper (3rd Quarter, 4:42)"
+401704627,20241022,defensive_rebound,3062679,Josh Hart,2024-10-23T01:03:59Z,1.0,,"Josh Hart defensive rebound (3rd Quarter, 4:40)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T01:04:13Z,2.0,True,"Jalen Brunson makes 10-foot two point shot (3rd Quarter, 4:29)"
+401704627,20241022,two-point make,3934672,Jalen Brunson,2024-10-23T01:04:13Z,1.0,True,"Jalen Brunson makes 10-foot two point shot (3rd Quarter, 4:29)"
+401704627,20241022,free-throw make,3934672,Jalen Brunson,2024-10-23T01:04:44Z,1.0,True,"Jalen Brunson makes free throw 1 of 1 (3rd Quarter, 4:29)"
+401704627,20241022,points,3934672,Jalen Brunson,2024-10-23T01:04:44Z,1.0,True,"Jalen Brunson makes free throw 1 of 1 (3rd Quarter, 4:29)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-23T01:05:09Z,1.0,,"Derrick White makes 6-foot driving floating jump shot (Jayson Tatum assists) (3rd Quarter, 4:07)"
+401704627,20241022,points,3078576,Derrick White,2024-10-23T01:05:09Z,2.0,True,"Derrick White makes 6-foot driving floating jump shot (Jayson Tatum assists) (3rd Quarter, 4:07)"
+401704627,20241022,two-point make,3078576,Derrick White,2024-10-23T01:05:09Z,1.0,True,"Derrick White makes 6-foot driving floating jump shot (Jayson Tatum assists) (3rd Quarter, 4:07)"
+401704627,20241022,two-point miss,3934672,Jalen Brunson,2024-10-23T01:05:23Z,1.0,False,"Jalen Brunson misses two point shot (3rd Quarter, 3:53)"
+401704627,20241022,defensive_rebound,3064560,Luke Kornet,2024-10-23T01:05:24Z,1.0,,"Luke Kornet defensive rebound (3rd Quarter, 3:52)"
+401704627,20241022,free-throw make,3078576,Derrick White,2024-10-23T01:06:03Z,1.0,True,"Derrick White makes free throw 1 of 2 (3rd Quarter, 3:44)"
+401704627,20241022,points,3078576,Derrick White,2024-10-23T01:06:03Z,1.0,True,"Derrick White makes free throw 1 of 2 (3rd Quarter, 3:44)"
+401704627,20241022,free-throw make,3078576,Derrick White,2024-10-23T01:06:20Z,1.0,True,"Derrick White makes free throw 2 of 2 (3rd Quarter, 3:44)"
+401704627,20241022,points,3078576,Derrick White,2024-10-23T01:06:20Z,1.0,True,"Derrick White makes free throw 2 of 2 (3rd Quarter, 3:44)"
+401704627,20241022,three-point miss,3934672,Jalen Brunson,2024-10-23T01:06:32Z,1.0,False,"Jalen Brunson misses 25-foot three point step back jumpshot (3rd Quarter, 3:33)"
+401704627,20241022,assist,3078576,Derrick White,2024-10-23T01:06:53Z,1.0,,"Jayson Tatum makes 2-foot layup (Derrick White assists) (3rd Quarter, 3:23)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T01:06:53Z,2.0,True,"Jayson Tatum makes 2-foot layup (Derrick White assists) (3rd Quarter, 3:23)"
+401704627,20241022,two-point make,4065648,Jayson Tatum,2024-10-23T01:06:53Z,1.0,True,"Jayson Tatum makes 2-foot layup (Derrick White assists) (3rd Quarter, 3:23)"
+401704627,20241022,+/-,3062679,Josh Hart,2024-10-23T01:07:33Z,-10.0,,Josh Hart checked out after a -10 shift
+401704627,20241022,+/-,3934672,Jalen Brunson,2024-10-23T01:07:33Z,-10.0,,Jalen Brunson checked out after a -10 shift
+401704627,20241022,minutes played,3062679,Josh Hart,2024-10-23T01:07:33Z,8.8833,,Josh Hart checked out after playing 8:53
+401704627,20241022,minutes played,3934672,Jalen Brunson,2024-10-23T01:07:33Z,8.8833,,Jalen Brunson checked out after playing 8:53
+401704627,20241022,assist,4431823,Miles McBride,2024-10-23T01:08:00Z,1.0,,"Mikal Bridges makes 3-foot two point shot (Miles McBride assists) (3rd Quarter, 3:00)"
+401704627,20241022,points,3147657,Mikal Bridges,2024-10-23T01:08:00Z,2.0,True,"Mikal Bridges makes 3-foot two point shot (Miles McBride assists) (3rd Quarter, 3:00)"
+401704627,20241022,two-point make,3147657,Mikal Bridges,2024-10-23T01:08:00Z,1.0,True,"Mikal Bridges makes 3-foot two point shot (Miles McBride assists) (3rd Quarter, 3:00)"
+401704627,20241022,points,4065648,Jayson Tatum,2024-10-23T01:08:19Z,3.0,True,"Jayson Tatum makes 26-foot three point jumper (3rd Quarter, 2:40)"
+401704627,20241022,three-point make,4065648,Jayson Tatum,2024-10-23T01:08:19Z,1.0,True,"Jayson Tatum makes 26-foot three point jumper (3rd Quarter, 2:40)"
+401704627,20241022,three-point miss,3147657,Mikal Bridges,2024-10-23T01:08:34Z,1.0,False,"Mikal Bridges misses 26-foot three point jumper (3rd Quarter, 2:26)"
+401704627,20241022,offensive_rebound,3064230,Cameron Payne,2024-10-23T01:08:36Z,1.0,,"Cameron Payne offensive rebound (3rd Quarter, 2:24)"
+401704627,20241022,assist,3934719,OG Anunoby,2024-10-23T01:08:44Z,1.0,,"Cameron Payne makes 26-foot three point jumper (OG Anunoby assists) (3rd Quarter, 2:17)"
+401704627,20241022,points,3064230,Cameron Payne,2024-10-23T01:08:44Z,3.0,True,"Cameron Payne makes 26-foot three point jumper (OG Anunoby assists) (3rd Quarter, 2:17)"
+401704627,20241022,three-point make,3064230,Cameron Payne,2024-10-23T01:08:44Z,1.0,True,"Cameron Payne makes 26-foot three point jumper (OG Anunoby assists) (3rd Quarter, 2:17)"
+401704627,20241022,assist,4065648,Jayson Tatum,2024-10-23T01:09:07Z,1.0,,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (3rd Quarter, 1:52)"
+401704627,20241022,points,3078576,Derrick White,2024-10-23T01:09:07Z,3.0,True,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (3rd Quarter, 1:52)"
+401704627,20241022,three-point make,3078576,Derrick White,2024-10-23T01:09:07Z,1.0,True,"Derrick White makes 25-foot three point jumper (Jayson Tatum assists) (3rd Quarter, 1:52)"
+401704627,20241022,assist,3064230,Cameron Payne,2024-10-23T01:09:21Z,1.0,,"Mikal Bridges makes three point jumper (Cameron Payne assists) (3rd Quarter, 1:39)"
+401704627,20241022,points,3147657,Mikal Bridges,2024-10-23T01:09:21Z,3.0,True,"Mikal Bridges makes three point jumper (Cameron Payne assists) (3rd Quarter, 1:39)"
+401704627,20241022,three-point make,3147657,Mikal Bridges,2024-10-23T01:09:21Z,1.0,True,"Mikal Bridges makes three point jumper (Cameron Payne assists) (3rd Quarter, 1:39)"
+401704627,20241022,three-point miss,3078576,Derrick White,2024-10-23T01:09:38Z,1.0,False,"Derrick White misses 25-foot three point jumper (3rd Quarter, 1:23)"
+401704627,20241022,defensive_rebound,4277922,Jericho Sims,2024-10-23T01:09:40Z,1.0,,"Jericho Sims defensive rebound (3rd Quarter, 1:21)"
+401704627,20241022,two-point miss,4431823,Miles McBride,2024-10-23T01:09:50Z,1.0,False,"Miles McBride misses 11-foot two point shot (3rd Quarter, 1:10)"
+401704627,20241022,defensive_rebound,3078576,Derrick White,2024-10-23T01:09:52Z,1.0,,"Derrick White defensive rebound (3rd Quarter, 1:08)"
+401704627,20241022,two-point miss,3078576,Derrick White,2024-10-23T01:09:58Z,1.0,False,"Derrick White misses running pullup jump shot (3rd Quarter, 1:01)"
+401704627,20241022,+/-,3078576,Derrick White,2024-10-23T01:10:10Z,8.0,,Derrick White checked out after a +8 shift
+401704627,20241022,minutes played,3078576,Derrick White,2024-10-23T01:10:10Z,11.0167,,Derrick White checked out after playing 11:01
+401704627,20241022,assist,4277922,Jericho Sims,2024-10-23T01:10:47Z,1.0,,"Miles McBride makes 26-foot three pointer (Jericho Sims assists) (3rd Quarter, 39.1)"
+401704627,20241022,points,4431823,Miles McBride,2024-10-23T01:10:47Z,3.0,True,"Miles McBride makes 26-foot three pointer (Jericho Sims assists) (3rd Quarter, 39.1)"
+401704627,20241022,three-point make,4431823,Miles McBride,2024-10-23T01:10:47Z,1.0,True,"Miles McBride makes 26-foot three pointer (Jericho Sims assists) (3rd Quarter, 39.1)"
+401704627,20241022,block,4277922,Jericho Sims,2024-10-23T01:11:01Z,1.0,,"Jericho Sims blocks Jayson Tatum 's 7-foot driving layup (3rd Quarter, 32.2)"
+401704627,20241022,two-point miss,4065648,Jayson Tatum,2024-10-23T01:11:01Z,1.0,False,"Jericho Sims blocks Jayson Tatum 's 7-foot driving layup (3rd Quarter, 32.2)"
+401704627,20241022,offensive_rebound,3064560,Luke Kornet,2024-10-23T01:11:02Z,1.0,,"Luke Kornet offensive rebound (3rd Quarter, 31.1)"
+401704627,20241022,points,3064560,Luke Kornet,2024-10-23T01:11:06Z,2.0,True,"Luke Kornet makes 1-foot dunk (3rd Quarter, 31.1)"
+401704627,20241022,two-point make,3064560,Luke Kornet,2024-10-23T01:11:06Z,1.0,True,"Luke Kornet makes 1-foot dunk (3rd Quarter, 31.1)"
+401704627,20241022,block,4065648,Jayson Tatum,2024-10-23T01:11:29Z,1.0,,"Jayson Tatum blocks Cameron Payne 's 5-foot driving floating jump shot (3rd Quarter, 7.1)"
+401704627,20241022,two-point miss,3064230,Cameron Payne,2024-10-23T01:11:29Z,1.0,False,"Jayson Tatum blocks Cameron Payne 's 5-foot driving floating jump shot (3rd Quarter, 7.1)"
+401704627,20241022,defensive_rebound,3995,Jrue Holiday,2024-10-23T01:11:30Z,1.0,,"Jrue Holiday defensive rebound (3rd Quarter, 6.0)"
+401704627,20241022,steal,3064230,Cameron Payne,2024-10-23T01:11:34Z,1.0,,"Payton Pritchard lost ball turnover (Cameron Payne steals) (3rd Quarter, 0.0)"
+401704627,20241022,turnover,4066354,Payton Pritchard,2024-10-23T01:11:34Z,1.0,,"Payton Pritchard lost ball turnover (Cameron Payne steals) (3rd Quarter, 0.0)"
+401704627,20241022,+/-,4065648,Jayson Tatum,2024-10-23T01:14:49Z,7.0,,Jayson Tatum checked out after a +7 shift
+401704627,20241022,+/-,4066354,Payton Pritchard,2024-10-23T01:14:49Z,-3.0,,Payton Pritchard checked out after a -3 shift
+401704627,20241022,+/-,3064560,Luke Kornet,2024-10-23T01:14:49Z,-3.0,,Luke Kornet checked out after a -3 shift
+401704627,20241022,minutes played,4065648,Jayson Tatum,2024-10-23T01:14:49Z,12.0,,Jayson Tatum checked out after playing 12:00
+401704627,20241022,minutes played,4066354,Payton Pritchard,2024-10-23T01:14:49Z,5.4333,,Payton Pritchard checked out after playing 5:26
+401704627,20241022,minutes played,3064560,Luke Kornet,2024-10-23T01:14:49Z,5.4333,,Luke Kornet checked out after playing 5:26
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-23T01:15:42Z,1.0,False,"Jaylen Brown misses 19-foot jumper (4th Quarter, 11:37)"
+401704627,20241022,offensive_rebound,4277964,Xavier Tillman,2024-10-23T01:15:43Z,1.0,,"Xavier Tillman offensive rebound (4th Quarter, 11:36)"
+401704627,20241022,assist,4277964,Xavier Tillman,2024-10-23T01:15:45Z,1.0,,"Sam Hauser makes 30-foot three point jumper (Xavier Tillman assists) (4th Quarter, 11:33)"
+401704627,20241022,points,4065804,Sam Hauser,2024-10-23T01:15:45Z,3.0,True,"Sam Hauser makes 30-foot three point jumper (Xavier Tillman assists) (4th Quarter, 11:33)"
+401704627,20241022,three-point make,4065804,Sam Hauser,2024-10-23T01:15:45Z,1.0,True,"Sam Hauser makes 30-foot three point jumper (Xavier Tillman assists) (4th Quarter, 11:33)"
+401704627,20241022,free-throw make,3934719,OG Anunoby,2024-10-23T01:16:26Z,1.0,True,"OG Anunoby makes free throw 1 of 2 (4th Quarter, 11:14)"
+401704627,20241022,points,3934719,OG Anunoby,2024-10-23T01:16:26Z,1.0,True,"OG Anunoby makes free throw 1 of 2 (4th Quarter, 11:14)"
+401704627,20241022,free-throw make,3934719,OG Anunoby,2024-10-23T01:16:38Z,1.0,True,"OG Anunoby makes free throw 2 of 2 (4th Quarter, 11:14)"
+401704627,20241022,points,3934719,OG Anunoby,2024-10-23T01:16:38Z,1.0,True,"OG Anunoby makes free throw 2 of 2 (4th Quarter, 11:14)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T01:16:51Z,3.0,True,"Jaylen Brown makes 26-foot three pointer (4th Quarter, 11:04)"
+401704627,20241022,three-point make,3917376,Jaylen Brown,2024-10-23T01:16:51Z,1.0,True,"Jaylen Brown makes 26-foot three pointer (4th Quarter, 11:04)"
+401704627,20241022,points,3147657,Mikal Bridges,2024-10-23T01:17:08Z,2.0,True,"Mikal Bridges makes 4-foot two point shot (4th Quarter, 10:47)"
+401704627,20241022,two-point make,3147657,Mikal Bridges,2024-10-23T01:17:08Z,1.0,True,"Mikal Bridges makes 4-foot two point shot (4th Quarter, 10:47)"
+401704627,20241022,free-throw make,3917376,Jaylen Brown,2024-10-23T01:18:21Z,1.0,True,"Jaylen Brown makes free throw 1 of 2 (4th Quarter, 10:28)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T01:18:21Z,1.0,True,"Jaylen Brown makes free throw 1 of 2 (4th Quarter, 10:28)"
+401704627,20241022,free-throw make,3917376,Jaylen Brown,2024-10-23T01:18:41Z,1.0,True,"Jaylen Brown makes free throw 2 of 2 (4th Quarter, 10:28)"
+401704627,20241022,points,3917376,Jaylen Brown,2024-10-23T01:18:41Z,1.0,True,"Jaylen Brown makes free throw 2 of 2 (4th Quarter, 10:28)"
+401704627,20241022,three-point miss,4431823,Miles McBride,2024-10-23T01:18:51Z,1.0,False,"Miles McBride misses 27-foot three point jumper (4th Quarter, 10:20)"
+401704627,20241022,defensive_rebound,4277964,Xavier Tillman,2024-10-23T01:18:52Z,1.0,,"Xavier Tillman defensive rebound (4th Quarter, 10:19)"
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-23T01:19:29Z,1.0,False,"Jaylen Brown misses 17-foot pullup jump shot (4th Quarter, 10:00)"
+401704627,20241022,defensive_rebound,3934719,OG Anunoby,2024-10-23T01:19:31Z,1.0,,"OG Anunoby defensive rebound (4th Quarter, 9:58)"
+401704627,20241022,+/-,4065804,Sam Hauser,2024-10-23T01:19:45Z,1.0,,Sam Hauser checked out after a +1 shift
+401704627,20241022,minutes played,4065804,Sam Hauser,2024-10-23T01:19:45Z,7.5333,,Sam Hauser checked out after playing 7:32
+401704627,20241022,three-point miss,3934719,OG Anunoby,2024-10-23T01:20:03Z,1.0,False,"OG Anunoby misses 25-foot three point step back jumpshot (4th Quarter, 9:50)"
+401704627,20241022,defensive_rebound,4066354,Payton Pritchard,2024-10-23T01:20:05Z,1.0,,"Payton Pritchard defensive rebound (4th Quarter, 9:48)"
+401704627,20241022,assist,4066354,Payton Pritchard,2024-10-23T01:20:20Z,1.0,,"Al Horford makes 3-foot two point shot (Payton Pritchard assists) (4th Quarter, 9:34)"
+401704627,20241022,points,3213,Al Horford,2024-10-23T01:20:20Z,2.0,True,"Al Horford makes 3-foot two point shot (Payton Pritchard assists) (4th Quarter, 9:34)"
+401704627,20241022,two-point make,3213,Al Horford,2024-10-23T01:20:20Z,1.0,True,"Al Horford makes 3-foot two point shot (Payton Pritchard assists) (4th Quarter, 9:34)"
+401704627,20241022,assist,3064230,Cameron Payne,2024-10-23T01:20:35Z,1.0,,"Mikal Bridges makes 13-foot two point shot (Cameron Payne assists) (4th Quarter, 9:18)"
+401704627,20241022,points,3147657,Mikal Bridges,2024-10-23T01:20:35Z,2.0,True,"Mikal Bridges makes 13-foot two point shot (Cameron Payne assists) (4th Quarter, 9:18)"
+401704627,20241022,two-point make,3147657,Mikal Bridges,2024-10-23T01:20:35Z,1.0,True,"Mikal Bridges makes 13-foot two point shot (Cameron Payne assists) (4th Quarter, 9:18)"
+401704627,20241022,assist,4066354,Payton Pritchard,2024-10-23T01:20:59Z,1.0,,"Al Horford makes 23-foot three point jumper (Payton Pritchard assists) (4th Quarter, 8:54)"
+401704627,20241022,points,3213,Al Horford,2024-10-23T01:20:59Z,3.0,True,"Al Horford makes 23-foot three point jumper (Payton Pritchard assists) (4th Quarter, 8:54)"
+401704627,20241022,three-point make,3213,Al Horford,2024-10-23T01:20:59Z,1.0,True,"Al Horford makes 23-foot three point jumper (Payton Pritchard assists) (4th Quarter, 8:54)"
+401704627,20241022,three-point miss,3934719,OG Anunoby,2024-10-23T01:21:12Z,1.0,False,"OG Anunoby misses 26-foot three point jumper (4th Quarter, 8:41)"
+401704627,20241022,defensive_rebound,3213,Al Horford,2024-10-23T01:21:14Z,1.0,,"Al Horford defensive rebound (4th Quarter, 8:39)"
+401704627,20241022,assist,3213,Al Horford,2024-10-23T01:21:20Z,1.0,,"Jrue Holiday makes two point shot (Al Horford assists) (4th Quarter, 8:35)"
+401704627,20241022,points,3995,Jrue Holiday,2024-10-23T01:21:20Z,2.0,True,"Jrue Holiday makes two point shot (Al Horford assists) (4th Quarter, 8:35)"
+401704627,20241022,two-point make,3995,Jrue Holiday,2024-10-23T01:21:20Z,1.0,True,"Jrue Holiday makes two point shot (Al Horford assists) (4th Quarter, 8:35)"
+401704627,20241022,+/-,3147657,Mikal Bridges,2024-10-23T01:24:29Z,-16.0,,Mikal Bridges checked out after a -16 shift
+401704627,20241022,minutes played,3147657,Mikal Bridges,2024-10-23T01:24:29Z,15.4167,,Mikal Bridges checked out after playing 15:25
+401704627,20241022,three-point miss,3064230,Cameron Payne,2024-10-23T01:24:59Z,1.0,False,"Cameron Payne misses 26-foot three point pullup jump shot (4th Quarter, 8:25)"
+401704627,20241022,offensive_rebound,4277922,Jericho Sims,2024-10-23T01:25:01Z,1.0,,"Jericho Sims offensive rebound (4th Quarter, 8:23)"
+401704627,20241022,two-point miss,4277922,Jericho Sims,2024-10-23T01:25:08Z,1.0,False,"Jericho Sims misses 3-foot two point shot (4th Quarter, 8:16)"
+401704627,20241022,defensive_rebound,4066354,Payton Pritchard,2024-10-23T01:25:09Z,1.0,,"Payton Pritchard defensive rebound (4th Quarter, 8:15)"
+401704627,20241022,three-point miss,3917376,Jaylen Brown,2024-10-23T01:25:18Z,1.0,False,"Jaylen Brown misses 25-foot three point jumper (4th Quarter, 8:05)"
+401704627,20241022,points,4431823,Miles McBride,2024-10-23T01:25:38Z,2.0,True,"Miles McBride makes 13-foot pullup jump shot (4th Quarter, 7:54)"
+401704627,20241022,two-point make,4431823,Miles McBride,2024-10-23T01:25:38Z,1.0,True,"Miles McBride makes 13-foot pullup jump shot (4th Quarter, 7:54)"
+401704627,20241022,three-point miss,4277964,Xavier Tillman,2024-10-23T01:26:06Z,1.0,False,"Xavier Tillman misses 25-foot three point step back jumpshot (4th Quarter, 7:26)"
+401704627,20241022,defensive_rebound,3934719,OG Anunoby,2024-10-23T01:26:08Z,1.0,,"OG Anunoby defensive rebound (4th Quarter, 7:24)"
+401704627,20241022,three-point miss,3064230,Cameron Payne,2024-10-23T01:26:14Z,1.0,False,"Cameron Payne misses 27-foot three point shot (4th Quarter, 7:19)"
+401704627,20241022,defensive_rebound,4066354,Payton Pritchard,2024-10-23T01:26:16Z,1.0,,"Payton Pritchard defensive rebound (4th Quarter, 7:17)"
+401704627,20241022,assist,3995,Jrue Holiday,2024-10-23T01:26:31Z,1.0,,"Xavier Tillman makes two point shot (Jrue Holiday assists) (4th Quarter, 7:02)"
+401704627,20241022,points,4277964,Xavier Tillman,2024-10-23T01:26:31Z,2.0,True,"Xavier Tillman makes two point shot (Jrue Holiday assists) (4th Quarter, 7:02)"
+401704627,20241022,two-point make,4277964,Xavier Tillman,2024-10-23T01:26:31Z,1.0,True,"Xavier Tillman makes two point shot (Jrue Holiday assists) (4th Quarter, 7:02)"
+401704627,20241022,assist,4431823,Miles McBride,2024-10-23T01:26:55Z,1.0,,"Pacome Dadiet makes 23-foot three point jumper (Miles McBride assists) (4th Quarter, 6:37)"
+401704627,20241022,points,5211983,Pacome Dadiet,2024-10-23T01:26:55Z,3.0,True,"Pacome Dadiet makes 23-foot three point jumper (Miles McBride assists) (4th Quarter, 6:37)"
+401704627,20241022,three-point make,5211983,Pacome Dadiet,2024-10-23T01:26:55Z,1.0,True,"Pacome Dadiet makes 23-foot three point jumper (Miles McBride assists) (4th Quarter, 6:37)"
+401704627,20241022,three-point miss,4066354,Payton Pritchard,2024-10-23T01:27:15Z,1.0,False,"Payton Pritchard misses 24-foot three point jumper (4th Quarter, 6:18)"
+401704627,20241022,defensive_rebound,3064230,Cameron Payne,2024-10-23T01:27:17Z,1.0,,"Cameron Payne defensive rebound (4th Quarter, 6:16)"
+401704627,20241022,three-point miss,3934719,OG Anunoby,2024-10-23T01:27:26Z,1.0,False,"OG Anunoby misses 24-foot three point jumper (4th Quarter, 6:06)"
+401704627,20241022,+/-,3995,Jrue Holiday,2024-10-23T01:27:44Z,5.0,,Jrue Holiday checked out after a +5 shift
+401704627,20241022,+/-,3917376,Jaylen Brown,2024-10-23T01:27:44Z,6.0,,Jaylen Brown checked out after a +6 shift
+401704627,20241022,+/-,3934719,OG Anunoby,2024-10-23T01:27:44Z,-3.0,,OG Anunoby checked out after a -3 shift
+401704627,20241022,minutes played,3995,Jrue Holiday,2024-10-23T01:27:44Z,6.9,,Jrue Holiday checked out after playing 6:54
+401704627,20241022,minutes played,3917376,Jaylen Brown,2024-10-23T01:27:44Z,5.9167,,Jaylen Brown checked out after playing 5:55
+401704627,20241022,minutes played,3934719,OG Anunoby,2024-10-23T01:27:44Z,9.0333,,OG Anunoby checked out after playing 9:02
+401704627,20241022,assist,3064230,Cameron Payne,2024-10-23T01:28:38Z,1.0,,"Jericho Sims makes two point shot (Cameron Payne assists) (4th Quarter, 5:47)"
+401704627,20241022,points,4277922,Jericho Sims,2024-10-23T01:28:38Z,2.0,True,"Jericho Sims makes two point shot (Cameron Payne assists) (4th Quarter, 5:47)"
+401704627,20241022,two-point make,4277922,Jericho Sims,2024-10-23T01:28:38Z,1.0,True,"Jericho Sims makes two point shot (Cameron Payne assists) (4th Quarter, 5:47)"
+401704627,20241022,block,4871141,Ariel Hukporti,2024-10-23T01:28:59Z,1.0,,"Ariel Hukporti blocks Payton Pritchard 's 7-foot driving layup (4th Quarter, 5:26)"
+401704627,20241022,two-point miss,4066354,Payton Pritchard,2024-10-23T01:28:59Z,1.0,False,"Ariel Hukporti blocks Payton Pritchard 's 7-foot driving layup (4th Quarter, 5:26)"
+401704627,20241022,defensive_rebound,5211983,Pacome Dadiet,2024-10-23T01:29:01Z,1.0,,"Pacome Dadiet defensive rebound (4th Quarter, 5:24)"
+401704627,20241022,+/-,4431823,Miles McBride,2024-10-23T01:29:17Z,-1.0,,Miles McBride checked out after a -1 shift
+401704627,20241022,minutes played,4431823,Miles McBride,2024-10-23T01:29:17Z,12.0333,,Miles McBride checked out after playing 12:02
+401704627,20241022,points,3064230,Cameron Payne,2024-10-23T01:29:33Z,2.0,True,"Cameron Payne makes driving layup (4th Quarter, 5:17)"
+401704627,20241022,two-point make,3064230,Cameron Payne,2024-10-23T01:29:33Z,1.0,True,"Cameron Payne makes driving layup (4th Quarter, 5:17)"
+401704627,20241022,three-point miss,4065804,Sam Hauser,2024-10-23T01:29:50Z,1.0,False,"Sam Hauser misses 25-foot three point pullup jump shot (4th Quarter, 4:59)"
+401704627,20241022,defensive_rebound,4871141,Ariel Hukporti,2024-10-23T01:29:51Z,1.0,,"Ariel Hukporti defensive rebound (4th Quarter, 4:58)"
+401704627,20241022,points,3064230,Cameron Payne,2024-10-23T01:30:01Z,2.0,True,"Cameron Payne makes 6-foot two point shot (4th Quarter, 4:48)"
+401704627,20241022,two-point make,3064230,Cameron Payne,2024-10-23T01:30:01Z,1.0,True,"Cameron Payne makes 6-foot two point shot (4th Quarter, 4:48)"
+401704627,20241022,three-point miss,4066354,Payton Pritchard,2024-10-23T01:30:18Z,1.0,False,"Payton Pritchard misses 26-foot three point pullup jump shot (4th Quarter, 4:31)"
+401704627,20241022,defensive_rebound,4277922,Jericho Sims,2024-10-23T01:30:19Z,1.0,,"Jericho Sims defensive rebound (4th Quarter, 4:30)"
+401704627,20241022,assist,3064230,Cameron Payne,2024-10-23T01:30:29Z,1.0,,"Tyler Kolek makes 26-foot three point jumper (Cameron Payne assists) (4th Quarter, 4:20)"
+401704627,20241022,points,4433225,Tyler Kolek,2024-10-23T01:30:29Z,3.0,True,"Tyler Kolek makes 26-foot three point jumper (Cameron Payne assists) (4th Quarter, 4:20)"
+401704627,20241022,three-point make,4433225,Tyler Kolek,2024-10-23T01:30:29Z,1.0,True,"Tyler Kolek makes 26-foot three point jumper (Cameron Payne assists) (4th Quarter, 4:20)"
+401704627,20241022,+/-,3213,Al Horford,2024-10-23T01:32:25Z,-3.0,,Al Horford checked out after a -3 shift
+401704627,20241022,minutes played,3213,Al Horford,2024-10-23T01:32:25Z,7.6667,,Al Horford checked out after playing 7:40
+401704627,20241022,assist,4683689,Jordan Walsh,2024-10-23T01:34:12Z,1.0,,"Sam Hauser makes 14-foot two point shot (Jordan Walsh assists) (4th Quarter, 4:04)"
+401704627,20241022,points,4065804,Sam Hauser,2024-10-23T01:34:12Z,2.0,True,"Sam Hauser makes 14-foot two point shot (Jordan Walsh assists) (4th Quarter, 4:04)"
+401704627,20241022,two-point make,4065804,Sam Hauser,2024-10-23T01:34:12Z,1.0,True,"Sam Hauser makes 14-foot two point shot (Jordan Walsh assists) (4th Quarter, 4:04)"
+401704627,20241022,points,3064230,Cameron Payne,2024-10-23T01:34:32Z,2.0,True,"Cameron Payne makes 16-foot pullup jump shot (4th Quarter, 3:44)"
+401704627,20241022,two-point make,3064230,Cameron Payne,2024-10-23T01:34:32Z,1.0,True,"Cameron Payne makes 16-foot pullup jump shot (4th Quarter, 3:44)"
+401704627,20241022,two-point miss,4277964,Xavier Tillman,2024-10-23T01:34:45Z,1.0,False,"Xavier Tillman misses 5-foot two point shot (4th Quarter, 3:32)"
+401704627,20241022,defensive_rebound,4277922,Jericho Sims,2024-10-23T01:34:46Z,1.0,,"Jericho Sims defensive rebound (4th Quarter, 3:31)"
+401704627,20241022,two-point miss,5211983,Pacome Dadiet,2024-10-23T01:34:57Z,1.0,False,"Pacome Dadiet misses 12-foot two point shot (4th Quarter, 3:19)"
+401704627,20241022,defensive_rebound,4277964,Xavier Tillman,2024-10-23T01:34:58Z,1.0,,"Xavier Tillman defensive rebound (4th Quarter, 3:18)"
+401704627,20241022,three-point miss,4065804,Sam Hauser,2024-10-23T01:35:14Z,1.0,False,"Sam Hauser misses 26-foot three point pullup jump shot (4th Quarter, 3:02)"
+401704627,20241022,defensive_rebound,4871141,Ariel Hukporti,2024-10-23T01:35:16Z,1.0,,"Ariel Hukporti defensive rebound (4th Quarter, 3:00)"
+401704627,20241022,turnover,4277922,Jericho Sims,2024-10-23T01:35:31Z,1.0,,"Jericho Sims out of bounds bad pass turnover (4th Quarter, 2:47)"
+401704627,20241022,+/-,3064230,Cameron Payne,2024-10-23T01:35:33Z,6.0,,Cameron Payne checked out after a +6 shift
+401704627,20241022,minutes played,3064230,Cameron Payne,2024-10-23T01:35:33Z,12.3333,,Cameron Payne checked out after playing 12:20
+401704627,20241022,three-point miss,4066354,Payton Pritchard,2024-10-23T01:35:57Z,1.0,False,"Payton Pritchard misses 30-foot three point jumper (4th Quarter, 2:34)"
+401704627,20241022,offensive_rebound,4277964,Xavier Tillman,2024-10-23T01:35:59Z,1.0,,"Xavier Tillman offensive rebound (4th Quarter, 2:32)"
+401704627,20241022,three-point miss,4065804,Sam Hauser,2024-10-23T01:36:02Z,1.0,False,"Sam Hauser misses 26-foot three point jumper (4th Quarter, 2:30)"
+401704627,20241022,offensive_rebound,4066354,Payton Pritchard,2024-10-23T01:36:04Z,1.0,,"Payton Pritchard offensive rebound (4th Quarter, 2:28)"
+401704627,20241022,three-point miss,4066354,Payton Pritchard,2024-10-23T01:36:07Z,1.0,False,"Payton Pritchard misses 28-foot three point jumper (4th Quarter, 2:25)"
+401704627,20241022,defensive_rebound,4871141,Ariel Hukporti,2024-10-23T01:36:08Z,1.0,,"Ariel Hukporti defensive rebound (4th Quarter, 2:24)"
+401704627,20241022,turnover,4433225,Tyler Kolek,2024-10-23T01:36:21Z,1.0,,"Tyler Kolek out of bounds bad pass turnover (4th Quarter, 2:12)"
+401704627,20241022,three-point miss,4277964,Xavier Tillman,2024-10-23T01:36:38Z,1.0,False,"Xavier Tillman misses 27-foot three point jumper (4th Quarter, 2:01)"
+401704627,20241022,turnover,4433225,Tyler Kolek,2024-10-23T01:37:20Z,1.0,,"Tyler Kolek out of bounds bad pass turnover (4th Quarter, 1:36)"
+401704627,20241022,three-point miss,4066354,Payton Pritchard,2024-10-23T01:37:39Z,1.0,False,"Payton Pritchard misses 26-foot three point pullup jump shot (4th Quarter, 1:26)"
+401704627,20241022,defensive_rebound,4871141,Ariel Hukporti,2024-10-23T01:37:41Z,1.0,,"Ariel Hukporti defensive rebound (4th Quarter, 1:24)"
+401704627,20241022,two-point miss,4433225,Tyler Kolek,2024-10-23T01:37:54Z,1.0,False,"Tyler Kolek misses two point shot (4th Quarter, 1:12)"
+401704627,20241022,defensive_rebound,4277964,Xavier Tillman,2024-10-23T01:37:55Z,1.0,,"Xavier Tillman defensive rebound (4th Quarter, 1:11)"
+401704627,20241022,three-point miss,4065804,Sam Hauser,2024-10-23T01:38:08Z,1.0,False,"Sam Hauser misses 26-foot three point step back jumpshot (4th Quarter, 57.2)"
+401704627,20241022,three-point miss,4683689,Jordan Walsh,2024-10-23T01:38:38Z,1.0,False,"Jordan Walsh misses 25-foot three point jumper (4th Quarter, 52.1)"
+401704627,20241022,three-point miss,4592461,Jacob Toppin,2024-10-23T01:39:00Z,1.0,False,"Jacob Toppin misses 24-foot three point jumper (4th Quarter, 36.2)"
+401704627,20241022,+/-,4277922,Jericho Sims,2024-10-23T01:40:01Z,6.0,,Jericho Sims checked out after a +6 shift
+401704627,20241022,+/-,4277964,Xavier Tillman,2024-10-23T01:40:01Z,-3.0,,Xavier Tillman checked out after a -3 shift
+401704627,20241022,+/-,4066354,Payton Pritchard,2024-10-23T01:40:01Z,-7.0,,Payton Pritchard checked out after a -7 shift
+401704627,20241022,+/-,5211983,Pacome Dadiet,2024-10-23T01:40:01Z,12.0,,Pacome Dadiet checked out after a +12 shift
+401704627,20241022,+/-,4683689,Jordan Walsh,2024-10-23T01:40:01Z,-9.0,,Jordan Walsh checked out after a -9 shift
+401704627,20241022,+/-,4065804,Sam Hauser,2024-10-23T01:40:01Z,-9.0,,Sam Hauser checked out after a -9 shift
+401704627,20241022,+/-,4871141,Ariel Hukporti,2024-10-23T01:40:01Z,9.0,,Ariel Hukporti checked out after a +9 shift
+401704627,20241022,+/-,4433225,Tyler Kolek,2024-10-23T01:40:01Z,7.0,,Tyler Kolek checked out after a +7 shift
+401704627,20241022,+/-,4397424,Neemias Queta,2024-10-23T01:40:01Z,0.0,,Neemias Queta checked out after a 0 shift
+401704627,20241022,+/-,4592461,Jacob Toppin,2024-10-23T01:40:01Z,0.0,,Jacob Toppin checked out after a 0 shift
+401704627,20241022,minutes played,4277922,Jericho Sims,2024-10-23T01:40:01Z,17.4333,,Jericho Sims checked out after playing 17:26
+401704627,20241022,minutes played,4277964,Xavier Tillman,2024-10-23T01:40:01Z,12.0,,Xavier Tillman checked out after playing 12:00
+401704627,20241022,minutes played,4066354,Payton Pritchard,2024-10-23T01:40:01Z,9.9,,Payton Pritchard checked out after playing 9:54
+401704627,20241022,minutes played,5211983,Pacome Dadiet,2024-10-23T01:40:01Z,8.5833,,Pacome Dadiet checked out after playing 8:35
+401704627,20241022,minutes played,4683689,Jordan Walsh,2024-10-23T01:40:01Z,6.0833,,Jordan Walsh checked out after playing 6:05
+401704627,20241022,minutes played,4065804,Sam Hauser,2024-10-23T01:40:01Z,6.0833,,Sam Hauser checked out after playing 6:05
+401704627,20241022,minutes played,4871141,Ariel Hukporti,2024-10-23T01:40:01Z,6.0833,,Ariel Hukporti checked out after playing 6:05
+401704627,20241022,minutes played,4433225,Tyler Kolek,2024-10-23T01:40:01Z,5.4,,Tyler Kolek checked out after playing 5:24
+401704627,20241022,minutes played,4397424,Neemias Queta,2024-10-23T01:40:01Z,4.3333,,Neemias Queta checked out after playing 4:20
+401704627,20241022,minutes played,4592461,Jacob Toppin,2024-10-23T01:40:01Z,2.7833,,Jacob Toppin checked out after playing 2:47
+401704627,20241022,+/-,3213,Al Horford,2024-10-23T01:40:05Z,11.0,,Al Horford +/- adjustment +11
+401704627,20241022,+/-,3917376,Jaylen Brown,2024-10-23T01:40:05Z,1.0,,Jaylen Brown +/- adjustment +1
+401704627,20241022,+/-,3064560,Luke Kornet,2024-10-23T01:40:05Z,-12.0,,Luke Kornet +/- adjustment -12
+401704627,20241022,+/-,3147657,Mikal Bridges,2024-10-23T01:40:05Z,-1.0,,Mikal Bridges +/- adjustment -1
+401704627,20241022,+/-,4431823,Miles McBride,2024-10-23T01:40:05Z,-1.0,,Miles McBride +/- adjustment -1
+401704627,20241022,+/-,3934719,OG Anunoby,2024-10-23T01:40:05Z,1.0,,OG Anunoby +/- adjustment +1
+401704627,20241022,+/-,5211983,Pacome Dadiet,2024-10-23T01:40:05Z,1.0,,Pacome Dadiet +/- adjustment +1
+401704627,20241022,minutes played,3213,Al Horford,2024-10-23T01:40:05Z,-4.3334,,Al Horford minutes played adjustment -4.3334
+401704627,20241022,minutes played,3078576,Derrick White,2024-10-23T01:40:05Z,0.3666,,Derrick White minutes played adjustment +0.3666
+401704627,20241022,minutes played,3917376,Jaylen Brown,2024-10-23T01:40:05Z,0.0999,,Jaylen Brown minutes played adjustment +0.0999
+401704627,20241022,minutes played,4065648,Jayson Tatum,2024-10-23T01:40:05Z,-0.3,,Jayson Tatum minutes played adjustment -0.3
+401704627,20241022,minutes played,4683689,Jordan Walsh,2024-10-23T01:40:05Z,-0.0833,,Jordan Walsh minutes played adjustment -0.0833
+401704627,20241022,minutes played,3995,Jrue Holiday,2024-10-23T01:40:05Z,0.4833,,Jrue Holiday minutes played adjustment +0.4833
+401704627,20241022,minutes played,3064560,Luke Kornet,2024-10-23T01:40:05Z,3.9334,,Luke Kornet minutes played adjustment +3.9334
+401704627,20241022,minutes played,4397424,Neemias Queta,2024-10-23T01:40:05Z,-0.3333,,Neemias Queta minutes played adjustment -0.3333
+401704627,20241022,minutes played,4066354,Payton Pritchard,2024-10-23T01:40:05Z,0.0334,,Payton Pritchard minutes played adjustment +0.0334
+401704627,20241022,minutes played,4065804,Sam Hauser,2024-10-23T01:40:05Z,-0.1666,,Sam Hauser minutes played adjustment -0.1666
+401704627,20241022,minutes played,4277964,Xavier Tillman,2024-10-23T01:40:05Z,0.3,,Xavier Tillman minutes played adjustment +0.3
+401704627,20241022,minutes played,4871141,Ariel Hukporti,2024-10-23T01:40:05Z,-0.0833,,Ariel Hukporti minutes played adjustment -0.0833
+401704627,20241022,minutes played,3064230,Cameron Payne,2024-10-23T01:40:05Z,0.2834,,Cameron Payne minutes played adjustment +0.2834
+401704627,20241022,minutes played,4592461,Jacob Toppin,2024-10-23T01:40:05Z,0.2167,,Jacob Toppin minutes played adjustment +0.2167
+401704627,20241022,minutes played,3934672,Jalen Brunson,2024-10-23T01:40:05Z,0.5,,Jalen Brunson minutes played adjustment +0.5
+401704627,20241022,minutes played,4277922,Jericho Sims,2024-10-23T01:40:05Z,-0.3833,,Jericho Sims minutes played adjustment -0.3833
+401704627,20241022,minutes played,3062679,Josh Hart,2024-10-23T01:40:05Z,0.5,,Josh Hart minutes played adjustment +0.5
+401704627,20241022,minutes played,3136195,Karl-Anthony Towns,2024-10-23T01:40:05Z,0.3833,,Karl-Anthony Towns minutes played adjustment +0.3833
+401704627,20241022,minutes played,3147657,Mikal Bridges,2024-10-23T01:40:05Z,0.3833,,Mikal Bridges minutes played adjustment +0.3833
+401704627,20241022,minutes played,4431823,Miles McBride,2024-10-23T01:40:05Z,0.15,,Miles McBride minutes played adjustment +0.15
+401704627,20241022,minutes played,3934719,OG Anunoby,2024-10-23T01:40:05Z,-0.1666,,OG Anunoby minutes played adjustment -0.1666
+401704627,20241022,minutes played,5211983,Pacome Dadiet,2024-10-23T01:40:05Z,-0.3833,,Pacome Dadiet minutes played adjustment -0.3833
+401704627,20241022,minutes played,4433225,Tyler Kolek,2024-10-23T01:40:05Z,-0.4,,Tyler Kolek minutes played adjustment -0.4
+401704627,20241022,three-point miss,3078576,Derrick White,2024-10-23T01:40:05Z,2.0,,Derrick White three-point miss adjustment +2
+401704627,20241022,three-point miss,3917376,Jaylen Brown,2024-10-23T01:40:05Z,1.0,,Jaylen Brown three-point miss adjustment +1
+401704627,20241022,turnover,3917376,Jaylen Brown,2024-10-23T01:40:05Z,-1.0,,Jaylen Brown turnover adjustment -1
+401704627,20241022,two-point miss,3078576,Derrick White,2024-10-23T01:40:05Z,-2.0,,Derrick White two-point miss adjustment -2
+401704627,20241022,two-point miss,3917376,Jaylen Brown,2024-10-23T01:40:05Z,-1.0,,Jaylen Brown two-point miss adjustment -1
+401704628,20241022,three-point miss,4594268,Anthony Edwards,2024-10-23T02:06:53Z,1.0,False,"Anthony Edwards misses 26-foot three point jumper (1st Quarter, 11:32)"
+401704628,20241022,defensive_rebound,1966,LeBron James,2024-10-23T02:06:56Z,1.0,,"LeBron James defensive rebound (1st Quarter, 11:29)"
+401704628,20241022,assist,6583,Anthony Davis,2024-10-23T02:07:06Z,1.0,,"Rui Hachimura makes 26-foot three point jumper (Anthony Davis assists) (1st Quarter, 11:18)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T02:07:06Z,3.0,True,"Rui Hachimura makes 26-foot three point jumper (Anthony Davis assists) (1st Quarter, 11:18)"
+401704628,20241022,three-point make,4066648,Rui Hachimura,2024-10-23T02:07:06Z,1.0,True,"Rui Hachimura makes 26-foot three point jumper (Anthony Davis assists) (1st Quarter, 11:18)"
+401704628,20241022,assist,3064514,Julius Randle,2024-10-23T02:08:02Z,1.0,,"Jaden McDaniels makes 3-foot two point shot (Julius Randle assists) (1st Quarter, 10:42)"
+401704628,20241022,points,4431671,Jaden McDaniels,2024-10-23T02:08:02Z,2.0,True,"Jaden McDaniels makes 3-foot two point shot (Julius Randle assists) (1st Quarter, 10:42)"
+401704628,20241022,two-point make,4431671,Jaden McDaniels,2024-10-23T02:08:02Z,1.0,True,"Jaden McDaniels makes 3-foot two point shot (Julius Randle assists) (1st Quarter, 10:42)"
+401704628,20241022,assist,3136776,D'Angelo Russell,2024-10-23T02:08:21Z,1.0,,"Rui Hachimura makes 2-foot driving dunk (D'Angelo Russell assists) (1st Quarter, 10:23)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T02:08:21Z,2.0,True,"Rui Hachimura makes 2-foot driving dunk (D'Angelo Russell assists) (1st Quarter, 10:23)"
+401704628,20241022,two-point make,4066648,Rui Hachimura,2024-10-23T02:08:21Z,1.0,True,"Rui Hachimura makes 2-foot driving dunk (D'Angelo Russell assists) (1st Quarter, 10:23)"
+401704628,20241022,assist,3064514,Julius Randle,2024-10-23T02:08:47Z,1.0,,"Anthony Edwards makes 24-foot three point jumper (Julius Randle assists) (1st Quarter, 9:57)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T02:08:47Z,3.0,True,"Anthony Edwards makes 24-foot three point jumper (Julius Randle assists) (1st Quarter, 9:57)"
+401704628,20241022,three-point make,4594268,Anthony Edwards,2024-10-23T02:08:47Z,1.0,True,"Anthony Edwards makes 24-foot three point jumper (Julius Randle assists) (1st Quarter, 9:57)"
+401704628,20241022,two-point miss,1966,LeBron James,2024-10-23T02:09:18Z,1.0,False,"LeBron James misses 5-foot two point shot (1st Quarter, 9:35)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T02:09:20Z,1.0,,"Rudy Gobert defensive rebound (1st Quarter, 9:33)"
+401704628,20241022,block,1966,LeBron James,2024-10-23T02:09:25Z,1.0,,"LeBron James blocks Jaden McDaniels 's 4-foot two point shot (1st Quarter, 9:29)"
+401704628,20241022,two-point miss,4431671,Jaden McDaniels,2024-10-23T02:09:25Z,1.0,False,"LeBron James blocks Jaden McDaniels 's 4-foot two point shot (1st Quarter, 9:29)"
+401704628,20241022,defensive_rebound,1966,LeBron James,2024-10-23T02:09:27Z,1.0,,"LeBron James defensive rebound (1st Quarter, 9:27)"
+401704628,20241022,three-point miss,4066648,Rui Hachimura,2024-10-23T02:09:30Z,1.0,False,"Rui Hachimura misses 23-foot three point shot (1st Quarter, 9:24)"
+401704628,20241022,offensive_rebound,4066457,Austin Reaves,2024-10-23T02:09:34Z,1.0,,"Austin Reaves offensive rebound (1st Quarter, 9:20)"
+401704628,20241022,three-point miss,3136776,D'Angelo Russell,2024-10-23T02:09:35Z,1.0,False,"D'Angelo Russell misses 26-foot three point jumper (1st Quarter, 9:19)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T02:09:38Z,1.0,,"Rudy Gobert defensive rebound (1st Quarter, 9:16)"
+401704628,20241022,block,4066648,Rui Hachimura,2024-10-23T02:09:52Z,1.0,,"Rui Hachimura blocks Rudy Gobert 's 3-foot two point shot (1st Quarter, 9:02)"
+401704628,20241022,two-point miss,3032976,Rudy Gobert,2024-10-23T02:09:52Z,1.0,False,"Rui Hachimura blocks Rudy Gobert 's 3-foot two point shot (1st Quarter, 9:02)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T02:09:56Z,1.0,,"Anthony Davis defensive rebound (1st Quarter, 8:58)"
+401704628,20241022,assist,6583,Anthony Davis,2024-10-23T02:09:58Z,1.0,,"LeBron James makes two point shot (Anthony Davis assists) (1st Quarter, 8:56)"
+401704628,20241022,points,1966,LeBron James,2024-10-23T02:09:58Z,2.0,True,"LeBron James makes two point shot (Anthony Davis assists) (1st Quarter, 8:56)"
+401704628,20241022,two-point make,1966,LeBron James,2024-10-23T02:09:58Z,1.0,True,"LeBron James makes two point shot (Anthony Davis assists) (1st Quarter, 8:56)"
+401704628,20241022,steal,6583,Anthony Davis,2024-10-23T02:10:39Z,1.0,,"Mike Conley bad pass (Anthony Davis steals) (1st Quarter, 8:39)"
+401704628,20241022,turnover,3195,Mike Conley,2024-10-23T02:10:39Z,1.0,,"Mike Conley bad pass (Anthony Davis steals) (1st Quarter, 8:39)"
+401704628,20241022,assist,4066457,Austin Reaves,2024-10-23T02:10:44Z,1.0,,"LeBron James makes 2-foot dunk (Austin Reaves assists) (1st Quarter, 8:35)"
+401704628,20241022,points,1966,LeBron James,2024-10-23T02:10:44Z,2.0,True,"LeBron James makes 2-foot dunk (Austin Reaves assists) (1st Quarter, 8:35)"
+401704628,20241022,two-point make,1966,LeBron James,2024-10-23T02:10:44Z,1.0,True,"LeBron James makes 2-foot dunk (Austin Reaves assists) (1st Quarter, 8:35)"
+401704628,20241022,turnover,3032976,Rudy Gobert,2024-10-23T02:11:00Z,1.0,,"Rudy Gobert turnover (1st Quarter, 8:30)"
+401704628,20241022,two-point miss,3136776,D'Angelo Russell,2024-10-23T02:11:22Z,1.0,False,"D'Angelo Russell misses two point shot (1st Quarter, 8:17)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T02:11:25Z,1.0,,"Rudy Gobert defensive rebound (1st Quarter, 8:14)"
+401704628,20241022,two-point miss,3064514,Julius Randle,2024-10-23T02:11:29Z,1.0,False,"Julius Randle misses two point shot (1st Quarter, 8:10)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T02:11:31Z,1.0,,"Anthony Davis defensive rebound (1st Quarter, 8:08)"
+401704628,20241022,steal,4431671,Jaden McDaniels,2024-10-23T02:11:32Z,1.0,,"Anthony Davis bad pass (Jaden McDaniels steals) (1st Quarter, 8:08)"
+401704628,20241022,turnover,6583,Anthony Davis,2024-10-23T02:11:32Z,1.0,,"Anthony Davis bad pass (Jaden McDaniels steals) (1st Quarter, 8:08)"
+401704628,20241022,points,4431671,Jaden McDaniels,2024-10-23T02:11:35Z,2.0,True,"Jaden McDaniels makes layup (1st Quarter, 8:04)"
+401704628,20241022,two-point make,4431671,Jaden McDaniels,2024-10-23T02:11:35Z,1.0,True,"Jaden McDaniels makes layup (1st Quarter, 8:04)"
+401704628,20241022,three-point miss,4066457,Austin Reaves,2024-10-23T02:12:00Z,1.0,False,"Austin Reaves misses 31-foot three point jumper (1st Quarter, 7:40)"
+401704628,20241022,defensive_rebound,3064514,Julius Randle,2024-10-23T02:12:03Z,1.0,,"Julius Randle defensive rebound (1st Quarter, 7:37)"
+401704628,20241022,steal,3136776,D'Angelo Russell,2024-10-23T02:12:15Z,1.0,,"Julius Randle bad pass (D'Angelo Russell steals) (1st Quarter, 7:25)"
+401704628,20241022,turnover,3064514,Julius Randle,2024-10-23T02:12:15Z,1.0,,"Julius Randle bad pass (D'Angelo Russell steals) (1st Quarter, 7:25)"
+401704628,20241022,three-point miss,1966,LeBron James,2024-10-23T02:12:25Z,1.0,False,"LeBron James misses 28-foot three point jumper (1st Quarter, 7:14)"
+401704628,20241022,offensive_rebound,6583,Anthony Davis,2024-10-23T02:12:28Z,1.0,,"Anthony Davis offensive rebound (1st Quarter, 7:11)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T02:12:30Z,2.0,True,"Anthony Davis makes 1-foot dunk (1st Quarter, 7:09)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T02:12:30Z,1.0,True,"Anthony Davis makes 1-foot dunk (1st Quarter, 7:09)"
+401704628,20241022,+/-,1966,LeBron James,2024-10-23T02:16:26Z,4.0,,LeBron James checked out after a +4 shift
+401704628,20241022,minutes played,1966,LeBron James,2024-10-23T02:16:26Z,5.2667,,LeBron James checked out after playing 5:16
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T02:16:42Z,2.0,True,"Anthony Davis makes 19-foot step back jumpshot (1st Quarter, 6:25)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T02:16:42Z,1.0,True,"Anthony Davis makes 19-foot step back jumpshot (1st Quarter, 6:25)"
+401704628,20241022,three-point miss,4594268,Anthony Edwards,2024-10-23T02:17:03Z,1.0,False,"Anthony Edwards misses 27-foot three point pullup jump shot (1st Quarter, 6:06)"
+401704628,20241022,+/-,3064514,Julius Randle,2024-10-23T02:17:13Z,-6.0,,Julius Randle checked out after a -6 shift
+401704628,20241022,+/-,3195,Mike Conley,2024-10-23T02:17:13Z,-6.0,,Mike Conley checked out after a -6 shift
+401704628,20241022,minutes played,3064514,Julius Randle,2024-10-23T02:17:13Z,5.9,,Julius Randle checked out after playing 5:54
+401704628,20241022,minutes played,3195,Mike Conley,2024-10-23T02:17:13Z,5.9,,Mike Conley checked out after playing 5:54
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T02:17:41Z,3.0,True,"Anthony Edwards makes 25-foot three point step back jumpshot (1st Quarter, 5:54)"
+401704628,20241022,three-point make,4594268,Anthony Edwards,2024-10-23T02:17:41Z,1.0,True,"Anthony Edwards makes 25-foot three point step back jumpshot (1st Quarter, 5:54)"
+401704628,20241022,three-point miss,4066457,Austin Reaves,2024-10-23T02:17:55Z,1.0,False,"Austin Reaves misses 26-foot three point pullup jump shot (1st Quarter, 5:41)"
+401704628,20241022,offensive_rebound,4432582,Max Christie,2024-10-23T02:17:58Z,1.0,,"Max Christie offensive rebound (1st Quarter, 5:38)"
+401704628,20241022,assist,6583,Anthony Davis,2024-10-23T02:18:00Z,1.0,,"D'Angelo Russell makes 25-foot three point jumper (Anthony Davis assists) (1st Quarter, 5:36)"
+401704628,20241022,points,3136776,D'Angelo Russell,2024-10-23T02:18:00Z,3.0,True,"D'Angelo Russell makes 25-foot three point jumper (Anthony Davis assists) (1st Quarter, 5:36)"
+401704628,20241022,three-point make,3136776,D'Angelo Russell,2024-10-23T02:18:00Z,1.0,True,"D'Angelo Russell makes 25-foot three point jumper (Anthony Davis assists) (1st Quarter, 5:36)"
+401704628,20241022,three-point miss,3934673,Donte DiVincenzo,2024-10-23T02:18:16Z,1.0,False,"Donte DiVincenzo misses 26-foot three point step back jumpshot (1st Quarter, 5:20)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T02:18:19Z,1.0,,"Anthony Davis defensive rebound (1st Quarter, 5:17)"
+401704628,20241022,+/-,3136776,D'Angelo Russell,2024-10-23T02:18:46Z,6.0,,D'Angelo Russell checked out after a +6 shift
+401704628,20241022,minutes played,3136776,D'Angelo Russell,2024-10-23T02:18:46Z,6.85,,D'Angelo Russell checked out after playing 6:51
+401704628,20241022,three-point miss,4432582,Max Christie,2024-10-23T02:19:04Z,1.0,False,"Max Christie misses 22-foot three point jumper (1st Quarter, 5:04)"
+401704628,20241022,defensive_rebound,4396971,Naz Reid,2024-10-23T02:19:06Z,1.0,,"Naz Reid defensive rebound (1st Quarter, 5:02)"
+401704628,20241022,turnover,4396971,Naz Reid,2024-10-23T02:19:17Z,1.0,,"Naz Reid out of bounds bad pass turnover (1st Quarter, 4:55)"
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T02:19:47Z,1.0,False,"Anthony Davis misses 5-foot hook shot (1st Quarter, 4:34)"
+401704628,20241022,defensive_rebound,4396971,Naz Reid,2024-10-23T02:19:49Z,1.0,,"Naz Reid defensive rebound (1st Quarter, 4:32)"
+401704628,20241022,assist,3934673,Donte DiVincenzo,2024-10-23T02:19:54Z,1.0,,"Rudy Gobert makes two point shot (Donte DiVincenzo assists) (1st Quarter, 4:27)"
+401704628,20241022,points,3032976,Rudy Gobert,2024-10-23T02:19:54Z,2.0,True,"Rudy Gobert makes two point shot (Donte DiVincenzo assists) (1st Quarter, 4:27)"
+401704628,20241022,two-point make,3032976,Rudy Gobert,2024-10-23T02:19:54Z,1.0,True,"Rudy Gobert makes two point shot (Donte DiVincenzo assists) (1st Quarter, 4:27)"
+401704628,20241022,two-point miss,3137259,Gabe Vincent,2024-10-23T02:20:15Z,1.0,False,"Gabe Vincent misses 18-foot step back jumpshot (1st Quarter, 4:06)"
+401704628,20241022,two-point miss,4066457,Austin Reaves,2024-10-23T02:20:45Z,1.0,False,"Austin Reaves misses layup (1st Quarter, 3:58)"
+401704628,20241022,points,4066457,Austin Reaves,2024-10-23T02:20:51Z,2.0,True,"Austin Reaves makes tip shot (1st Quarter, 3:51)"
+401704628,20241022,two-point make,4066457,Austin Reaves,2024-10-23T02:20:51Z,1.0,True,"Austin Reaves makes tip shot (1st Quarter, 3:51)"
+401704628,20241022,offensive_rebound,4066457,Austin Reaves,2024-10-23T02:20:52Z,1.0,,"Austin Reaves offensive rebound (1st Quarter, 3:51)"
+401704628,20241022,turnover,4594268,Anthony Edwards,2024-10-23T02:21:03Z,1.0,,"Anthony Edwards traveling (1st Quarter, 3:44)"
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T02:21:30Z,1.0,False,"Anthony Davis misses 10-foot two point shot (1st Quarter, 3:27)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T02:21:33Z,1.0,,"Rudy Gobert defensive rebound (1st Quarter, 3:24)"
+401704628,20241022,three-point miss,4431671,Jaden McDaniels,2024-10-23T02:21:51Z,1.0,False,"Jaden McDaniels misses 27-foot three point step back jumpshot (1st Quarter, 3:06)"
+401704628,20241022,offensive_rebound,3032976,Rudy Gobert,2024-10-23T02:21:53Z,1.0,,"Rudy Gobert offensive rebound (1st Quarter, 3:04)"
+401704628,20241022,free-throw make,3032976,Rudy Gobert,2024-10-23T02:22:32Z,1.0,True,"Rudy Gobert makes free throw 1 of 2 (1st Quarter, 3:03)"
+401704628,20241022,free-throw miss,3032976,Rudy Gobert,2024-10-23T02:22:32Z,1.0,False,"Rudy Gobert misses free throw 2 of 2 (1st Quarter, 3:03)"
+401704628,20241022,points,3032976,Rudy Gobert,2024-10-23T02:22:32Z,1.0,True,"Rudy Gobert makes free throw 1 of 2 (1st Quarter, 3:03)"
+401704628,20241022,+/-,4066457,Austin Reaves,2024-10-23T02:22:36Z,5.0,,Austin Reaves checked out after a +5 shift
+401704628,20241022,+/-,4066648,Rui Hachimura,2024-10-23T02:22:36Z,5.0,,Rui Hachimura checked out after a +5 shift
+401704628,20241022,+/-,4431671,Jaden McDaniels,2024-10-23T02:22:36Z,-5.0,,Jaden McDaniels checked out after a -5 shift
+401704628,20241022,minutes played,4066457,Austin Reaves,2024-10-23T02:22:36Z,8.95,,Austin Reaves checked out after playing 8:57
+401704628,20241022,minutes played,4066648,Rui Hachimura,2024-10-23T02:22:36Z,8.95,,Rui Hachimura checked out after playing 8:57
+401704628,20241022,minutes played,4431671,Jaden McDaniels,2024-10-23T02:22:36Z,8.95,,Jaden McDaniels checked out after playing 8:57
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T02:22:37Z,1.0,,"Anthony Davis defensive rebound (1st Quarter, 2:58)"
+401704628,20241022,three-point miss,4432582,Max Christie,2024-10-23T02:23:21Z,1.0,False,"Max Christie misses 25-foot three point step back jumpshot (1st Quarter, 2:42)"
+401704628,20241022,defensive_rebound,4594268,Anthony Edwards,2024-10-23T02:23:24Z,1.0,,"Anthony Edwards defensive rebound (1st Quarter, 2:39)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T02:23:31Z,2.0,True,"Anthony Edwards makes two point shot (1st Quarter, 2:33)"
+401704628,20241022,two-point make,4594268,Anthony Edwards,2024-10-23T02:23:31Z,1.0,True,"Anthony Edwards makes two point shot (1st Quarter, 2:33)"
+401704628,20241022,+/-,3032976,Rudy Gobert,2024-10-23T02:24:10Z,-3.0,,Rudy Gobert checked out after a -3 shift
+401704628,20241022,minutes played,3032976,Rudy Gobert,2024-10-23T02:24:10Z,9.8,,Rudy Gobert checked out after playing 9:48
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T02:27:47Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (1st Quarter, 2:12)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T02:27:47Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (1st Quarter, 2:12)"
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T02:28:52Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (1st Quarter, 2:12)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T02:28:52Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (1st Quarter, 2:12)"
+401704628,20241022,assist,3934673,Donte DiVincenzo,2024-10-23T02:29:14Z,1.0,,"Nickeil Alexander-Walker makes 22-foot three point jumper (Donte DiVincenzo assists) (1st Quarter, 1:55)"
+401704628,20241022,points,4278039,Nickeil Alexander-Walker,2024-10-23T02:29:14Z,3.0,True,"Nickeil Alexander-Walker makes 22-foot three point jumper (Donte DiVincenzo assists) (1st Quarter, 1:55)"
+401704628,20241022,three-point make,4278039,Nickeil Alexander-Walker,2024-10-23T02:29:14Z,1.0,True,"Nickeil Alexander-Walker makes 22-foot three point jumper (Donte DiVincenzo assists) (1st Quarter, 1:55)"
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T02:29:30Z,1.0,False,"Anthony Davis misses driving floating jump shot (1st Quarter, 1:38)"
+401704628,20241022,offensive_rebound,4397077,Jaxson Hayes,2024-10-23T02:29:32Z,1.0,,"Jaxson Hayes offensive rebound (1st Quarter, 1:36)"
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T02:29:34Z,1.0,False,"Anthony Davis misses 10-foot hook shot (1st Quarter, 1:35)"
+401704628,20241022,defensive_rebound,4396971,Naz Reid,2024-10-23T02:29:36Z,1.0,,"Naz Reid defensive rebound (1st Quarter, 1:33)"
+401704628,20241022,three-point miss,4594268,Anthony Edwards,2024-10-23T02:29:42Z,1.0,False,"Anthony Edwards misses 25-foot three point shot (1st Quarter, 1:27)"
+401704628,20241022,defensive_rebound,3137259,Gabe Vincent,2024-10-23T02:29:46Z,1.0,,"Gabe Vincent defensive rebound (1st Quarter, 1:23)"
+401704628,20241022,three-point miss,4432582,Max Christie,2024-10-23T02:29:52Z,1.0,False,"Max Christie misses 23-foot three point jumper (1st Quarter, 1:16)"
+401704628,20241022,defensive_rebound,3064514,Julius Randle,2024-10-23T02:29:54Z,1.0,,"Julius Randle defensive rebound (1st Quarter, 1:14)"
+401704628,20241022,free-throw miss,3934673,Donte DiVincenzo,2024-10-23T02:30:37Z,1.0,False,"Donte DiVincenzo misses free throw 1 of 2 (1st Quarter, 1:08)"
+401704628,20241022,free-throw miss,3934673,Donte DiVincenzo,2024-10-23T02:30:37Z,1.0,False,"Donte DiVincenzo misses free throw 2 of 2 (1st Quarter, 1:08)"
+401704628,20241022,+/-,6583,Anthony Davis,2024-10-23T02:30:38Z,2.0,,Anthony Davis checked out after a +2 shift
+401704628,20241022,minutes played,6583,Anthony Davis,2024-10-23T02:30:38Z,10.8667,,Anthony Davis checked out after playing 10:52
+401704628,20241022,defensive_rebound,4397077,Jaxson Hayes,2024-10-23T02:30:39Z,1.0,,"Jaxson Hayes defensive rebound (1st Quarter, 1:06)"
+401704628,20241022,free-throw make,4397077,Jaxson Hayes,2024-10-23T02:31:46Z,1.0,True,"Jaxson Hayes makes free throw 1 of 2 (1st Quarter, 57.1)"
+401704628,20241022,points,4397077,Jaxson Hayes,2024-10-23T02:31:46Z,1.0,True,"Jaxson Hayes makes free throw 1 of 2 (1st Quarter, 57.1)"
+401704628,20241022,free-throw make,4397077,Jaxson Hayes,2024-10-23T02:31:57Z,1.0,True,"Jaxson Hayes makes free throw 2 of 2 (1st Quarter, 57.1)"
+401704628,20241022,points,4397077,Jaxson Hayes,2024-10-23T02:31:57Z,1.0,True,"Jaxson Hayes makes free throw 2 of 2 (1st Quarter, 57.1)"
+401704628,20241022,assist,3934673,Donte DiVincenzo,2024-10-23T02:32:09Z,1.0,,"Naz Reid makes 27-foot jump bank shot (Donte DiVincenzo assists) (1st Quarter, 49.1)"
+401704628,20241022,points,4396971,Naz Reid,2024-10-23T02:32:09Z,3.0,True,"Naz Reid makes 27-foot jump bank shot (Donte DiVincenzo assists) (1st Quarter, 49.1)"
+401704628,20241022,three-point make,4396971,Naz Reid,2024-10-23T02:32:09Z,1.0,True,"Naz Reid makes 27-foot jump bank shot (Donte DiVincenzo assists) (1st Quarter, 49.1)"
+401704628,20241022,two-point miss,1966,LeBron James,2024-10-23T02:32:27Z,1.0,False,"LeBron James misses layup (1st Quarter, 34.1)"
+401704628,20241022,turnover,1966,LeBron James,2024-10-23T02:32:36Z,1.0,,"LeBron James traveling (1st Quarter, 34.1)"
+401704628,20241022,two-point miss,3934673,Donte DiVincenzo,2024-10-23T02:32:57Z,1.0,False,"Donte DiVincenzo misses driving floating jump shot (1st Quarter, 20.0)"
+401704628,20241022,offensive_rebound,3934673,Donte DiVincenzo,2024-10-23T02:32:58Z,1.0,,"Donte DiVincenzo offensive rebound (1st Quarter, 19.0)"
+401704628,20241022,points,3934673,Donte DiVincenzo,2024-10-23T02:32:59Z,2.0,True,"Donte DiVincenzo makes two point shot (1st Quarter, 19.0)"
+401704628,20241022,two-point make,3934673,Donte DiVincenzo,2024-10-23T02:32:59Z,1.0,True,"Donte DiVincenzo makes two point shot (1st Quarter, 19.0)"
+401704628,20241022,three-point miss,3136776,D'Angelo Russell,2024-10-23T02:33:19Z,1.0,False,"D'Angelo Russell misses 25-foot three point jumper (1st Quarter, 1.0)"
+401704628,20241022,+/-,3137259,Gabe Vincent,2024-10-23T02:36:43Z,-7.0,,Gabe Vincent checked out after a -7 shift
+401704628,20241022,+/-,4432582,Max Christie,2024-10-23T02:36:43Z,-5.0,,Max Christie checked out after a -5 shift
+401704628,20241022,+/-,4594268,Anthony Edwards,2024-10-23T02:36:43Z,1.0,,Anthony Edwards checked out after a +1 shift
+401704628,20241022,minutes played,3137259,Gabe Vincent,2024-10-23T02:36:43Z,5.15,,Gabe Vincent checked out after playing 5:09
+401704628,20241022,minutes played,4432582,Max Christie,2024-10-23T02:36:43Z,6.7333,,Max Christie checked out after playing 6:44
+401704628,20241022,minutes played,4594268,Anthony Edwards,2024-10-23T02:36:43Z,12.0,,Anthony Edwards checked out after playing 12:00
+401704628,20241022,three-point miss,3136776,D'Angelo Russell,2024-10-23T02:37:16Z,1.0,False,"D'Angelo Russell misses 24-foot three point step back jumpshot (2nd Quarter, 11:43)"
+401704628,20241022,offensive_rebound,4066648,Rui Hachimura,2024-10-23T02:37:18Z,1.0,,"Rui Hachimura offensive rebound (2nd Quarter, 11:41)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T02:37:19Z,2.0,True,"Rui Hachimura makes two point shot (2nd Quarter, 11:39)"
+401704628,20241022,two-point make,4066648,Rui Hachimura,2024-10-23T02:37:19Z,1.0,True,"Rui Hachimura makes two point shot (2nd Quarter, 11:39)"
+401704628,20241022,three-point miss,3934673,Donte DiVincenzo,2024-10-23T02:37:37Z,1.0,False,"Donte DiVincenzo misses 24-foot three point pullup jump shot (2nd Quarter, 11:22)"
+401704628,20241022,offensive_rebound,3195,Mike Conley,2024-10-23T02:37:40Z,1.0,,"Mike Conley offensive rebound (2nd Quarter, 11:19)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T02:37:45Z,3.0,True,"Julius Randle makes 26-foot three point step back jumpshot (2nd Quarter, 11:14)"
+401704628,20241022,three-point make,3064514,Julius Randle,2024-10-23T02:37:45Z,1.0,True,"Julius Randle makes 26-foot three point step back jumpshot (2nd Quarter, 11:14)"
+401704628,20241022,two-point miss,4397077,Jaxson Hayes,2024-10-23T02:38:07Z,1.0,False,"Jaxson Hayes misses 13-foot two point shot (2nd Quarter, 10:51)"
+401704628,20241022,offensive_rebound,4397077,Jaxson Hayes,2024-10-23T02:38:08Z,1.0,,"Jaxson Hayes offensive rebound (2nd Quarter, 10:50)"
+401704628,20241022,assist,4066648,Rui Hachimura,2024-10-23T02:38:19Z,1.0,,"D'Angelo Russell makes 1-foot layup (Rui Hachimura assists) (2nd Quarter, 10:40)"
+401704628,20241022,points,3136776,D'Angelo Russell,2024-10-23T02:38:19Z,2.0,True,"D'Angelo Russell makes 1-foot layup (Rui Hachimura assists) (2nd Quarter, 10:40)"
+401704628,20241022,two-point make,3136776,D'Angelo Russell,2024-10-23T02:38:19Z,1.0,True,"D'Angelo Russell makes 1-foot layup (Rui Hachimura assists) (2nd Quarter, 10:40)"
+401704628,20241022,steal,4066648,Rui Hachimura,2024-10-23T02:38:38Z,1.0,,"Nickeil Alexander-Walker lost ball turnover (Rui Hachimura steals) (2nd Quarter, 10:21)"
+401704628,20241022,turnover,4278039,Nickeil Alexander-Walker,2024-10-23T02:38:38Z,1.0,,"Nickeil Alexander-Walker lost ball turnover (Rui Hachimura steals) (2nd Quarter, 10:21)"
+401704628,20241022,two-point miss,4066648,Rui Hachimura,2024-10-23T02:38:47Z,1.0,False,"Rui Hachimura misses 20-foot pullup jump shot (2nd Quarter, 10:12)"
+401704628,20241022,three-point miss,3136776,D'Angelo Russell,2024-10-23T02:39:18Z,1.0,False,"D'Angelo Russell misses 26-foot three point jumper (2nd Quarter, 10:01)"
+401704628,20241022,offensive_rebound,4397077,Jaxson Hayes,2024-10-23T02:39:21Z,1.0,,"Jaxson Hayes offensive rebound (2nd Quarter, 9:58)"
+401704628,20241022,assist,3136776,D'Angelo Russell,2024-10-23T02:39:45Z,1.0,,"Jaxson Hayes makes 4-foot dunk (D'Angelo Russell assists) (2nd Quarter, 9:50)"
+401704628,20241022,points,4397077,Jaxson Hayes,2024-10-23T02:39:45Z,2.0,True,"Jaxson Hayes makes 4-foot dunk (D'Angelo Russell assists) (2nd Quarter, 9:50)"
+401704628,20241022,two-point make,4397077,Jaxson Hayes,2024-10-23T02:39:45Z,1.0,True,"Jaxson Hayes makes 4-foot dunk (D'Angelo Russell assists) (2nd Quarter, 9:50)"
+401704628,20241022,two-point miss,4396971,Naz Reid,2024-10-23T02:39:59Z,1.0,False,"Naz Reid misses 9-foot two point shot (2nd Quarter, 9:35)"
+401704628,20241022,offensive_rebound,4278039,Nickeil Alexander-Walker,2024-10-23T02:40:01Z,1.0,,"Nickeil Alexander-Walker offensive rebound (2nd Quarter, 9:35)"
+401704628,20241022,free-throw miss,4278039,Nickeil Alexander-Walker,2024-10-23T02:40:32Z,1.0,False,"Nickeil Alexander-Walker misses free throw 1 of 2 (2nd Quarter, 9:35)"
+401704628,20241022,free-throw make,4278039,Nickeil Alexander-Walker,2024-10-23T02:40:44Z,1.0,True,"Nickeil Alexander-Walker makes free throw 2 of 2 (2nd Quarter, 9:35)"
+401704628,20241022,points,4278039,Nickeil Alexander-Walker,2024-10-23T02:40:44Z,1.0,True,"Nickeil Alexander-Walker makes free throw 2 of 2 (2nd Quarter, 9:35)"
+401704628,20241022,points,3136776,D'Angelo Russell,2024-10-23T02:40:53Z,2.0,True,"D'Angelo Russell makes driving layup (2nd Quarter, 9:27)"
+401704628,20241022,two-point make,3136776,D'Angelo Russell,2024-10-23T02:40:53Z,1.0,True,"D'Angelo Russell makes driving layup (2nd Quarter, 9:27)"
+401704628,20241022,turnover,3064514,Julius Randle,2024-10-23T02:41:14Z,1.0,,"Julius Randle offensive charge (2nd Quarter, 9:09)"
+401704628,20241022,turnover,3064514,Julius Randle,2024-10-23T02:41:14Z,1.0,,"Julius Randle turnover (2nd Quarter, 9:09)"
+401704628,20241022,assist,4897943,Dalton Knecht,2024-10-23T02:41:45Z,1.0,,"Jaxson Hayes makes 4-foot dunk (Dalton Knecht assists) (2nd Quarter, 8:54)"
+401704628,20241022,points,4397077,Jaxson Hayes,2024-10-23T02:41:45Z,2.0,True,"Jaxson Hayes makes 4-foot dunk (Dalton Knecht assists) (2nd Quarter, 8:54)"
+401704628,20241022,two-point make,4397077,Jaxson Hayes,2024-10-23T02:41:45Z,1.0,True,"Jaxson Hayes makes 4-foot dunk (Dalton Knecht assists) (2nd Quarter, 8:54)"
+401704628,20241022,two-point miss,4396971,Naz Reid,2024-10-23T02:42:00Z,1.0,False,"Naz Reid misses driving layup (2nd Quarter, 8:39)"
+401704628,20241022,defensive_rebound,1966,LeBron James,2024-10-23T02:42:02Z,1.0,,"LeBron James defensive rebound (2nd Quarter, 8:37)"
+401704628,20241022,points,1966,LeBron James,2024-10-23T02:42:07Z,2.0,True,"LeBron James makes two point shot (2nd Quarter, 8:33)"
+401704628,20241022,two-point make,1966,LeBron James,2024-10-23T02:42:07Z,1.0,True,"LeBron James makes two point shot (2nd Quarter, 8:33)"
+401704628,20241022,+/-,4278039,Nickeil Alexander-Walker,2024-10-23T02:45:14Z,-2.0,,Nickeil Alexander-Walker checked out after a -2 shift
+401704628,20241022,+/-,3064514,Julius Randle,2024-10-23T02:45:14Z,-4.0,,Julius Randle checked out after a -4 shift
+401704628,20241022,minutes played,4278039,Nickeil Alexander-Walker,2024-10-23T02:45:14Z,6.5,,Nickeil Alexander-Walker checked out after playing 6:30
+401704628,20241022,minutes played,3064514,Julius Randle,2024-10-23T02:45:14Z,5.65,,Julius Randle checked out after playing 5:39
+401704628,20241022,three-point miss,4431671,Jaden McDaniels,2024-10-23T02:45:46Z,1.0,False,"Jaden McDaniels misses 22-foot three point jumper (2nd Quarter, 8:18)"
+401704628,20241022,defensive_rebound,3136776,D'Angelo Russell,2024-10-23T02:45:48Z,1.0,,"D'Angelo Russell defensive rebound (2nd Quarter, 8:15)"
+401704628,20241022,assist,3136776,D'Angelo Russell,2024-10-23T02:46:03Z,1.0,,"Dalton Knecht makes 26-foot three point jumper (D'Angelo Russell assists) (2nd Quarter, 8:01)"
+401704628,20241022,points,4897943,Dalton Knecht,2024-10-23T02:46:03Z,3.0,True,"Dalton Knecht makes 26-foot three point jumper (D'Angelo Russell assists) (2nd Quarter, 8:01)"
+401704628,20241022,three-point make,4897943,Dalton Knecht,2024-10-23T02:46:03Z,1.0,True,"Dalton Knecht makes 26-foot three point jumper (D'Angelo Russell assists) (2nd Quarter, 8:01)"
+401704628,20241022,assist,3195,Mike Conley,2024-10-23T02:46:20Z,1.0,,"Jaden McDaniels makes 11-foot driving floating jump shot (Mike Conley assists) (2nd Quarter, 7:44)"
+401704628,20241022,points,4431671,Jaden McDaniels,2024-10-23T02:46:20Z,2.0,True,"Jaden McDaniels makes 11-foot driving floating jump shot (Mike Conley assists) (2nd Quarter, 7:44)"
+401704628,20241022,two-point make,4431671,Jaden McDaniels,2024-10-23T02:46:20Z,1.0,True,"Jaden McDaniels makes 11-foot driving floating jump shot (Mike Conley assists) (2nd Quarter, 7:44)"
+401704628,20241022,+/-,4397077,Jaxson Hayes,2024-10-23T02:46:44Z,3.0,,Jaxson Hayes checked out after a +3 shift
+401704628,20241022,+/-,1966,LeBron James,2024-10-23T02:46:44Z,3.0,,LeBron James checked out after a +3 shift
+401704628,20241022,minutes played,4397077,Jaxson Hayes,2024-10-23T02:46:44Z,7.4833,,Jaxson Hayes checked out after playing 7:29
+401704628,20241022,minutes played,1966,LeBron James,2024-10-23T02:46:44Z,7.4833,,LeBron James checked out after playing 7:29
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T02:47:49Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (2nd Quarter, 7:24)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T02:47:49Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (2nd Quarter, 7:24)"
+401704628,20241022,+/-,4431671,Jaden McDaniels,2024-10-23T02:47:50Z,-2.0,,Jaden McDaniels checked out after a -2 shift
+401704628,20241022,minutes played,4431671,Jaden McDaniels,2024-10-23T02:47:50Z,1.15,,Jaden McDaniels checked out after playing 1:09
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T02:48:13Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (2nd Quarter, 7:24)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T02:48:13Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (2nd Quarter, 7:24)"
+401704628,20241022,steal,3136776,D'Angelo Russell,2024-10-23T02:48:23Z,1.0,,"Mike Conley bad pass (D'Angelo Russell steals) (2nd Quarter, 7:16)"
+401704628,20241022,turnover,3195,Mike Conley,2024-10-23T02:48:23Z,1.0,,"Mike Conley bad pass (D'Angelo Russell steals) (2nd Quarter, 7:16)"
+401704628,20241022,steal,3195,Mike Conley,2024-10-23T02:48:26Z,1.0,,"D'Angelo Russell bad pass (Mike Conley steals) (2nd Quarter, 7:14)"
+401704628,20241022,turnover,3136776,D'Angelo Russell,2024-10-23T02:48:26Z,1.0,,"D'Angelo Russell bad pass (Mike Conley steals) (2nd Quarter, 7:14)"
+401704628,20241022,block,4066457,Austin Reaves,2024-10-23T02:48:33Z,1.0,,"Austin Reaves blocks Rudy Gobert 's 3-foot two point shot (2nd Quarter, 7:07)"
+401704628,20241022,two-point miss,3032976,Rudy Gobert,2024-10-23T02:48:33Z,1.0,False,"Austin Reaves blocks Rudy Gobert 's 3-foot two point shot (2nd Quarter, 7:07)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T02:48:36Z,1.0,,"Anthony Davis defensive rebound (2nd Quarter, 7:04)"
+401704628,20241022,points,4897943,Dalton Knecht,2024-10-23T02:48:40Z,2.0,True,"Dalton Knecht makes two point shot (2nd Quarter, 7:00)"
+401704628,20241022,two-point make,4897943,Dalton Knecht,2024-10-23T02:48:40Z,1.0,True,"Dalton Knecht makes two point shot (2nd Quarter, 7:00)"
+401704628,20241022,steal,4066457,Austin Reaves,2024-10-23T02:48:50Z,1.0,,"Mike Conley bad pass (Austin Reaves steals) (2nd Quarter, 6:49)"
+401704628,20241022,turnover,3195,Mike Conley,2024-10-23T02:48:50Z,1.0,,"Mike Conley bad pass (Austin Reaves steals) (2nd Quarter, 6:49)"
+401704628,20241022,points,4066457,Austin Reaves,2024-10-23T02:48:53Z,2.0,True,"Austin Reaves makes two point shot (2nd Quarter, 6:48)"
+401704628,20241022,two-point make,4066457,Austin Reaves,2024-10-23T02:48:53Z,1.0,True,"Austin Reaves makes two point shot (2nd Quarter, 6:48)"
+401704628,20241022,+/-,3136776,D'Angelo Russell,2024-10-23T02:49:07Z,12.0,,D'Angelo Russell checked out after a +12 shift
+401704628,20241022,+/-,3195,Mike Conley,2024-10-23T02:49:07Z,-15.0,,Mike Conley checked out after a -15 shift
+401704628,20241022,minutes played,3136776,D'Angelo Russell,2024-10-23T02:49:07Z,6.3333,,D'Angelo Russell checked out after playing 6:20
+401704628,20241022,minutes played,3195,Mike Conley,2024-10-23T02:49:07Z,5.2,,Mike Conley checked out after playing 5:12
+401704628,20241022,free-throw miss,4066457,Austin Reaves,2024-10-23T02:49:27Z,1.0,False,"Austin Reaves misses free throw 1 of 1 (2nd Quarter, 6:48)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T02:49:29Z,1.0,,"Rudy Gobert defensive rebound (2nd Quarter, 6:46)"
+401704628,20241022,three-point miss,3934673,Donte DiVincenzo,2024-10-23T02:49:49Z,1.0,False,"Donte DiVincenzo misses 26-foot three point jumper (2nd Quarter, 6:25)"
+401704628,20241022,defensive_rebound,4066648,Rui Hachimura,2024-10-23T02:49:53Z,1.0,,"Rui Hachimura defensive rebound (2nd Quarter, 6:21)"
+401704628,20241022,assist,3137259,Gabe Vincent,2024-10-23T02:49:59Z,1.0,,"Rui Hachimura makes 14-foot pullup jump shot (Gabe Vincent assists) (2nd Quarter, 6:14)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T02:49:59Z,2.0,True,"Rui Hachimura makes 14-foot pullup jump shot (Gabe Vincent assists) (2nd Quarter, 6:14)"
+401704628,20241022,two-point make,4066648,Rui Hachimura,2024-10-23T02:49:59Z,1.0,True,"Rui Hachimura makes 14-foot pullup jump shot (Gabe Vincent assists) (2nd Quarter, 6:14)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T02:50:16Z,3.0,True,"Anthony Edwards makes 26-foot three point step back jumpshot (2nd Quarter, 5:57)"
+401704628,20241022,three-point make,4594268,Anthony Edwards,2024-10-23T02:50:16Z,1.0,True,"Anthony Edwards makes 26-foot three point step back jumpshot (2nd Quarter, 5:57)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T02:50:33Z,2.0,True,"Anthony Davis makes layup (2nd Quarter, 5:40)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T02:50:33Z,1.0,True,"Anthony Davis makes layup (2nd Quarter, 5:40)"
+401704628,20241022,three-point miss,3934673,Donte DiVincenzo,2024-10-23T02:50:52Z,1.0,False,"Donte DiVincenzo misses 27-foot three point jumper (2nd Quarter, 5:22)"
+401704628,20241022,defensive_rebound,4897943,Dalton Knecht,2024-10-23T02:50:54Z,1.0,,"Dalton Knecht defensive rebound (2nd Quarter, 5:20)"
+401704628,20241022,two-point miss,4066648,Rui Hachimura,2024-10-23T02:50:59Z,1.0,False,"Rui Hachimura misses 12-foot jumper (2nd Quarter, 5:15)"
+401704628,20241022,offensive_rebound,4066648,Rui Hachimura,2024-10-23T02:51:02Z,1.0,,"Rui Hachimura offensive rebound (2nd Quarter, 5:12)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T02:51:04Z,2.0,True,"Rui Hachimura makes driving layup (2nd Quarter, 5:11)"
+401704628,20241022,two-point make,4066648,Rui Hachimura,2024-10-23T02:51:04Z,1.0,True,"Rui Hachimura makes driving layup (2nd Quarter, 5:11)"
+401704628,20241022,three-point miss,4396971,Naz Reid,2024-10-23T02:51:19Z,1.0,False,"Naz Reid misses 24-foot three point jumper (2nd Quarter, 4:55)"
+401704628,20241022,defensive_rebound,4066457,Austin Reaves,2024-10-23T02:51:22Z,1.0,,"Austin Reaves defensive rebound (2nd Quarter, 4:52)"
+401704628,20241022,three-point miss,4897943,Dalton Knecht,2024-10-23T02:51:24Z,1.0,False,"Dalton Knecht misses 25-foot three point shot (2nd Quarter, 4:49)"
+401704628,20241022,defensive_rebound,4594268,Anthony Edwards,2024-10-23T02:51:28Z,1.0,,"Anthony Edwards defensive rebound (2nd Quarter, 4:45)"
+401704628,20241022,turnover,3934673,Donte DiVincenzo,2024-10-23T02:51:37Z,1.0,,"Donte DiVincenzo out of bounds lost ball turnover (2nd Quarter, 4:39)"
+401704628,20241022,+/-,3934673,Donte DiVincenzo,2024-10-23T02:51:41Z,-11.0,,Donte DiVincenzo checked out after a -11 shift
+401704628,20241022,+/-,4396971,Naz Reid,2024-10-23T02:51:41Z,-11.0,,Naz Reid checked out after a -11 shift
+401704628,20241022,minutes played,3934673,Donte DiVincenzo,2024-10-23T02:51:41Z,13.45,,Donte DiVincenzo checked out after playing 13:27
+401704628,20241022,minutes played,4396971,Naz Reid,2024-10-23T02:51:41Z,13.45,,Naz Reid checked out after playing 13:27
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T02:52:16Z,2.0,True,"Anthony Davis makes driving layup (2nd Quarter, 4:23)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T02:52:16Z,1.0,True,"Anthony Davis makes driving layup (2nd Quarter, 4:23)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T02:52:55Z,2.0,True,"Anthony Edwards makes driving layup (2nd Quarter, 4:10)"
+401704628,20241022,two-point make,4594268,Anthony Edwards,2024-10-23T02:52:55Z,1.0,True,"Anthony Edwards makes driving layup (2nd Quarter, 4:10)"
+401704628,20241022,free-throw make,4594268,Anthony Edwards,2024-10-23T02:53:23Z,1.0,True,"Anthony Edwards makes free throw 1 of 1 (2nd Quarter, 4:10)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T02:53:23Z,1.0,True,"Anthony Edwards makes free throw 1 of 1 (2nd Quarter, 4:10)"
+401704628,20241022,+/-,3137259,Gabe Vincent,2024-10-23T02:53:50Z,2.0,,Gabe Vincent checked out after a +2 shift
+401704628,20241022,+/-,4066648,Rui Hachimura,2024-10-23T02:53:50Z,17.0,,Rui Hachimura checked out after a +17 shift
+401704628,20241022,minutes played,3137259,Gabe Vincent,2024-10-23T02:53:50Z,2.8,,Gabe Vincent checked out after playing 2:48
+401704628,20241022,minutes played,4066648,Rui Hachimura,2024-10-23T02:53:50Z,8.0,,Rui Hachimura checked out after playing 8:00
+401704628,20241022,three-point miss,1966,LeBron James,2024-10-23T02:54:09Z,1.0,False,"LeBron James misses 27-foot three point pullup jump shot (2nd Quarter, 3:56)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T02:54:13Z,1.0,,"Rudy Gobert defensive rebound (2nd Quarter, 3:52)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T02:54:23Z,2.0,True,"Julius Randle makes 6-foot pullup jump shot (2nd Quarter, 3:42)"
+401704628,20241022,two-point make,3064514,Julius Randle,2024-10-23T02:54:23Z,1.0,True,"Julius Randle makes 6-foot pullup jump shot (2nd Quarter, 3:42)"
+401704628,20241022,three-point miss,6583,Anthony Davis,2024-10-23T02:54:37Z,1.0,False,"Anthony Davis misses 26-foot three point pullup jump shot (2nd Quarter, 3:28)"
+401704628,20241022,block,3032976,Rudy Gobert,2024-10-23T02:54:40Z,1.0,,"Rudy Gobert blocks Bronny James's tip shot (2nd Quarter, 3:24)"
+401704628,20241022,defensive_rebound,4278039,Nickeil Alexander-Walker,2024-10-23T02:54:40Z,1.0,,"Nickeil Alexander-Walker defensive rebound (2nd Quarter, 3:24)"
+401704628,20241022,two-point miss,4683774,Bronny James,2024-10-23T02:54:40Z,1.0,False,"Rudy Gobert blocks Bronny James's tip shot (2nd Quarter, 3:24)"
+401704628,20241022,offensive_rebound,4683774,Bronny James,2024-10-23T02:54:41Z,1.0,,"Bronny James offensive rebound (2nd Quarter, 3:24)"
+401704628,20241022,three-point miss,2968436,Joe Ingles,2024-10-23T02:54:54Z,1.0,False,"Joe Ingles misses 26-foot three point jumper (2nd Quarter, 3:10)"
+401704628,20241022,two-point miss,1966,LeBron James,2024-10-23T02:55:31Z,1.0,False,"LeBron James misses 18-foot pullup jump shot (2nd Quarter, 2:44)"
+401704628,20241022,defensive_rebound,4594268,Anthony Edwards,2024-10-23T02:55:34Z,1.0,,"Anthony Edwards defensive rebound (2nd Quarter, 2:41)"
+401704628,20241022,three-point miss,4594268,Anthony Edwards,2024-10-23T02:55:42Z,1.0,False,"Anthony Edwards misses 29-foot three point pullup jump shot (2nd Quarter, 2:32)"
+401704628,20241022,offensive_rebound,3032976,Rudy Gobert,2024-10-23T02:55:47Z,1.0,,"Rudy Gobert offensive rebound (2nd Quarter, 2:27)"
+401704628,20241022,points,3032976,Rudy Gobert,2024-10-23T02:55:47Z,2.0,True,"Rudy Gobert makes dunk (2nd Quarter, 2:27)"
+401704628,20241022,two-point make,3032976,Rudy Gobert,2024-10-23T02:55:47Z,1.0,True,"Rudy Gobert makes dunk (2nd Quarter, 2:27)"
+401704628,20241022,assist,4066457,Austin Reaves,2024-10-23T02:59:31Z,1.0,,"LeBron James makes 2-foot dunk (Austin Reaves assists) (2nd Quarter, 2:14)"
+401704628,20241022,points,1966,LeBron James,2024-10-23T02:59:31Z,2.0,True,"LeBron James makes 2-foot dunk (Austin Reaves assists) (2nd Quarter, 2:14)"
+401704628,20241022,two-point make,1966,LeBron James,2024-10-23T02:59:31Z,1.0,True,"LeBron James makes 2-foot dunk (Austin Reaves assists) (2nd Quarter, 2:14)"
+401704628,20241022,assist,2968436,Joe Ingles,2024-10-23T02:59:47Z,1.0,,"Nickeil Alexander-Walker makes 24-foot three point jumper (Joe Ingles assists) (2nd Quarter, 1:57)"
+401704628,20241022,points,4278039,Nickeil Alexander-Walker,2024-10-23T02:59:47Z,3.0,True,"Nickeil Alexander-Walker makes 24-foot three point jumper (Joe Ingles assists) (2nd Quarter, 1:57)"
+401704628,20241022,three-point make,4278039,Nickeil Alexander-Walker,2024-10-23T02:59:47Z,1.0,True,"Nickeil Alexander-Walker makes 24-foot three point jumper (Joe Ingles assists) (2nd Quarter, 1:57)"
+401704628,20241022,three-point miss,4683774,Bronny James,2024-10-23T03:00:07Z,1.0,False,"Bronny James misses 28-foot three point jumper (2nd Quarter, 1:38)"
+401704628,20241022,defensive_rebound,3064514,Julius Randle,2024-10-23T03:00:10Z,1.0,,"Julius Randle defensive rebound (2nd Quarter, 1:35)"
+401704628,20241022,defensive_rebound,4066457,Austin Reaves,2024-10-23T03:00:18Z,1.0,,"Austin Reaves defensive rebound (2nd Quarter, 1:29)"
+401704628,20241022,two-point miss,4594268,Anthony Edwards,2024-10-23T03:00:18Z,1.0,False,"Anthony Edwards misses 18-foot two point shot (2nd Quarter, 1:29)"
+401704628,20241022,+/-,4897943,Dalton Knecht,2024-10-23T03:00:37Z,12.0,,Dalton Knecht checked out after a +12 shift
+401704628,20241022,+/-,4683774,Bronny James,2024-10-23T03:00:37Z,-5.0,,Bronny James checked out after a -5 shift
+401704628,20241022,minutes played,4897943,Dalton Knecht,2024-10-23T03:00:37Z,10.6833,,Dalton Knecht checked out after playing 10:41
+401704628,20241022,minutes played,4683774,Bronny James,2024-10-23T03:00:37Z,2.6833,,Bronny James checked out after playing 2:41
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T03:01:49Z,1.0,False,"Anthony Davis misses 6-foot two point shot (2nd Quarter, 1:05)"
+401704628,20241022,defensive_rebound,3064514,Julius Randle,2024-10-23T03:01:51Z,1.0,,"Julius Randle defensive rebound (2nd Quarter, 1:03)"
+401704628,20241022,three-point miss,3064514,Julius Randle,2024-10-23T03:02:01Z,1.0,False,"Julius Randle misses 27-foot three point jumper (2nd Quarter, 53.2)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T03:02:04Z,1.0,,"Anthony Davis defensive rebound (2nd Quarter, 50.1)"
+401704628,20241022,free-throw make,4432582,Max Christie,2024-10-23T03:02:39Z,1.0,True,"Max Christie makes free throw 1 of 2 (2nd Quarter, 44.1)"
+401704628,20241022,points,4432582,Max Christie,2024-10-23T03:02:39Z,1.0,True,"Max Christie makes free throw 1 of 2 (2nd Quarter, 44.1)"
+401704628,20241022,free-throw make,4432582,Max Christie,2024-10-23T03:02:55Z,1.0,True,"Max Christie makes free throw 2 of 2 (2nd Quarter, 44.1)"
+401704628,20241022,points,4432582,Max Christie,2024-10-23T03:02:55Z,1.0,True,"Max Christie makes free throw 2 of 2 (2nd Quarter, 44.1)"
+401704628,20241022,two-point miss,4594268,Anthony Edwards,2024-10-23T03:03:11Z,1.0,False,"Anthony Edwards misses 13-foot step back jumpshot (2nd Quarter, 30.1)"
+401704628,20241022,defensive_rebound,4432582,Max Christie,2024-10-23T03:03:14Z,1.0,,"Max Christie defensive rebound (2nd Quarter, 27.1)"
+401704628,20241022,three-point miss,3136776,D'Angelo Russell,2024-10-23T03:03:28Z,1.0,False,"D'Angelo Russell misses 26-foot three point jumper (2nd Quarter, 13.1)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T03:03:31Z,1.0,,"Rudy Gobert defensive rebound (2nd Quarter, 11.2)"
+401704628,20241022,two-point miss,4278039,Nickeil Alexander-Walker,2024-10-23T03:04:08Z,1.0,False,"Nickeil Alexander-Walker misses 21-foot pullup jump shot (2nd Quarter, 0.1)"
+401704628,20241022,+/-,3032976,Rudy Gobert,2024-10-23T03:04:12Z,-6.0,,Rudy Gobert checked out after a -6 shift
+401704628,20241022,+/-,6583,Anthony Davis,2024-10-23T03:04:12Z,5.0,,Anthony Davis checked out after a +5 shift
+401704628,20241022,+/-,4066457,Austin Reaves,2024-10-23T03:04:12Z,5.0,,Austin Reaves checked out after a +5 shift
+401704628,20241022,+/-,4594268,Anthony Edwards,2024-10-23T03:04:12Z,-4.0,,Anthony Edwards checked out after a -4 shift
+401704628,20241022,+/-,2968436,Joe Ingles,2024-10-23T03:04:12Z,1.0,,Joe Ingles checked out after a +1 shift
+401704628,20241022,+/-,3064514,Julius Randle,2024-10-23T03:04:12Z,4.0,,Julius Randle checked out after a +4 shift
+401704628,20241022,+/-,4278039,Nickeil Alexander-Walker,2024-10-23T03:04:12Z,4.0,,Nickeil Alexander-Walker checked out after a +4 shift
+401704628,20241022,+/-,1966,LeBron James,2024-10-23T03:04:12Z,-3.0,,LeBron James checked out after a -3 shift
+401704628,20241022,+/-,4432582,Max Christie,2024-10-23T03:04:12Z,2.0,,Max Christie checked out after a +2 shift
+401704628,20241022,+/-,3136776,D'Angelo Russell,2024-10-23T03:04:12Z,2.0,,D'Angelo Russell checked out after a +2 shift
+401704628,20241022,minutes played,3032976,Rudy Gobert,2024-10-23T03:04:12Z,8.55,,Rudy Gobert checked out after playing 8:33
+401704628,20241022,minutes played,6583,Anthony Davis,2024-10-23T03:04:12Z,7.5667,,Anthony Davis checked out after playing 7:34
+401704628,20241022,minutes played,4066457,Austin Reaves,2024-10-23T03:04:12Z,7.5667,,Austin Reaves checked out after playing 7:34
+401704628,20241022,minutes played,4594268,Anthony Edwards,2024-10-23T03:04:12Z,7.4,,Anthony Edwards checked out after playing 7:24
+401704628,20241022,minutes played,2968436,Joe Ingles,2024-10-23T03:04:12Z,6.8,,Joe Ingles checked out after playing 6:48
+401704628,20241022,minutes played,3064514,Julius Randle,2024-10-23T03:04:12Z,4.65,,Julius Randle checked out after playing 4:39
+401704628,20241022,minutes played,4278039,Nickeil Alexander-Walker,2024-10-23T03:04:12Z,4.65,,Nickeil Alexander-Walker checked out after playing 4:39
+401704628,20241022,minutes played,1966,LeBron James,2024-10-23T03:04:12Z,4.0,,LeBron James checked out after playing 4:00
+401704628,20241022,minutes played,4432582,Max Christie,2024-10-23T03:04:12Z,1.3167,,Max Christie checked out after playing 1:19
+401704628,20241022,minutes played,3136776,D'Angelo Russell,2024-10-23T03:04:12Z,1.3167,,D'Angelo Russell checked out after playing 1:19
+401704628,20241022,assist,1966,LeBron James,2024-10-23T03:20:59Z,1.0,,"Anthony Davis makes 3-foot alley oop dunk shot (LeBron James assists) (3rd Quarter, 11:44)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T03:20:59Z,2.0,True,"Anthony Davis makes 3-foot alley oop dunk shot (LeBron James assists) (3rd Quarter, 11:44)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T03:20:59Z,1.0,True,"Anthony Davis makes 3-foot alley oop dunk shot (LeBron James assists) (3rd Quarter, 11:44)"
+401704628,20241022,three-point miss,4594268,Anthony Edwards,2024-10-23T03:21:13Z,1.0,False,"Anthony Edwards misses 27-foot three point pullup jump shot (3rd Quarter, 11:31)"
+401704628,20241022,offensive_rebound,3195,Mike Conley,2024-10-23T03:21:17Z,1.0,,"Mike Conley offensive rebound (3rd Quarter, 11:27)"
+401704628,20241022,points,3195,Mike Conley,2024-10-23T03:21:19Z,2.0,True,"Mike Conley makes 7-foot two point shot (3rd Quarter, 11:25)"
+401704628,20241022,two-point make,3195,Mike Conley,2024-10-23T03:21:19Z,1.0,True,"Mike Conley makes 7-foot two point shot (3rd Quarter, 11:25)"
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T03:21:41Z,1.0,False,"Anthony Davis misses 7-foot two point shot (3rd Quarter, 11:03)"
+401704628,20241022,defensive_rebound,4431671,Jaden McDaniels,2024-10-23T03:21:43Z,1.0,,"Jaden McDaniels defensive rebound (3rd Quarter, 11:01)"
+401704628,20241022,three-point miss,3195,Mike Conley,2024-10-23T03:22:17Z,1.0,False,"Mike Conley misses 26-foot three point jumper (3rd Quarter, 10:50)"
+401704628,20241022,turnover,4594268,Anthony Edwards,2024-10-23T03:22:49Z,1.0,,"Anthony Edwards out of bounds bad pass turnover (3rd Quarter, 10:44)"
+401704628,20241022,points,4066457,Austin Reaves,2024-10-23T03:23:10Z,2.0,True,"Austin Reaves makes 11-foot two point shot (3rd Quarter, 10:30)"
+401704628,20241022,two-point make,4066457,Austin Reaves,2024-10-23T03:23:10Z,1.0,True,"Austin Reaves makes 11-foot two point shot (3rd Quarter, 10:30)"
+401704628,20241022,two-point miss,4431671,Jaden McDaniels,2024-10-23T03:23:28Z,1.0,False,"Jaden McDaniels misses 11-foot two point shot (3rd Quarter, 10:12)"
+401704628,20241022,steal,4066648,Rui Hachimura,2024-10-23T03:23:51Z,1.0,,"Anthony Edwards bad pass (Rui Hachimura steals) (3rd Quarter, 10:09)"
+401704628,20241022,turnover,4594268,Anthony Edwards,2024-10-23T03:23:51Z,1.0,,"Anthony Edwards bad pass (Rui Hachimura steals) (3rd Quarter, 10:09)"
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T03:25:15Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (3rd Quarter, 10:06)"
+401704628,20241022,free-throw miss,6583,Anthony Davis,2024-10-23T03:25:15Z,1.0,False,"Anthony Davis misses free throw 2 of 2 (3rd Quarter, 10:06)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T03:25:15Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (3rd Quarter, 10:06)"
+401704628,20241022,offensive_rebound,4066457,Austin Reaves,2024-10-23T03:25:17Z,1.0,,"Austin Reaves offensive rebound (3rd Quarter, 10:04)"
+401704628,20241022,three-point miss,3136776,D'Angelo Russell,2024-10-23T03:25:48Z,1.0,False,"D'Angelo Russell misses 25-foot three point jumper (3rd Quarter, 9:57)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T03:25:50Z,1.0,,"Rudy Gobert defensive rebound (3rd Quarter, 9:55)"
+401704628,20241022,assist,3064514,Julius Randle,2024-10-23T03:26:02Z,1.0,,"Anthony Edwards makes 23-foot three point jumper (Julius Randle assists) (3rd Quarter, 9:42)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T03:26:02Z,3.0,True,"Anthony Edwards makes 23-foot three point jumper (Julius Randle assists) (3rd Quarter, 9:42)"
+401704628,20241022,three-point make,4594268,Anthony Edwards,2024-10-23T03:26:02Z,1.0,True,"Anthony Edwards makes 23-foot three point jumper (Julius Randle assists) (3rd Quarter, 9:42)"
+401704628,20241022,assist,4066457,Austin Reaves,2024-10-23T03:26:15Z,1.0,,"Rui Hachimura makes dunk (Austin Reaves assists) (3rd Quarter, 9:30)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T03:26:15Z,2.0,True,"Rui Hachimura makes dunk (Austin Reaves assists) (3rd Quarter, 9:30)"
+401704628,20241022,two-point make,4066648,Rui Hachimura,2024-10-23T03:26:15Z,1.0,True,"Rui Hachimura makes dunk (Austin Reaves assists) (3rd Quarter, 9:30)"
+401704628,20241022,three-point miss,3064514,Julius Randle,2024-10-23T03:26:36Z,1.0,False,"Julius Randle misses 23-foot three point jumper (3rd Quarter, 9:09)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T03:26:39Z,1.0,,"Anthony Davis defensive rebound (3rd Quarter, 9:06)"
+401704628,20241022,two-point miss,3136776,D'Angelo Russell,2024-10-23T03:26:42Z,1.0,False,"D'Angelo Russell misses two point shot (3rd Quarter, 9:03)"
+401704628,20241022,defensive_rebound,3195,Mike Conley,2024-10-23T03:26:46Z,1.0,,"Mike Conley defensive rebound (3rd Quarter, 8:59)"
+401704628,20241022,turnover,4594268,Anthony Edwards,2024-10-23T03:26:50Z,1.0,,"Anthony Edwards out of bounds lost ball turnover (3rd Quarter, 8:55)"
+401704628,20241022,two-point miss,4066457,Austin Reaves,2024-10-23T03:27:11Z,1.0,False,"Austin Reaves misses 15-foot pullup jump shot (3rd Quarter, 8:40)"
+401704628,20241022,defensive_rebound,4594268,Anthony Edwards,2024-10-23T03:27:13Z,1.0,,"Anthony Edwards defensive rebound (3rd Quarter, 8:38)"
+401704628,20241022,three-point miss,3195,Mike Conley,2024-10-23T03:27:20Z,1.0,False,"Mike Conley misses 28-foot three point jumper (3rd Quarter, 8:31)"
+401704628,20241022,defensive_rebound,4066648,Rui Hachimura,2024-10-23T03:27:22Z,1.0,,"Rui Hachimura defensive rebound (3rd Quarter, 8:29)"
+401704628,20241022,free-throw make,4066648,Rui Hachimura,2024-10-23T03:27:59Z,1.0,True,"Rui Hachimura makes free throw 1 of 2 (3rd Quarter, 8:26)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T03:27:59Z,1.0,True,"Rui Hachimura makes free throw 1 of 2 (3rd Quarter, 8:26)"
+401704628,20241022,+/-,4431671,Jaden McDaniels,2024-10-23T03:28:02Z,-3.0,,Jaden McDaniels checked out after a -3 shift
+401704628,20241022,minutes played,4431671,Jaden McDaniels,2024-10-23T03:28:02Z,3.5667,,Jaden McDaniels checked out after playing 3:34
+401704628,20241022,free-throw make,4066648,Rui Hachimura,2024-10-23T03:28:25Z,1.0,True,"Rui Hachimura makes free throw 2 of 2 (3rd Quarter, 8:26)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T03:28:25Z,1.0,True,"Rui Hachimura makes free throw 2 of 2 (3rd Quarter, 8:26)"
+401704628,20241022,assist,3064514,Julius Randle,2024-10-23T03:28:48Z,1.0,,"Donte DiVincenzo makes 26-foot three point jumper (Julius Randle assists) (3rd Quarter, 8:06)"
+401704628,20241022,points,3934673,Donte DiVincenzo,2024-10-23T03:28:48Z,3.0,True,"Donte DiVincenzo makes 26-foot three point jumper (Julius Randle assists) (3rd Quarter, 8:06)"
+401704628,20241022,three-point make,3934673,Donte DiVincenzo,2024-10-23T03:28:48Z,1.0,True,"Donte DiVincenzo makes 26-foot three point jumper (Julius Randle assists) (3rd Quarter, 8:06)"
+401704628,20241022,three-point miss,4066457,Austin Reaves,2024-10-23T03:29:10Z,1.0,False,"Austin Reaves misses 24-foot three point jumper (3rd Quarter, 7:44)"
+401704628,20241022,offensive_rebound,6583,Anthony Davis,2024-10-23T03:29:12Z,1.0,,"Anthony Davis offensive rebound (3rd Quarter, 7:42)"
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T03:29:14Z,1.0,False,"Anthony Davis misses two point shot (3rd Quarter, 7:40)"
+401704628,20241022,defensive_rebound,3195,Mike Conley,2024-10-23T03:29:18Z,1.0,,"Mike Conley defensive rebound (3rd Quarter, 7:36)"
+401704628,20241022,offensive_rebound,4066648,Rui Hachimura,2024-10-23T03:29:18Z,1.0,,"Rui Hachimura offensive rebound (3rd Quarter, 7:37)"
+401704628,20241022,two-point miss,4066648,Rui Hachimura,2024-10-23T03:29:18Z,1.0,False,"Rui Hachimura misses tip shot (3rd Quarter, 7:37)"
+401704628,20241022,two-point miss,4594268,Anthony Edwards,2024-10-23T03:29:32Z,1.0,False,"Anthony Edwards misses driving layup (3rd Quarter, 7:22)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T03:29:33Z,1.0,,"Anthony Davis defensive rebound (3rd Quarter, 7:21)"
+401704628,20241022,two-point miss,1966,LeBron James,2024-10-23T03:29:37Z,1.0,False,"LeBron James misses two point shot (3rd Quarter, 7:17)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T03:29:40Z,1.0,,"Rudy Gobert defensive rebound (3rd Quarter, 7:14)"
+401704628,20241022,block,6583,Anthony Davis,2024-10-23T03:29:46Z,1.0,,"Anthony Davis blocks Rudy Gobert 's 3-foot dunk (3rd Quarter, 7:08)"
+401704628,20241022,two-point miss,3032976,Rudy Gobert,2024-10-23T03:29:46Z,1.0,False,"Anthony Davis blocks Rudy Gobert 's 3-foot dunk (3rd Quarter, 7:08)"
+401704628,20241022,+/-,1966,LeBron James,2024-10-23T03:34:18Z,1.0,,LeBron James checked out after a +1 shift
+401704628,20241022,minutes played,1966,LeBron James,2024-10-23T03:34:18Z,5.0167,,LeBron James checked out after playing 5:01
+401704628,20241022,free-throw make,3195,Mike Conley,2024-10-23T03:34:42Z,1.0,True,"Mike Conley makes free throw 1 of 3 (3rd Quarter, 6:59)"
+401704628,20241022,points,3195,Mike Conley,2024-10-23T03:34:42Z,1.0,True,"Mike Conley makes free throw 1 of 3 (3rd Quarter, 6:59)"
+401704628,20241022,free-throw make,3195,Mike Conley,2024-10-23T03:34:57Z,1.0,True,"Mike Conley makes free throw 2 of 3 (3rd Quarter, 6:59)"
+401704628,20241022,points,3195,Mike Conley,2024-10-23T03:34:57Z,1.0,True,"Mike Conley makes free throw 2 of 3 (3rd Quarter, 6:59)"
+401704628,20241022,free-throw make,3195,Mike Conley,2024-10-23T03:35:16Z,1.0,True,"Mike Conley makes free throw 3 of 3 (3rd Quarter, 6:59)"
+401704628,20241022,points,3195,Mike Conley,2024-10-23T03:35:16Z,1.0,True,"Mike Conley makes free throw 3 of 3 (3rd Quarter, 6:59)"
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T03:36:34Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (3rd Quarter, 6:48)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T03:36:34Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (3rd Quarter, 6:48)"
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T03:36:52Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (3rd Quarter, 6:48)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T03:36:52Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (3rd Quarter, 6:48)"
+401704628,20241022,three-point miss,3195,Mike Conley,2024-10-23T03:37:04Z,1.0,False,"Mike Conley misses 25-foot three point pullup jump shot (3rd Quarter, 6:37)"
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T03:37:59Z,1.0,False,"Anthony Davis misses driving layup (3rd Quarter, 6:26)"
+401704628,20241022,defensive_rebound,3934673,Donte DiVincenzo,2024-10-23T03:38:01Z,1.0,,"Donte DiVincenzo defensive rebound (3rd Quarter, 6:24)"
+401704628,20241022,free-throw make,3064514,Julius Randle,2024-10-23T03:38:33Z,1.0,True,"Julius Randle makes free throw 2 of 2 (3rd Quarter, 6:17)"
+401704628,20241022,free-throw miss,3064514,Julius Randle,2024-10-23T03:38:33Z,1.0,False,"Julius Randle misses free throw 1 of 2 (3rd Quarter, 6:17)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T03:38:33Z,1.0,True,"Julius Randle makes free throw 2 of 2 (3rd Quarter, 6:17)"
+401704628,20241022,+/-,3195,Mike Conley,2024-10-23T03:38:35Z,0.0,,Mike Conley checked out after a 0 shift
+401704628,20241022,minutes played,3195,Mike Conley,2024-10-23T03:38:35Z,5.7167,,Mike Conley checked out after playing 5:43
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T03:39:19Z,1.0,False,"Anthony Davis misses driving layup (3rd Quarter, 5:58)"
+401704628,20241022,offensive_rebound,4066457,Austin Reaves,2024-10-23T03:39:21Z,1.0,,"Austin Reaves offensive rebound (3rd Quarter, 5:56)"
+401704628,20241022,points,4066457,Austin Reaves,2024-10-23T03:39:22Z,2.0,True,"Austin Reaves makes 8-foot two point shot (3rd Quarter, 5:53)"
+401704628,20241022,two-point make,4066457,Austin Reaves,2024-10-23T03:39:22Z,1.0,True,"Austin Reaves makes 8-foot two point shot (3rd Quarter, 5:53)"
+401704628,20241022,three-point miss,4278039,Nickeil Alexander-Walker,2024-10-23T03:39:36Z,1.0,False,"Nickeil Alexander-Walker misses 23-foot three point step back jumpshot (3rd Quarter, 5:39)"
+401704628,20241022,defensive_rebound,4066457,Austin Reaves,2024-10-23T03:39:38Z,1.0,,"Austin Reaves defensive rebound (3rd Quarter, 5:37)"
+401704628,20241022,+/-,3064514,Julius Randle,2024-10-23T03:39:54Z,-1.0,,Julius Randle checked out after a -1 shift
+401704628,20241022,minutes played,3064514,Julius Randle,2024-10-23T03:39:54Z,6.5167,,Julius Randle checked out after playing 6:31
+401704628,20241022,points,4066457,Austin Reaves,2024-10-23T03:40:13Z,2.0,True,"Austin Reaves makes 7-foot pullup jump shot (3rd Quarter, 5:20)"
+401704628,20241022,two-point make,4066457,Austin Reaves,2024-10-23T03:40:13Z,1.0,True,"Austin Reaves makes 7-foot pullup jump shot (3rd Quarter, 5:20)"
+401704628,20241022,assist,3032976,Rudy Gobert,2024-10-23T03:40:27Z,1.0,,"Donte DiVincenzo makes 25-foot three point jumper (Rudy Gobert assists) (3rd Quarter, 5:06)"
+401704628,20241022,points,3934673,Donte DiVincenzo,2024-10-23T03:40:27Z,3.0,True,"Donte DiVincenzo makes 25-foot three point jumper (Rudy Gobert assists) (3rd Quarter, 5:06)"
+401704628,20241022,three-point make,3934673,Donte DiVincenzo,2024-10-23T03:40:27Z,1.0,True,"Donte DiVincenzo makes 25-foot three point jumper (Rudy Gobert assists) (3rd Quarter, 5:06)"
+401704628,20241022,defensive_rebound,4594268,Anthony Edwards,2024-10-23T03:40:42Z,1.0,,"Anthony Edwards defensive rebound (3rd Quarter, 4:53)"
+401704628,20241022,two-point miss,4066457,Austin Reaves,2024-10-23T03:40:42Z,1.0,False,"Austin Reaves misses driving layup (3rd Quarter, 4:53)"
+401704628,20241022,assist,3032976,Rudy Gobert,2024-10-23T03:40:58Z,1.0,,"Nickeil Alexander-Walker makes 1-foot dunk (Rudy Gobert assists) (3rd Quarter, 4:42)"
+401704628,20241022,points,4278039,Nickeil Alexander-Walker,2024-10-23T03:40:58Z,2.0,True,"Nickeil Alexander-Walker makes 1-foot dunk (Rudy Gobert assists) (3rd Quarter, 4:42)"
+401704628,20241022,two-point make,4278039,Nickeil Alexander-Walker,2024-10-23T03:40:58Z,1.0,True,"Nickeil Alexander-Walker makes 1-foot dunk (Rudy Gobert assists) (3rd Quarter, 4:42)"
+401704628,20241022,three-point miss,4066648,Rui Hachimura,2024-10-23T03:41:16Z,1.0,False,"Rui Hachimura misses 26-foot three point jumper (3rd Quarter, 4:22)"
+401704628,20241022,defensive_rebound,3934673,Donte DiVincenzo,2024-10-23T03:41:18Z,1.0,,"Donte DiVincenzo defensive rebound (3rd Quarter, 4:20)"
+401704628,20241022,free-throw make,4396971,Naz Reid,2024-10-23T03:41:59Z,1.0,True,"Naz Reid makes free throw 1 of 2 (3rd Quarter, 4:17)"
+401704628,20241022,points,4396971,Naz Reid,2024-10-23T03:41:59Z,1.0,True,"Naz Reid makes free throw 1 of 2 (3rd Quarter, 4:17)"
+401704628,20241022,+/-,3136776,D'Angelo Russell,2024-10-23T03:42:01Z,-3.0,,D'Angelo Russell checked out after a -3 shift
+401704628,20241022,minutes played,3136776,D'Angelo Russell,2024-10-23T03:42:01Z,7.7167,,D'Angelo Russell checked out after playing 7:43
+401704628,20241022,free-throw make,4396971,Naz Reid,2024-10-23T03:42:19Z,1.0,True,"Naz Reid makes free throw 2 of 2 (3rd Quarter, 4:17)"
+401704628,20241022,points,4396971,Naz Reid,2024-10-23T03:42:19Z,1.0,True,"Naz Reid makes free throw 2 of 2 (3rd Quarter, 4:17)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T03:42:48Z,2.0,True,"Anthony Davis makes 14-foot step back jumpshot (3rd Quarter, 3:51)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T03:42:48Z,1.0,True,"Anthony Davis makes 14-foot step back jumpshot (3rd Quarter, 3:51)"
+401704628,20241022,free-throw make,3032976,Rudy Gobert,2024-10-23T03:43:37Z,1.0,True,"Rudy Gobert makes free throw 1 of 2 (3rd Quarter, 3:37)"
+401704628,20241022,points,3032976,Rudy Gobert,2024-10-23T03:43:37Z,1.0,True,"Rudy Gobert makes free throw 1 of 2 (3rd Quarter, 3:37)"
+401704628,20241022,+/-,4432582,Max Christie,2024-10-23T03:43:38Z,-4.0,,Max Christie checked out after a -4 shift
+401704628,20241022,minutes played,4432582,Max Christie,2024-10-23T03:43:38Z,3.3667,,Max Christie checked out after playing 3:22
+401704628,20241022,free-throw make,3032976,Rudy Gobert,2024-10-23T03:44:02Z,1.0,True,"Rudy Gobert makes free throw 2 of 2 (3rd Quarter, 3:37)"
+401704628,20241022,points,3032976,Rudy Gobert,2024-10-23T03:44:02Z,1.0,True,"Rudy Gobert makes free throw 2 of 2 (3rd Quarter, 3:37)"
+401704628,20241022,assist,4066457,Austin Reaves,2024-10-23T03:44:14Z,1.0,,"Gabe Vincent makes 1-foot layup (Austin Reaves assists) (3rd Quarter, 3:26)"
+401704628,20241022,points,3137259,Gabe Vincent,2024-10-23T03:44:14Z,2.0,True,"Gabe Vincent makes 1-foot layup (Austin Reaves assists) (3rd Quarter, 3:26)"
+401704628,20241022,two-point make,3137259,Gabe Vincent,2024-10-23T03:44:14Z,1.0,True,"Gabe Vincent makes 1-foot layup (Austin Reaves assists) (3rd Quarter, 3:26)"
+401704628,20241022,assist,4396971,Naz Reid,2024-10-23T03:44:28Z,1.0,,"Rudy Gobert makes 3-foot dunk (Naz Reid assists) (3rd Quarter, 3:13)"
+401704628,20241022,points,3032976,Rudy Gobert,2024-10-23T03:44:28Z,2.0,True,"Rudy Gobert makes 3-foot dunk (Naz Reid assists) (3rd Quarter, 3:13)"
+401704628,20241022,two-point make,3032976,Rudy Gobert,2024-10-23T03:44:28Z,1.0,True,"Rudy Gobert makes 3-foot dunk (Naz Reid assists) (3rd Quarter, 3:13)"
+401704628,20241022,assist,3137259,Gabe Vincent,2024-10-23T03:44:42Z,1.0,,"Anthony Davis makes 2-foot driving floating jump shot (Gabe Vincent assists) (3rd Quarter, 3:00)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T03:44:42Z,2.0,True,"Anthony Davis makes 2-foot driving floating jump shot (Gabe Vincent assists) (3rd Quarter, 3:00)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T03:44:42Z,1.0,True,"Anthony Davis makes 2-foot driving floating jump shot (Gabe Vincent assists) (3rd Quarter, 3:00)"
+401704628,20241022,+/-,4066457,Austin Reaves,2024-10-23T03:45:01Z,-2.0,,Austin Reaves checked out after a -2 shift
+401704628,20241022,+/-,4066648,Rui Hachimura,2024-10-23T03:45:01Z,-2.0,,Rui Hachimura checked out after a -2 shift
+401704628,20241022,+/-,3032976,Rudy Gobert,2024-10-23T03:45:01Z,1.0,,Rudy Gobert checked out after a +1 shift
+401704628,20241022,minutes played,4066457,Austin Reaves,2024-10-23T03:45:01Z,9.0,,Austin Reaves checked out after playing 9:00
+401704628,20241022,minutes played,4066648,Rui Hachimura,2024-10-23T03:45:01Z,9.0,,Rui Hachimura checked out after playing 9:00
+401704628,20241022,minutes played,3032976,Rudy Gobert,2024-10-23T03:45:01Z,9.0,,Rudy Gobert checked out after playing 9:00
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T03:45:25Z,1.0,True,"Anthony Davis makes free throw 1 of 1 (3rd Quarter, 3:00)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T03:45:25Z,1.0,True,"Anthony Davis makes free throw 1 of 1 (3rd Quarter, 3:00)"
+401704628,20241022,two-point miss,3064514,Julius Randle,2024-10-23T03:45:43Z,1.0,False,"Julius Randle misses 12-foot jumper (3rd Quarter, 2:43)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T03:45:52Z,1.0,,"Anthony Davis defensive rebound (3rd Quarter, 2:34)"
+401704628,20241022,three-point miss,4897943,Dalton Knecht,2024-10-23T03:45:54Z,1.0,False,"Dalton Knecht misses 25-foot three point shot (3rd Quarter, 2:32)"
+401704628,20241022,defensive_rebound,3064514,Julius Randle,2024-10-23T03:45:58Z,1.0,,"Julius Randle defensive rebound (3rd Quarter, 2:30)"
+401704628,20241022,free-throw make,3934673,Donte DiVincenzo,2024-10-23T03:49:37Z,1.0,True,"Donte DiVincenzo makes free throw 1 of 2 (3rd Quarter, 2:30)"
+401704628,20241022,points,3934673,Donte DiVincenzo,2024-10-23T03:49:37Z,1.0,True,"Donte DiVincenzo makes free throw 1 of 2 (3rd Quarter, 2:30)"
+401704628,20241022,free-throw make,3934673,Donte DiVincenzo,2024-10-23T03:49:55Z,1.0,True,"Donte DiVincenzo makes free throw 2 of 2 (3rd Quarter, 2:30)"
+401704628,20241022,points,3934673,Donte DiVincenzo,2024-10-23T03:49:55Z,1.0,True,"Donte DiVincenzo makes free throw 2 of 2 (3rd Quarter, 2:30)"
+401704628,20241022,assist,4897943,Dalton Knecht,2024-10-23T03:50:11Z,1.0,,"Anthony Davis makes 25-foot three point jumper (Dalton Knecht assists) (3rd Quarter, 2:14)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T03:50:11Z,3.0,True,"Anthony Davis makes 25-foot three point jumper (Dalton Knecht assists) (3rd Quarter, 2:14)"
+401704628,20241022,three-point make,6583,Anthony Davis,2024-10-23T03:50:11Z,1.0,True,"Anthony Davis makes 25-foot three point jumper (Dalton Knecht assists) (3rd Quarter, 2:14)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T03:50:34Z,2.0,True,"Julius Randle makes 1-foot two point shot (3rd Quarter, 1:51)"
+401704628,20241022,two-point make,3064514,Julius Randle,2024-10-23T03:50:34Z,1.0,True,"Julius Randle makes 1-foot two point shot (3rd Quarter, 1:51)"
+401704628,20241022,assist,1966,LeBron James,2024-10-23T03:50:40Z,1.0,,"Jaxson Hayes makes alley oop layup (LeBron James assists) (3rd Quarter, 1:46)"
+401704628,20241022,points,4397077,Jaxson Hayes,2024-10-23T03:50:40Z,2.0,True,"Jaxson Hayes makes alley oop layup (LeBron James assists) (3rd Quarter, 1:46)"
+401704628,20241022,two-point make,4397077,Jaxson Hayes,2024-10-23T03:50:40Z,1.0,True,"Jaxson Hayes makes alley oop layup (LeBron James assists) (3rd Quarter, 1:46)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T03:51:26Z,2.0,True,"Anthony Edwards makes 21-foot step back jumpshot (3rd Quarter, 1:19)"
+401704628,20241022,two-point make,4594268,Anthony Edwards,2024-10-23T03:51:26Z,1.0,True,"Anthony Edwards makes 21-foot step back jumpshot (3rd Quarter, 1:19)"
+401704628,20241022,two-point miss,6583,Anthony Davis,2024-10-23T03:51:46Z,1.0,False,"Anthony Davis misses two point shot (3rd Quarter, 59.1)"
+401704628,20241022,defensive_rebound,4278039,Nickeil Alexander-Walker,2024-10-23T03:51:48Z,1.0,,"Nickeil Alexander-Walker defensive rebound (3rd Quarter, 57.1)"
+401704628,20241022,three-point miss,3934673,Donte DiVincenzo,2024-10-23T03:51:55Z,1.0,False,"Donte DiVincenzo misses 23-foot three point shot (3rd Quarter, 52.1)"
+401704628,20241022,offensive_rebound,3064514,Julius Randle,2024-10-23T03:51:57Z,1.0,,"Julius Randle offensive rebound (3rd Quarter, 49.1)"
+401704628,20241022,free-throw make,3064514,Julius Randle,2024-10-23T03:52:34Z,1.0,True,"Julius Randle makes free throw 1 of 2 (3rd Quarter, 49.1)"
+401704628,20241022,free-throw miss,3064514,Julius Randle,2024-10-23T03:52:34Z,1.0,False,"Julius Randle misses free throw 2 of 2 (3rd Quarter, 49.1)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T03:52:34Z,1.0,True,"Julius Randle makes free throw 1 of 2 (3rd Quarter, 49.1)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T03:52:36Z,1.0,,"Anthony Davis defensive rebound (3rd Quarter, 46.2)"
+401704628,20241022,steal,3934673,Donte DiVincenzo,2024-10-23T03:53:14Z,1.0,,"Gabe Vincent bad pass (Donte DiVincenzo steals) (3rd Quarter, 29.0)"
+401704628,20241022,turnover,3137259,Gabe Vincent,2024-10-23T03:53:14Z,1.0,,"Gabe Vincent bad pass (Donte DiVincenzo steals) (3rd Quarter, 29.0)"
+401704628,20241022,steal,4897943,Dalton Knecht,2024-10-23T03:53:19Z,1.0,,"Nickeil Alexander-Walker bad pass (Dalton Knecht steals) (3rd Quarter, 24.2)"
+401704628,20241022,turnover,4278039,Nickeil Alexander-Walker,2024-10-23T03:53:19Z,1.0,,"Nickeil Alexander-Walker bad pass (Dalton Knecht steals) (3rd Quarter, 24.2)"
+401704628,20241022,steal,3934673,Donte DiVincenzo,2024-10-23T03:53:22Z,1.0,,"Dalton Knecht bad pass (Donte DiVincenzo steals) (3rd Quarter, 21.2)"
+401704628,20241022,turnover,4897943,Dalton Knecht,2024-10-23T03:53:22Z,1.0,,"Dalton Knecht bad pass (Donte DiVincenzo steals) (3rd Quarter, 21.2)"
+401704628,20241022,two-point miss,4396971,Naz Reid,2024-10-23T03:53:28Z,1.0,False,"Naz Reid misses driving floating jump shot (3rd Quarter, 15.1)"
+401704628,20241022,offensive_rebound,4396971,Naz Reid,2024-10-23T03:53:30Z,1.0,,"Naz Reid offensive rebound (3rd Quarter, 13.1)"
+401704628,20241022,points,4396971,Naz Reid,2024-10-23T03:53:32Z,2.0,True,"Naz Reid makes two point shot (3rd Quarter, 13.1)"
+401704628,20241022,two-point make,4396971,Naz Reid,2024-10-23T03:53:32Z,1.0,True,"Naz Reid makes two point shot (3rd Quarter, 13.1)"
+401704628,20241022,three-point miss,6583,Anthony Davis,2024-10-23T03:53:47Z,1.0,False,"Anthony Davis misses 27-foot three point jumper (3rd Quarter, 1.0)"
+401704628,20241022,+/-,6583,Anthony Davis,2024-10-23T03:56:48Z,-5.0,,Anthony Davis checked out after a -5 shift
+401704628,20241022,+/-,3137259,Gabe Vincent,2024-10-23T03:56:48Z,-2.0,,Gabe Vincent checked out after a -2 shift
+401704628,20241022,+/-,4594268,Anthony Edwards,2024-10-23T03:56:48Z,5.0,,Anthony Edwards checked out after a +5 shift
+401704628,20241022,+/-,3064514,Julius Randle,2024-10-23T03:56:48Z,4.0,,Julius Randle checked out after a +4 shift
+401704628,20241022,+/-,3934673,Donte DiVincenzo,2024-10-23T03:56:48Z,8.0,,Donte DiVincenzo checked out after a +8 shift
+401704628,20241022,minutes played,6583,Anthony Davis,2024-10-23T03:56:48Z,12.0,,Anthony Davis checked out after playing 12:00
+401704628,20241022,minutes played,3137259,Gabe Vincent,2024-10-23T03:56:48Z,4.2833,,Gabe Vincent checked out after playing 4:17
+401704628,20241022,minutes played,4594268,Anthony Edwards,2024-10-23T03:56:48Z,12.0,,Anthony Edwards checked out after playing 12:00
+401704628,20241022,minutes played,3064514,Julius Randle,2024-10-23T03:56:48Z,3.0,,Julius Randle checked out after playing 3:00
+401704628,20241022,minutes played,3934673,Donte DiVincenzo,2024-10-23T03:56:48Z,8.4333,,Donte DiVincenzo checked out after playing 8:26
+401704628,20241022,free-throw make,4396971,Naz Reid,2024-10-23T03:58:07Z,1.0,True,"Naz Reid makes free throw 1 of 2 (4th Quarter, 11:48)"
+401704628,20241022,points,4396971,Naz Reid,2024-10-23T03:58:07Z,1.0,True,"Naz Reid makes free throw 1 of 2 (4th Quarter, 11:48)"
+401704628,20241022,free-throw make,4396971,Naz Reid,2024-10-23T03:58:22Z,1.0,True,"Naz Reid makes free throw 2 of 2 (4th Quarter, 11:48)"
+401704628,20241022,points,4396971,Naz Reid,2024-10-23T03:58:22Z,1.0,True,"Naz Reid makes free throw 2 of 2 (4th Quarter, 11:48)"
+401704628,20241022,points,1966,LeBron James,2024-10-23T03:58:42Z,2.0,True,"LeBron James makes driving layup (4th Quarter, 11:34)"
+401704628,20241022,two-point make,1966,LeBron James,2024-10-23T03:58:42Z,1.0,True,"LeBron James makes driving layup (4th Quarter, 11:34)"
+401704628,20241022,free-throw make,1966,LeBron James,2024-10-23T03:59:15Z,1.0,True,"LeBron James makes free throw 1 of 1 (4th Quarter, 11:34)"
+401704628,20241022,points,1966,LeBron James,2024-10-23T03:59:15Z,1.0,True,"LeBron James makes free throw 1 of 1 (4th Quarter, 11:34)"
+401704628,20241022,three-point miss,4431671,Jaden McDaniels,2024-10-23T03:59:35Z,1.0,False,"Jaden McDaniels misses 24-foot three point step back jumpshot (4th Quarter, 11:19)"
+401704628,20241022,assist,3195,Mike Conley,2024-10-23T03:59:58Z,1.0,,"Rudy Gobert makes 3-foot alley oop dunk shot (Mike Conley assists) (4th Quarter, 11:12)"
+401704628,20241022,points,3032976,Rudy Gobert,2024-10-23T03:59:58Z,2.0,True,"Rudy Gobert makes 3-foot alley oop dunk shot (Mike Conley assists) (4th Quarter, 11:12)"
+401704628,20241022,two-point make,3032976,Rudy Gobert,2024-10-23T03:59:58Z,1.0,True,"Rudy Gobert makes 3-foot alley oop dunk shot (Mike Conley assists) (4th Quarter, 11:12)"
+401704628,20241022,two-point miss,1966,LeBron James,2024-10-23T04:00:24Z,1.0,False,"LeBron James misses 6-foot two point shot (4th Quarter, 10:46)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T04:00:27Z,1.0,,"Rudy Gobert defensive rebound (4th Quarter, 10:43)"
+401704628,20241022,assist,4431671,Jaden McDaniels,2024-10-23T04:00:32Z,1.0,,"Naz Reid makes 24-foot three point shot (Jaden McDaniels assists) (4th Quarter, 10:38)"
+401704628,20241022,points,4396971,Naz Reid,2024-10-23T04:00:32Z,3.0,True,"Naz Reid makes 24-foot three point shot (Jaden McDaniels assists) (4th Quarter, 10:38)"
+401704628,20241022,three-point make,4396971,Naz Reid,2024-10-23T04:00:32Z,1.0,True,"Naz Reid makes 24-foot three point shot (Jaden McDaniels assists) (4th Quarter, 10:38)"
+401704628,20241022,+/-,4897943,Dalton Knecht,2024-10-23T04:04:05Z,-6.0,,Dalton Knecht checked out after a -6 shift
+401704628,20241022,minutes played,4897943,Dalton Knecht,2024-10-23T04:04:05Z,5.1,,Dalton Knecht checked out after playing 5:06
+401704628,20241022,three-point miss,4066457,Austin Reaves,2024-10-23T04:04:23Z,1.0,False,"Austin Reaves misses 26-foot three point jumper (4th Quarter, 10:16)"
+401704628,20241022,defensive_rebound,4431671,Jaden McDaniels,2024-10-23T04:04:26Z,1.0,,"Jaden McDaniels defensive rebound (4th Quarter, 10:13)"
+401704628,20241022,two-point miss,3195,Mike Conley,2024-10-23T04:04:58Z,1.0,False,"Mike Conley misses driving floating jump shot (4th Quarter, 9:58)"
+401704628,20241022,offensive_rebound,3032976,Rudy Gobert,2024-10-23T04:05:01Z,1.0,,"Rudy Gobert offensive rebound (4th Quarter, 9:55)"
+401704628,20241022,turnover,4431671,Jaden McDaniels,2024-10-23T04:05:09Z,1.0,,"Jaden McDaniels traveling (4th Quarter, 9:49)"
+401704628,20241022,+/-,4431671,Jaden McDaniels,2024-10-23T04:05:52Z,4.0,,Jaden McDaniels checked out after a +4 shift
+401704628,20241022,+/-,4278039,Nickeil Alexander-Walker,2024-10-23T04:05:52Z,9.0,,Nickeil Alexander-Walker checked out after a +9 shift
+401704628,20241022,minutes played,4431671,Jaden McDaniels,2024-10-23T04:05:52Z,2.3333,,Jaden McDaniels checked out after playing 2:20
+401704628,20241022,minutes played,4278039,Nickeil Alexander-Walker,2024-10-23T04:05:52Z,8.6167,,Nickeil Alexander-Walker checked out after playing 8:37
+401704628,20241022,points,3136776,D'Angelo Russell,2024-10-23T04:06:26Z,2.0,True,"D'Angelo Russell makes 5-foot driving floating jump shot (4th Quarter, 9:32)"
+401704628,20241022,two-point make,3136776,D'Angelo Russell,2024-10-23T04:06:26Z,1.0,True,"D'Angelo Russell makes 5-foot driving floating jump shot (4th Quarter, 9:32)"
+401704628,20241022,three-point miss,3195,Mike Conley,2024-10-23T04:06:41Z,1.0,False,"Mike Conley misses 24-foot three point jumper (4th Quarter, 9:17)"
+401704628,20241022,defensive_rebound,4066457,Austin Reaves,2024-10-23T04:06:43Z,1.0,,"Austin Reaves defensive rebound (4th Quarter, 9:15)"
+401704628,20241022,assist,3136776,D'Angelo Russell,2024-10-23T04:06:47Z,1.0,,"LeBron James makes 2-foot layup (D'Angelo Russell assists) (4th Quarter, 9:11)"
+401704628,20241022,points,1966,LeBron James,2024-10-23T04:06:47Z,2.0,True,"LeBron James makes 2-foot layup (D'Angelo Russell assists) (4th Quarter, 9:11)"
+401704628,20241022,two-point make,1966,LeBron James,2024-10-23T04:06:47Z,1.0,True,"LeBron James makes 2-foot layup (D'Angelo Russell assists) (4th Quarter, 9:11)"
+401704628,20241022,block,4397077,Jaxson Hayes,2024-10-23T04:07:06Z,1.0,,"Jaxson Hayes blocks Mike Conley 's 24-foot three point jumper (4th Quarter, 8:51)"
+401704628,20241022,three-point miss,3195,Mike Conley,2024-10-23T04:07:06Z,1.0,False,"Jaxson Hayes blocks Mike Conley 's 24-foot three point jumper (4th Quarter, 8:51)"
+401704628,20241022,assist,3136776,D'Angelo Russell,2024-10-23T04:08:02Z,1.0,,"Jaxson Hayes makes alley oop dunk shot (D'Angelo Russell assists) (4th Quarter, 8:37)"
+401704628,20241022,points,4397077,Jaxson Hayes,2024-10-23T04:08:02Z,2.0,True,"Jaxson Hayes makes alley oop dunk shot (D'Angelo Russell assists) (4th Quarter, 8:37)"
+401704628,20241022,two-point make,4397077,Jaxson Hayes,2024-10-23T04:08:02Z,1.0,True,"Jaxson Hayes makes alley oop dunk shot (D'Angelo Russell assists) (4th Quarter, 8:37)"
+401704628,20241022,+/-,3195,Mike Conley,2024-10-23T04:11:04Z,-2.0,,Mike Conley checked out after a -2 shift
+401704628,20241022,+/-,3032976,Rudy Gobert,2024-10-23T04:11:04Z,-2.0,,Rudy Gobert checked out after a -2 shift
+401704628,20241022,minutes played,3195,Mike Conley,2024-10-23T04:11:04Z,3.4,,Mike Conley checked out after playing 3:24
+401704628,20241022,minutes played,3032976,Rudy Gobert,2024-10-23T04:11:04Z,3.4,,Rudy Gobert checked out after playing 3:24
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T04:11:46Z,3.0,True,"Anthony Edwards makes 25-foot three pointer (4th Quarter, 8:20)"
+401704628,20241022,three-point make,4594268,Anthony Edwards,2024-10-23T04:11:46Z,1.0,True,"Anthony Edwards makes 25-foot three pointer (4th Quarter, 8:20)"
+401704628,20241022,three-point miss,4066648,Rui Hachimura,2024-10-23T04:12:15Z,1.0,False,"Rui Hachimura misses 27-foot three point jumper (4th Quarter, 7:52)"
+401704628,20241022,defensive_rebound,4594268,Anthony Edwards,2024-10-23T04:12:17Z,1.0,,"Anthony Edwards defensive rebound (4th Quarter, 7:49)"
+401704628,20241022,two-point miss,4594268,Anthony Edwards,2024-10-23T04:12:36Z,1.0,False,"Anthony Edwards misses two point shot (4th Quarter, 7:30)"
+401704628,20241022,offensive_rebound,4278039,Nickeil Alexander-Walker,2024-10-23T04:12:39Z,1.0,,"Nickeil Alexander-Walker offensive rebound (4th Quarter, 7:27)"
+401704628,20241022,three-point miss,4594268,Anthony Edwards,2024-10-23T04:12:41Z,1.0,False,"Anthony Edwards misses 24-foot three point jumper (4th Quarter, 7:25)"
+401704628,20241022,defensive_rebound,4066457,Austin Reaves,2024-10-23T04:12:44Z,1.0,,"Austin Reaves defensive rebound (4th Quarter, 7:22)"
+401704628,20241022,free-throw miss,4066648,Rui Hachimura,2024-10-23T04:13:35Z,1.0,False,"Rui Hachimura misses free throw 1 of 2 (4th Quarter, 7:09)"
+401704628,20241022,+/-,4397077,Jaxson Hayes,2024-10-23T04:13:36Z,-4.0,,Jaxson Hayes checked out after a -4 shift
+401704628,20241022,+/-,1966,LeBron James,2024-10-23T04:13:36Z,-4.0,,LeBron James checked out after a -4 shift
+401704628,20241022,minutes played,4397077,Jaxson Hayes,2024-10-23T04:13:36Z,7.85,,Jaxson Hayes checked out after playing 7:51
+401704628,20241022,minutes played,1966,LeBron James,2024-10-23T04:13:36Z,7.85,,LeBron James checked out after playing 7:51
+401704628,20241022,free-throw make,4066648,Rui Hachimura,2024-10-23T04:13:56Z,1.0,True,"Rui Hachimura makes free throw 2 of 2 (4th Quarter, 7:09)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T04:13:56Z,1.0,True,"Rui Hachimura makes free throw 2 of 2 (4th Quarter, 7:09)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T04:14:16Z,1.0,,"Anthony Davis defensive rebound (4th Quarter, 6:52)"
+401704628,20241022,two-point miss,4594268,Anthony Edwards,2024-10-23T04:14:16Z,1.0,False,"Anthony Edwards misses finger roll layup (4th Quarter, 6:52)"
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T04:14:56Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (4th Quarter, 6:52)"
+401704628,20241022,free-throw miss,6583,Anthony Davis,2024-10-23T04:14:56Z,1.0,False,"Anthony Davis misses free throw 2 of 2 (4th Quarter, 6:52)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T04:14:56Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (4th Quarter, 6:52)"
+401704628,20241022,defensive_rebound,3064514,Julius Randle,2024-10-23T04:14:58Z,1.0,,"Julius Randle defensive rebound (4th Quarter, 6:50)"
+401704628,20241022,block,6583,Anthony Davis,2024-10-23T04:15:34Z,1.0,,"Anthony Davis blocks Donte DiVincenzo 's 24-foot three point step back jumpshot (4th Quarter, 6:36)"
+401704628,20241022,three-point miss,3934673,Donte DiVincenzo,2024-10-23T04:15:34Z,1.0,False,"Anthony Davis blocks Donte DiVincenzo 's 24-foot three point step back jumpshot (4th Quarter, 6:36)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T04:15:50Z,2.0,True,"Anthony Edwards makes 19-foot step back jumpshot (4th Quarter, 6:29)"
+401704628,20241022,two-point make,4594268,Anthony Edwards,2024-10-23T04:15:50Z,1.0,True,"Anthony Edwards makes 19-foot step back jumpshot (4th Quarter, 6:29)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T04:16:15Z,2.0,True,"Anthony Davis makes 7-foot two point shot (4th Quarter, 6:05)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T04:16:15Z,1.0,True,"Anthony Davis makes 7-foot two point shot (4th Quarter, 6:05)"
+401704628,20241022,two-point miss,4594268,Anthony Edwards,2024-10-23T04:16:30Z,1.0,False,"Anthony Edwards misses 15-foot pullup jump shot (4th Quarter, 5:48)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T04:16:33Z,1.0,,"Anthony Davis defensive rebound (4th Quarter, 5:45)"
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T04:17:24Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (4th Quarter, 5:31)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T04:17:24Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (4th Quarter, 5:31)"
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T04:17:45Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (4th Quarter, 5:31)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T04:17:45Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (4th Quarter, 5:31)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T04:17:57Z,2.0,True,"Anthony Edwards makes driving layup (4th Quarter, 5:22)"
+401704628,20241022,two-point make,4594268,Anthony Edwards,2024-10-23T04:17:57Z,1.0,True,"Anthony Edwards makes driving layup (4th Quarter, 5:22)"
+401704628,20241022,assist,6583,Anthony Davis,2024-10-23T04:18:16Z,1.0,,"Rui Hachimura makes 11-foot two point shot (Anthony Davis assists) (4th Quarter, 5:02)"
+401704628,20241022,points,4066648,Rui Hachimura,2024-10-23T04:18:16Z,2.0,True,"Rui Hachimura makes 11-foot two point shot (Anthony Davis assists) (4th Quarter, 5:02)"
+401704628,20241022,two-point make,4066648,Rui Hachimura,2024-10-23T04:18:16Z,1.0,True,"Rui Hachimura makes 11-foot two point shot (Anthony Davis assists) (4th Quarter, 5:02)"
+401704628,20241022,+/-,4066648,Rui Hachimura,2024-10-23T04:19:57Z,3.0,,Rui Hachimura checked out after a +3 shift
+401704628,20241022,+/-,4396971,Naz Reid,2024-10-23T04:19:57Z,3.0,,Naz Reid checked out after a +3 shift
+401704628,20241022,minutes played,4066648,Rui Hachimura,2024-10-23T04:19:57Z,6.9667,,Rui Hachimura checked out after playing 6:58
+401704628,20241022,minutes played,4396971,Naz Reid,2024-10-23T04:19:57Z,12.45,,Naz Reid checked out after playing 12:27
+401704628,20241022,assist,4594268,Anthony Edwards,2024-10-23T04:20:25Z,1.0,,"Nickeil Alexander-Walker makes 27-foot three point jumper (Anthony Edwards assists) (4th Quarter, 4:44)"
+401704628,20241022,points,4278039,Nickeil Alexander-Walker,2024-10-23T04:20:25Z,3.0,True,"Nickeil Alexander-Walker makes 27-foot three point jumper (Anthony Edwards assists) (4th Quarter, 4:44)"
+401704628,20241022,three-point make,4278039,Nickeil Alexander-Walker,2024-10-23T04:20:25Z,1.0,True,"Nickeil Alexander-Walker makes 27-foot three point jumper (Anthony Edwards assists) (4th Quarter, 4:44)"
+401704628,20241022,two-point miss,1966,LeBron James,2024-10-23T04:21:02Z,1.0,False,"LeBron James misses 15-foot jumper (4th Quarter, 4:22)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T04:21:07Z,2.0,True,"Anthony Davis makes tip shot (4th Quarter, 4:16)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T04:21:07Z,1.0,True,"Anthony Davis makes tip shot (4th Quarter, 4:16)"
+401704628,20241022,offensive_rebound,6583,Anthony Davis,2024-10-23T04:21:08Z,1.0,,"Anthony Davis offensive rebound (4th Quarter, 4:16)"
+401704628,20241022,assist,4594268,Anthony Edwards,2024-10-23T04:21:26Z,1.0,,"Nickeil Alexander-Walker makes 11-foot driving floating jump shot (Anthony Edwards assists) (4th Quarter, 3:57)"
+401704628,20241022,points,4278039,Nickeil Alexander-Walker,2024-10-23T04:21:26Z,2.0,True,"Nickeil Alexander-Walker makes 11-foot driving floating jump shot (Anthony Edwards assists) (4th Quarter, 3:57)"
+401704628,20241022,two-point make,4278039,Nickeil Alexander-Walker,2024-10-23T04:21:26Z,1.0,True,"Nickeil Alexander-Walker makes 11-foot driving floating jump shot (Anthony Edwards assists) (4th Quarter, 3:57)"
+401704628,20241022,assist,1966,LeBron James,2024-10-23T04:21:55Z,1.0,,"Anthony Davis makes 11-foot driving floating jump shot (LeBron James assists) (4th Quarter, 3:37)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T04:21:55Z,2.0,True,"Anthony Davis makes 11-foot driving floating jump shot (LeBron James assists) (4th Quarter, 3:37)"
+401704628,20241022,two-point make,6583,Anthony Davis,2024-10-23T04:21:55Z,1.0,True,"Anthony Davis makes 11-foot driving floating jump shot (LeBron James assists) (4th Quarter, 3:37)"
+401704628,20241022,assist,4594268,Anthony Edwards,2024-10-23T04:22:11Z,1.0,,"Rudy Gobert makes driving layup (Anthony Edwards assists) (4th Quarter, 3:21)"
+401704628,20241022,points,3032976,Rudy Gobert,2024-10-23T04:22:11Z,2.0,True,"Rudy Gobert makes driving layup (Anthony Edwards assists) (4th Quarter, 3:21)"
+401704628,20241022,two-point make,3032976,Rudy Gobert,2024-10-23T04:22:11Z,1.0,True,"Rudy Gobert makes driving layup (Anthony Edwards assists) (4th Quarter, 3:21)"
+401704628,20241022,turnover,3137259,Gabe Vincent,2024-10-23T04:22:35Z,1.0,,"Gabe Vincent out of bounds bad pass turnover (4th Quarter, 3:00)"
+401704628,20241022,block,6583,Anthony Davis,2024-10-23T04:23:04Z,1.0,,"Anthony Davis blocks Donte DiVincenzo 's 2-foot dunk (4th Quarter, 2:43)"
+401704628,20241022,two-point miss,3934673,Donte DiVincenzo,2024-10-23T04:23:04Z,1.0,False,"Anthony Davis blocks Donte DiVincenzo 's 2-foot dunk (4th Quarter, 2:43)"
+401704628,20241022,defensive_rebound,3137259,Gabe Vincent,2024-10-23T04:23:07Z,1.0,,"Gabe Vincent defensive rebound (4th Quarter, 2:40)"
+401704628,20241022,assist,1966,LeBron James,2024-10-23T04:23:10Z,1.0,,"Austin Reaves makes two point shot (LeBron James assists) (4th Quarter, 2:37)"
+401704628,20241022,points,4066457,Austin Reaves,2024-10-23T04:23:10Z,2.0,True,"Austin Reaves makes two point shot (LeBron James assists) (4th Quarter, 2:37)"
+401704628,20241022,two-point make,4066457,Austin Reaves,2024-10-23T04:23:10Z,1.0,True,"Austin Reaves makes two point shot (LeBron James assists) (4th Quarter, 2:37)"
+401704628,20241022,three-point miss,4594268,Anthony Edwards,2024-10-23T04:23:24Z,1.0,False,"Anthony Edwards misses 27-foot three point jumper (4th Quarter, 2:23)"
+401704628,20241022,defensive_rebound,6583,Anthony Davis,2024-10-23T04:23:30Z,1.0,,"Anthony Davis defensive rebound (4th Quarter, 2:17)"
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T04:24:17Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (4th Quarter, 2:10)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T04:24:17Z,1.0,True,"Anthony Davis makes free throw 1 of 2 (4th Quarter, 2:10)"
+401704628,20241022,+/-,3137259,Gabe Vincent,2024-10-23T04:24:19Z,4.0,,Gabe Vincent checked out after a +4 shift
+401704628,20241022,minutes played,3137259,Gabe Vincent,2024-10-23T04:24:19Z,4.9833,,Gabe Vincent checked out after playing 4:59
+401704628,20241022,free-throw make,6583,Anthony Davis,2024-10-23T04:24:42Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (4th Quarter, 2:10)"
+401704628,20241022,points,6583,Anthony Davis,2024-10-23T04:24:42Z,1.0,True,"Anthony Davis makes free throw 2 of 2 (4th Quarter, 2:10)"
+401704628,20241022,two-point miss,4594268,Anthony Edwards,2024-10-23T04:24:57Z,1.0,False,"Anthony Edwards misses 15-foot two point shot (4th Quarter, 1:58)"
+401704628,20241022,offensive_rebound,3064514,Julius Randle,2024-10-23T04:24:59Z,1.0,,"Julius Randle offensive rebound (4th Quarter, 1:56)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T04:25:02Z,2.0,True,"Julius Randle makes two point shot (4th Quarter, 1:56)"
+401704628,20241022,two-point make,3064514,Julius Randle,2024-10-23T04:25:02Z,1.0,True,"Julius Randle makes two point shot (4th Quarter, 1:56)"
+401704628,20241022,free-throw make,3064514,Julius Randle,2024-10-23T04:25:32Z,1.0,True,"Julius Randle makes free throw 1 of 1 (4th Quarter, 1:56)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T04:25:32Z,1.0,True,"Julius Randle makes free throw 1 of 1 (4th Quarter, 1:56)"
+401704628,20241022,points,1966,LeBron James,2024-10-23T04:25:57Z,3.0,True,"LeBron James makes 25-foot three pointer (4th Quarter, 1:34)"
+401704628,20241022,three-point make,1966,LeBron James,2024-10-23T04:25:57Z,1.0,True,"LeBron James makes 25-foot three pointer (4th Quarter, 1:34)"
+401704628,20241022,free-throw make,4594268,Anthony Edwards,2024-10-23T04:27:04Z,1.0,True,"Anthony Edwards makes free throw 1 of 2 (4th Quarter, 1:20)"
+401704628,20241022,free-throw miss,4594268,Anthony Edwards,2024-10-23T04:27:04Z,1.0,False,"Anthony Edwards misses free throw 2 of 2 (4th Quarter, 1:20)"
+401704628,20241022,points,4594268,Anthony Edwards,2024-10-23T04:27:04Z,1.0,True,"Anthony Edwards makes free throw 1 of 2 (4th Quarter, 1:20)"
+401704628,20241022,free-throw make,3064514,Julius Randle,2024-10-23T04:27:52Z,1.0,True,"Julius Randle makes free throw 1 of 2 (4th Quarter, 1:19)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T04:27:52Z,1.0,True,"Julius Randle makes free throw 1 of 2 (4th Quarter, 1:19)"
+401704628,20241022,free-throw make,3064514,Julius Randle,2024-10-23T04:28:10Z,1.0,True,"Julius Randle makes free throw 2 of 2 (4th Quarter, 1:19)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T04:28:10Z,1.0,True,"Julius Randle makes free throw 2 of 2 (4th Quarter, 1:19)"
+401704628,20241022,three-point miss,1966,LeBron James,2024-10-23T04:28:34Z,1.0,False,"LeBron James misses 25-foot three point jumper (4th Quarter, 57.2)"
+401704628,20241022,defensive_rebound,4278039,Nickeil Alexander-Walker,2024-10-23T04:28:37Z,1.0,,"Nickeil Alexander-Walker defensive rebound (4th Quarter, 55.0)"
+401704628,20241022,three-point miss,4594268,Anthony Edwards,2024-10-23T04:28:42Z,1.0,False,"Anthony Edwards misses 26-foot three point shot (4th Quarter, 50.0)"
+401704628,20241022,defensive_rebound,1966,LeBron James,2024-10-23T04:28:44Z,1.0,,"LeBron James defensive rebound (4th Quarter, 47.1)"
+401704628,20241022,two-point miss,4066648,Rui Hachimura,2024-10-23T04:28:46Z,1.0,False,"Rui Hachimura misses two point shot (4th Quarter, 46.1)"
+401704628,20241022,three-point miss,4066457,Austin Reaves,2024-10-23T04:29:23Z,1.0,False,"Austin Reaves misses 28-foot three point jumper (4th Quarter, 27.1)"
+401704628,20241022,defensive_rebound,3032976,Rudy Gobert,2024-10-23T04:29:24Z,1.0,,"Rudy Gobert defensive rebound (4th Quarter, 27.0)"
+401704628,20241022,+/-,3032976,Rudy Gobert,2024-10-23T04:30:37Z,2.0,,Rudy Gobert checked out after a +2 shift
+401704628,20241022,minutes played,3032976,Rudy Gobert,2024-10-23T04:30:37Z,4.5833,,Rudy Gobert checked out after playing 4:35
+401704628,20241022,three-point miss,4396971,Naz Reid,2024-10-23T04:31:21Z,1.0,False,"Naz Reid misses 25-foot three point jumper (4th Quarter, 25.1)"
+401704628,20241022,offensive_rebound,3064514,Julius Randle,2024-10-23T04:31:23Z,1.0,,"Julius Randle offensive rebound (4th Quarter, 23.1)"
+401704628,20241022,points,3064514,Julius Randle,2024-10-23T04:31:26Z,2.0,True,"Julius Randle makes tip shot (4th Quarter, 23.1)"
+401704628,20241022,two-point make,3064514,Julius Randle,2024-10-23T04:31:26Z,1.0,True,"Julius Randle makes tip shot (4th Quarter, 23.1)"
+401704628,20241022,turnover,1966,LeBron James,2024-10-23T04:31:28Z,1.0,,"LeBron James out of bounds bad pass turnover (4th Quarter, 23.1)"
+401704628,20241022,block,1966,LeBron James,2024-10-23T04:31:51Z,1.0,,"LeBron James blocks Julius Randle 's 3-foot driving layup (4th Quarter, 19.1)"
+401704628,20241022,two-point miss,3064514,Julius Randle,2024-10-23T04:31:51Z,1.0,False,"LeBron James blocks Julius Randle 's 3-foot driving layup (4th Quarter, 19.1)"
+401704628,20241022,defensive_rebound,1966,LeBron James,2024-10-23T04:31:53Z,1.0,,"LeBron James defensive rebound (4th Quarter, 17.0)"
+401704628,20241022,+/-,3136776,D'Angelo Russell,2024-10-23T04:32:14Z,-1.0,,D'Angelo Russell checked out after a -1 shift
+401704628,20241022,+/-,4066457,Austin Reaves,2024-10-23T04:32:14Z,3.0,,Austin Reaves checked out after a +3 shift
+401704628,20241022,+/-,4594268,Anthony Edwards,2024-10-23T04:32:14Z,-3.0,,Anthony Edwards checked out after a -3 shift
+401704628,20241022,+/-,3934673,Donte DiVincenzo,2024-10-23T04:32:14Z,-3.0,,Donte DiVincenzo checked out after a -3 shift
+401704628,20241022,+/-,3064514,Julius Randle,2024-10-23T04:32:14Z,3.0,,Julius Randle checked out after a +3 shift
+401704628,20241022,+/-,4278039,Nickeil Alexander-Walker,2024-10-23T04:32:14Z,3.0,,Nickeil Alexander-Walker checked out after a +3 shift
+401704628,20241022,+/-,6583,Anthony Davis,2024-10-23T04:32:14Z,0.0,,Anthony Davis checked out after a 0 shift
+401704628,20241022,+/-,1966,LeBron James,2024-10-23T04:32:14Z,-4.0,,LeBron James checked out after a -4 shift
+401704628,20241022,+/-,4066648,Rui Hachimura,2024-10-23T04:32:14Z,-4.0,,Rui Hachimura checked out after a -4 shift
+401704628,20241022,+/-,4396971,Naz Reid,2024-10-23T04:32:14Z,2.0,,Naz Reid checked out after a +2 shift
+401704628,20241022,minutes played,3136776,D'Angelo Russell,2024-10-23T04:32:14Z,12.0,,D'Angelo Russell checked out after playing 12:00
+401704628,20241022,minutes played,4066457,Austin Reaves,2024-10-23T04:32:14Z,10.5167,,Austin Reaves checked out after playing 10:31
+401704628,20241022,minutes played,4594268,Anthony Edwards,2024-10-23T04:32:14Z,9.6667,,Anthony Edwards checked out after playing 9:40
+401704628,20241022,minutes played,3934673,Donte DiVincenzo,2024-10-23T04:32:14Z,9.6667,,Donte DiVincenzo checked out after playing 9:40
+401704628,20241022,minutes played,3064514,Julius Randle,2024-10-23T04:32:14Z,8.6,,Julius Randle checked out after playing 8:36
+401704628,20241022,minutes played,4278039,Nickeil Alexander-Walker,2024-10-23T04:32:14Z,8.6,,Nickeil Alexander-Walker checked out after playing 8:36
+401704628,20241022,minutes played,6583,Anthony Davis,2024-10-23T04:32:14Z,7.15,,Anthony Davis checked out after playing 7:09
+401704628,20241022,minutes played,1966,LeBron James,2024-10-23T04:32:14Z,5.0333,,LeBron James checked out after playing 5:02
+401704628,20241022,minutes played,4066648,Rui Hachimura,2024-10-23T04:32:14Z,2.1667,,Rui Hachimura checked out after playing 2:10
+401704628,20241022,minutes played,4396971,Naz Reid,2024-10-23T04:32:14Z,0.45,,Naz Reid checked out after playing 0:27
+401704628,20241022,+/-,6583,Anthony Davis,2024-10-23T04:34:56Z,-1.0,,Anthony Davis +/- adjustment -1
+401704628,20241022,+/-,4066457,Austin Reaves,2024-10-23T04:34:56Z,1.0,,Austin Reaves +/- adjustment +1
+401704628,20241022,+/-,3136776,D'Angelo Russell,2024-10-23T04:34:56Z,-1.0,,D'Angelo Russell +/- adjustment -1
+401704628,20241022,+/-,4897943,Dalton Knecht,2024-10-23T04:34:56Z,1.0,,Dalton Knecht +/- adjustment +1
+401704628,20241022,+/-,3137259,Gabe Vincent,2024-10-23T04:34:56Z,1.0,,Gabe Vincent +/- adjustment +1
+401704628,20241022,+/-,1966,LeBron James,2024-10-23T04:34:56Z,-3.0,,LeBron James +/- adjustment -3
+401704628,20241022,+/-,4432582,Max Christie,2024-10-23T04:34:56Z,2.0,,Max Christie +/- adjustment +2
+401704628,20241022,+/-,4594268,Anthony Edwards,2024-10-23T04:34:56Z,1.0,,Anthony Edwards +/- adjustment +1
+401704628,20241022,+/-,3934673,Donte DiVincenzo,2024-10-23T04:34:56Z,1.0,,Donte DiVincenzo +/- adjustment +1
+401704628,20241022,+/-,4431671,Jaden McDaniels,2024-10-23T04:34:56Z,-2.0,,Jaden McDaniels +/- adjustment -2
+401704628,20241022,+/-,3064514,Julius Randle,2024-10-23T04:34:56Z,2.0,,Julius Randle +/- adjustment +2
+401704628,20241022,+/-,3195,Mike Conley,2024-10-23T04:34:56Z,1.0,,Mike Conley +/- adjustment +1
+401704628,20241022,+/-,4278039,Nickeil Alexander-Walker,2024-10-23T04:34:56Z,-1.0,,Nickeil Alexander-Walker +/- adjustment -1
+401704628,20241022,+/-,3032976,Rudy Gobert,2024-10-23T04:34:56Z,-2.0,,Rudy Gobert +/- adjustment -2
+401704628,20241022,minutes played,6583,Anthony Davis,2024-10-23T04:34:56Z,0.4166,,Anthony Davis minutes played adjustment +0.4166
+401704628,20241022,minutes played,4066457,Austin Reaves,2024-10-23T04:34:56Z,-0.0334,,Austin Reaves minutes played adjustment -0.0334
+401704628,20241022,minutes played,4683774,Bronny James,2024-10-23T04:34:56Z,0.3167,,Bronny James minutes played adjustment +0.3167
+401704628,20241022,minutes played,3136776,D'Angelo Russell,2024-10-23T04:34:56Z,-0.2167,,D'Angelo Russell minutes played adjustment -0.2167
+401704628,20241022,minutes played,4897943,Dalton Knecht,2024-10-23T04:34:56Z,0.2167,,Dalton Knecht minutes played adjustment +0.2167
+401704628,20241022,minutes played,3137259,Gabe Vincent,2024-10-23T04:34:56Z,-0.2166,,Gabe Vincent minutes played adjustment -0.2166
+401704628,20241022,minutes played,4397077,Jaxson Hayes,2024-10-23T04:34:56Z,-0.3333,,Jaxson Hayes minutes played adjustment -0.3333
+401704628,20241022,minutes played,1966,LeBron James,2024-10-23T04:34:56Z,0.35,,LeBron James minutes played adjustment +0.35
+401704628,20241022,minutes played,4432582,Max Christie,2024-10-23T04:34:56Z,-0.4167,,Max Christie minutes played adjustment -0.4167
+401704628,20241022,minutes played,4066648,Rui Hachimura,2024-10-23T04:34:56Z,-0.0834,,Rui Hachimura minutes played adjustment -0.0834
+401704628,20241022,minutes played,4594268,Anthony Edwards,2024-10-23T04:34:56Z,-0.0667,,Anthony Edwards minutes played adjustment -0.0667
+401704628,20241022,minutes played,3934673,Donte DiVincenzo,2024-10-23T04:34:56Z,0.45,,Donte DiVincenzo minutes played adjustment +0.45
+401704628,20241022,minutes played,2968436,Joe Ingles,2024-10-23T04:34:56Z,0.2,,Joe Ingles minutes played adjustment +0.2
+401704628,20241022,minutes played,3064514,Julius Randle,2024-10-23T04:34:56Z,-0.3167,,Julius Randle minutes played adjustment -0.3167
+401704628,20241022,minutes played,3195,Mike Conley,2024-10-23T04:34:56Z,-0.2167,,Mike Conley minutes played adjustment -0.2167
+401704628,20241022,minutes played,4396971,Naz Reid,2024-10-23T04:34:56Z,-0.35,,Naz Reid minutes played adjustment -0.35
+401704628,20241022,minutes played,4278039,Nickeil Alexander-Walker,2024-10-23T04:34:56Z,-0.3667,,Nickeil Alexander-Walker minutes played adjustment -0.3667
+401704628,20241022,minutes played,3032976,Rudy Gobert,2024-10-23T04:34:56Z,-0.3333,,Rudy Gobert minutes played adjustment -0.3333
+401704628,20241022,turnover,3064514,Julius Randle,2024-10-23T04:34:56Z,-1.0,,Julius Randle turnover adjustment -1

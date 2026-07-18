@@ -4,3 +4,12 @@ __pycache__/
 *.py[cod]
 data_snapshots/*.parquet
 data_snapshots/nba_boxscore_cache/
+data_snapshots/pbp/**/*.parquet
+data_snapshots/pbp/**/*.csv
+data_snapshots/pbp/checkpoints_*/
+!data_snapshots/pbp/pbp_stat_events_202021.parquet
+!data_snapshots/pbp/pbp_stat_events_202122.parquet
+!data_snapshots/pbp/pbp_stat_events_202223.parquet
+!data_snapshots/pbp/pbp_stat_events_202324.parquet
+!data_snapshots/pbp/pbp_stat_events_202425.parquet
+!data_snapshots/pbp/pbp_stat_events_202526.parquet
