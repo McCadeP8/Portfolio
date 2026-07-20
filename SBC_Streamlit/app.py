@@ -2260,8 +2260,8 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
         .sbc-game-detail-section {{ margin:18px 0 28px; }}
         .sbc-game-detail-heading {{ margin:0 0 12px; color:#64748b; font-size:.72rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }}
         .sbc-game-jerseys {{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:28px; padding:10px 24px 16px; border-radius:20px; background:linear-gradient(180deg,#f8fafc,#fff); border:1px solid #e2e8f0; }}
-        .sbc-game-jersey {{ display:flex; align-items:center; justify-content:center; min-height:390px; }}
-        .sbc-game-jersey img {{ width:min(100%,350px); height:390px; object-fit:contain; filter:drop-shadow(0 18px 18px rgba(15,23,42,.14)); }}
+        .sbc-game-jersey {{ display:flex; align-items:center; justify-content:center; min-height:450px; }}
+        .sbc-game-jersey img {{ width:min(100%,410px); height:450px; object-fit:contain; filter:drop-shadow(0 18px 18px rgba(15,23,42,.14)); }}
         .sbc-lineup-board {{ overflow-x:auto; border-radius:18px; border:1px solid #cbd5e1; box-shadow:0 12px 28px rgba(15,23,42,.12); }}
         .sbc-lineup-row {{ display:grid; grid-template-columns:190px repeat(5,minmax(125px,1fr)); min-width:880px; min-height:210px; color:#fff; background:linear-gradient(125deg,var(--lineup-primary),var(--lineup-secondary)); border-bottom:4px solid rgba(255,255,255,.8); }}
         .sbc-lineup-row:last-child {{ border-bottom:0; }}
@@ -2277,7 +2277,7 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
         .sbc-lineup-name small {{ font-size:.62rem; font-weight:700; }}
         .sbc-lineup-name strong {{ margin-top:2px; font-size:.92rem; font-weight:950; }}
         .sbc-lineup-name em {{ margin-top:5px; font-size:.55rem; font-style:normal; font-weight:800; opacity:.72; }}
-        @media(max-width:700px) {{ .sbc-game-jerseys {{ gap:8px; padding:6px; }} .sbc-game-jersey {{ min-height:260px; }} .sbc-game-jersey img {{ height:280px; }} }}
+        @media(max-width:700px) {{ .sbc-game-jerseys {{ gap:8px; padding:6px; }} .sbc-game-jersey {{ min-height:300px; }} .sbc-game-jersey img {{ height:320px; }} }}
         </style>
         <section class="sbc-game-detail-section">
             <div class="sbc-game-detail-heading">Game Uniforms</div>
@@ -2293,21 +2293,55 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
     """)
 
 
-def starting_five_for_team(rows, team_name):
-    players = aggregate_boxscore_players(rows[rows["sbc_team"] == team_name].copy())
-    if players.empty:
-        return players
-    players["_lineup_minutes"] = pd.to_numeric(players.get("MP", 0), errors="coerce").fillna(0)
-    return players.sort_values(["_lineup_minutes", "PTS"], ascending=[False, False]).head(5)
+def pregame_starting_five(rows, matchup_row, rosters_df, team_name):
+    year = pd.to_numeric(matchup_row.get("Year"), errors="coerce")
+    matchup_period = pd.to_numeric(matchup_row.get("Period"), errors="coerce")
+    calendar = period_calendar.copy()
+    calendar_year = pd.to_numeric(calendar.get("Year"), errors="coerce")
+    calendar_period = pd.to_numeric(calendar.get("Period"), errors="coerce")
+    matchup_days = pd.to_numeric(calendar.loc[(calendar_year == year) & (calendar_period == matchup_period), "Day"], errors="coerce").dropna()
+    if matchup_days.empty or rosters_df.empty:
+        return pd.DataFrame()
+    opening_day = int(matchup_days.min())
+    roster = rosters_df.copy()
+    roster_year = pd.to_numeric(roster.get("Year"), errors="coerce")
+    roster_day = pd.to_numeric(roster.get("period"), errors="coerce")
+    roster = roster[(roster_year == year) & (roster_day == opening_day) & (roster.get("status", "").astype(str).str.upper() == "ACTIVE")].copy()
+    roster["sbc_team"] = roster["team_name"].apply(team_short_name)
+    roster = roster[roster["sbc_team"] == team_name].rename(columns={"id": "fantraxId"})
+    roster["fantraxId"] = roster["fantraxId"].astype(str)
+    bridge = build_fantrax_to_espn_bridge()
+    roster = roster.merge(bridge[["fantraxId", "fantrax_name", "espn_player_id"]], on="fantraxId", how="left")
+    row_identity = rows[["fantraxId", "display_player", "espn_player_id"]].drop_duplicates("fantraxId").copy()
+    row_identity["fantraxId"] = row_identity["fantraxId"].astype(str)
+    roster = roster.merge(row_identity, on="fantraxId", how="left", suffixes=("", "_game"))
+    roster["display_player"] = roster["fantrax_name"].fillna(roster.get("display_player")).fillna(roster["fantraxId"])
+    roster["espn_player_id"] = roster["espn_player_id"].fillna(roster.get("espn_player_id_game"))
+    slot_map = [("PG", "G"), ("SG", "G"), ("SF", "F"), ("PF", "F"), ("C", "C")]
+    selected = []
+    used_player_ids = set()
+    for roster_slot, display_slot in slot_map:
+        candidates = roster[(roster["position"].astype(str).str.upper() == roster_slot) & (~roster["fantraxId"].isin(used_player_ids))]
+        if candidates.empty:
+            candidates = roster[(roster["position"].astype(str).str.upper() == "FLX") & (~roster["fantraxId"].isin(used_player_ids))]
+        if candidates.empty:
+            candidates = roster[~roster["fantraxId"].isin(used_player_ids)]
+        if candidates.empty:
+            continue
+        player = candidates.iloc[0].copy()
+        player["lineup_position"] = display_slot
+        selected.append(player)
+        used_player_ids.add(player["fantraxId"])
+    return pd.DataFrame(selected)
 
 
-def render_starting_lineups(rows, team_a, team_b):
+def render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b):
     lineup_rows = []
     for team_name in [team_a, team_b]:
         info = team_info.get(team_name, {})
-        players = starting_five_for_team(rows, team_name)
+        players = pregame_starting_five(rows, matchup_row, rosters_df, team_name)
         player_tiles = []
-        for lineup_number, (_, player) in enumerate(players.iterrows(), start=1):
+        for _, player in players.iterrows():
             name = str(player.get("display_player", ""))
             name_parts = name.split()
             first_name = " ".join(name_parts[:-1]) if len(name_parts) > 1 else ""
@@ -2315,7 +2349,7 @@ def render_starting_lineups(rows, team_a, team_b):
             player_tiles.append(f"""
                 <div class="sbc-lineup-player">
                     <div class="sbc-lineup-photo"><img src="{espn_headshot_url(player.get('espn_player_id'))}" alt="{escape(name, quote=True)} headshot"></div>
-                    <div class="sbc-lineup-name"><small>{escape(first_name)}</small><strong>{escape(last_name)}</strong><em>Starter {lineup_number} · {stat_number(player.get('MP', 0))} MIN</em></div>
+                    <div class="sbc-lineup-name"><small>{escape(first_name)}</small><strong>{escape(last_name)}</strong><em>{escape(str(player.get('lineup_position', '')))}</em></div>
                 </div>
             """)
         lineup_rows.append(f"""
@@ -2413,9 +2447,9 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
         aggregate = view_mode == "Aggregate players"
         render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
     with details_tab:
-        render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri)
-        render_starting_lineups(rows, team_a, team_b)
         render_matchup_visuals(rows, team_a, team_b)
+        render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b)
+        render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri)
     with pbp_tab:
         render_matchup_pbp_tab(
             rows,
