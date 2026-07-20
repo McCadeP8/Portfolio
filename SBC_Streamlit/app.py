@@ -3372,23 +3372,23 @@ need_league_picks = requested_main_page == "League Hub" and requested_league_pag
 need_league_standings = requested_main_page == "League Hub" and requested_league_page == "Standings"
 need_league_scoreboard = requested_main_page == "League Hub" and requested_league_page == "Scoreboard"
 need_history = requested_main_page == "League Hub" and requested_league_page == "History"
-need_history_awards = need_history and requested_history_page in ["Awards", "Overview", "Player Stats"]
+need_team_history = requested_main_page == "Team Hub" and requested_team_page == "History"
+need_history_awards = (need_history and requested_history_page in ["Awards", "Overview", "Player Stats"]) or need_team_history
 need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
 
-need_team_history = requested_main_page == "Team Hub" and requested_team_page == "History"
 need_df = need_team_data or need_team_history or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
 need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft or (need_history and requested_history_page == "Player Stats")
 need_exceptions = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
 need_base_cap = need_team_data or need_trade_data or need_checks_data or need_league_overview
 need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks") or need_trade_data or need_checks_data or need_league_picks
 need_ft = need_checks_data
-need_standings = need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft
+need_standings = need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft or need_team_history
 need_dh = need_history_draft
-need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_history_stats or need_history_awards
+need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "History"]) or need_history_stats or need_history_awards
 need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_all_time_rosters = need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
-need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or need_league_standings or need_history
+need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule", "History"]) or need_league_scoreboard or need_league_standings or need_history
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_history_awards
 
@@ -8151,6 +8151,180 @@ def history_years_count(value):
     if is_blank_value(value) or str(value).strip() == "-":
         return 0
     return len([part for part in str(value).split(",") if part.strip()])
+
+
+def franchise_record_parts(value):
+    match = re.search(r"(\d+)\s*-\s*(\d+)", str(value or ""))
+    if not match:
+        return 0, 0
+    return int(match.group(1)), int(match.group(2))
+
+
+def franchise_awards_for_team(team, team_awards_df):
+    if team_awards_df is None or team_awards_df.empty:
+        return pd.DataFrame(columns=["Award", "Year", "Winner"])
+    work = team_awards_df.copy()
+    work["_team"] = work["Winner"].apply(clean_pick_display)
+    work["_year"] = pd.to_numeric(work["Year"], errors="coerce")
+    return work[(work["_team"] == team) & work["_year"].notna()].copy()
+
+
+def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
+    if standings_df is None or standings_df.empty:
+        return pd.DataFrame()
+    work = standings_df.copy()
+    work["_year"] = pd.to_numeric(work["Year"], errors="coerce")
+    work["_period"] = pd.to_numeric(work["Period"], errors="coerce")
+    work = work.dropna(subset=["_year", "_period"])
+    final = work.sort_values("_period").groupby(["_year", "Team"], as_index=False).tail(1).copy()
+    final[["_wins", "_losses"]] = final["Record"].apply(lambda value: pd.Series(franchise_record_parts(value)))
+    final["_pct"] = final["_wins"] / (final["_wins"] + final["_losses"]).replace(0, pd.NA)
+    final["_pct"] = final["_pct"].fillna(0)
+    awards = franchise_awards_for_team(team, team_awards_df)
+    games = history_completed_games(schedule_df, ["Play-In", "Playoffs"])
+    rows = []
+    for year in sorted(final.loc[final["Team"].astype(str) == team, "_year"].astype(int).unique()):
+        team_row = final[(final["_year"] == year) & (final["Team"].astype(str) == team)].iloc[0]
+        division = str(team_info.get(team, {}).get("div", ""))
+        division_teams = [name for name, info in team_info.items() if str(info.get("div", "")) == division]
+        division_table = final[(final["_year"] == year) & final["Team"].astype(str).isin(division_teams)].copy()
+        division_table = division_table.sort_values(["_pct", "_wins", "_losses", "Team"], ascending=[False, False, True, True]).reset_index(drop=True)
+        division_match = division_table.index[division_table["Team"].astype(str) == team].tolist()
+        division_finish = ordinal_text(division_match[0] + 1) if division_match else "—"
+
+        year_awards = awards[pd.to_numeric(awards["_year"], errors="coerce") == year]
+        award_names = set(year_awards["Award"].astype(str))
+        honors = []
+        if "Champion" in award_names:
+            honors.append("League Champion")
+        conference_award = "WC Champion" if team_info.get(team, {}).get("conf") == "West" else "EC Champion"
+        if conference_award in award_names:
+            honors.append(f"{team_info.get(team, {}).get('conf', '')} Champion")
+        division_award = f"{division} Champion"
+        if division_award in award_names:
+            honors.append(f"{division} Champion")
+        if "Cup Winner" in award_names:
+            honors.append("Cup Champion")
+        if "RS Champion" in award_names:
+            honors.append("Regular Season Champion")
+
+        team_games = games[
+            (pd.to_numeric(games["Year"], errors="coerce") == year)
+            & ((games["TeamA"].astype(str) == team) | (games["TeamB"].astype(str) == team))
+        ].copy() if not games.empty else pd.DataFrame()
+        playoff_games = team_games[team_games["Type"].astype(str) == "Playoffs"].copy() if not team_games.empty else pd.DataFrame()
+        if playoff_games.empty:
+            play_in = team_games[team_games["Type"].astype(str) == "Play-In"].copy() if not team_games.empty else pd.DataFrame()
+            if play_in.empty:
+                outcome = "Missed Playoffs"
+            else:
+                last = play_in.sort_values("Period").iloc[-1]
+                opponent = last["TeamB"] if str(last["TeamA"]) == team else last["TeamA"]
+                team_score = score_numeric(last["TeamAScore"] if str(last["TeamA"]) == team else last["TeamBScore"])
+                opp_score = score_numeric(last["TeamBScore"] if str(last["TeamA"]) == team else last["TeamAScore"])
+                outcome = f"Missed Playoffs · Lost {last.get('Round', 'Play-In')} vs {opponent}, {format_score_value(team_score)}–{format_score_value(opp_score)}"
+        else:
+            playoff_games["_round_rank"] = playoff_games["Round"].apply(history_round_rank)
+            last = playoff_games.sort_values(["_round_rank", "Period"]).iloc[-1]
+            opponent = last["TeamB"] if str(last["TeamA"]) == team else last["TeamA"]
+            team_score = score_numeric(last["TeamAScore"] if str(last["TeamA"]) == team else last["TeamBScore"])
+            opp_score = score_numeric(last["TeamBScore"] if str(last["TeamA"]) == team else last["TeamAScore"])
+            won = team_score >= opp_score
+            if "Champion" in award_names:
+                outcome = f"Won SBCFBL Finals vs {opponent}, {format_score_value(team_score)}–{format_score_value(opp_score)}"
+            else:
+                verb = "Won" if won else "Lost"
+                outcome = f"{verb} {last.get('Round', 'Playoffs')} vs {opponent}, {format_score_value(team_score)}–{format_score_value(opp_score)}"
+        rows.append({
+            "Year": year,
+            "Season": season_label_from_year(year),
+            "Record": str(team_row.get("Record", "—")),
+            "Division Finish": f"{division_finish} {division}",
+            "Season Result": outcome,
+            "Honors": " · ".join(honors) if honors else "—",
+            "Wins": int(team_row["_wins"]),
+            "Losses": int(team_row["_losses"]),
+            "Playoffs": not playoff_games.empty,
+        })
+    return pd.DataFrame(rows).sort_values("Year", ascending=False).reset_index(drop=True)
+
+
+def franchise_season_stat_ranks(team, team_stats_df):
+    if team_stats_df is None or team_stats_df.empty or not {"Team", "Year"}.issubset(team_stats_df.columns):
+        return pd.DataFrame()
+    stats = team_stats_df.copy()
+    stats["Year"] = pd.to_numeric(stats["Year"], errors="coerce")
+    stats = stats.dropna(subset=["Year"])
+    sum_cols = ["PTS", "AST", "OREB", "DREB", "ST", "BLK", "TO", "3PTM", "2PTA", "3PTA", "FTA"]
+    for col in sum_cols:
+        stats[col] = pd.to_numeric(stats.get(col, 0), errors="coerce").fillna(0)
+    totals = stats.groupby(["Year", "Team"], as_index=False)[sum_cols].sum()
+    totals["REB"] = totals["OREB"] + totals["DREB"]
+    totals["TS%"] = (totals["PTS"] / (2 * (totals["2PTA"] + totals["3PTA"] + 0.44 * totals["FTA"]))).where((totals["2PTA"] + totals["3PTA"] + 0.44 * totals["FTA"]) > 0, 0)
+    categories = ["PTS", "AST", "REB", "ST", "BLK", "3PTM", "TS%", "TO"]
+    rows = []
+    for year, year_rows in totals.groupby("Year"):
+        team_row = year_rows[year_rows["Team"].astype(str) == team]
+        if team_row.empty:
+            continue
+        row = {"Year": int(year), "Season": season_label_from_year(int(year)), "League Size": int(year_rows["Team"].nunique())}
+        for category in categories:
+            ascending = category == "TO"
+            ranks = year_rows[category].rank(method="min", ascending=ascending).astype(int)
+            row[category] = float(team_row.iloc[0][category])
+            row[f"{category} Rank"] = int(ranks.loc[team_row.index[0]])
+        rows.append(row)
+    return pd.DataFrame(rows).sort_values("Year").reset_index(drop=True)
+
+
+def render_franchise_history_dashboard(team, standings_df, schedule_df, team_stats_df, team_awards_df):
+    ledger = franchise_season_ledger(team, standings_df, schedule_df, team_awards_df)
+    ranks = franchise_season_stat_ranks(team, team_stats_df)
+    awards = franchise_awards_for_team(team, team_awards_df)
+    wins = int(ledger["Wins"].sum()) if not ledger.empty else 0
+    losses = int(ledger["Losses"].sum()) if not ledger.empty else 0
+    playoff_appearances = int(ledger["Playoffs"].sum()) if not ledger.empty else 0
+    award_counts = awards["Award"].astype(str).value_counts() if not awards.empty else pd.Series(dtype=int)
+    cols = st.columns(6)
+    metric_values = [
+        ("Seasons", len(ledger)), ("Regular-Season Record", f"{wins}-{losses}"),
+        ("Playoff Appearances", playoff_appearances), ("League Titles", int(award_counts.get("Champion", 0))),
+        ("Conference Titles", int(award_counts.get("WC Champion", 0) + award_counts.get("EC Champion", 0))),
+        ("Division Titles", int(sum(award_counts.get(f"{division} Champion", 0) for division in ["Pacific", "Northwest", "Southwest", "Central", "Atlantic", "Southeast"]))),
+    ]
+    for col, (label, value) in zip(cols, metric_values):
+        with col:
+            st.metric(label, value, border=True)
+
+    render_html('<div class="sbc-awards-section-head"><span>Season-by-Season</span><em>Final record, division placement, postseason exit, opponent, score, and trophies.</em></div>')
+    if ledger.empty:
+        render_html('<div class="sbc-empty-state">No franchise season history is available.</div>')
+    else:
+        render_history_overview_table(ledger, ["Season", "Record", "Division Finish", "Season Result", "Honors"])
+
+    render_html('<div class="sbc-awards-section-head"><span>League Rank Over Time</span><em>Where this franchise finished each season across the core statistical categories.</em></div>')
+    if ranks.empty:
+        render_html('<div class="sbc-empty-state">No historical team-stat rankings are available.</div>')
+        return
+    categories = ["PTS", "AST", "REB", "ST", "BLK", "3PTM", "TS%", "TO"]
+    selected_category = st.selectbox("Ranking Category", categories, key=f"franchise_rank_category_{team}")
+    chart_rows = ranks[["Year", "Season", f"{selected_category} Rank", "League Size"]].rename(columns={f"{selected_category} Rank": "Rank"})
+    chart = (
+        alt.Chart(chart_rows)
+        .mark_line(point=alt.OverlayMarkDef(size=85), strokeWidth=4, color=str(team_info.get(team, {}).get("bg", "#2563eb")))
+        .encode(
+            x=alt.X("Year:O", title="Season", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("Rank:Q", title="League Rank", scale=alt.Scale(reverse=True, domain=[1, float(chart_rows["League Size"].max())])),
+            tooltip=[alt.Tooltip("Season:N"), alt.Tooltip("Rank:Q"), alt.Tooltip("League Size:Q")],
+        )
+        .properties(height=260)
+    )
+    st.altair_chart(chart, use_container_width=True)
+    rank_table = ranks.sort_values("Year", ascending=False)[["Season"] + [f"{category} Rank" for category in categories]].copy()
+    rank_table.columns = ["Season"] + categories
+    for category in categories:
+        rank_table[category] = rank_table[category].map(lambda value: ordinal_text(value))
+    st.dataframe(rank_table, hide_index=True, width="stretch", height="content")
 
 
 def history_regular_season_h2h_matrix(schedule_df):
@@ -16042,7 +16216,7 @@ if main_page == "Team Hub" and selected_team_page == "Schedule":
     render_team_travel_map(schedule_raw, SelectedTeam, SelectedScheduleYear)
 
 if main_page == "Team Hub" and selected_team_page == "History":
-    team_history_view = st.segmented_control(
+    team_history_view = st.pills(
         "Team history section", ["Franchise History", "Branding"],
         default="Franchise History", key="team_history_section", label_visibility="collapsed",
     )
@@ -16058,12 +16232,13 @@ if main_page == "Team Hub" and selected_team_page == "History" and team_history_
                 <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
                 <div>
                     <div class="sbc-draft-eyebrow">Franchise Archive</div>
-                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} All-Time Stats</div>
-                    <div class="sbc-draft-subcopy">Player production counted only while active for this franchise in SBCFBL matchup windows.</div>
+                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Franchise History</div>
+                    <div class="sbc-draft-subcopy">Every season, finish, postseason result, championship, league rank, and franchise player record in one archive.</div>
                 </div>
             </div>
         </div>
     """)
+    render_franchise_history_dashboard(SelectedTeam, standings, all_time_schedule, all_time_team_stats, team_award_history)
     if team_archive.empty:
         render_html('<div class="sbc-empty-state">No player matchup archive is available for this team yet. Run build_sbc_player_matchup_stats.py to refresh it.</div>')
     else:
