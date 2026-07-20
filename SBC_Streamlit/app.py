@@ -2247,7 +2247,7 @@ def render_matchup_shot_court(rows, team_a, team_b):
 def render_matchup_visuals(rows, team_a, team_b):
     render_html("""
         <style>
-        .sbc-shot-visual-title { margin:24px 0 10px; color:#64748b; font-size:.72rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }
+        .sbc-shot-visual-title { margin:28px 0 14px; color:#475569; font-size:1.25rem; font-weight:950; letter-spacing:.08em; line-height:1.15; text-transform:uppercase; }
         </style>
         <div class="sbc-shot-visual-title">Starter Shot Map · Home Floor</div>
     """)
@@ -2258,7 +2258,7 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
     render_html(f"""
         <style>
         .sbc-game-detail-section {{ margin:18px 0 28px; }}
-        .sbc-game-detail-heading {{ margin:0 0 12px; color:#64748b; font-size:.72rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }}
+        .sbc-game-detail-heading {{ margin:0 0 14px; color:#475569; font-size:1.25rem; font-weight:950; letter-spacing:.08em; line-height:1.15; text-transform:uppercase; }}
         .sbc-game-jerseys {{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:28px; padding:10px 24px 16px; border-radius:20px; background:linear-gradient(180deg,#f8fafc,#fff); border:1px solid #e2e8f0; }}
         .sbc-game-jersey {{ display:flex; align-items:center; justify-content:center; min-height:450px; }}
         .sbc-game-jersey img {{ width:min(100%,410px); height:450px; object-fit:contain; filter:drop-shadow(0 18px 18px rgba(15,23,42,.14)); }}
@@ -2273,7 +2273,7 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
         .sbc-lineup-photo {{ flex:1; min-height:145px; overflow:hidden; }}
         .sbc-lineup-photo img {{ display:block; width:100%; height:100%; object-fit:contain; object-position:center bottom; filter:drop-shadow(0 5px 4px rgba(0,0,0,.28)); }}
         .sbc-lineup-position {{ position:absolute; z-index:2; top:8px; left:8px; display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:4px; background:#fff; color:#111827; box-shadow:0 3px 8px rgba(15,23,42,.28); font-size:.7rem; font-weight:950; letter-spacing:.02em; }}
-        .sbc-lineup-name {{ min-height:58px; padding:6px 8px 7px; background:rgba(5,10,20,.8); text-transform:uppercase; line-height:1; }}
+        .sbc-lineup-name {{ padding:7px 8px 8px; background:rgba(5,10,20,.8); text-transform:uppercase; line-height:1; }}
         .sbc-lineup-name small,.sbc-lineup-name strong {{ display:block; }}
         .sbc-lineup-name small {{ font-size:.62rem; font-weight:700; }}
         .sbc-lineup-name strong {{ margin-top:2px; font-size:.92rem; font-weight:950; }}
@@ -2446,7 +2446,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     if not show_players:
         return
 
-    box_tab, details_tab, pbp_tab = st.tabs(["Box Score", "Game Details", "Play-by-play"])
+    box_tab, details_tab, pbp_tab = st.tabs(["Box Score", "Game Details", "Play-by-Play"])
     with box_tab:
         view_mode = st.radio(
             "Box score view",
