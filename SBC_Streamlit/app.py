@@ -2182,7 +2182,7 @@ def render_interactive_shot_figure(figure, ax, shots, home_team):
             f'<circle class="sbc-shot-hit" cx="{display_x:.2f}" cy="{image_height - display_y:.2f}" r="12" data-shot="{escaped_detail}"></circle>'
         )
     plt.close(figure)
-    chart_height = max(390, min(650, int(image_height * 0.78)))
+    chart_height = image_height + 8
     components.html(f"""
     <style>
       html,body{{margin:0;padding:0;overflow:hidden;background:transparent}}
@@ -2254,6 +2254,84 @@ def render_matchup_visuals(rows, team_a, team_b):
     render_matchup_shot_court(rows, team_a, team_b)
 
 
+def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
+    render_html(f"""
+        <style>
+        .sbc-game-detail-section {{ margin:18px 0 28px; }}
+        .sbc-game-detail-heading {{ margin:0 0 12px; color:#64748b; font-size:.72rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }}
+        .sbc-game-jerseys {{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:28px; padding:10px 24px 16px; border-radius:20px; background:linear-gradient(180deg,#f8fafc,#fff); border:1px solid #e2e8f0; }}
+        .sbc-game-jersey {{ display:flex; align-items:center; justify-content:center; min-height:390px; }}
+        .sbc-game-jersey img {{ width:min(100%,350px); height:390px; object-fit:contain; filter:drop-shadow(0 18px 18px rgba(15,23,42,.14)); }}
+        .sbc-lineup-board {{ overflow-x:auto; border-radius:18px; border:1px solid #cbd5e1; box-shadow:0 12px 28px rgba(15,23,42,.12); }}
+        .sbc-lineup-row {{ display:grid; grid-template-columns:190px repeat(5,minmax(125px,1fr)); min-width:880px; min-height:210px; color:#fff; background:linear-gradient(125deg,var(--lineup-primary),var(--lineup-secondary)); border-bottom:4px solid rgba(255,255,255,.8); }}
+        .sbc-lineup-row:last-child {{ border-bottom:0; }}
+        .sbc-lineup-team {{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:14px; background:rgba(0,0,0,.22); text-align:center; }}
+        .sbc-lineup-team img {{ width:90px; height:90px; object-fit:contain; filter:drop-shadow(0 7px 8px rgba(0,0,0,.28)); }}
+        .sbc-lineup-team strong {{ margin-top:6px; font-family:var(--lineup-font),sans-serif; font-size:1.05rem; line-height:1.05; }}
+        .sbc-lineup-team span {{ margin-top:4px; font-size:.62rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }}
+        .sbc-lineup-player {{ position:relative; display:flex; flex-direction:column; overflow:hidden; border-left:1px solid rgba(255,255,255,.45); background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(0,0,0,.18)); }}
+        .sbc-lineup-photo {{ flex:1; min-height:145px; overflow:hidden; }}
+        .sbc-lineup-photo img {{ display:block; width:100%; height:100%; object-fit:contain; object-position:center bottom; filter:drop-shadow(0 5px 4px rgba(0,0,0,.28)); }}
+        .sbc-lineup-name {{ min-height:58px; padding:6px 8px 7px; background:rgba(5,10,20,.8); text-transform:uppercase; line-height:1; }}
+        .sbc-lineup-name small,.sbc-lineup-name strong,.sbc-lineup-name em {{ display:block; }}
+        .sbc-lineup-name small {{ font-size:.62rem; font-weight:700; }}
+        .sbc-lineup-name strong {{ margin-top:2px; font-size:.92rem; font-weight:950; }}
+        .sbc-lineup-name em {{ margin-top:5px; font-size:.55rem; font-style:normal; font-weight:800; opacity:.72; }}
+        @media(max-width:700px) {{ .sbc-game-jerseys {{ gap:8px; padding:6px; }} .sbc-game-jersey {{ min-height:260px; }} .sbc-game-jersey img {{ height:280px; }} }}
+        </style>
+        <section class="sbc-game-detail-section">
+            <div class="sbc-game-detail-heading">Game Uniforms</div>
+            <div class="sbc-game-jerseys">
+                <div class="sbc-game-jersey" style="--jersey-team:{escape(str(team_info.get(team_a, {}).get('bg', '#111827')), quote=True)};">
+                    <img src="{road_jersey_uri}" alt="{escape(live_team_full_name(team_a), quote=True)} Icon jersey">
+                </div>
+                <div class="sbc-game-jersey" style="--jersey-team:{escape(str(team_info.get(team_b, {}).get('bg', '#334155')), quote=True)};">
+                    <img src="{home_jersey_uri}" alt="{escape(live_team_full_name(team_b), quote=True)} Association jersey">
+                </div>
+            </div>
+        </section>
+    """)
+
+
+def starting_five_for_team(rows, team_name):
+    players = aggregate_boxscore_players(rows[rows["sbc_team"] == team_name].copy())
+    if players.empty:
+        return players
+    players["_lineup_minutes"] = pd.to_numeric(players.get("MP", 0), errors="coerce").fillna(0)
+    return players.sort_values(["_lineup_minutes", "PTS"], ascending=[False, False]).head(5)
+
+
+def render_starting_lineups(rows, team_a, team_b):
+    lineup_rows = []
+    for team_name in [team_a, team_b]:
+        info = team_info.get(team_name, {})
+        players = starting_five_for_team(rows, team_name)
+        player_tiles = []
+        for lineup_number, (_, player) in enumerate(players.iterrows(), start=1):
+            name = str(player.get("display_player", ""))
+            name_parts = name.split()
+            first_name = " ".join(name_parts[:-1]) if len(name_parts) > 1 else ""
+            last_name = name_parts[-1] if name_parts else name
+            player_tiles.append(f"""
+                <div class="sbc-lineup-player">
+                    <div class="sbc-lineup-photo"><img src="{espn_headshot_url(player.get('espn_player_id'))}" alt="{escape(name, quote=True)} headshot"></div>
+                    <div class="sbc-lineup-name"><small>{escape(first_name)}</small><strong>{escape(last_name)}</strong><em>Starter {lineup_number} · {stat_number(player.get('MP', 0))} MIN</em></div>
+                </div>
+            """)
+        lineup_rows.append(f"""
+            <div class="sbc-lineup-row" style="--lineup-primary:{escape(str(info.get('bg', '#111827')), quote=True)};--lineup-secondary:{escape(str(info.get('bg2', info.get('bg', '#334155'))), quote=True)};--lineup-font:{escape(str(team_font_for_name(team_name)), quote=True)};">
+                <div class="sbc-lineup-team"><img src="{escape(str(info.get('logo', '')), quote=True)}" alt="{escape(team_name, quote=True)} logo"><strong>{escape(live_team_full_name(team_name))}</strong><span>Starting Lineup</span></div>
+                {''.join(player_tiles)}
+            </div>
+        """)
+    render_html(f"""
+        <section class="sbc-game-detail-section">
+            <div class="sbc-game-detail-heading">Starting Lineups</div>
+            <div class="sbc-lineup-board">{''.join(lineup_rows)}</div>
+        </section>
+    """)
+
+
 def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_players=True):
     team_a = str(matchup_row.get("TeamA", ""))
     team_b = str(matchup_row.get("TeamB", ""))
@@ -2283,14 +2361,6 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
         home_jersey_uri = ""
 
     render_html(f"""
-        <style>
-        .sbc-box-compact-jerseys {{ display:grid; grid-template-columns:1fr 70px 1fr; align-items:center; margin:4px 0 -14px; }}
-        .sbc-box-compact-jersey {{ display:flex; align-items:center; justify-content:center; min-height:150px; }}
-        .sbc-box-compact-jersey:first-child {{ justify-content:flex-end; padding-right:24px; }}
-        .sbc-box-compact-jersey:last-child {{ justify-content:flex-start; padding-left:24px; }}
-        .sbc-box-compact-jersey img {{ width:132px; height:150px; object-fit:contain; }}
-        @media(max-width:700px) {{ .sbc-box-compact-jersey img {{ width:94px; height:112px; }} .sbc-box-compact-jersey {{ min-height:112px; }} }}
-        </style>
         <section class="sbc-box-dialog-hero" style="--box-a:{escape(str(color_a), quote=True)}; --box-b:{escape(str(color_b), quote=True)};">
             <div class="sbc-box-dialog-kicker">{escape(period_label)}</div>
             <div class="sbc-box-dialog-title">{escape(title_label)}</div>
@@ -2315,15 +2385,6 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
                     <img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
                 </div>
             </div>
-            <div class="sbc-box-compact-jerseys">
-                <div class="sbc-box-compact-jersey">
-                    {'<img src="' + road_jersey_uri + '" alt="' + escape(live_team_full_name(team_a), quote=True) + ' Icon jersey">' if road_jersey_uri else ''}
-                </div>
-                <div></div>
-                <div class="sbc-box-compact-jersey">
-                    {'<img src="' + home_jersey_uri + '" alt="' + escape(live_team_full_name(team_b), quote=True) + ' Association jersey">' if home_jersey_uri else ''}
-                </div>
-            </div>
         </section>
     """)
 
@@ -2340,7 +2401,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     if not show_players:
         return
 
-    box_tab, pbp_tab = st.tabs(["Box Score", "Play-by-play"])
+    box_tab, details_tab, pbp_tab = st.tabs(["Box Score", "Game Details", "Play-by-play"])
     with box_tab:
         view_mode = st.radio(
             "Box score view",
@@ -2351,6 +2412,9 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
         )
         aggregate = view_mode == "Aggregate players"
         render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
+    with details_tab:
+        render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri)
+        render_starting_lineups(rows, team_a, team_b)
         render_matchup_visuals(rows, team_a, team_b)
     with pbp_tab:
         render_matchup_pbp_tab(
