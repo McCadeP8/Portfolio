@@ -11,6 +11,7 @@ import re as re
 import json
 import math
 import unicodedata
+import matplotlib.pyplot as plt
 from datetime import datetime, date, time
 from html import escape
 from pathlib import Path
@@ -19,6 +20,8 @@ from zoneinfo import ZoneInfo
 from functions import read_csv_snapshot, get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
+from court_engine import CourtConfig, draw_branded_court
+from jersey_engine import JerseyConfig, draw_uniform
 
 
 if not hasattr(st, "_sbc_native_metric"):
@@ -368,6 +371,24 @@ PBP_STAT_LABELS = {
     "BLK": "Blocks",
     "TO": "Turnovers",
     "+/-": "Plus/Minus",
+}
+
+TEAM_LOCATIONS = {
+    "Albuquerque": ("Albuquerque", "New Mexico"), "Anaheim": ("Anaheim", "California"),
+    "Anchorage": ("Anchorage", "Alaska"), "Austin": ("Austin", "Texas"),
+    "Baltimore": ("Baltimore", "Maryland"), "Birmingham": ("Birmingham", "Alabama"),
+    "Boise": ("Boise", "Idaho"), "Buffalo": ("Buffalo", "New York"),
+    "Cincinnati": ("Cincinnati", "Ohio"), "Columbus": ("Columbus", "Ohio"),
+    "Des Moines": ("Des Moines", "Iowa"), "El Paso": ("El Paso", "Texas"),
+    "Honolulu": ("Honolulu", "Hawaii"), "Jacksonville": ("Jacksonville", "Florida"),
+    "Kentucky": ("Louisville", "Kentucky"), "Lansing": ("Lansing", "Michigan"),
+    "Lincoln": ("Lincoln", "Nebraska"), "Little Rock": ("Little Rock", "Arkansas"),
+    "Manchester": ("Manchester", "New Hampshire"), "Nashville": ("Nashville", "Tennessee"),
+    "Pittsburgh": ("Pittsburgh", "Pennsylvania"), "Providence": ("Providence", "Rhode Island"),
+    "San Diego": ("San Diego", "California"), "San Jose": ("San Jose", "California"),
+    "Seattle": ("Seattle", "Washington"), "St. Louis": ("St. Louis", "Missouri"),
+    "Tampa Bay": ("Tampa", "Florida"), "Tulsa": ("Tulsa", "Oklahoma"),
+    "Vancouver": ("Vancouver", "Canada"), "Vegas": ("Las Vegas", "Nevada"),
 }
 
 
@@ -3066,6 +3087,126 @@ nickname_html = escape(str(nickname), quote=True)
 team_font_css = escape(str(team_font), quote=True)
 league_logo_html = escape(str(LEAGUE_LOGO), quote=True)
 league_font_css = escape(str(LEAGUE_FONT), quote=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_branding_table(path_text, modified_time):
+    del modified_time
+    path = Path(path_text)
+    return pd.read_csv(path).fillna("") if path.exists() else pd.DataFrame()
+
+
+def branding_contrast_color(hex_color):
+    try:
+        value = str(hex_color).lstrip("#")
+        red, green, blue = (int(value[index:index + 2], 16) for index in (0, 2, 4))
+        luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+        return "#111111" if luminance > 0.58 else "#FFFFFF"
+    except (TypeError, ValueError):
+        return "#FFFFFF"
+
+
+def render_team_branding(team):
+    info = team_info[team]
+    city, region = TEAM_LOCATIONS.get(team, (team, "United States"))
+    full_name = f"{team} {info['nickname']}"
+    primary, secondary = str(info["bg"]), str(info["bg2"])
+    font_name = TEAM_FONTS.get(team, "Poppins")
+
+    render_html("""
+        <style>
+        .sbc-brand-hero { position:relative; overflow:hidden; display:flex; align-items:center; gap:28px; min-height:210px; padding:30px 34px; margin:10px 0 28px; border-radius:26px; color:white; background:linear-gradient(125deg,var(--brand-primary),var(--brand-secondary)); box-shadow:0 18px 45px rgba(15,23,42,.18); }
+        .sbc-brand-hero::after { content:""; position:absolute; width:340px; height:340px; right:-120px; top:-170px; border:42px solid rgba(255,255,255,.13); border-radius:50%; }
+        .sbc-brand-hero img { position:relative; z-index:1; width:150px; height:150px; object-fit:contain; filter:drop-shadow(0 14px 18px rgba(0,0,0,.28)); }
+        .sbc-brand-hero div { position:relative; z-index:1; }
+        .sbc-brand-hero h1 { margin:5px 0 7px; color:white; font-size:clamp(2rem,4.5vw,4rem); line-height:.98; letter-spacing:-.045em; }
+        .sbc-brand-hero p { margin:0; color:rgba(255,255,255,.9); font-weight:700; }
+        .sbc-brand-kicker { font-size:.74rem; font-weight:900; letter-spacing:.18em; text-transform:uppercase; }
+        .sbc-brand-section-title { margin:8px 0 12px; color:#64748b; font-size:.76rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }
+        .sbc-brand-art-title { margin-top:30px; padding-top:22px; border-top:1px solid #dbe3ee; }
+        .sbc-brand-color-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .sbc-brand-swatch { min-height:122px; display:flex; flex-direction:column; justify-content:space-between; padding:18px; border-radius:18px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }
+        .sbc-brand-swatch span { font-size:.7rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; opacity:.78; }
+        .sbc-brand-swatch strong { font-size:1.25rem; letter-spacing:.05em; }
+        .sbc-brand-type-card { margin-top:14px; padding:18px 20px; overflow:hidden; border:1px solid #dbe3ee; border-radius:18px; background:#fff; color:#111827; font-size:clamp(1rem,1.8vw,1.45rem); line-height:1.5; word-break:break-all; }
+        .sbc-brand-font-label { display:block; margin-bottom:9px; color:#64748b; font-family:Poppins,sans-serif; font-size:.68rem; font-weight:900; letter-spacing:.12em; }
+        .sbc-brand-edition-label { margin-top:-9px; text-align:center; color:#334155; font-size:.78rem; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+        div[data-testid="stSegmentedControl"] button[aria-pressed="true"] p { color:#fff !important; }
+        @media(max-width:700px) { .sbc-brand-hero { padding:24px; gap:18px; } .sbc-brand-hero img { width:94px; height:94px; } .sbc-brand-color-grid { grid-template-columns:1fr; } }
+        </style>
+    """)
+
+    render_html(f"""
+        <section class="sbc-brand-hero" style="--brand-primary:{escape(primary)};--brand-secondary:{escape(secondary)}">
+            <img src="{escape(str(info['logo']), quote=True)}" alt="{escape(full_name, quote=True)} logo">
+            <div>
+                <div class="sbc-brand-kicker">SBC Franchise Identity</div>
+                <h1>{escape(full_name)}</h1>
+                <p>{escape(city)}, {escape(region)} &nbsp;·&nbsp; {escape(str(info['conf']))} Conference &nbsp;·&nbsp; {escape(str(info['div']))} Division</p>
+            </div>
+        </section>
+    """)
+
+    identity_col, map_col = st.columns([1.05, 1], gap="large")
+    with identity_col:
+        render_html('<div class="sbc-brand-section-title">Identity System</div>')
+        render_html(f"""
+            <div class="sbc-brand-color-grid">
+                <div class="sbc-brand-swatch" style="background:{escape(primary)};color:{branding_contrast_color(primary)}">
+                    <span>Primary</span><strong>{escape(primary.upper())}</strong>
+                </div>
+                <div class="sbc-brand-swatch" style="background:{escape(secondary)};color:{branding_contrast_color(secondary)}">
+                    <span>Secondary</span><strong>{escape(secondary.upper())}</strong>
+                </div>
+            </div>
+            <div class="sbc-brand-type-card" style="font-family:'{escape(font_name, quote=True)}', sans-serif">
+                <span class="sbc-brand-font-label">TEAM TYPEFACE · {escape(font_name)}</span>
+                <div>ABCDEFGHIJKLMNOPQRSTUVWXYZ</div>
+                <div>abcdefghijklmnopqrstuvwxyz</div>
+                <div>0123456789</div>
+            </div>
+        """)
+    with map_col:
+        render_html('<div class="sbc-brand-section-title">Home Market</div>')
+        location = pd.DataFrame({"lat": [float(info["lat"])], "lon": [float(info["lon"])]})
+        st.map(location, latitude="lat", longitude="lon", zoom=4, size=240, color=primary, height=335)
+
+    court_path = APP_DIR / "court_team_configs.csv"
+    court_table = load_branding_table(str(court_path), court_path.stat().st_mtime if court_path.exists() else 0)
+    court_rows = court_table[court_table["team"].astype(str) == team] if "team" in court_table else pd.DataFrame()
+    render_html('<div class="sbc-brand-section-title sbc-brand-art-title">Home Court</div>')
+    if court_rows.empty:
+        st.info("No saved court configuration is available for this team yet.")
+    else:
+        court_config = CourtConfig.from_mapping(court_rows.iloc[0].to_dict())
+        center_logo_team = str(court_rows.iloc[0].get("center_logo_team") or team)
+        center_logo = team_info.get(center_logo_team, info).get("logo")
+        court_figure, _ = draw_branded_court(
+            court_config, logo=center_logo, league_logo=LEAGUE_LOGO,
+            orientation="horizontal", dpi=125,
+        )
+        st.pyplot(court_figure, use_container_width=True)
+        plt.close(court_figure)
+
+    jersey_path = APP_DIR / "jersey_team_configs.csv"
+    jersey_table = load_branding_table(str(jersey_path), jersey_path.stat().st_mtime if jersey_path.exists() else 0)
+    jersey_rows = jersey_table[jersey_table["team"].astype(str) == team] if "team" in jersey_table else pd.DataFrame()
+    render_html('<div class="sbc-brand-section-title sbc-brand-art-title">Uniform Collection</div>')
+    edition_columns = st.columns(3, gap="medium")
+    for column, edition in zip(edition_columns, ["Association", "Icon", "Statement"]):
+        with column:
+            row = jersey_rows[jersey_rows["edition"].astype(str) == edition]
+            if row.empty:
+                st.info(f"No {edition} configuration saved.")
+                continue
+            values = row.iloc[0].to_dict()
+            uniform_config = JerseyConfig.from_mapping(values)
+            logo_team = str(values.get("logo_team") or team)
+            uniform_logo = team_info.get(logo_team, info).get("logo")
+            uniform_figure, _ = draw_uniform(uniform_config, logo=uniform_logo, view="front", dpi=125, background="#F5F7FB")
+            st.pyplot(uniform_figure, use_container_width=True)
+            plt.close(uniform_figure)
+            render_html(f'<div class="sbc-brand-edition-label">{escape(edition)}</div>')
 
 #ABC 
 def format_money(value):
@@ -15480,6 +15621,14 @@ if main_page == "Team Hub" and selected_team_page == "Schedule":
     render_team_travel_map(schedule_raw, SelectedTeam, SelectedScheduleYear)
 
 if main_page == "Team Hub" and selected_team_page == "History":
+    team_history_view = st.segmented_control(
+        "Team history section", ["Franchise History", "Branding"],
+        default="Franchise History", key="team_history_section", label_visibility="collapsed",
+    )
+    if team_history_view == "Branding":
+        render_team_branding(SelectedTeam)
+
+if main_page == "Team Hub" and selected_team_page == "History" and team_history_view == "Franchise History":
     matchup_archive = load_sbc_player_matchup_stats_archive()
     team_archive = matchup_archive[matchup_archive["sbc_team_key"].astype(str) == str(SelectedTeam)].copy() if not matchup_archive.empty and "sbc_team_key" in matchup_archive.columns else pd.DataFrame()
     render_html(f"""
