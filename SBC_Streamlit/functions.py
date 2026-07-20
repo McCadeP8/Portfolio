@@ -1973,10 +1973,11 @@ def get_team_schedule(df, SelectedTeam, SelectedYear):
     df = df[df["Year"] == SelectedYear].copy()
     df = df[(df["TeamA"].str.contains(SelectedTeam)) | (df["TeamB"].str.contains(SelectedTeam))]
     df["Team"] = SelectedTeam
-    df["Opponent"] = np.where(df["TeamA"].str.contains(SelectedTeam, na=False), df["TeamB"], df["TeamA"])
-    df["Location"] = np.where(df["TeamA"].str.contains(SelectedTeam, na=False), "", "@")
-    df["TeamScore"] = np.where(df["TeamA"].str.contains(SelectedTeam, na=False), df["TeamAScore"], df["TeamBScore"])
-    df["OpponentScore"] = np.where(df["TeamA"].str.contains(SelectedTeam, na=False), df["TeamBScore"], df["TeamAScore"])
+    selected_is_home = df["TeamB"].str.contains(SelectedTeam, na=False)
+    df["Opponent"] = np.where(selected_is_home, df["TeamA"], df["TeamB"])
+    df["Location"] = np.where(selected_is_home, "vs", "@")
+    df["TeamScore"] = np.where(selected_is_home, df["TeamBScore"], df["TeamAScore"])
+    df["OpponentScore"] = np.where(selected_is_home, df["TeamAScore"], df["TeamBScore"])
     df["Result"] = np.where(df["TeamScore"] > df["OpponentScore"], "W", "L")
     df["Score"] = df["TeamScore"].astype(str) + "-" + df["OpponentScore"].astype(str)
     team_to_logo = {team: info["logo"] for team, info in team_info.items()}
@@ -2011,7 +2012,7 @@ def get_team_mileage(SelectedTeam, Year, df):
     current_lon = selected_info["lon"]
     miles_per_game = []
     for _, row in team_df.iterrows():
-        dest = row["TeamB"] if row["TeamA"] == SelectedTeam else SelectedTeam
+        dest = SelectedTeam if row["TeamB"] == SelectedTeam else row["TeamB"]
         dest_info = team_info.get(dest)
         if not dest_info:
             continue
@@ -2051,7 +2052,7 @@ def plot_team_flights(SelectedTeam, Year, df):
     m = folium.Map(location=[current_lat, current_lon], zoom_start=4, tiles="CartoDB Positron", zoom_control=False)
     visited = set()
     for _, row in team_df.iterrows():
-        dest = row["TeamB"] if row["TeamA"] == SelectedTeam else SelectedTeam
+        dest = SelectedTeam if row["TeamB"] == SelectedTeam else row["TeamB"]
         dest_info = team_info.get(dest)
         if not dest_info:
             continue

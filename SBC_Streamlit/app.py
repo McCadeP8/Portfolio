@@ -2123,7 +2123,9 @@ def matchup_starter_shots(rows, team_a, team_b):
     if joined.empty:
         return joined
     joined["court_x"] = pd.to_numeric(joined["x"], errors="coerce")
-    joined["court_y"] = pd.to_numeric(joined["y"], errors="coerce")
+    # ESPN's y coordinate is distance from the basket; our court y coordinate
+    # starts at the baseline. Add the regulation 5.25-foot hoop offset.
+    joined["court_y"] = pd.to_numeric(joined["y"], errors="coerce") + 5.25
     home_mask = joined["sbc_team"].astype(str) == str(team_b)
     joined.loc[home_mask, "court_x"] = 50.0 - joined.loc[home_mask, "court_x"]
     joined.loc[home_mask, "court_y"] = 94.0 - joined.loc[home_mask, "court_y"]
@@ -2152,8 +2154,8 @@ def render_matchup_jersey(team, edition):
 
 def matchup_jersey_data_uri(team, edition):
     config, logo = saved_uniform_config(team, edition)
-    figure, _ = draw_uniform(config, logo=logo, view="front", dpi=105, background="#F5F7FB")
-    encoded = base64.b64encode(jersey_figure_bytes(figure, "png", dpi=125, transparent=False)).decode("ascii")
+    figure, _ = draw_uniform(config, logo=logo, view="front", dpi=120, background="none")
+    encoded = base64.b64encode(jersey_figure_bytes(figure, "png", dpi=145, transparent=True)).decode("ascii")
     plt.close(figure)
     return f"data:image/png;base64,{encoded}"
 
@@ -2176,13 +2178,18 @@ def render_matchup_shot_court(rows, team_a, team_b):
         orientation="horizontal", view="full", figsize=(12.4, 6.7), dpi=135,
     )
     if not shots.empty:
+        shot_colors = {
+            team_a: {"made": "#15803D", "missed": "#B91C1C"},
+            team_b: {"made": "#4ADE80", "missed": "#FB7185"},
+        }
         for team in [team_a, team_b]:
             team_shots = shots[shots["sbc_team"].astype(str) == str(team)]
-            primary = str(team_info.get(team, {}).get("bg", "#111827"))
+            colors = shot_colors[team]
             made = team_shots[team_shots["made"].astype(bool)]
             missed = team_shots[~team_shots["made"].astype(bool)]
-            ax.scatter(made["court_y"], -made["court_x"], s=34, marker="o", facecolor=primary, edgecolor="#FFFFFF", linewidth=.7, alpha=.9, zorder=30)
-            ax.scatter(missed["court_y"], -missed["court_x"], s=32, marker="x", color=primary, linewidth=1.25, alpha=.82, zorder=30)
+            ax.scatter(made["court_y"], -made["court_x"], s=36, marker="o", facecolor=colors["made"], edgecolor="#FFFFFF", linewidth=.75, alpha=.92, zorder=30)
+            ax.scatter(missed["court_y"], -missed["court_x"], s=43, marker="x", color="#FFFFFF", linewidth=2.5, alpha=.85, zorder=29.8)
+            ax.scatter(missed["court_y"], -missed["court_x"], s=34, marker="x", color=colors["missed"], linewidth=1.45, alpha=.92, zorder=30)
     st.pyplot(figure, use_container_width=True)
     plt.close(figure)
     if shots.empty:
@@ -2237,14 +2244,12 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
 
     render_html(f"""
         <style>
-        .sbc-box-compact-jerseys {{ display:grid; grid-template-columns:1fr 70px 1fr; align-items:center; margin:8px 0 -10px; }}
-        .sbc-box-compact-jersey {{ display:flex; align-items:center; justify-content:center; gap:9px; min-height:90px; }}
-        .sbc-box-compact-jersey:first-child {{ justify-content:flex-end; }}
-        .sbc-box-compact-jersey:last-child {{ justify-content:flex-start; }}
-        .sbc-box-compact-jersey img {{ width:72px; height:88px; object-fit:contain; border-radius:10px; }}
-        .sbc-box-compact-jersey span {{ color:rgba(255,255,255,.9); font-size:.63rem; font-weight:900; letter-spacing:.11em; text-transform:uppercase; }}
-        .sbc-box-compact-jersey span small {{ display:block; margin-top:3px; color:rgba(255,255,255,.62); font-size:.56rem; }}
-        @media(max-width:700px) {{ .sbc-box-compact-jersey img {{ width:58px; height:72px; }} .sbc-box-compact-jersey span {{ display:none; }} }}
+        .sbc-box-compact-jerseys {{ display:grid; grid-template-columns:1fr 70px 1fr; align-items:center; margin:4px 0 -14px; }}
+        .sbc-box-compact-jersey {{ display:flex; align-items:center; justify-content:center; min-height:150px; }}
+        .sbc-box-compact-jersey:first-child {{ justify-content:flex-end; padding-right:24px; }}
+        .sbc-box-compact-jersey:last-child {{ justify-content:flex-start; padding-left:24px; }}
+        .sbc-box-compact-jersey img {{ width:132px; height:150px; object-fit:contain; }}
+        @media(max-width:700px) {{ .sbc-box-compact-jersey img {{ width:94px; height:112px; }} .sbc-box-compact-jersey {{ min-height:112px; }} }}
         </style>
         <section class="sbc-box-dialog-hero" style="--box-a:{escape(str(color_a), quote=True)}; --box-b:{escape(str(color_b), quote=True)};">
             <div class="sbc-box-dialog-kicker">{escape(period_label)}</div>
@@ -2272,13 +2277,11 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
             </div>
             <div class="sbc-box-compact-jerseys">
                 <div class="sbc-box-compact-jersey">
-                    <span>Road uniform<small>Icon</small></span>
                     {'<img src="' + road_jersey_uri + '" alt="' + escape(live_team_full_name(team_a), quote=True) + ' Icon jersey">' if road_jersey_uri else ''}
                 </div>
                 <div></div>
                 <div class="sbc-box-compact-jersey">
                     {'<img src="' + home_jersey_uri + '" alt="' + escape(live_team_full_name(team_b), quote=True) + ' Association jersey">' if home_jersey_uri else ''}
-                    <span>Home uniform<small>Association</small></span>
                 </div>
             </div>
         </section>
@@ -2299,7 +2302,6 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
 
     box_tab, pbp_tab = st.tabs(["Box Score", "Play-by-play"])
     with box_tab:
-        render_matchup_visuals(rows, team_a, team_b)
         view_mode = st.radio(
             "Box score view",
             options=["Game rows", "Aggregate players"],
@@ -2309,6 +2311,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
         )
         aggregate = view_mode == "Aggregate players"
         render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
+        render_matchup_visuals(rows, team_a, team_b)
     with pbp_tab:
         render_matchup_pbp_tab(
             rows,
@@ -7311,9 +7314,9 @@ def schedule_regular_record(schedule_df, selected_team):
     wins = 0
     losses = 0
     for _, row in regular_df.iterrows():
-        is_home = row.get("TeamA") == selected_team
-        team_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
-        opponent_score = row.get("TeamBScore") if is_home else row.get("TeamAScore")
+        is_home = row.get("TeamB") == selected_team
+        team_score = row.get("TeamBScore") if is_home else row.get("TeamAScore")
+        opponent_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
         result = schedule_result(team_score, opponent_score, is_home)
         if result == "W":
             wins += 1
@@ -7335,15 +7338,15 @@ def render_schedule_table(schedule_df, selected_team, rosters_df=None, show_boxs
     current_type = None
     render_html('<div class="sbc-schedule-list">')
     for _, row in table_df.iterrows():
-        is_home = row.get("TeamA") == selected_team
-        opponent = row.get("TeamB") if is_home else row.get("TeamA")
+        is_home = row.get("TeamB") == selected_team
+        opponent = row.get("TeamA") if is_home else row.get("TeamB")
         opponent_info = team_info.get(opponent, {})
         opponent_color = opponent_info.get("bg", "#94a3b8")
         logo = opponent_info.get("logo", "")
         logo_html = f'<img class="sbc-schedule-logo" src="{escape(str(logo), quote=True)}" alt="{escape(str(opponent), quote=True)} logo">' if logo else ""
         venue_mark = "vs" if is_home else "@"
-        team_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
-        opponent_score = row.get("TeamBScore") if is_home else row.get("TeamAScore")
+        team_score = row.get("TeamBScore") if is_home else row.get("TeamAScore")
+        opponent_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
         result = schedule_result(team_score, opponent_score, is_home)
         result_class = {"W": "win", "L": "loss"}.get(result, "tbd")
         score_text = "TBD" if result == "TBD" else f"{float(team_score):g}-{float(opponent_score):g}"
@@ -7406,7 +7409,7 @@ def render_team_travel_map(schedule_df, selected_team, selected_year, height=500
     }]
 
     for _, row in travel_df.iterrows():
-        destination_team = selected_team if row.get("TeamA") == selected_team else row.get("TeamA")
+        destination_team = selected_team if row.get("TeamB") == selected_team else row.get("TeamB")
         dest_info = team_info.get(destination_team, {})
         dest = {"team": destination_team, "lat": dest_info.get("lat"), "lon": dest_info.get("lon")}
         if not is_blank_value(current.get("lat")) and not is_blank_value(current.get("lon")) and not is_blank_value(dest.get("lat")) and not is_blank_value(dest.get("lon")):
@@ -7609,7 +7612,7 @@ def calculate_team_travel_summary(selected_team, selected_year, schedule_df):
     num_flights = 0
 
     for _, row in team_df.iterrows():
-        destination_team = selected_team if row.get("TeamA") == selected_team else row.get("TeamA")
+        destination_team = selected_team if row.get("TeamB") == selected_team else row.get("TeamB")
         dest_info = team_info.get(destination_team, {})
         dest_lat = dest_info.get("lat")
         dest_lon = dest_info.get("lon")
@@ -15756,7 +15759,7 @@ if main_page == "Team Hub" and selected_team_page == "Live":
                 )
             ]
             if schedule_match.shape[0] > 0:
-                matchup_home = schedule_match.iloc[0]["TeamA"]
+                matchup_home = schedule_match.iloc[0]["TeamB"]
             if schedule_match.shape[0] > 0:
                 matchup_payload = schedule_match.iloc[0].to_dict()
                 render_matchup_boxscore(matchup_payload, live_rosters, key_prefix=f"live_{idx}", show_players=False)
