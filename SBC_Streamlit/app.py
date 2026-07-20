@@ -3182,13 +3182,13 @@ def render_team_branding(team):
         .sbc-brand-type-card-old { display:none; }
         .sbc-brand-glyph-group + .sbc-brand-glyph-group { margin-top:18px; }
         .sbc-brand-glyph-label { display:block; margin:0 0 8px 2px; color:#94a3b8; font-family:Poppins,sans-serif; font-size:.66rem; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
-        .sbc-brand-glyph-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(64px,1fr)); gap:8px; font-family:var(--brand-font),sans-serif; }
-        .sbc-brand-glyph { display:flex; align-items:center; justify-content:center; min-height:78px; padding:5px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; font-size:clamp(2rem,3vw,3.2rem); line-height:1; }
+        .sbc-brand-glyph-grid { display:grid; grid-template-columns:repeat(var(--glyph-count),minmax(0,1fr)); gap:4px; font-family:var(--brand-font),sans-serif; }
+        .sbc-brand-glyph { display:flex; align-items:center; justify-content:center; min-width:0; min-height:54px; padding:3px 1px; overflow:hidden; border:1px solid #e2e8f0; border-radius:7px; background:#f8fafc; font-size:clamp(.82rem,1.55vw,1.55rem); line-height:1; }
         .sbc-brand-edition-label { margin-top:-9px; text-align:center; color:#334155; font-size:.78rem; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
         .sbc-brand-edition-heading { display:flex; align-items:baseline; justify-content:space-between; margin:22px 0 6px; padding:12px 16px; border-left:5px solid var(--brand-primary,#334155); border-radius:0 12px 12px 0; background:#fff; color:#0f172a; font-size:1rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
         .sbc-brand-edition-heading span { color:#94a3b8; font-size:.68rem; letter-spacing:.14em; }
         div[data-testid="stSegmentedControl"] button[aria-pressed="true"] p { color:#fff !important; }
-        @media(max-width:700px) { .sbc-brand-hero { padding:24px; gap:18px; } .sbc-brand-hero img { width:94px; height:94px; } .sbc-brand-glyph-grid { grid-template-columns:repeat(auto-fit,minmax(46px,1fr)); } .sbc-brand-glyph { min-height:60px; font-size:2rem; } }
+        @media(max-width:700px) { .sbc-brand-hero { padding:24px; gap:18px; } .sbc-brand-hero img { width:94px; height:94px; } .sbc-brand-glyph-grid { gap:2px; } .sbc-brand-glyph { min-height:38px; border-radius:4px; font-size:clamp(.55rem,2.5vw,.9rem); } }
         </style>
     """)
 
@@ -3229,7 +3229,7 @@ def render_team_branding(team):
     ]
     specimen_html = "".join(
         f'<div class="sbc-brand-glyph-group"><span class="sbc-brand-glyph-label">{label}</span>'
-        f'<div class="sbc-brand-glyph-grid">'
+        f'<div class="sbc-brand-glyph-grid" style="--glyph-count:{len(characters)}">'
         + "".join(f'<span class="sbc-brand-glyph">{escape(character)}</span>' for character in characters)
         + '</div></div>'
         for label, characters in specimen_groups
@@ -3259,19 +3259,21 @@ def render_team_branding(team):
     jersey_table = load_branding_table(str(jersey_path), jersey_path.stat().st_mtime if jersey_path.exists() else 0)
     jersey_rows = jersey_table[jersey_table["team"].astype(str) == team] if "team" in jersey_table else pd.DataFrame()
     render_html('<div class="sbc-brand-section-title sbc-brand-art-title">Uniform Collection</div>')
-    for edition in ["Association", "Icon", "Statement"]:
-        row = jersey_rows[jersey_rows["edition"].astype(str) == edition]
-        render_html(f'<div class="sbc-brand-edition-heading">{escape(edition)} Edition <span>Front &amp; Back</span></div>')
-        if row.empty:
-            st.info(f"No {edition} configuration saved.")
-            continue
-        values = row.iloc[0].to_dict()
-        uniform_config = apply_resolved_brand_font(JerseyConfig.from_mapping(values), values.get("font_path", ""))
-        logo_team = str(values.get("logo_team") or team)
-        uniform_logo = team_info.get(logo_team, info).get("logo")
-        uniform_figure, _ = draw_uniform(uniform_config, logo=uniform_logo, view="front_and_back", dpi=140, background="#F5F7FB")
-        st.pyplot(uniform_figure, use_container_width=True)
-        plt.close(uniform_figure)
+    edition_columns = st.columns(3, gap="medium")
+    for column, edition in zip(edition_columns, ["Association", "Icon", "Statement"]):
+        with column:
+            row = jersey_rows[jersey_rows["edition"].astype(str) == edition]
+            render_html(f'<div class="sbc-brand-edition-heading">{escape(edition)} <span>Front &amp; Back</span></div>')
+            if row.empty:
+                st.info(f"No {edition} configuration saved.")
+                continue
+            values = row.iloc[0].to_dict()
+            uniform_config = apply_resolved_brand_font(JerseyConfig.from_mapping(values), values.get("font_path", ""))
+            logo_team = str(values.get("logo_team") or team)
+            uniform_logo = team_info.get(logo_team, info).get("logo")
+            uniform_figure, _ = draw_uniform(uniform_config, logo=uniform_logo, view="front_and_back", dpi=130, background="#F5F7FB")
+            st.pyplot(uniform_figure, use_container_width=True)
+            plt.close(uniform_figure)
 
 #ABC 
 def format_money(value):
