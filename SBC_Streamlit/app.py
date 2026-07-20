@@ -12,6 +12,7 @@ import json
 import math
 import unicodedata
 import base64
+from io import BytesIO
 import matplotlib.pyplot as plt
 from matplotlib.ft2font import FT2Font
 import requests
@@ -2160,6 +2161,54 @@ def matchup_jersey_data_uri(team, edition):
     return f"data:image/png;base64,{encoded}"
 
 
+def render_interactive_shot_figure(figure, ax, shots, home_team):
+    image_buffer = BytesIO()
+    figure.savefig(image_buffer, format="png", dpi=figure.dpi, pad_inches=0)
+    image_uri = base64.b64encode(image_buffer.getvalue()).decode("ascii")
+    image_width = int(round(figure.get_figwidth() * figure.dpi))
+    image_height = int(round(figure.get_figheight() * figure.dpi))
+    hit_targets = []
+    for _, shot in shots.iterrows():
+        display_x, display_y = ax.transData.transform((float(shot["court_y"]), -float(shot["court_x"])))
+        shot_date = pd.to_datetime(str(shot.get("game_date", "")), format="%Y%m%d", errors="coerce")
+        date_label = "" if pd.isna(shot_date) else shot_date.strftime("%b %d").replace(" 0", " ")
+        period_value = pd.to_numeric(shot.get("period"), errors="coerce")
+        period_label = "" if pd.isna(period_value) else (f"{int(period_value)}Q" if period_value <= 4 else f"OT{int(period_value) - 4}")
+        description = str(shot.get("description") or shot.get("display_player") or "Shot attempt")
+        clock_label = f'{shot.get("clock", "")} {period_label}'.strip()
+        detail = " · ".join(value for value in [description, date_label, clock_label] if value)
+        escaped_detail = escape(detail, quote=True)
+        hit_targets.append(
+            f'<circle class="sbc-shot-hit" cx="{display_x:.2f}" cy="{image_height - display_y:.2f}" r="12" data-shot="{escaped_detail}"></circle>'
+        )
+    plt.close(figure)
+    chart_height = max(390, min(650, int(image_height * 0.78)))
+    components.html(f"""
+    <style>
+      html,body{{margin:0;padding:0;overflow:hidden;background:transparent}}
+      .shot-wrap{{position:relative;width:100%;line-height:0}}
+      .shot-wrap img{{display:block;width:100%;height:auto}}
+      .shot-layer{{position:absolute;inset:0;width:100%;height:100%}}
+      .sbc-shot-hit{{fill:transparent;stroke:transparent;pointer-events:all;cursor:crosshair}}
+      .shot-tip{{position:fixed;display:none;max-width:340px;padding:9px 11px;border-radius:7px;background:rgba(15,23,42,.96);color:#fff;font:700 12px/1.35 Arial,sans-serif;box-shadow:0 6px 18px rgba(15,23,42,.24);pointer-events:none;z-index:10;line-height:1.35}}
+    </style>
+    <div class="shot-wrap">
+      <img src="data:image/png;base64,{image_uri}" alt="Starter shot chart on the {escape(live_team_full_name(home_team), quote=True)} court">
+      <svg class="shot-layer" viewBox="0 0 {image_width} {image_height}" preserveAspectRatio="xMidYMid meet">{''.join(hit_targets)}</svg>
+    </div>
+    <div class="shot-tip" role="tooltip"></div>
+    <script>
+      const tip=document.querySelector('.shot-tip');
+      function moveTip(e){{const x=Math.min(e.clientX+14,window.innerWidth-tip.offsetWidth-8);const y=Math.max(8,e.clientY-tip.offsetHeight-12);tip.style.left=`${{x}}px`;tip.style.top=`${{y}}px`}}
+      document.querySelectorAll('.sbc-shot-hit').forEach(hit=>{{
+        hit.addEventListener('mouseenter',e=>{{tip.textContent=hit.dataset.shot;tip.style.display='block';moveTip(e)}});
+        hit.addEventListener('mousemove',moveTip);
+        hit.addEventListener('mouseleave',()=>tip.style.display='none');
+      }});
+    </script>
+    """, height=chart_height, scrolling=False)
+
+
 def render_matchup_shot_court(rows, team_a, team_b):
     shots = matchup_starter_shots(rows, team_a, team_b)
     court_path = APP_DIR / "court_team_configs.csv"
@@ -2190,24 +2239,15 @@ def render_matchup_shot_court(rows, team_a, team_b):
             ax.scatter(made["court_y"], -made["court_x"], s=36, marker="o", facecolor=colors["made"], edgecolor="#FFFFFF", linewidth=.75, alpha=.92, zorder=30)
             ax.scatter(missed["court_y"], -missed["court_x"], s=43, marker="x", color="#FFFFFF", linewidth=2.5, alpha=.85, zorder=29.8)
             ax.scatter(missed["court_y"], -missed["court_x"], s=34, marker="x", color=colors["missed"], linewidth=1.45, alpha=.92, zorder=30)
-    st.pyplot(figure, use_container_width=True)
-    plt.close(figure)
+    render_interactive_shot_figure(figure, ax, shots, team_b)
     if shots.empty:
         st.caption("No starter shot coordinates are available for this matchup in the current October 2024 sample.")
-    else:
-        made_count = int(shots["made"].astype(bool).sum())
-        st.markdown(
-            f"<div class='sbc-shot-key'><span>● Made</span><span>× Missed</span><strong>{len(shots):,} starter attempts · {made_count:,} makes</strong></div>",
-            unsafe_allow_html=True,
-        )
 
 
 def render_matchup_visuals(rows, team_a, team_b):
     render_html("""
         <style>
         .sbc-shot-visual-title { margin:24px 0 10px; color:#64748b; font-size:.72rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }
-        .sbc-shot-key { display:flex; justify-content:center; gap:14px; margin-top:-5px; color:#475569; font-size:.7rem; font-weight:800; }
-        .sbc-shot-key strong { color:#111827; }
         </style>
         <div class="sbc-shot-visual-title">Starter Shot Map · Home Floor</div>
     """)
