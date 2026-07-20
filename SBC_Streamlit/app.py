@@ -12,6 +12,8 @@ import json
 import math
 import unicodedata
 import matplotlib.pyplot as plt
+from matplotlib.ft2font import FT2Font
+import requests
 from datetime import datetime, date, time
 from html import escape
 from pathlib import Path
@@ -3106,6 +3108,54 @@ def branding_contrast_color(hex_color):
         return "#FFFFFF"
 
 
+@st.cache_resource(show_spinner=False)
+def resolve_brand_font_path(font_family):
+    """Return the exact local Google-font file used by the design tools."""
+    family = str(font_family or "").strip()
+    if not family or family.startswith("DejaVu"):
+        return ""
+    safe_name = re.sub(r"[^a-z0-9]+", "_", family.lower()).strip("_")
+    cache_roots = [
+        APP_DIR / ".streamlit_cache" / "jersey_fonts",
+        APP_DIR / ".streamlit_cache" / "court_fonts",
+    ]
+    for cache_root in cache_roots:
+        for candidate in cache_root.glob(f"{safe_name}.*") if cache_root.exists() else []:
+            try:
+                FT2Font(str(candidate))
+                return str(candidate)
+            except (RuntimeError, OSError):
+                continue
+
+    cache_root = cache_roots[0]
+    cache_root.mkdir(parents=True, exist_ok=True)
+    css_url = f"https://fonts.googleapis.com/css2?family={family.replace(' ', '+')}"
+    css = requests.get(css_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+    css.raise_for_status()
+    font_urls = re.findall(r"url\((https://[^)]+)\)", css.text)
+    if not font_urls:
+        return ""
+    response = requests.get(font_urls[-1], headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+    response.raise_for_status()
+    suffix = ".woff2" if "woff2" in response.headers.get("content-type", "") else ".ttf"
+    destination = cache_root / f"{safe_name}{suffix}"
+    destination.write_bytes(response.content)
+    FT2Font(str(destination))
+    return str(destination)
+
+
+def apply_resolved_brand_font(config, saved_path=""):
+    path = Path(str(saved_path)) if str(saved_path).strip() else None
+    if path is not None and path.exists():
+        config.font_path = str(path)
+        return config
+    try:
+        config.font_path = resolve_brand_font_path(config.font_family)
+    except Exception:
+        config.font_path = ""
+    return config
+
+
 def render_team_branding(team):
     info = team_info[team]
     city, region = TEAM_LOCATIONS.get(team, (team, "United States"))
@@ -3119,25 +3169,31 @@ def render_team_branding(team):
         .sbc-brand-hero::after { content:""; position:absolute; width:340px; height:340px; right:-120px; top:-170px; border:42px solid rgba(255,255,255,.13); border-radius:50%; }
         .sbc-brand-hero img { position:relative; z-index:1; width:150px; height:150px; object-fit:contain; filter:drop-shadow(0 14px 18px rgba(0,0,0,.28)); }
         .sbc-brand-hero div { position:relative; z-index:1; }
-        .sbc-brand-hero h1 { margin:5px 0 7px; color:white; font-size:clamp(2rem,4.5vw,4rem); line-height:.98; letter-spacing:-.045em; }
+        .sbc-brand-hero h1 { margin:5px 0 7px; color:white; font-family:var(--brand-font),sans-serif; font-size:clamp(2.4rem,5.2vw,4.8rem); line-height:1; }
         .sbc-brand-hero p { margin:0; color:rgba(255,255,255,.9); font-weight:700; }
         .sbc-brand-kicker { font-size:.74rem; font-weight:900; letter-spacing:.18em; text-transform:uppercase; }
         .sbc-brand-section-title { margin:8px 0 12px; color:#64748b; font-size:.76rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }
         .sbc-brand-art-title { margin-top:30px; padding-top:22px; border-top:1px solid #dbe3ee; }
         .sbc-brand-color-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-        .sbc-brand-swatch { min-height:122px; display:flex; flex-direction:column; justify-content:space-between; padding:18px; border-radius:18px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }
+        .sbc-brand-swatch { min-height:150px; display:flex; flex-direction:column; justify-content:space-between; padding:22px; border-radius:18px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }
         .sbc-brand-swatch span { font-size:.7rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; opacity:.78; }
         .sbc-brand-swatch strong { font-size:1.25rem; letter-spacing:.05em; }
-        .sbc-brand-type-card { margin-top:14px; padding:18px 20px; overflow:hidden; border:1px solid #dbe3ee; border-radius:18px; background:#fff; color:#111827; font-size:clamp(1rem,1.8vw,1.45rem); line-height:1.5; word-break:break-all; }
-        .sbc-brand-font-label { display:block; margin-bottom:9px; color:#64748b; font-family:Poppins,sans-serif; font-size:.68rem; font-weight:900; letter-spacing:.12em; }
+        .sbc-brand-type-card { padding:18px; overflow:hidden; border:1px solid #dbe3ee; border-radius:20px; background:#fff; color:#111827; }
+        .sbc-brand-type-card-old { display:none; }
+        .sbc-brand-glyph-group + .sbc-brand-glyph-group { margin-top:18px; }
+        .sbc-brand-glyph-label { display:block; margin:0 0 8px 2px; color:#94a3b8; font-family:Poppins,sans-serif; font-size:.66rem; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+        .sbc-brand-glyph-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(64px,1fr)); gap:8px; font-family:var(--brand-font),sans-serif; }
+        .sbc-brand-glyph { display:flex; align-items:center; justify-content:center; min-height:78px; padding:5px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; font-size:clamp(2rem,3vw,3.2rem); line-height:1; }
         .sbc-brand-edition-label { margin-top:-9px; text-align:center; color:#334155; font-size:.78rem; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+        .sbc-brand-edition-heading { display:flex; align-items:baseline; justify-content:space-between; margin:22px 0 6px; padding:12px 16px; border-left:5px solid var(--brand-primary,#334155); border-radius:0 12px 12px 0; background:#fff; color:#0f172a; font-size:1rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+        .sbc-brand-edition-heading span { color:#94a3b8; font-size:.68rem; letter-spacing:.14em; }
         div[data-testid="stSegmentedControl"] button[aria-pressed="true"] p { color:#fff !important; }
-        @media(max-width:700px) { .sbc-brand-hero { padding:24px; gap:18px; } .sbc-brand-hero img { width:94px; height:94px; } .sbc-brand-color-grid { grid-template-columns:1fr; } }
+        @media(max-width:700px) { .sbc-brand-hero { padding:24px; gap:18px; } .sbc-brand-hero img { width:94px; height:94px; } .sbc-brand-glyph-grid { grid-template-columns:repeat(auto-fit,minmax(46px,1fr)); } .sbc-brand-glyph { min-height:60px; font-size:2rem; } }
         </style>
     """)
 
     render_html(f"""
-        <section class="sbc-brand-hero" style="--brand-primary:{escape(primary)};--brand-secondary:{escape(secondary)}">
+        <section class="sbc-brand-hero" style="--brand-primary:{escape(primary)};--brand-secondary:{escape(secondary)};--brand-font:'{escape(font_name, quote=True)}'">
             <img src="{escape(str(info['logo']), quote=True)}" alt="{escape(full_name, quote=True)} logo">
             <div>
                 <div class="sbc-brand-kicker">SBC Franchise Identity</div>
@@ -3147,7 +3203,7 @@ def render_team_branding(team):
         </section>
     """)
 
-    identity_col, map_col = st.columns([1.05, 1], gap="large")
+    identity_col = st.container()
     with identity_col:
         render_html('<div class="sbc-brand-section-title">Identity System</div>')
         render_html(f"""
@@ -3159,17 +3215,27 @@ def render_team_branding(team):
                     <span>Secondary</span><strong>{escape(secondary.upper())}</strong>
                 </div>
             </div>
-            <div class="sbc-brand-type-card" style="font-family:'{escape(font_name, quote=True)}', sans-serif">
+            <div class="sbc-brand-type-card-old" style="font-family:'{escape(font_name, quote=True)}', sans-serif">
                 <span class="sbc-brand-font-label">TEAM TYPEFACE · {escape(font_name)}</span>
                 <div>ABCDEFGHIJKLMNOPQRSTUVWXYZ</div>
                 <div>abcdefghijklmnopqrstuvwxyz</div>
                 <div>0123456789</div>
             </div>
         """)
-    with map_col:
-        render_html('<div class="sbc-brand-section-title">Home Market</div>')
-        location = pd.DataFrame({"lat": [float(info["lat"])], "lon": [float(info["lon"])]})
-        st.map(location, latitude="lat", longitude="lon", zoom=4, size=240, color=primary, height=335)
+    specimen_groups = [
+        ("Uppercase", "ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+        ("Lowercase", "abcdefghijklmnopqrstuvwxyz"),
+        ("Numerals", "0123456789"),
+    ]
+    specimen_html = "".join(
+        f'<div class="sbc-brand-glyph-group"><span class="sbc-brand-glyph-label">{label}</span>'
+        f'<div class="sbc-brand-glyph-grid">'
+        + "".join(f'<span class="sbc-brand-glyph">{escape(character)}</span>' for character in characters)
+        + '</div></div>'
+        for label, characters in specimen_groups
+    )
+    render_html(f'<div class="sbc-brand-section-title sbc-brand-art-title">Team Typeface · {escape(font_name)}</div>')
+    render_html(f'<div class="sbc-brand-type-card" style="--brand-font:\'{escape(font_name, quote=True)}\'">{specimen_html}</div>')
 
     court_path = APP_DIR / "court_team_configs.csv"
     court_table = load_branding_table(str(court_path), court_path.stat().st_mtime if court_path.exists() else 0)
@@ -3178,7 +3244,8 @@ def render_team_branding(team):
     if court_rows.empty:
         st.info("No saved court configuration is available for this team yet.")
     else:
-        court_config = CourtConfig.from_mapping(court_rows.iloc[0].to_dict())
+        court_values = court_rows.iloc[0].to_dict()
+        court_config = apply_resolved_brand_font(CourtConfig.from_mapping(court_values), court_values.get("font_path", ""))
         center_logo_team = str(court_rows.iloc[0].get("center_logo_team") or team)
         center_logo = team_info.get(center_logo_team, info).get("logo")
         court_figure, _ = draw_branded_court(
@@ -3192,21 +3259,19 @@ def render_team_branding(team):
     jersey_table = load_branding_table(str(jersey_path), jersey_path.stat().st_mtime if jersey_path.exists() else 0)
     jersey_rows = jersey_table[jersey_table["team"].astype(str) == team] if "team" in jersey_table else pd.DataFrame()
     render_html('<div class="sbc-brand-section-title sbc-brand-art-title">Uniform Collection</div>')
-    edition_columns = st.columns(3, gap="medium")
-    for column, edition in zip(edition_columns, ["Association", "Icon", "Statement"]):
-        with column:
-            row = jersey_rows[jersey_rows["edition"].astype(str) == edition]
-            if row.empty:
-                st.info(f"No {edition} configuration saved.")
-                continue
-            values = row.iloc[0].to_dict()
-            uniform_config = JerseyConfig.from_mapping(values)
-            logo_team = str(values.get("logo_team") or team)
-            uniform_logo = team_info.get(logo_team, info).get("logo")
-            uniform_figure, _ = draw_uniform(uniform_config, logo=uniform_logo, view="front", dpi=125, background="#F5F7FB")
-            st.pyplot(uniform_figure, use_container_width=True)
-            plt.close(uniform_figure)
-            render_html(f'<div class="sbc-brand-edition-label">{escape(edition)}</div>')
+    for edition in ["Association", "Icon", "Statement"]:
+        row = jersey_rows[jersey_rows["edition"].astype(str) == edition]
+        render_html(f'<div class="sbc-brand-edition-heading">{escape(edition)} Edition <span>Front &amp; Back</span></div>')
+        if row.empty:
+            st.info(f"No {edition} configuration saved.")
+            continue
+        values = row.iloc[0].to_dict()
+        uniform_config = apply_resolved_brand_font(JerseyConfig.from_mapping(values), values.get("font_path", ""))
+        logo_team = str(values.get("logo_team") or team)
+        uniform_logo = team_info.get(logo_team, info).get("logo")
+        uniform_figure, _ = draw_uniform(uniform_config, logo=uniform_logo, view="front_and_back", dpi=140, background="#F5F7FB")
+        st.pyplot(uniform_figure, use_container_width=True)
+        plt.close(uniform_figure)
 
 #ABC 
 def format_money(value):
