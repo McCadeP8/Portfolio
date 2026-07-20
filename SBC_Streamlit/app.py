@@ -2155,7 +2155,7 @@ def render_matchup_jersey(team, edition):
 
 def matchup_jersey_data_uri(team, edition):
     config, logo = saved_uniform_config(team, edition)
-    figure, _ = draw_uniform(config, logo=logo, view="front", dpi=120, background="none")
+    figure, _ = draw_uniform(config, logo=logo, view="front", dpi=120, background="none", show_view_label=False)
     encoded = base64.b64encode(jersey_figure_bytes(figure, "png", dpi=145, transparent=True)).decode("ascii")
     plt.close(figure)
     return f"data:image/png;base64,{encoded}"
@@ -2272,11 +2272,11 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
         .sbc-lineup-player {{ position:relative; display:flex; flex-direction:column; overflow:hidden; border-left:1px solid rgba(255,255,255,.45); background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(0,0,0,.18)); }}
         .sbc-lineup-photo {{ flex:1; min-height:145px; overflow:hidden; }}
         .sbc-lineup-photo img {{ display:block; width:100%; height:100%; object-fit:contain; object-position:center bottom; filter:drop-shadow(0 5px 4px rgba(0,0,0,.28)); }}
+        .sbc-lineup-position {{ position:absolute; z-index:2; top:8px; left:8px; display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:4px; background:#fff; color:#111827; box-shadow:0 3px 8px rgba(15,23,42,.28); font-size:.7rem; font-weight:950; letter-spacing:.02em; }}
         .sbc-lineup-name {{ min-height:58px; padding:6px 8px 7px; background:rgba(5,10,20,.8); text-transform:uppercase; line-height:1; }}
-        .sbc-lineup-name small,.sbc-lineup-name strong,.sbc-lineup-name em {{ display:block; }}
+        .sbc-lineup-name small,.sbc-lineup-name strong {{ display:block; }}
         .sbc-lineup-name small {{ font-size:.62rem; font-weight:700; }}
         .sbc-lineup-name strong {{ margin-top:2px; font-size:.92rem; font-weight:950; }}
-        .sbc-lineup-name em {{ margin-top:5px; font-size:.55rem; font-style:normal; font-weight:800; opacity:.72; }}
         @media(max-width:700px) {{ .sbc-game-jerseys {{ gap:8px; padding:6px; }} .sbc-game-jersey {{ min-height:300px; }} .sbc-game-jersey img {{ height:320px; }} }}
         </style>
         <section class="sbc-game-detail-section">
@@ -2317,7 +2317,7 @@ def pregame_starting_five(rows, matchup_row, rosters_df, team_name):
     roster = roster.merge(row_identity, on="fantraxId", how="left", suffixes=("", "_game"))
     roster["display_player"] = roster["fantrax_name"].fillna(roster.get("display_player")).fillna(roster["fantraxId"])
     roster["espn_player_id"] = roster["espn_player_id"].fillna(roster.get("espn_player_id_game"))
-    slot_map = [("PG", "G"), ("SG", "G"), ("SF", "F"), ("PF", "F"), ("C", "C")]
+    slot_map = [("PG", "PG"), ("SG", "SG"), ("SF", "SF"), ("PF", "PF"), ("C", "C")]
     selected = []
     used_player_ids = set()
     for roster_slot, display_slot in slot_map:
@@ -2335,6 +2335,18 @@ def pregame_starting_five(rows, matchup_row, rosters_df, team_name):
     return pd.DataFrame(selected)
 
 
+def split_player_display_name(name):
+    parts = str(name or "").split()
+    if not parts:
+        return "", ""
+    if len(parts) == 1:
+        return "", parts[0]
+    suffixes = {"jr", "sr", "ii", "iii", "iv", "v"}
+    suffix_key = parts[-1].lower().rstrip(".")
+    last_name_start = len(parts) - 2 if suffix_key in suffixes and len(parts) > 2 else len(parts) - 1
+    return " ".join(parts[:last_name_start]), " ".join(parts[last_name_start:])
+
+
 def render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b):
     lineup_rows = []
     for team_name in [team_a, team_b]:
@@ -2343,13 +2355,12 @@ def render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b):
         player_tiles = []
         for _, player in players.iterrows():
             name = str(player.get("display_player", ""))
-            name_parts = name.split()
-            first_name = " ".join(name_parts[:-1]) if len(name_parts) > 1 else ""
-            last_name = name_parts[-1] if name_parts else name
+            first_name, last_name = split_player_display_name(name)
             player_tiles.append(f"""
                 <div class="sbc-lineup-player">
+                    <span class="sbc-lineup-position">{escape(str(player.get('lineup_position', '')))}</span>
                     <div class="sbc-lineup-photo"><img src="{espn_headshot_url(player.get('espn_player_id'))}" alt="{escape(name, quote=True)} headshot"></div>
-                    <div class="sbc-lineup-name"><small>{escape(first_name)}</small><strong>{escape(last_name)}</strong><em>{escape(str(player.get('lineup_position', '')))}</em></div>
+                    <div class="sbc-lineup-name"><small>{escape(first_name)}</small><strong>{escape(last_name)}</strong></div>
                 </div>
             """)
         lineup_rows.append(f"""
@@ -2508,17 +2519,23 @@ def player_stats_options(rosters_df):
     if rosters_df is None or rosters_df.empty:
         return pd.DataFrame(columns=["fantrax_id", "display_name"])
     work = rosters_df.copy()
-    year_col = "Year" if "Year" in work.columns else "year"
     work = work[work.get("status", "").astype(str).str.upper() == "ACTIVE"].copy()
     bridge = build_fantrax_to_espn_bridge().rename(columns={"fantraxId": "fantrax_id"})
+    fantrax_names = (
+        load_fantrax_players_snapshot()[["fantraxId", "name"]]
+        .dropna(subset=["fantraxId", "name"])
+        .rename(columns={"fantraxId": "fantrax_id", "name": "snapshot_name"})
+    )
     options = (
         work[["id"]]
         .dropna()
         .drop_duplicates()
         .rename(columns={"id": "fantrax_id"})
         .merge(bridge[["fantrax_id", "fantrax_name", "espn_player_id"]], on="fantrax_id", how="left")
+        .merge(fantrax_names, on="fantrax_id", how="left")
     )
-    options["display_name"] = options["fantrax_name"].fillna(options["fantrax_id"]).astype(str)
+    options = options[options["fantrax_id"].astype(str) != "06ccp"].copy()
+    options["display_name"] = options["fantrax_name"].fillna(options["snapshot_name"]).fillna(options["fantrax_id"]).astype(str)
     options = options.sort_values("display_name", key=lambda col: col.str.lower()).reset_index(drop=True)
     return options
 

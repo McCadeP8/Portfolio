@@ -271,6 +271,7 @@ def draw_uniform(
     view: str = "front_and_back",
     dpi: int = 150,
     background: str = "#EEF2F7",
+    show_view_label: bool = True,
 ) -> tuple[Figure, Axes]:
     """Draw front/back jerseys with shorts and return ``(figure, axes)``."""
     if config is None:
@@ -288,7 +289,8 @@ def draw_uniform(
     backs = [view == "back"] if view != "front_and_back" else [False, True]
     for center, back in zip(centers, backs):
         _draw_jersey(ax, config, center, 5, back=back, logo=logo, scale=.92)
-        ax.text(center, 83, "BACK" if back else "FRONT", color="#64748B", fontsize=8, fontweight="bold", ha="center")
+        if show_view_label:
+            ax.text(center, 83, "BACK" if back else "FRONT", color="#64748B", fontsize=8, fontweight="bold", ha="center")
     ax.set_xlim(0, 120 if view == "front_and_back" else 100)
     ax.set_ylim(88, 0)
     ax.set_aspect("equal")
