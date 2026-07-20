@@ -423,10 +423,15 @@ def load_nba_player_boxscores_archive():
 
 @st.cache_data(ttl=86400)
 def load_nba_shots_archive():
-    path = APP_DIR / "data_snapshots" / "shots" / "nba_shots_20241022_20241025.parquet"
-    if not path.exists():
+    shots_dir = APP_DIR / "data_snapshots" / "shots"
+    season_paths = sorted(shots_dir.glob("nba_shots_20????.parquet"))
+    # Keep the original four-day sample as a fallback during archive creation.
+    paths = season_paths or [shots_dir / "nba_shots_20241022_20241025.parquet"]
+    paths = [path for path in paths if path.exists()]
+    if not paths:
         return pd.DataFrame()
-    shots = pd.read_parquet(path)
+    shots = pd.concat([pd.read_parquet(path) for path in paths], ignore_index=True)
+    shots = shots.drop_duplicates(["game_id", "shot_id"])
     for column in ["game_id", "player_id"]:
         if column in shots:
             shots[column] = shots[column].astype(str)
@@ -8191,6 +8196,15 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
         division_table = division_table.sort_values(["_pct", "_wins", "_losses", "Team"], ascending=[False, False, True, True]).reset_index(drop=True)
         division_match = division_table.index[division_table["Team"].astype(str) == team].tolist()
         division_finish = ordinal_text(division_match[0] + 1) if division_match else "—"
+        conference = str(team_info.get(team, {}).get("conf", ""))
+        conference_teams = [name for name, info in team_info.items() if str(info.get("conf", "")) == conference]
+        conference_table = final[(final["_year"] == year) & final["Team"].astype(str).isin(conference_teams)].copy()
+        conference_table = conference_table.sort_values(["_pct", "_wins", "_losses", "Team"], ascending=[False, False, True, True]).reset_index(drop=True)
+        conference_match = conference_table.index[conference_table["Team"].astype(str) == team].tolist()
+        conference_finish = ordinal_text(conference_match[0] + 1) if conference_match else "—"
+        league_table = final[final["_year"] == year].sort_values(["_pct", "_wins", "_losses", "Team"], ascending=[False, False, True, True]).reset_index(drop=True)
+        league_match = league_table.index[league_table["Team"].astype(str) == team].tolist()
+        league_finish = ordinal_text(league_match[0] + 1) if league_match else "—"
 
         year_awards = awards[pd.to_numeric(awards["_year"], errors="coerce") == year]
         award_names = set(year_awards["Award"].astype(str))
@@ -8239,6 +8253,10 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
             "Year": year,
             "Season": season_label_from_year(year),
             "Record": str(team_row.get("Record", "—")),
+            "Conference Record": str(team_row.get("ConfRecord", "—")),
+            "Division Record": str(team_row.get("DivRecord", "—")),
+            "League Finish": league_finish,
+            "Conference Finish": f"{conference_finish} {conference}",
             "Division Finish": f"{division_finish} {division}",
             "Season Result": outcome,
             "Honors": " · ".join(honors) if honors else "—",
@@ -8285,46 +8303,100 @@ def render_franchise_history_dashboard(team, standings_df, schedule_df, team_sta
     losses = int(ledger["Losses"].sum()) if not ledger.empty else 0
     playoff_appearances = int(ledger["Playoffs"].sum()) if not ledger.empty else 0
     award_counts = awards["Award"].astype(str).value_counts() if not awards.empty else pd.Series(dtype=int)
-    cols = st.columns(6)
     metric_values = [
-        ("Seasons", len(ledger)), ("Regular-Season Record", f"{wins}-{losses}"),
-        ("Playoff Appearances", playoff_appearances), ("League Titles", int(award_counts.get("Champion", 0))),
-        ("Conference Titles", int(award_counts.get("WC Champion", 0) + award_counts.get("EC Champion", 0))),
-        ("Division Titles", int(sum(award_counts.get(f"{division} Champion", 0) for division in ["Pacific", "Northwest", "Southwest", "Central", "Atlantic", "Southeast"]))),
+        ("📚", "Seasons", len(ledger)), ("🏀", "Regular-Season Record", f"{wins}-{losses}"),
+        ("🎟️", "Playoff Appearances", playoff_appearances), ("🏆", "League Titles", int(award_counts.get("Champion", 0))),
+        ("🥇", "Conference Titles", int(award_counts.get("WC Champion", 0) + award_counts.get("EC Champion", 0))),
+        ("🚩", "Division Titles", int(sum(award_counts.get(f"{division} Champion", 0) for division in ["Pacific", "Northwest", "Southwest", "Central", "Atlantic", "Southeast"]))),
     ]
-    for col, (label, value) in zip(cols, metric_values):
-        with col:
-            st.metric(label, value, border=True)
+    primary = str(team_info.get(team, {}).get("bg", "#1f2937"))
+    secondary = str(team_info.get(team, {}).get("bg2", primary))
+    logo = str(team_info.get(team, {}).get("logo", ""))
+    metric_cards = "".join(
+        f'<article class="sbc-franchise-metric"><span>{icon}</span><strong>{escape(str(value))}</strong><em>{escape(label)}</em></article>'
+        for icon, label, value in metric_values
+    )
+    render_html(f"""
+        <style>
+        .sbc-franchise-shell {{ --franchise-primary:{escape(primary, quote=True)}; --franchise-secondary:{escape(secondary, quote=True)}; }}
+        .sbc-franchise-metrics {{ display:grid; grid-template-columns:repeat(6,minmax(125px,1fr)); gap:10px; margin:18px 0 28px; }}
+        .sbc-franchise-metric {{ min-height:118px; padding:16px 14px; border:1px solid color-mix(in srgb,var(--franchise-primary) 24%,#dbe3ec); border-radius:16px; background:linear-gradient(145deg,#fff,color-mix(in srgb,var(--franchise-secondary) 8%,#fff)); box-shadow:0 10px 25px rgba(15,23,42,.07); }}
+        .sbc-franchise-metric span {{ display:block; font-size:1.35rem; }}
+        .sbc-franchise-metric strong {{ display:block; margin-top:9px; color:#0f172a; font-size:1.55rem; font-weight:950; line-height:1; }}
+        .sbc-franchise-metric em {{ display:block; margin-top:7px; color:#64748b; font-size:.66rem; font-style:normal; font-weight:900; letter-spacing:.07em; line-height:1.2; text-transform:uppercase; }}
+        .sbc-franchise-season-grid {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }}
+        .sbc-franchise-season {{ overflow:hidden; border:1px solid color-mix(in srgb,var(--franchise-primary) 28%,#d8e0e9); border-radius:18px; background:#fff; box-shadow:0 12px 28px rgba(15,23,42,.08); }}
+        .sbc-franchise-season-head {{ display:flex; align-items:center; gap:12px; padding:15px 17px; color:#fff; background:linear-gradient(115deg,var(--franchise-primary),var(--franchise-secondary)); }}
+        .sbc-franchise-season-head img {{ width:45px; height:45px; object-fit:contain; filter:drop-shadow(0 4px 5px rgba(0,0,0,.22)); }}
+        .sbc-franchise-season-head div {{ flex:1; }}
+        .sbc-franchise-season-head small,.sbc-franchise-season-head strong,.sbc-franchise-season-head b {{ display:block; }}
+        .sbc-franchise-season-head small {{ font-size:.62rem; font-weight:900; letter-spacing:.13em; opacity:.82; text-transform:uppercase; }}
+        .sbc-franchise-season-head strong {{ margin-top:2px; font-size:1.25rem; font-weight:950; }}
+        .sbc-franchise-season-head b {{ font-size:1.55rem; font-weight:950; }}
+        .sbc-franchise-season-standings {{ display:grid; grid-template-columns:repeat(3,1fr); border-bottom:1px solid #e5e7eb; }}
+        .sbc-franchise-season-standings div {{ padding:11px 12px; border-right:1px solid #e5e7eb; }}
+        .sbc-franchise-season-standings div:last-child {{ border-right:0; }}
+        .sbc-franchise-season-standings span {{ display:block; color:#64748b; font-size:.57rem; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }}
+        .sbc-franchise-season-standings strong {{ display:block; margin-top:4px; color:#111827; font-size:.86rem; font-weight:950; }}
+        .sbc-franchise-season-body {{ padding:13px 16px 15px; }}
+        .sbc-franchise-season-body p {{ margin:0; color:#1f2937; font-size:.83rem; font-weight:850; line-height:1.35; }}
+        .sbc-franchise-honors {{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }}
+        .sbc-franchise-honors span {{ padding:5px 8px; border-radius:999px; color:#111827; background:color-mix(in srgb,var(--franchise-secondary) 18%,#fff); border:1px solid color-mix(in srgb,var(--franchise-primary) 22%,#dbe3ec); font-size:.57rem; font-weight:950; letter-spacing:.05em; text-transform:uppercase; }}
+        .sbc-franchise-rank-seasons {{ display:grid; gap:12px; }}
+        .sbc-franchise-rank-card {{ padding:15px; border:1px solid color-mix(in srgb,var(--franchise-primary) 24%,#dbe3ec); border-radius:18px; background:linear-gradient(140deg,#fff,color-mix(in srgb,var(--franchise-secondary) 6%,#fff)); box-shadow:0 10px 24px rgba(15,23,42,.065); }}
+        .sbc-franchise-rank-head {{ display:flex; align-items:center; justify-content:space-between; margin-bottom:11px; }}
+        .sbc-franchise-rank-head strong {{ color:#111827; font-size:1.05rem; font-weight:950; }}
+        .sbc-franchise-rank-head span {{ color:#64748b; font-size:.63rem; font-weight:900; letter-spacing:.09em; text-transform:uppercase; }}
+        .sbc-franchise-rank-grid {{ display:grid; grid-template-columns:repeat(8,minmax(82px,1fr)); gap:8px; }}
+        .sbc-franchise-rank-stat {{ position:relative; overflow:hidden; min-height:94px; padding:10px; border:1px solid #e2e8f0; border-radius:12px; background:#fff; }}
+        .sbc-franchise-rank-stat i {{ position:absolute; left:0; bottom:0; height:5px; width:var(--rank-strength); background:linear-gradient(90deg,var(--franchise-primary),var(--franchise-secondary)); }}
+        .sbc-franchise-rank-stat span {{ display:block; color:#64748b; font-size:.58rem; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }}
+        .sbc-franchise-rank-stat strong {{ display:block; margin-top:7px; color:#111827; font-size:1rem; font-weight:950; }}
+        .sbc-franchise-rank-stat b {{ display:inline-block; margin-top:7px; padding:3px 6px; border-radius:999px; color:#fff; background:var(--franchise-primary); font-size:.6rem; font-weight:950; }}
+        @media(max-width:1050px) {{ .sbc-franchise-metrics {{ grid-template-columns:repeat(3,1fr); }} .sbc-franchise-rank-grid {{ grid-template-columns:repeat(4,1fr); }} }}
+        @media(max-width:700px) {{ .sbc-franchise-season-grid {{ grid-template-columns:1fr; }} .sbc-franchise-metrics {{ grid-template-columns:repeat(2,1fr); }} .sbc-franchise-rank-grid {{ grid-template-columns:repeat(2,1fr); }} }}
+        </style>
+        <div class="sbc-franchise-shell"><div class="sbc-franchise-metrics">{metric_cards}</div></div>
+    """)
 
     render_html('<div class="sbc-awards-section-head"><span>Season-by-Season</span><em>Final record, division placement, postseason exit, opponent, score, and trophies.</em></div>')
     if ledger.empty:
         render_html('<div class="sbc-empty-state">No franchise season history is available.</div>')
     else:
-        render_history_overview_table(ledger, ["Season", "Record", "Division Finish", "Season Result", "Honors"])
+        season_cards = []
+        for _, row in ledger.iterrows():
+            honors = [] if str(row.get("Honors", "—")) == "—" else [value.strip() for value in str(row.get("Honors", "")).split("·") if value.strip()]
+            honors_html = "".join(f"<span>{escape(value)}</span>" for value in honors) or "<span>No trophies</span>"
+            season_cards.append(f"""
+                <article class="sbc-franchise-season">
+                    <div class="sbc-franchise-season-head"><img src="{escape(logo, quote=True)}" alt="{escape(team, quote=True)} logo"><div><small>{escape(str(row.get('League Finish', '—')))} Overall</small><strong>{escape(str(row.get('Season', '')))}</strong></div><b>{escape(str(row.get('Record', '—')))}</b></div>
+                    <div class="sbc-franchise-season-standings">
+                        <div><span>Conference</span><strong>{escape(str(row.get('Conference Finish', '—')))}</strong></div>
+                        <div><span>Conf. Record</span><strong>{escape(str(row.get('Conference Record', '—')))}</strong></div>
+                        <div><span>Division</span><strong>{escape(str(row.get('Division Finish', '—')))}</strong></div>
+                    </div>
+                    <div class="sbc-franchise-season-body"><p>{escape(str(row.get('Season Result', '—')))}</p><div class="sbc-franchise-honors"><span>Div. {escape(str(row.get('Division Record', '—')))}</span>{honors_html}</div></div>
+                </article>
+            """)
+        render_html(f'<div class="sbc-franchise-shell"><div class="sbc-franchise-season-grid">{"".join(season_cards)}</div></div>')
 
-    render_html('<div class="sbc-awards-section-head"><span>League Rank Over Time</span><em>Where this franchise finished each season across the core statistical categories.</em></div>')
+    render_html('<div class="sbc-awards-section-head"><span>Production &amp; League Rank</span><em>Season totals and efficiency paired directly with the franchise’s league position.</em></div>')
     if ranks.empty:
         render_html('<div class="sbc-empty-state">No historical team-stat rankings are available.</div>')
         return
     categories = ["PTS", "AST", "REB", "ST", "BLK", "3PTM", "TS%", "TO"]
-    selected_category = st.selectbox("Ranking Category", categories, key=f"franchise_rank_category_{team}")
-    chart_rows = ranks[["Year", "Season", f"{selected_category} Rank", "League Size"]].rename(columns={f"{selected_category} Rank": "Rank"})
-    chart = (
-        alt.Chart(chart_rows)
-        .mark_line(point=alt.OverlayMarkDef(size=85), strokeWidth=4, color=str(team_info.get(team, {}).get("bg", "#2563eb")))
-        .encode(
-            x=alt.X("Year:O", title="Season", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("Rank:Q", title="League Rank", scale=alt.Scale(reverse=True, domain=[1, float(chart_rows["League Size"].max())])),
-            tooltip=[alt.Tooltip("Season:N"), alt.Tooltip("Rank:Q"), alt.Tooltip("League Size:Q")],
-        )
-        .properties(height=260)
-    )
-    st.altair_chart(chart, use_container_width=True)
-    rank_table = ranks.sort_values("Year", ascending=False)[["Season"] + [f"{category} Rank" for category in categories]].copy()
-    rank_table.columns = ["Season"] + categories
-    for category in categories:
-        rank_table[category] = rank_table[category].map(lambda value: ordinal_text(value))
-    st.dataframe(rank_table, hide_index=True, width="stretch", height="content")
+    rank_cards = []
+    for _, row in ranks.sort_values("Year", ascending=False).iterrows():
+        league_size = max(1, int(row.get("League Size", 1)))
+        stat_tiles = []
+        for category in categories:
+            value = float(row.get(category, 0))
+            value_text = f"{value:.1%}" if category == "TS%" else f"{value:,.0f}"
+            rank = int(row.get(f"{category} Rank", league_size))
+            strength = 100 if league_size <= 1 else round(18 + 82 * (league_size - rank) / (league_size - 1))
+            stat_tiles.append(f'<div class="sbc-franchise-rank-stat" style="--rank-strength:{strength}%"><span>{escape(category)}</span><strong>{escape(value_text)}</strong><b>#{rank} of {league_size}</b><i></i></div>')
+        rank_cards.append(f'<article class="sbc-franchise-rank-card"><div class="sbc-franchise-rank-head"><strong>{escape(str(row.get("Season", "")))}</strong><span>Season Production</span></div><div class="sbc-franchise-rank-grid">{"".join(stat_tiles)}</div></article>')
+    render_html(f'<div class="sbc-franchise-shell"><div class="sbc-franchise-rank-seasons">{"".join(rank_cards)}</div></div>')
 
 
 def history_regular_season_h2h_matrix(schedule_df):
@@ -16216,9 +16288,20 @@ if main_page == "Team Hub" and selected_team_page == "Schedule":
     render_team_travel_map(schedule_raw, SelectedTeam, SelectedScheduleYear)
 
 if main_page == "Team Hub" and selected_team_page == "History":
-    team_history_view = st.pills(
+    render_html("""
+        <style>
+        .st-key-team_history_section { padding:10px 12px; margin:8px 0 16px; border:1px solid #dbe3ec; border-radius:16px; background:#fff; box-shadow:0 10px 24px rgba(15,23,42,.07); }
+        .st-key-team_history_section [data-testid="stRadio"] { margin:0 !important; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
+        .st-key-team_history_section [role="radiogroup"] { display:flex; width:100%; gap:8px !important; }
+        .st-key-team_history_section label { flex:1; justify-content:center; min-height:46px !important; background:#fff !important; border:1px solid #dbe3ec !important; }
+        .st-key-team_history_section label:has(input:checked) { color:#fff !important; background:linear-gradient(110deg,var(--sbc-team-primary),var(--sbc-team-secondary)) !important; border-color:var(--sbc-team-primary) !important; box-shadow:0 9px 20px color-mix(in srgb,var(--sbc-team-primary) 22%,transparent) !important; }
+        </style>
+    """)
+    team_history_view = st.radio(
         "Team history section", ["Franchise History", "Branding"],
-        default="Franchise History", key="team_history_section", label_visibility="collapsed",
+        format_func=lambda value: {"Franchise History": "🏛️ Franchise History", "Branding": "🎨 Branding"}.get(value, value),
+        horizontal=True,
+        index=0, key="team_history_section", label_visibility="collapsed",
     )
     if team_history_view == "Branding":
         render_team_branding(SelectedTeam)

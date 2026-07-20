@@ -1,4 +1,4 @@
-r"""Build a compact ESPN shot-location parquet for an NBA date range.
+r"""Build compact, resumable ESPN shot-location parquets.
 
 Initial SBC sample:
     .\.venv\Scripts\python.exe build_nba_shots.py --start-date 20241022 --end-date 20241025
@@ -18,6 +18,12 @@ import requests
 SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
 SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary"
 DEFAULT_OUTPUT = Path("data_snapshots/shots/nba_shots_20241022_20241025.parquet")
+DEFAULT_GAME_INDEX = Path("nba_player_game_boxscores_2021_2026.parquet")
+SHOT_COLUMNS = [
+    "game_id", "game_date", "shot_id", "sequence_number", "player_id",
+    "nba_team_id", "home_away", "x", "y", "made", "points_attempted",
+    "period", "clock", "description",
+]
 
 
 def fetch_json(url: str, **params) -> dict:
@@ -82,12 +88,82 @@ def shot_rows(game_id: str, game_date: str, summary: dict) -> list[dict]:
     return rows
 
 
+def save_checkpoint(rows: list[dict], output_path: Path) -> None:
+    """Merge a fetched batch into its season parquet without losing prior work."""
+    if not rows:
+        return
+    new = pd.DataFrame(rows, columns=SHOT_COLUMNS)
+    if output_path.exists():
+        new = pd.concat([pd.read_parquet(output_path), new], ignore_index=True)
+    new = new.drop_duplicates(["game_id", "shot_id"]).sort_values(
+        ["game_date", "game_id", "sequence_number"]
+    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    new.to_parquet(output_path, index=False)
+
+
+def completed_path(output_path: Path) -> Path:
+    return output_path.with_suffix(".completed_games.txt")
+
+
+def load_completed(output_path: Path) -> set[str]:
+    path = completed_path(output_path)
+    if not path.exists():
+        return set()
+    return {line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()}
+
+
+def save_completed(output_path: Path, game_ids: set[str]) -> None:
+    path = completed_path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(sorted(game_ids)) + "\n", encoding="utf-8")
+
+
+def build_from_game_index(game_index: Path, output_dir: Path, checkpoint_every: int) -> None:
+    games = pd.read_parquet(game_index, columns=["sbc_year", "nba_season", "Date", "nba_game_id"])
+    games = games.drop_duplicates("nba_game_id").copy()
+    games["game_date"] = pd.to_datetime(games["Date"], errors="coerce").dt.strftime("%Y%m%d")
+    games = games.dropna(subset=["game_date", "nba_game_id"]).sort_values(["sbc_year", "game_date", "nba_game_id"])
+
+    for (_, nba_season), season_games in games.groupby(["sbc_year", "nba_season"], sort=True):
+        season_tag = str(nba_season).replace("-", "")
+        output_path = output_dir / f"nba_shots_{season_tag}.parquet"
+        completed = load_completed(output_path)
+        pending = season_games[~season_games["nba_game_id"].astype(str).isin(completed)]
+        print(f"{nba_season}: {len(completed):,} complete, {len(pending):,} remaining", flush=True)
+        batch_rows: list[dict] = []
+        batch_games: list[str] = []
+        for counter, row in enumerate(pending.itertuples(index=False), start=1):
+            game_id = str(row.nba_game_id)
+            summary = fetch_json(SUMMARY_URL, event=game_id)
+            batch_rows.extend(shot_rows(game_id, row.game_date, summary))
+            batch_games.append(game_id)
+            if counter % checkpoint_every == 0 or counter == len(pending):
+                save_checkpoint(batch_rows, output_path)
+                completed.update(batch_games)
+                save_completed(output_path, completed)
+                print(
+                    f"  {nba_season}: {len(completed):,}/{len(season_games):,} games; "
+                    f"saved {len(batch_rows):,} new shots",
+                    flush=True,
+                )
+                batch_rows.clear()
+                batch_games.clear()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--start-date", default="20241022")
     parser.add_argument("--end-date", default="20241025")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--game-index", type=Path)
+    parser.add_argument("--output-dir", type=Path, default=Path("data_snapshots/shots"))
+    parser.add_argument("--checkpoint-every", type=int, default=25)
     args = parser.parse_args()
+
+    if args.game_index:
+        build_from_game_index(args.game_index, args.output_dir, max(1, args.checkpoint_every))
+        return
 
     rows = []
     for game_date in date_span(args.start_date, args.end_date):
