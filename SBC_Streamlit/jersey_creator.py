@@ -61,33 +61,52 @@ def edition_defaults(team: str, edition: str) -> JerseyConfig:
     secondary = str(info["bg2"])
     nickname = str(info.get("nickname", team))
     if edition == "Association":
-        base, trim, accent, text = "#FFFFFF", primary, secondary, primary
+        base, trim, accent, text = "#FFFFFF", secondary, primary, secondary
+        wordmark_text, number_text, player_text = secondary, secondary, secondary
         stripe, shorts_stripe, collar, wordmark = "Side panels", "Side panels", "Crew", nickname
         font_label, font_family = "SBC League", "Bungee"
         logo_x, logo_y, logo_scale, front_number_x, front_number_y = 12.0, 15.0, .70, 0.0, 45.0
+        outline, show_league = "#000000", False
+        wordmark_size, number_size, name_size, back_number_size = 35.0, 90.0, 50.0, 110.0
+        wordmark_x, wordmark_y, back_name_x, back_name_y = 0.0, 29.0, 0.0, 18.0
+        back_number_x, back_number_y = 0.0, 37.5
     elif edition == "Icon":
         base, trim, accent, text = primary, secondary, "#FFFFFF", "#FFFFFF"
+        wordmark_text, number_text, player_text = "#FFFFFF", "#FFFFFF", "#FFFFFF"
         stripe, shorts_stripe, collar, wordmark = "Double side", "Double side", "Crew", team
         font_label, font_family = team, TEAM_FONTS[team]
         logo_x, logo_y, logo_scale, front_number_x, front_number_y = 12.0, 15.0, .70, 0.0, 45.0
+        outline, show_league = trim, True
+        wordmark_size, number_size, name_size, back_number_size = 35.0, 60.0, 36.0, 80.0
+        wordmark_x, wordmark_y, back_name_x, back_name_y = 0.0, 29.0, 0.0, 18.0
+        back_number_x, back_number_y = 0.0, 43.0
     else:
-        base, trim, accent, text = secondary, primary, "#FFFFFF", "#FFFFFF"
-        stripe, shorts_stripe, collar, wordmark = "Sash", "Chevron", "Crew", ""
+        base, trim, accent, text = primary, "#000000", "#FFFFFF", "#FFFFFF"
+        wordmark_text, number_text, player_text = "#FFFFFF", "#000000", "#000000"
+        stripe, shorts_stripe, collar, wordmark = "None", "None", "Crew", ""
         font_label, font_family = team, TEAM_FONTS[team]
-        logo_x, logo_y, logo_scale, front_number_x, front_number_y = 12.0, 15.0, .70, 0.0, 51.0
+        logo_x, logo_y, logo_scale, front_number_x, front_number_y = 0.0, 40.0, 3.0, 12.0, 20.0
+        outline, show_league = secondary, False
+        wordmark_size, number_size, name_size, back_number_size = 35.0, 50.0, 50.0, 110.0
+        wordmark_x, wordmark_y, back_name_x, back_name_y = 0.0, 29.0, 0.0, 18.0
+        back_number_x, back_number_y = 0.0, 37.5
     return JerseyConfig(
         team=team, edition=edition, jersey_color=base, shorts_color=base,
-        trim_color=trim, accent_color=accent, wordmark_color=text,
-        number_color=text, number_outline_color=trim, player_name_color=text,
+        trim_color=trim, accent_color=accent, wordmark_color=wordmark_text,
+        number_color=number_text, number_outline_color=outline, player_name_color=player_text,
         stripe_style=stripe, shorts_stripe_style=shorts_stripe,
         collar_style=collar, wordmark=wordmark.upper(),
         wordmark_font=font_label, font_family=font_family,
         logo_team=team, jersey_logo_x=logo_x, jersey_logo_y=logo_y,
         jersey_logo_scale=logo_scale, front_number_x=front_number_x,
         front_number_y=front_number_y, number="27", trim_width=3.4,
-        number_outline_width=4.0, front_wordmark_size=35.0,
-        front_number_size=60.0, back_name_size=36.0,
-        back_number_size=80.0,
+        number_outline_width=4.0, front_wordmark_size=wordmark_size,
+        front_wordmark_x=wordmark_x, front_wordmark_y=wordmark_y,
+        front_number_size=number_size, back_name_size=name_size,
+        back_name_x=back_name_x, back_name_y=back_name_y,
+        back_number_size=back_number_size, back_number_x=back_number_x,
+        back_number_y=back_number_y, show_jersey_logo=True,
+        show_league_mark=show_league,
     )
 
 
@@ -140,6 +159,29 @@ def read_config_table() -> pd.DataFrame:
                 for column, value in identity_fields.items():
                     table.loc[mask, column] = value
         table["template_version"] = 4
+        table.to_csv(CONFIG_PATH, index=False)
+
+    # Association v5 preset: update only the 30 Association rows. Icon and
+    # Statement designs—including any manual work—remain untouched.
+    if "template_version" not in table.columns or not (pd.to_numeric(table["template_version"], errors="coerce").fillna(0) >= 5).all():
+        for team in TEAMS:
+            defaults = edition_defaults(team, "Association")
+            mask = (table["team"] == team) & (table["edition"] == "Association")
+            for column, value in defaults.to_dict().items():
+                if column != "font_path":
+                    table.loc[mask, column] = value
+        table["template_version"] = 5
+        table.to_csv(CONFIG_PATH, index=False)
+
+    # Statement v6 preset: update only the 30 Statement rows.
+    if "template_version" not in table.columns or not (pd.to_numeric(table["template_version"], errors="coerce").fillna(0) >= 6).all():
+        for team in TEAMS:
+            defaults = edition_defaults(team, "Statement")
+            mask = (table["team"] == team) & (table["edition"] == "Statement")
+            for column, value in defaults.to_dict().items():
+                if column != "font_path":
+                    table.loc[mask, column] = value
+        table["template_version"] = 6
         table.to_csv(CONFIG_PATH, index=False)
     sample = edition_defaults(TEAMS[0], EDITIONS[0]).to_dict()
     for column, value in sample.items():

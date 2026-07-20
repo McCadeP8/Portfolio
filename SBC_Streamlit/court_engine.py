@@ -8,7 +8,7 @@ lower-left corner.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, fields, replace
 from io import BytesIO
 from pathlib import Path
 from typing import Any, BinaryIO, Mapping
@@ -38,6 +38,12 @@ LANE_WIDTH = 16.0
 FREE_THROW_DISTANCE = 19.0
 FREE_THROW_RADIUS = 6.0
 RESTRICTED_RADIUS = 4.0
+NBA_LINE_WIDTH_FEET = 2.0 / 12.0
+
+WOOD_BASE_COLORS = {
+    "#E4C58B", "#D9B77E", "#CF9F5B", "#C58D4A",
+    "#D2AA72", "#CDA96F", "#8A603D", "#B9B2A6",
+}
 
 
 @dataclass(slots=True)
@@ -119,6 +125,51 @@ def _zone_color(value: str, hardwood: str) -> str:
     return value if isinstance(value, str) and value.strip() else hardwood
 
 
+def _is_wood_color(value: str, config: CourtConfig) -> bool:
+    color = _zone_color(value, config.court_color).upper()
+    return color == str(config.court_color).upper() or color in WOOD_BASE_COLORS
+
+
+def _add_wood_texture(ax: Axes, config: CourtConfig, *, clip=None, zorder: float = 1.15) -> None:
+    """Draw grain/parquet, optionally clipped to one branded court zone."""
+    if not config.wood_planks:
+        return
+    if config.floor_pattern == "parquet":
+        block = 4.0
+        rows = int(np.ceil(COURT_LENGTH / block))
+        cols = int(np.ceil(COURT_WIDTH / block))
+        for row in range(rows):
+            for col in range(cols):
+                if (row + col) % 2:
+                    tile = Rectangle(
+                        (col * block, row * block),
+                        min(block, COURT_WIDTH - col * block),
+                        min(block, COURT_LENGTH - row * block),
+                        facecolor=config.plank_color, edgecolor="none",
+                        alpha=config.plank_opacity, zorder=zorder,
+                    )
+                    if clip is not None:
+                        tile.set_clip_path(clip)
+                        tile._sbc_zone_clip = clip
+                    ax.add_patch(tile)
+        for y in np.arange(block, COURT_LENGTH, block):
+            line = ax.plot([0, COURT_WIDTH], [y, y], color=config.plank_color, alpha=config.plank_opacity * 0.7, linewidth=0.35, zorder=zorder + .05)[0]
+            if clip is not None:
+                line.set_clip_path(clip)
+                line._sbc_zone_clip = clip
+        for x in np.arange(block, COURT_WIDTH, block):
+            line = ax.plot([x, x], [0, COURT_LENGTH], color=config.plank_color, alpha=config.plank_opacity * 0.7, linewidth=0.35, zorder=zorder + .05)[0]
+            if clip is not None:
+                line.set_clip_path(clip)
+                line._sbc_zone_clip = clip
+    else:
+        for y in np.arange(2.0, COURT_LENGTH, 2.0):
+            line = ax.plot([0, COURT_WIDTH], [y, y], color=config.plank_color, alpha=config.plank_opacity, linewidth=0.45, zorder=zorder)[0]
+            if clip is not None:
+                line.set_clip_path(clip)
+                line._sbc_zone_clip = clip
+
+
 def _add_floor(ax: Axes, config: CourtConfig) -> None:
     margin = config.outer_margin
     ax.add_patch(
@@ -140,30 +191,8 @@ def _add_floor(ax: Axes, config: CourtConfig) -> None:
             zorder=1,
         )
     )
-    if config.wood_planks:
-        if config.floor_pattern == "parquet":
-            # Alternating 4 x 4 foot blocks suggest traditional parquet while
-            # remaining subtle enough to support shot markers.
-            block = 4.0
-            rows = int(np.ceil(COURT_LENGTH / block))
-            cols = int(np.ceil(COURT_WIDTH / block))
-            for row in range(rows):
-                for col in range(cols):
-                    if (row + col) % 2:
-                        ax.add_patch(Rectangle(
-                            (col * block, row * block),
-                            min(block, COURT_WIDTH - col * block),
-                            min(block, COURT_LENGTH - row * block),
-                            facecolor=config.plank_color, edgecolor="none",
-                            alpha=config.plank_opacity, zorder=1.15,
-                        ))
-            for y in np.arange(block, COURT_LENGTH, block):
-                ax.plot([0, COURT_WIDTH], [y, y], color=config.plank_color, alpha=config.plank_opacity * 0.7, linewidth=0.35, zorder=1.2)
-            for x in np.arange(block, COURT_WIDTH, block):
-                ax.plot([x, x], [0, COURT_LENGTH], color=config.plank_color, alpha=config.plank_opacity * 0.7, linewidth=0.35, zorder=1.2)
-        else:
-            for y in np.arange(2.0, COURT_LENGTH, 2.0):
-                ax.plot([0, COURT_WIDTH], [y, y], color=config.plank_color, alpha=config.plank_opacity, linewidth=0.45, zorder=1.1)
+    if _is_wood_color(config.outside_three_color, config):
+        _add_wood_texture(ax, config)
 
 
 def _three_point_interior_path(baseline: float, top: bool) -> MplPath:
@@ -197,7 +226,10 @@ def _draw_half(ax: Axes, config: CourtConfig, top: bool = False) -> None:
 
     lane_bottom = min(baseline, lane_y)
     inside_three = _zone_color(config.inside_three_color, config.court_color)
-    ax.add_patch(PathPatch(_three_point_interior_path(baseline, top), facecolor=inside_three, edgecolor="none", zorder=1.5))
+    inside_three_patch = PathPatch(_three_point_interior_path(baseline, top), facecolor=inside_three, edgecolor="none", zorder=1.5)
+    ax.add_patch(inside_three_patch)
+    if _is_wood_color(config.inside_three_color, config):
+        _add_wood_texture(ax, config, clip=inside_three_patch, zorder=1.55)
 
     # Regulation lane is 16 feet wide. The historic 12-foot lane is retained
     # as a separately brandable core with two-foot bands on either side.
@@ -225,6 +257,20 @@ def _draw_half(ax: Axes, config: CourtConfig, top: bool = False) -> None:
             zorder=4,
         )
     )
+
+    # NBA 28-foot hash marks: two per half, extending three feet inward from
+    # each sideline at the top of the three-point area.
+    hash_y = baseline + direction * 28.0
+    ax.plot([0, 3], [hash_y, hash_y], color=line, linewidth=lw, zorder=4)
+    ax.plot([COURT_WIDTH - 3, COURT_WIDTH], [hash_y, hash_y], color=line, linewidth=lw, zorder=4)
+
+    # Lower defensive-box marks: three feet outside each lane edge and six
+    # inches deep from the baseline. Two marks per basket, four per court.
+    lower_box_left = (COURT_WIDTH - LANE_WIDTH) / 2 - 3.0
+    lower_box_right = (COURT_WIDTH + LANE_WIDTH) / 2 + 3.0
+    box_end_y = baseline + direction * 0.5
+    ax.plot([lower_box_left, lower_box_left], [baseline, box_end_y], color=line, linewidth=lw, zorder=4)
+    ax.plot([lower_box_right, lower_box_right], [baseline, box_end_y], color=line, linewidth=lw, zorder=4)
 
     # Backboard and rim.
     board_y = baseline + direction * 4.0
@@ -266,13 +312,19 @@ def _draw_half(ax: Axes, config: CourtConfig, top: bool = False) -> None:
             color=line, linewidth=lw, zorder=4,
         )
     )
-    ax.add_patch(
-        Arc(
+    # Draw exactly ten dashes on the baseline-facing semicircle. Using a
+    # generic dashed linestyle changes the count with figure size and DPI.
+    dash_count = 10
+    dash_slot = 180.0 / dash_count
+    dash_span = dash_slot * 0.58
+    dash_padding = (dash_slot - dash_span) / 2
+    for dash_index in range(dash_count):
+        dash_start = dashed_angles[0] + dash_index * dash_slot + dash_padding
+        ax.add_patch(Arc(
             (COURT_WIDTH / 2, lane_y), 12, 12,
-            theta1=dashed_angles[0], theta2=dashed_angles[1],
-            color=line, linewidth=lw, linestyle=(0, (3, 3)), zorder=4,
-        )
-    )
+            theta1=dash_start, theta2=dash_start + dash_span,
+            color=line, linewidth=lw, zorder=4,
+        ))
     # Semicircle fills sit above the lane rectangles, so redraw the regulation
     # 16-foot free-throw line last to keep it continuous and visible.
     ax.plot(
@@ -379,6 +431,14 @@ def draw_branded_court(
             figsize = (8.5, 7.2) if orientation == "vertical" else (11.5, 6.2)
         else:
             figsize = (7.2, 12.4) if orientation == "vertical" else (13.5, 7.3)
+
+    # Matplotlib line widths are measured in display points. Convert the NBA's
+    # regulation two-inch stroke into points using the rendered scale of the
+    # 50-foot court width so every orientation and view remains proportional.
+    cross_court_inches = figsize[0] if orientation == "vertical" else figsize[1]
+    feet_across_canvas = COURT_WIDTH + config.outer_margin * 2
+    regulation_linewidth = NBA_LINE_WIDTH_FEET * cross_court_inches / feet_across_canvas * 72.0
+    config = replace(config, line_width=regulation_linewidth, boundary_width=regulation_linewidth)
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
     else:
@@ -394,6 +454,15 @@ def draw_branded_court(
             ax.add_patch(Circle((25, 47), 2, facecolor=_zone_color(config.inner_center_circle_color, config.court_color), edgecolor=config.line_color, linewidth=config.line_width, zorder=4))
         _add_branding(ax, config, logo)
 
+    # Redraw the complete playing boundary over every zone fill. Keeping this
+    # as one rectangle guarantees identical left/right baseline thickness.
+    boundary_height = COURT_LENGTH if view == "full" else 50.0
+    ax.add_patch(Rectangle(
+        (0, 0), COURT_WIDTH, boundary_height,
+        facecolor="none", edgecolor=config.line_color,
+        linewidth=config.boundary_width, zorder=9,
+    ))
+
     margin = config.outer_margin
     y_max = 50.0 if view == "half" else COURT_LENGTH + margin
     ax.set_xlim(-margin, COURT_WIDTH + margin)
@@ -408,6 +477,13 @@ def draw_branded_court(
         transform = plt.matplotlib.transforms.Affine2D().rotate_deg(-90)
         for artist in list(ax.patches) + list(ax.lines):
             artist.set_transform(transform + ax.transData)
+        # Zone textures are clipped before rotation. Rebind those masks after
+        # every artist has its final transform so parquet follows the rotated
+        # inside-three-point geometry instead of retaining a vertical mask.
+        for artist in list(ax.patches) + list(ax.lines):
+            zone_clip = getattr(artist, "_sbc_zone_clip", None)
+            if zone_clip is not None:
+                artist.set_clip_path(zone_clip)
         # Preserve the center logo's own rotation before rotating the complete
         # court. Previously the court transform replaced this setting, leaving
         # horizontal-court logos sideways.
