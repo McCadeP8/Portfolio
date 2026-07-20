@@ -12,6 +12,7 @@ import json
 import math
 import unicodedata
 import base64
+from itertools import permutations
 from io import BytesIO
 import matplotlib.pyplot as plt
 from matplotlib.ft2font import FT2Font
@@ -2272,6 +2273,8 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
         .sbc-lineup-player {{ position:relative; display:flex; flex-direction:column; overflow:hidden; border-left:1px solid rgba(255,255,255,.45); background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(0,0,0,.18)); }}
         .sbc-lineup-photo {{ flex:1; min-height:145px; overflow:hidden; }}
         .sbc-lineup-photo img {{ display:block; width:100%; height:100%; object-fit:contain; object-position:center bottom; filter:drop-shadow(0 5px 4px rgba(0,0,0,.28)); }}
+        .sbc-lineup-vacant .sbc-lineup-photo {{ background:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 10px,rgba(15,23,42,.08) 10px 20px); }}
+        .sbc-lineup-vacant .sbc-lineup-name {{ color:rgba(255,255,255,.65); }}
         .sbc-lineup-position {{ position:absolute; z-index:2; top:8px; left:8px; display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:4px; background:#fff; color:#111827; box-shadow:0 3px 8px rgba(15,23,42,.28); font-size:.7rem; font-weight:950; letter-spacing:.02em; }}
         .sbc-lineup-name {{ padding:7px 8px 8px; background:rgba(5,10,20,.8); text-transform:uppercase; line-height:1; }}
         .sbc-lineup-name small,.sbc-lineup-name strong {{ display:block; }}
@@ -2317,21 +2320,65 @@ def pregame_starting_five(rows, matchup_row, rosters_df, team_name):
     roster = roster.merge(row_identity, on="fantraxId", how="left", suffixes=("", "_game"))
     roster["display_player"] = roster["fantrax_name"].fillna(roster.get("display_player")).fillna(roster["fantraxId"])
     roster["espn_player_id"] = roster["espn_player_id"].fillna(roster.get("espn_player_id_game"))
-    slot_map = [("PG", "PG"), ("SG", "SG"), ("SF", "SF"), ("PF", "PF"), ("C", "C")]
-    selected = []
-    used_player_ids = set()
-    for roster_slot, display_slot in slot_map:
-        candidates = roster[(roster["position"].astype(str).str.upper() == roster_slot) & (~roster["fantraxId"].isin(used_player_ids))]
-        if candidates.empty:
-            candidates = roster[(roster["position"].astype(str).str.upper() == "FLX") & (~roster["fantraxId"].isin(used_player_ids))]
-        if candidates.empty:
-            candidates = roster[~roster["fantraxId"].isin(used_player_ids)]
-        if candidates.empty:
-            continue
-        player = candidates.iloc[0].copy()
-        player["lineup_position"] = display_slot
-        selected.append(player)
-        used_player_ids.add(player["fantraxId"])
+    lineup_slots = ["PG", "SG", "SF", "PF", "C"]
+    selected_by_slot = {}
+    roster = roster.drop_duplicates("fantraxId").reset_index(drop=True)
+
+    # A player stored in the Flex slot has no position attached to that day's
+    # snapshot. Recover eligibility from every non-Flex position that player
+    # occupied elsewhere in the historical archive, then solve all five slots
+    # together. This lets Kevin Love move from PF to C while Jalen Johnson fills
+    # PF, instead of incorrectly labeling a random forward as the center.
+    history = rosters_df.copy()
+    history["_fantrax_id"] = history["id"].astype(str)
+    history["_lineup_position"] = history["position"].astype(str).str.upper()
+    eligibility_counts = (
+        history[
+            history["_fantrax_id"].isin(roster["fantraxId"])
+            & history["_lineup_position"].isin(lineup_slots)
+        ]
+        .groupby(["_fantrax_id", "_lineup_position"])
+        .size()
+        .to_dict()
+    )
+
+    if len(roster) >= len(lineup_slots):
+        best_assignment = None
+        best_score = None
+        for candidate_indexes in permutations(range(len(roster)), len(lineup_slots)):
+            eligible_count = 0
+            exact_count = 0
+            history_score = 0
+            for lineup_slot, candidate_index in zip(lineup_slots, candidate_indexes):
+                player = roster.iloc[candidate_index]
+                fantrax_id = str(player["fantraxId"])
+                current_position = str(player.get("position", "")).upper()
+                prior_count = int(eligibility_counts.get((fantrax_id, lineup_slot), 0))
+                exact = current_position == lineup_slot
+                eligible_count += int(exact or prior_count > 0)
+                exact_count += int(exact)
+                history_score += prior_count
+            score = (eligible_count, exact_count, history_score)
+            if best_score is None or score > best_score:
+                best_score = score
+                best_assignment = candidate_indexes
+
+        for lineup_slot, candidate_index in zip(lineup_slots, best_assignment or []):
+            player = roster.iloc[candidate_index].copy()
+            player["lineup_position"] = lineup_slot
+            selected_by_slot[lineup_slot] = player
+
+    for lineup_slot in lineup_slots:
+        if lineup_slot not in selected_by_slot:
+            selected_by_slot[lineup_slot] = pd.Series({
+                "fantraxId": f"vacant-{lineup_slot}",
+                "display_player": "Vacant",
+                "espn_player_id": "",
+                "lineup_position": lineup_slot,
+                "lineup_vacant": True,
+            })
+
+    selected = [selected_by_slot[slot] for slot in lineup_slots]
     return pd.DataFrame(selected)
 
 
@@ -2356,10 +2403,13 @@ def render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b):
         for _, player in players.iterrows():
             name = str(player.get("display_player", ""))
             first_name, last_name = split_player_display_name(name)
+            vacant_value = player.get("lineup_vacant", False)
+            is_vacant = bool(vacant_value) if pd.notna(vacant_value) else False
+            photo_html = "" if is_vacant else f'<img src="{espn_headshot_url(player.get("espn_player_id"))}" alt="{escape(name, quote=True)} headshot">'
             player_tiles.append(f"""
-                <div class="sbc-lineup-player">
+                <div class="sbc-lineup-player{' sbc-lineup-vacant' if is_vacant else ''}">
                     <span class="sbc-lineup-position">{escape(str(player.get('lineup_position', '')))}</span>
-                    <div class="sbc-lineup-photo"><img src="{espn_headshot_url(player.get('espn_player_id'))}" alt="{escape(name, quote=True)} headshot"></div>
+                    <div class="sbc-lineup-photo">{photo_html}</div>
                     <div class="sbc-lineup-name"><small>{escape(first_name)}</small><strong>{escape(last_name)}</strong></div>
                 </div>
             """)
