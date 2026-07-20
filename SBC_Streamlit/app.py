@@ -11,6 +11,7 @@ import re as re
 import json
 import math
 import unicodedata
+import base64
 import matplotlib.pyplot as plt
 from matplotlib.ft2font import FT2Font
 import requests
@@ -23,7 +24,7 @@ from functions import read_csv_snapshot, get_data, get_pictures, active_players,
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 from court_engine import CourtConfig, draw_branded_court
-from jersey_engine import JerseyConfig, draw_uniform
+from jersey_engine import JerseyConfig, draw_uniform, figure_bytes as jersey_figure_bytes
 
 
 if not hasattr(st, "_sbc_native_metric"):
@@ -416,6 +417,22 @@ def load_nba_player_boxscores_archive():
     if not df.empty and "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
     return df
+
+
+@st.cache_data(ttl=86400)
+def load_nba_shots_archive():
+    path = APP_DIR / "data_snapshots" / "shots" / "nba_shots_20241022_20241025.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    shots = pd.read_parquet(path)
+    for column in ["game_id", "player_id"]:
+        if column in shots:
+            shots[column] = shots[column].astype(str)
+    # Shot charts intentionally exclude free throws. Keep this defensive filter
+    # even when the parquet was built by an older ingestion version.
+    if "description" in shots:
+        shots = shots[~shots["description"].astype(str).str.contains("free throw", case=False, na=False)].copy()
+    return shots
 
 
 def pbp_archive_mtime():
@@ -2091,6 +2108,105 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
     render_matchup_boxscore(matchup_row, rosters_df, key_prefix="dialog")
 
 
+def matchup_starter_shots(rows, team_a, team_b):
+    shots = load_nba_shots_archive()
+    if shots.empty or rows.empty:
+        return pd.DataFrame()
+    mapping = rows[["nba_game_id", "espn_player_id", "sbc_team", "display_player"]].dropna().drop_duplicates().copy()
+    mapping["game_id"] = mapping["nba_game_id"].astype(str)
+    mapping["player_id"] = mapping["espn_player_id"].astype(str)
+    mapping = mapping[mapping["sbc_team"].isin([team_a, team_b])]
+    joined = shots.merge(
+        mapping[["game_id", "player_id", "sbc_team", "display_player"]],
+        on=["game_id", "player_id"], how="inner",
+    ).drop_duplicates(["game_id", "shot_id", "sbc_team"])
+    if joined.empty:
+        return joined
+    joined["court_x"] = pd.to_numeric(joined["x"], errors="coerce")
+    joined["court_y"] = pd.to_numeric(joined["y"], errors="coerce")
+    home_mask = joined["sbc_team"].astype(str) == str(team_b)
+    joined.loc[home_mask, "court_x"] = 50.0 - joined.loc[home_mask, "court_x"]
+    joined.loc[home_mask, "court_y"] = 94.0 - joined.loc[home_mask, "court_y"]
+    return joined.dropna(subset=["court_x", "court_y"])
+
+
+def saved_uniform_config(team, edition):
+    path = APP_DIR / "jersey_team_configs.csv"
+    table = load_branding_table(str(path), path.stat().st_mtime if path.exists() else 0)
+    row = table[(table.get("team", pd.Series(dtype=str)).astype(str) == team) & (table.get("edition", pd.Series(dtype=str)).astype(str) == edition)]
+    if row.empty:
+        return JerseyConfig(team=team, edition=edition), team_info.get(team, {}).get("logo")
+    values = row.iloc[0].to_dict()
+    config = apply_resolved_brand_font(JerseyConfig.from_mapping(values), values.get("font_path", ""))
+    logo_team = str(values.get("logo_team") or team)
+    return config, team_info.get(logo_team, team_info.get(team, {})).get("logo")
+
+
+def render_matchup_jersey(team, edition):
+    config, logo = saved_uniform_config(team, edition)
+    figure, _ = draw_uniform(config, logo=logo, view="front", dpi=120, background="#F5F7FB")
+    st.pyplot(figure, use_container_width=True)
+    plt.close(figure)
+    st.markdown(f"<div class='sbc-shot-jersey-label'>{escape(live_team_full_name(team))}<small>{escape(edition)}</small></div>", unsafe_allow_html=True)
+
+
+def matchup_jersey_data_uri(team, edition):
+    config, logo = saved_uniform_config(team, edition)
+    figure, _ = draw_uniform(config, logo=logo, view="front", dpi=105, background="#F5F7FB")
+    encoded = base64.b64encode(jersey_figure_bytes(figure, "png", dpi=125, transparent=False)).decode("ascii")
+    plt.close(figure)
+    return f"data:image/png;base64,{encoded}"
+
+
+def render_matchup_shot_court(rows, team_a, team_b):
+    shots = matchup_starter_shots(rows, team_a, team_b)
+    court_path = APP_DIR / "court_team_configs.csv"
+    court_table = load_branding_table(str(court_path), court_path.stat().st_mtime if court_path.exists() else 0)
+    home_row = court_table[court_table.get("team", pd.Series(dtype=str)).astype(str) == team_b]
+    if home_row.empty:
+        court_config = CourtConfig(team=team_b)
+        court_logo = team_info.get(team_b, {}).get("logo")
+    else:
+        court_values = home_row.iloc[0].to_dict()
+        court_config = apply_resolved_brand_font(CourtConfig.from_mapping(court_values), court_values.get("font_path", ""))
+        logo_team = str(court_values.get("center_logo_team") or team_b)
+        court_logo = team_info.get(logo_team, team_info.get(team_b, {})).get("logo")
+    figure, ax = draw_branded_court(
+        court_config, logo=court_logo, league_logo=LEAGUE_LOGO,
+        orientation="horizontal", view="full", figsize=(12.4, 6.7), dpi=135,
+    )
+    if not shots.empty:
+        for team in [team_a, team_b]:
+            team_shots = shots[shots["sbc_team"].astype(str) == str(team)]
+            primary = str(team_info.get(team, {}).get("bg", "#111827"))
+            made = team_shots[team_shots["made"].astype(bool)]
+            missed = team_shots[~team_shots["made"].astype(bool)]
+            ax.scatter(made["court_y"], -made["court_x"], s=34, marker="o", facecolor=primary, edgecolor="#FFFFFF", linewidth=.7, alpha=.9, zorder=30)
+            ax.scatter(missed["court_y"], -missed["court_x"], s=32, marker="x", color=primary, linewidth=1.25, alpha=.82, zorder=30)
+    st.pyplot(figure, use_container_width=True)
+    plt.close(figure)
+    if shots.empty:
+        st.caption("No starter shot coordinates are available for this matchup in the current October 2024 sample.")
+    else:
+        made_count = int(shots["made"].astype(bool).sum())
+        st.markdown(
+            f"<div class='sbc-shot-key'><span>● Made</span><span>× Missed</span><strong>{len(shots):,} starter attempts · {made_count:,} makes</strong></div>",
+            unsafe_allow_html=True,
+        )
+
+
+def render_matchup_visuals(rows, team_a, team_b):
+    render_html("""
+        <style>
+        .sbc-shot-visual-title { margin:24px 0 10px; color:#64748b; font-size:.72rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }
+        .sbc-shot-key { display:flex; justify-content:center; gap:14px; margin-top:-5px; color:#475569; font-size:.7rem; font-weight:800; }
+        .sbc-shot-key strong { color:#111827; }
+        </style>
+        <div class="sbc-shot-visual-title">Starter Shot Map · Home Floor</div>
+    """)
+    render_matchup_shot_court(rows, team_a, team_b)
+
+
 def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_players=True):
     team_a = str(matchup_row.get("TeamA", ""))
     team_b = str(matchup_row.get("TeamB", ""))
@@ -2110,8 +2226,26 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     title_label = boxscore_title_for_round(round_label, type_label)
     a_winner = score_numeric(score_a) >= score_numeric(score_b)
     b_winner = score_numeric(score_b) > score_numeric(score_a)
+    try:
+        road_jersey_uri = matchup_jersey_data_uri(team_a, "Icon")
+    except Exception:
+        road_jersey_uri = ""
+    try:
+        home_jersey_uri = matchup_jersey_data_uri(team_b, "Association")
+    except Exception:
+        home_jersey_uri = ""
 
     render_html(f"""
+        <style>
+        .sbc-box-compact-jerseys {{ display:grid; grid-template-columns:1fr 70px 1fr; align-items:center; margin:8px 0 -10px; }}
+        .sbc-box-compact-jersey {{ display:flex; align-items:center; justify-content:center; gap:9px; min-height:90px; }}
+        .sbc-box-compact-jersey:first-child {{ justify-content:flex-end; }}
+        .sbc-box-compact-jersey:last-child {{ justify-content:flex-start; }}
+        .sbc-box-compact-jersey img {{ width:72px; height:88px; object-fit:contain; border-radius:10px; }}
+        .sbc-box-compact-jersey span {{ color:rgba(255,255,255,.9); font-size:.63rem; font-weight:900; letter-spacing:.11em; text-transform:uppercase; }}
+        .sbc-box-compact-jersey span small {{ display:block; margin-top:3px; color:rgba(255,255,255,.62); font-size:.56rem; }}
+        @media(max-width:700px) {{ .sbc-box-compact-jersey img {{ width:58px; height:72px; }} .sbc-box-compact-jersey span {{ display:none; }} }}
+        </style>
         <section class="sbc-box-dialog-hero" style="--box-a:{escape(str(color_a), quote=True)}; --box-b:{escape(str(color_b), quote=True)};">
             <div class="sbc-box-dialog-kicker">{escape(period_label)}</div>
             <div class="sbc-box-dialog-title">{escape(title_label)}</div>
@@ -2136,6 +2270,17 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
                     <img src="{escape(str(info_b.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team_b), quote=True)} logo">
                 </div>
             </div>
+            <div class="sbc-box-compact-jerseys">
+                <div class="sbc-box-compact-jersey">
+                    <span>Road uniform<small>Icon</small></span>
+                    {'<img src="' + road_jersey_uri + '" alt="' + escape(live_team_full_name(team_a), quote=True) + ' Icon jersey">' if road_jersey_uri else ''}
+                </div>
+                <div></div>
+                <div class="sbc-box-compact-jersey">
+                    {'<img src="' + home_jersey_uri + '" alt="' + escape(live_team_full_name(team_b), quote=True) + ' Association jersey">' if home_jersey_uri else ''}
+                    <span>Home uniform<small>Association</small></span>
+                </div>
+            </div>
         </section>
     """)
 
@@ -2154,6 +2299,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
 
     box_tab, pbp_tab = st.tabs(["Box Score", "Play-by-play"])
     with box_tab:
+        render_matchup_visuals(rows, team_a, team_b)
         view_mode = st.radio(
             "Box score view",
             options=["Game rows", "Aggregate players"],
