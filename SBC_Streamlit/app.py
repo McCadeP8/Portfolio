@@ -8353,6 +8353,25 @@ def render_franchise_history_dashboard(team, standings_df, schedule_df, team_sta
         .sbc-franchise-rank-stat span {{ display:block; color:#64748b; font-size:.58rem; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }}
         .sbc-franchise-rank-stat strong {{ display:block; margin-top:7px; color:#111827; font-size:1rem; font-weight:950; }}
         .sbc-franchise-rank-stat b {{ display:inline-block; margin-top:7px; padding:3px 6px; border-radius:999px; color:#fff; background:var(--franchise-primary); font-size:.6rem; font-weight:950; }}
+        .sbc-history-table-wrap {{ overflow:auto; margin-bottom:30px; border:1px solid color-mix(in srgb,var(--franchise-primary) 25%,#d7dee8); border-radius:14px; background:#fff; box-shadow:0 10px 26px rgba(15,23,42,.07); }}
+        .sbc-history-table {{ width:100%; min-width:1080px; border-collapse:separate; border-spacing:0; color:#172033; font-size:.76rem; }}
+        .sbc-history-table th {{ position:sticky; top:0; z-index:1; padding:11px 12px; color:#fff; background:var(--franchise-primary); border-right:1px solid rgba(255,255,255,.16); font-size:.58rem; font-weight:950; letter-spacing:.075em; line-height:1.15; text-align:left; text-transform:uppercase; white-space:nowrap; }}
+        .sbc-history-table td {{ padding:11px 12px; border-right:1px solid #edf1f5; border-bottom:1px solid #e5eaf0; font-weight:720; line-height:1.3; vertical-align:middle; white-space:nowrap; }}
+        .sbc-history-table tr:last-child td {{ border-bottom:0; }}
+        .sbc-history-table td:last-child,.sbc-history-table th:last-child {{ border-right:0; }}
+        .sbc-history-table tbody tr:nth-child(even) td {{ background:color-mix(in srgb,var(--franchise-secondary) 5%,#fff); }}
+        .sbc-history-table tbody tr:hover td {{ background:color-mix(in srgb,var(--franchise-secondary) 11%,#fff); }}
+        .sbc-history-season {{ color:var(--franchise-primary); font-size:.86rem; font-weight:950 !important; }}
+        .sbc-history-record {{ color:#0f172a; font-size:.84rem; font-weight:950 !important; }}
+        .sbc-history-result {{ min-width:275px; max-width:390px; white-space:normal !important; }}
+        .sbc-history-honor {{ display:inline-block; padding:4px 7px; border:1px solid color-mix(in srgb,var(--franchise-primary) 25%,#d7dee8); border-radius:999px; color:var(--franchise-primary); background:color-mix(in srgb,var(--franchise-secondary) 10%,#fff); font-size:.58rem; font-weight:950; }}
+        .sbc-production-table {{ min-width:1020px; text-align:center; }}
+        .sbc-production-table th {{ text-align:center; }}
+        .sbc-production-table th:first-child,.sbc-production-table td:first-child {{ position:sticky; left:0; z-index:2; text-align:left; }}
+        .sbc-production-table th:first-child {{ z-index:3; }}
+        .sbc-production-table td:first-child {{ background:#fff; box-shadow:5px 0 10px rgba(15,23,42,.04); }}
+        .sbc-production-value {{ display:block; color:#111827; font-size:.86rem; font-weight:950; }}
+        .sbc-production-rank {{ display:inline-block; margin-top:4px; padding:2px 6px; border-radius:999px; color:#fff; background:var(--franchise-primary); font-size:.55rem; font-weight:950; }}
         @media(max-width:1050px) {{ .sbc-franchise-metrics {{ grid-template-columns:repeat(3,1fr); }} .sbc-franchise-rank-grid {{ grid-template-columns:repeat(4,1fr); }} }}
         @media(max-width:700px) {{ .sbc-franchise-season-grid {{ grid-template-columns:1fr; }} .sbc-franchise-metrics {{ grid-template-columns:repeat(2,1fr); }} .sbc-franchise-rank-grid {{ grid-template-columns:repeat(2,1fr); }} }}
         </style>
@@ -8363,40 +8382,40 @@ def render_franchise_history_dashboard(team, standings_df, schedule_df, team_sta
     if ledger.empty:
         render_html('<div class="sbc-empty-state">No franchise season history is available.</div>')
     else:
-        season_cards = []
+        season_rows = []
         for _, row in ledger.iterrows():
-            honors = [] if str(row.get("Honors", "—")) == "—" else [value.strip() for value in str(row.get("Honors", "")).split("·") if value.strip()]
-            honors_html = "".join(f"<span>{escape(value)}</span>" for value in honors) or "<span>No trophies</span>"
-            season_cards.append(f"""
-                <article class="sbc-franchise-season">
-                    <div class="sbc-franchise-season-head"><img src="{escape(logo, quote=True)}" alt="{escape(team, quote=True)} logo"><div><small>{escape(str(row.get('League Finish', '—')))} Overall</small><strong>{escape(str(row.get('Season', '')))}</strong></div><b>{escape(str(row.get('Record', '—')))}</b></div>
-                    <div class="sbc-franchise-season-standings">
-                        <div><span>Conference</span><strong>{escape(str(row.get('Conference Finish', '—')))}</strong></div>
-                        <div><span>Conf. Record</span><strong>{escape(str(row.get('Conference Record', '—')))}</strong></div>
-                        <div><span>Division</span><strong>{escape(str(row.get('Division Finish', '—')))}</strong></div>
-                    </div>
-                    <div class="sbc-franchise-season-body"><p>{escape(str(row.get('Season Result', '—')))}</p><div class="sbc-franchise-honors"><span>Div. {escape(str(row.get('Division Record', '—')))}</span>{honors_html}</div></div>
-                </article>
+            honors = str(row.get("Honors", "—"))
+            honors_html = "—" if honors in {"—", ""} else f'<span class="sbc-history-honor">{escape(honors)}</span>'
+            season_rows.append(f"""
+                <tr><td class="sbc-history-season">{escape(str(row.get('Season', '')))}</td>
+                <td class="sbc-history-record">{escape(str(row.get('Record', '—')))}</td>
+                <td>{escape(str(row.get('Conference Record', '—')))}</td><td>{escape(str(row.get('Division Record', '—')))}</td>
+                <td>{escape(str(row.get('League Finish', '—')))}</td><td>{escape(str(row.get('Conference Finish', '—')))}</td>
+                <td>{escape(str(row.get('Division Finish', '—')))}</td><td class="sbc-history-result">{escape(str(row.get('Season Result', '—')))}</td>
+                <td>{honors_html}</td></tr>
             """)
-        render_html(f'<div class="sbc-franchise-shell"><div class="sbc-franchise-season-grid">{"".join(season_cards)}</div></div>')
+        render_html(f'''<div class="sbc-franchise-shell"><div class="sbc-history-table-wrap"><table class="sbc-history-table">
+            <thead><tr><th>Season</th><th>Record</th><th>Conf. Record</th><th>Div. Record</th><th>League Finish</th><th>Conference Finish</th><th>Division Finish</th><th>Season Result</th><th>Honors</th></tr></thead>
+            <tbody>{"".join(season_rows)}</tbody></table></div></div>''')
 
     render_html('<div class="sbc-awards-section-head"><span>Production &amp; League Rank</span><em>Season totals and efficiency paired directly with the franchise’s league position.</em></div>')
     if ranks.empty:
         render_html('<div class="sbc-empty-state">No historical team-stat rankings are available.</div>')
         return
     categories = ["PTS", "AST", "REB", "ST", "BLK", "3PTM", "TS%", "TO"]
-    rank_cards = []
+    production_rows = []
     for _, row in ranks.sort_values("Year", ascending=False).iterrows():
         league_size = max(1, int(row.get("League Size", 1)))
-        stat_tiles = []
+        stat_cells = []
         for category in categories:
             value = float(row.get(category, 0))
             value_text = f"{value:.1%}" if category == "TS%" else f"{value:,.0f}"
             rank = int(row.get(f"{category} Rank", league_size))
-            strength = 100 if league_size <= 1 else round(18 + 82 * (league_size - rank) / (league_size - 1))
-            stat_tiles.append(f'<div class="sbc-franchise-rank-stat" style="--rank-strength:{strength}%"><span>{escape(category)}</span><strong>{escape(value_text)}</strong><b>#{rank} of {league_size}</b><i></i></div>')
-        rank_cards.append(f'<article class="sbc-franchise-rank-card"><div class="sbc-franchise-rank-head"><strong>{escape(str(row.get("Season", "")))}</strong><span>Season Production</span></div><div class="sbc-franchise-rank-grid">{"".join(stat_tiles)}</div></article>')
-    render_html(f'<div class="sbc-franchise-shell"><div class="sbc-franchise-rank-seasons">{"".join(rank_cards)}</div></div>')
+            stat_cells.append(f'<td><span class="sbc-production-value">{escape(value_text)}</span><span class="sbc-production-rank">#{rank} / {league_size}</span></td>')
+        production_rows.append(f'<tr><td class="sbc-history-season">{escape(str(row.get("Season", "")))}</td>{"".join(stat_cells)}</tr>')
+    headers = "".join(f"<th>{escape(category)}</th>" for category in categories)
+    render_html(f'''<div class="sbc-franchise-shell"><div class="sbc-history-table-wrap"><table class="sbc-history-table sbc-production-table">
+        <thead><tr><th>Season</th>{headers}</tr></thead><tbody>{"".join(production_rows)}</tbody></table></div></div>''')
 
 
 def history_regular_season_h2h_matrix(schedule_df):
