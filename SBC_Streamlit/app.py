@@ -28,6 +28,7 @@ from functions import read_csv_snapshot, get_data, get_pictures, active_players,
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 from court_engine import CourtConfig, draw_branded_court
 from jersey_engine import JerseyConfig, draw_uniform, figure_bytes as jersey_figure_bytes
+from jersey_rotation import select_game_uniforms
 
 
 if not hasattr(st, "_sbc_native_metric"):
@@ -2261,14 +2262,16 @@ def render_matchup_visuals(rows, team_a, team_b):
     render_matchup_shot_court(rows, team_a, team_b)
 
 
-def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
+def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri, road_edition, home_edition, clash_adjusted=False):
     render_html(f"""
         <style>
         .sbc-game-detail-section {{ margin:18px 0 28px; }}
         .sbc-game-detail-heading {{ margin:0 0 14px; color:#475569; font-size:1.25rem; font-weight:950; letter-spacing:.08em; line-height:1.15; text-transform:uppercase; }}
         .sbc-game-jerseys {{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:28px; padding:10px 24px 16px; border-radius:20px; background:linear-gradient(180deg,#f8fafc,#fff); border:1px solid #e2e8f0; }}
-        .sbc-game-jersey {{ display:flex; align-items:center; justify-content:center; min-height:450px; }}
+        .sbc-game-jersey {{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:450px; }}
         .sbc-game-jersey img {{ width:min(100%,410px); height:450px; object-fit:contain; filter:drop-shadow(0 18px 18px rgba(15,23,42,.14)); }}
+        .sbc-game-uniform-label {{ margin-top:-34px; padding:7px 12px; border-radius:999px; color:#334155; background:#fff; border:1px solid #dbe3ec; font-size:.68rem; font-weight:950; letter-spacing:.1em; text-transform:uppercase; box-shadow:0 7px 18px rgba(15,23,42,.08); }}
+        .sbc-game-clash-note {{ margin:10px 0 0; color:#64748b; font-size:.68rem; font-weight:800; text-align:center; }}
         .sbc-lineup-board {{ overflow-x:auto; border-radius:18px; border:1px solid #cbd5e1; box-shadow:0 12px 28px rgba(15,23,42,.12); }}
         .sbc-lineup-row {{ display:grid; grid-template-columns:190px repeat(5,minmax(125px,1fr)); min-width:880px; min-height:210px; color:#fff; background:linear-gradient(125deg,var(--lineup-primary),var(--lineup-secondary)); border-bottom:4px solid rgba(255,255,255,.8); }}
         .sbc-lineup-row:last-child {{ border-bottom:0; }}
@@ -2292,12 +2295,15 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri):
             <div class="sbc-game-detail-heading">Game Uniforms</div>
             <div class="sbc-game-jerseys">
                 <div class="sbc-game-jersey" style="--jersey-team:{escape(str(team_info.get(team_a, {}).get('bg', '#111827')), quote=True)};">
-                    <img src="{road_jersey_uri}" alt="{escape(live_team_full_name(team_a), quote=True)} Icon jersey">
+                    <img src="{road_jersey_uri}" alt="{escape(live_team_full_name(team_a), quote=True)} {escape(road_edition, quote=True)} jersey">
+                    <span class="sbc-game-uniform-label">Road &middot; {escape(road_edition)}</span>
                 </div>
                 <div class="sbc-game-jersey" style="--jersey-team:{escape(str(team_info.get(team_b, {}).get('bg', '#334155')), quote=True)};">
-                    <img src="{home_jersey_uri}" alt="{escape(live_team_full_name(team_b), quote=True)} Association jersey">
+                    <img src="{home_jersey_uri}" alt="{escape(live_team_full_name(team_b), quote=True)} {escape(home_edition, quote=True)} jersey">
+                    <span class="sbc-game-uniform-label">Home &middot; {escape(home_edition)}</span>
                 </div>
             </div>
+            {'<div class="sbc-game-clash-note">Road uniform adjusted automatically for stronger on-court contrast.</div>' if clash_adjusted else ''}
         </section>
     """)
 
@@ -2453,11 +2459,18 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     a_winner = score_numeric(score_a) >= score_numeric(score_b)
     b_winner = score_numeric(score_b) > score_numeric(score_a)
     try:
-        road_jersey_uri = matchup_jersey_data_uri(team_a, "Icon")
+        road_edition, home_edition, clash_adjusted = select_game_uniforms(
+            matchup_row, team_a, team_b,
+            lambda uniform_team, uniform_edition: saved_uniform_config(uniform_team, uniform_edition)[0],
+        )
+    except Exception:
+        road_edition, home_edition, clash_adjusted = "Icon", "Association", False
+    try:
+        road_jersey_uri = matchup_jersey_data_uri(team_a, road_edition)
     except Exception:
         road_jersey_uri = ""
     try:
-        home_jersey_uri = matchup_jersey_data_uri(team_b, "Association")
+        home_jersey_uri = matchup_jersey_data_uri(team_b, home_edition)
     except Exception:
         home_jersey_uri = ""
 
@@ -2516,7 +2529,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     with details_tab:
         render_matchup_visuals(rows, team_a, team_b)
         render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b)
-        render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri)
+        render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri, road_edition, home_edition, clash_adjusted)
     with pbp_tab:
         render_matchup_pbp_tab(
             rows,
@@ -3352,6 +3365,8 @@ HISTORY_NAV_LABELS = {
 }
 HISTORY_NAV_LABELS["All-Time Stats"] = "📊 All-Time Stats"
 
+HISTORY_NAV_LABELS["Branding"] = "Branding"
+
 FREE_AGENCY_NAV_LABELS = {
     "League View": "🌐 League View",
     "My Bids": "🙋 My Bids",
@@ -3394,7 +3409,7 @@ need_dh = need_history_draft
 need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "History"]) or need_history_stats or need_history_awards
 need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_all_time_rosters = need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
-need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule", "History"]) or need_league_scoreboard or need_league_standings or need_history
+need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding")
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_history_awards
 
@@ -3634,6 +3649,95 @@ def render_team_branding(team):
             uniform_figure, _ = draw_uniform(uniform_config, logo=uniform_logo, view="front_and_back", dpi=130, background="#F5F7FB")
             st.pyplot(uniform_figure, use_container_width=True)
             plt.close(uniform_figure)
+
+def render_league_branding_gallery():
+    """Render the complete 30-franchise identity archive in division-sized wings."""
+    render_html("""
+        <style>
+        .sbc-branding-gallery-hero { position:relative; overflow:hidden; margin:8px 0 20px; padding:34px 38px; border-radius:26px; color:#fff; background:linear-gradient(125deg,#111827,#334155 52%,#7c3aed); box-shadow:0 20px 48px rgba(15,23,42,.2); }
+        .sbc-branding-gallery-hero::after { content:"30"; position:absolute; right:30px; top:-30px; color:rgba(255,255,255,.1); font-size:12rem; font-weight:950; line-height:1; }
+        .sbc-branding-gallery-hero span { font-size:.72rem; font-weight:950; letter-spacing:.2em; text-transform:uppercase; }
+        .sbc-branding-gallery-hero h1 { position:relative; z-index:1; margin:7px 0 8px; color:#fff; font-size:clamp(2.2rem,5vw,4.6rem); line-height:.95; }
+        .sbc-branding-gallery-hero p { position:relative; z-index:1; max-width:780px; margin:0; color:rgba(255,255,255,.82); font-weight:720; }
+        .sbc-gallery-team-hero { display:flex; align-items:center; gap:24px; margin:34px 0 14px; padding:24px 28px; border-radius:22px; color:#fff; background:linear-gradient(120deg,var(--gallery-primary),var(--gallery-secondary)); box-shadow:0 15px 36px color-mix(in srgb,var(--gallery-primary) 22%,transparent); }
+        .sbc-gallery-team-hero img { width:112px; height:112px; object-fit:contain; filter:drop-shadow(0 10px 13px rgba(0,0,0,.28)); }
+        .sbc-gallery-team-hero small { display:block; margin-bottom:5px; font-size:.65rem; font-weight:950; letter-spacing:.16em; text-transform:uppercase; opacity:.78; }
+        .sbc-gallery-team-hero strong { display:block; font-family:var(--gallery-font),sans-serif; font-size:clamp(1.8rem,4vw,3.7rem); line-height:1; }
+        .sbc-gallery-team-hero em { display:block; margin-top:7px; font-size:.72rem; font-style:normal; font-weight:850; opacity:.84; }
+        .sbc-gallery-strip-title { margin:13px 0 5px; color:#64748b; font-size:.67rem; font-weight:950; letter-spacing:.15em; text-transform:uppercase; }
+        .sbc-gallery-edition { margin:0 0 4px; color:#334155; font-size:.72rem; font-weight:950; letter-spacing:.11em; text-align:center; text-transform:uppercase; }
+        .sbc-gallery-divider { height:1px; margin:38px 0 4px; background:linear-gradient(90deg,transparent,#cbd5e1,transparent); }
+        @media(max-width:700px) { .sbc-branding-gallery-hero { padding:26px; } .sbc-gallery-team-hero { gap:15px; padding:20px; } .sbc-gallery-team-hero img { width:76px; height:76px; } }
+        </style>
+        <section class="sbc-branding-gallery-hero">
+            <span>SBCFBL Visual Archive</span>
+            <h1>League Branding Gallery</h1>
+            <p>Thirty franchises. Ninety uniforms. Every home floor. A complete living archive of the visual language of the league.</p>
+        </section>
+    """)
+
+    divisions = {}
+    for team in sorted(team_info):
+        info = team_info[team]
+        label = f"{info.get('conf', 'League')} / {info.get('div', 'Independent')}"
+        divisions.setdefault(label, []).append(team)
+    division_names = sorted(divisions, key=lambda label: ("West" not in label, label))
+    selected_division = st.selectbox(
+        "Gallery wing",
+        division_names,
+        key="league_branding_division",
+        help="Each wing contains one complete division so the image-rich archive stays responsive.",
+    )
+    st.caption(f"Showing {len(divisions[selected_division])} of 30 franchises — choose another wing to explore the full league.")
+
+    jersey_path = APP_DIR / "jersey_team_configs.csv"
+    jersey_table = load_branding_table(str(jersey_path), jersey_path.stat().st_mtime if jersey_path.exists() else 0)
+    court_path = APP_DIR / "court_team_configs.csv"
+    court_table = load_branding_table(str(court_path), court_path.stat().st_mtime if court_path.exists() else 0)
+
+    for team_index, team in enumerate(divisions[selected_division]):
+        info = team_info[team]
+        primary, secondary = str(info.get("bg", "#111827")), str(info.get("bg2", "#334155"))
+        font_name = TEAM_FONTS.get(team, "Poppins")
+        render_html(f"""
+            <section class="sbc-gallery-team-hero" style="--gallery-primary:{escape(primary, quote=True)};--gallery-secondary:{escape(secondary, quote=True)};--gallery-font:'{escape(font_name, quote=True)}'">
+                <img src="{escape(str(info.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
+                <div><small>{escape(str(info.get('conf', '')))} Conference &middot; {escape(str(info.get('div', '')))} Division</small><strong>{escape(live_team_full_name(team))}</strong><em>{escape(font_name)} team typeface</em></div>
+            </section>
+            <div class="sbc-gallery-strip-title">Uniform Collection &middot; Front &amp; Back</div>
+        """)
+        team_jerseys = jersey_table[jersey_table.get("team", pd.Series(dtype=str)).astype(str) == team]
+        columns = st.columns(3, gap="medium")
+        for column, edition in zip(columns, ["Association", "Icon", "Statement"]):
+            with column:
+                render_html(f'<div class="sbc-gallery-edition">{escape(edition)}</div>')
+                row = team_jerseys[team_jerseys.get("edition", pd.Series(dtype=str)).astype(str) == edition]
+                if row.empty:
+                    st.info("Design unavailable")
+                    continue
+                values = row.iloc[0].to_dict()
+                config = apply_resolved_brand_font(JerseyConfig.from_mapping(values), values.get("font_path", ""))
+                logo_team = str(values.get("logo_team") or team)
+                logo = team_info.get(logo_team, info).get("logo")
+                figure, _ = draw_uniform(config, logo=logo, view="front_and_back", dpi=110, background="#F5F7FB", show_view_label=False)
+                st.pyplot(figure, use_container_width=True)
+                plt.close(figure)
+
+        render_html('<div class="sbc-gallery-strip-title">Home Court</div>')
+        court_row = court_table[court_table.get("team", pd.Series(dtype=str)).astype(str) == team]
+        if court_row.empty:
+            st.info("Court design unavailable")
+        else:
+            values = court_row.iloc[0].to_dict()
+            config = apply_resolved_brand_font(CourtConfig.from_mapping(values), values.get("font_path", ""))
+            logo_team = str(values.get("center_logo_team") or team)
+            logo = team_info.get(logo_team, info).get("logo")
+            figure, _ = draw_branded_court(config, logo=logo, league_logo=LEAGUE_LOGO, orientation="horizontal", dpi=110)
+            st.pyplot(figure, use_container_width=True)
+            plt.close(figure)
+        if team_index < len(divisions[selected_division]) - 1:
+            render_html('<div class="sbc-gallery-divider"></div>')
+
 
 #ABC 
 def format_money(value):
@@ -16112,22 +16216,23 @@ if main_page == "League Hub":
     )
 
     if selected_league_page == "History":
-        league_history_year_options = schedule_year_options_for_history()
-        default_league_history_year = current_year if current_year in league_history_year_options else league_history_year_options[-1]
-        LeagueHistoryYear = st.selectbox(
-            "History Year",
-            options=league_history_year_options,
-            index=league_history_year_options.index(default_league_history_year),
-            key="league_history_year",
-        )
         selected_history_page = st.radio(
             "League History View",
-            ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats", "Awards", "Draft History"],
+            ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats", "Awards", "Draft History", "Branding"],
             format_func=nav_label(HISTORY_NAV_LABELS),
             horizontal=True,
             key="sbc_history_page",
             label_visibility="collapsed",
         )
+        if selected_history_page != "Branding":
+            league_history_year_options = schedule_year_options_for_history()
+            default_league_history_year = current_year if current_year in league_history_year_options else league_history_year_options[-1]
+            LeagueHistoryYear = st.selectbox(
+                "History Year",
+                options=league_history_year_options,
+                index=league_history_year_options.index(default_league_history_year),
+                key="league_history_year",
+            )
 
 if main_page == "Team Hub" and selected_team_page == "Cap":
     _legacy_tab1 = r'''
@@ -16780,6 +16885,9 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
 
 if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Overview":
     render_league_history_overview()
+
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Branding":
+    render_league_branding_gallery()
 
 if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Scoreboard":
     render_html(f"""

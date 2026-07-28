@@ -13,3 +13,6 @@ data_snapshots/pbp/checkpoints_*/
 !data_snapshots/pbp/pbp_stat_events_202324.parquet
 !data_snapshots/pbp/pbp_stat_events_202425.parquet
 !data_snapshots/pbp/pbp_stat_events_202526.parquet
+
+# Local Codex-generated artifact workspaces and dependency junctions.
+.codex_artifacts/
