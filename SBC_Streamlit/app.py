@@ -3365,7 +3365,7 @@ HISTORY_NAV_LABELS = {
 }
 HISTORY_NAV_LABELS["All-Time Stats"] = "📊 All-Time Stats"
 
-HISTORY_NAV_LABELS["Branding"] = "Branding"
+HISTORY_NAV_LABELS["Branding"] = "\U0001f3a8 Branding"
 
 FREE_AGENCY_NAV_LABELS = {
     "League View": "🌐 League View",
@@ -3650,7 +3650,7 @@ def render_team_branding(team):
             st.pyplot(uniform_figure, use_container_width=True)
             plt.close(uniform_figure)
 
-def render_league_branding_gallery():
+def _render_league_branding_gallery_division_legacy():
     """Render the complete 30-franchise identity archive in division-sized wings."""
     render_html("""
         <style>
@@ -3737,6 +3737,107 @@ def render_league_branding_gallery():
             plt.close(figure)
         if team_index < len(divisions[selected_division]) - 1:
             render_html('<div class="sbc-gallery-divider"></div>')
+
+
+@st.cache_data(show_spinner=False)
+def league_branding_uniform_thumbnail(team, edition, modified_time):
+    config, logo = saved_uniform_config(team, edition)
+    figure, _ = draw_uniform(
+        config, logo=logo, view="front", dpi=90,
+        background="#F5F7FB", show_view_label=False,
+    )
+    image = jersey_figure_bytes(figure, "png", dpi=105, transparent=False)
+    plt.close(figure)
+    return image
+
+
+@st.cache_data(show_spinner=False)
+def league_branding_court_thumbnail(team, modified_time):
+    info = team_info[team]
+    path = APP_DIR / "court_team_configs.csv"
+    table = load_branding_table(str(path), modified_time)
+    row = table[table.get("team", pd.Series(dtype=str)).astype(str) == team]
+    if row.empty:
+        config, logo = CourtConfig(team=team), info.get("logo")
+    else:
+        values = row.iloc[0].to_dict()
+        config = apply_resolved_brand_font(CourtConfig.from_mapping(values), values.get("font_path", ""))
+        logo_team = str(values.get("center_logo_team") or team)
+        logo = team_info.get(logo_team, info).get("logo")
+    figure, _ = draw_branded_court(
+        config, logo=logo, league_logo=LEAGUE_LOGO,
+        orientation="horizontal", figsize=(8.4, 4.55), dpi=90,
+    )
+    image = jersey_figure_bytes(figure, "png", dpi=105, transparent=False)
+    plt.close(figure)
+    return image
+
+
+def branding_thumbnail_uri(image):
+    return "data:image/png;base64," + base64.b64encode(image).decode("ascii")
+
+
+def render_league_branding_gallery():
+    """Render all 30 franchise identity systems as one compact league board."""
+    render_html("""
+        <style>
+        .sbc-branding-gallery-hero { position:relative; overflow:hidden; margin:8px 0 20px; padding:30px 36px; border-radius:24px; color:#fff; background:linear-gradient(125deg,#111827,#334155 52%,#7c3aed); box-shadow:0 18px 42px rgba(15,23,42,.19); }
+        .sbc-branding-gallery-hero::after { content:"30"; position:absolute; right:28px; top:-30px; color:rgba(255,255,255,.1); font-size:11rem; font-weight:950; line-height:1; }
+        .sbc-branding-gallery-hero span { font-size:.68rem; font-weight:950; letter-spacing:.2em; text-transform:uppercase; }
+        .sbc-branding-gallery-hero h1 { position:relative; z-index:1; margin:6px 0 7px; color:#fff; font-size:clamp(2rem,4.5vw,4rem); line-height:.95; }
+        .sbc-branding-gallery-hero p { position:relative; z-index:1; max-width:780px; margin:0; color:rgba(255,255,255,.82); font-weight:720; }
+        .sbc-branding-board-head,.sbc-branding-row { display:grid; grid-template-columns:minmax(230px,1.25fr) repeat(3,minmax(125px,.72fr)) minmax(250px,1.55fr); gap:10px; align-items:center; min-width:1040px; }
+        .sbc-branding-board-wrap { overflow-x:auto; padding:2px 2px 20px; }
+        .sbc-branding-board-head { position:sticky; top:0; z-index:4; padding:9px 14px; margin-bottom:8px; border-radius:12px; color:#64748b; background:rgba(245,247,251,.96); backdrop-filter:blur(8px); font-size:.6rem; font-weight:950; letter-spacing:.12em; text-align:center; text-transform:uppercase; }
+        .sbc-branding-board-head span:first-child { text-align:left; }
+        .sbc-branding-row { position:relative; overflow:hidden; min-height:176px; padding:10px 14px; margin-bottom:9px; border:1px solid color-mix(in srgb,var(--row-primary) 20%,#dbe3ec); border-left:7px solid var(--row-primary); border-radius:16px; background:linear-gradient(100deg,color-mix(in srgb,var(--row-primary) 9%,#fff),#fff 36%); box-shadow:0 7px 20px rgba(15,23,42,.055); }
+        .sbc-branding-team { display:flex; align-items:center; gap:14px; min-width:0; }
+        .sbc-branding-team img { flex:0 0 auto; width:72px; height:72px; object-fit:contain; filter:drop-shadow(0 7px 8px rgba(15,23,42,.2)); }
+        .sbc-branding-team small,.sbc-branding-team strong,.sbc-branding-team em { display:block; }
+        .sbc-branding-team small { margin-bottom:5px; color:#64748b; font-size:.55rem; font-weight:950; letter-spacing:.11em; text-transform:uppercase; }
+        .sbc-branding-team strong { color:var(--row-primary); font-family:var(--row-font),sans-serif; font-size:clamp(1rem,1.55vw,1.55rem); line-height:1.02; }
+        .sbc-branding-team em { margin-top:5px; color:#94a3b8; font-size:.56rem; font-style:normal; font-weight:850; }
+        .sbc-branding-asset { display:flex; align-items:center; justify-content:center; height:154px; overflow:hidden; border:1px solid #e2e8f0; border-radius:11px; background:#f5f7fb; }
+        .sbc-branding-asset img { display:block; width:100%; height:100%; object-fit:contain; }
+        .sbc-branding-court img { padding:5px; box-sizing:border-box; }
+        @media(max-width:700px) { .sbc-branding-gallery-hero { padding:25px; } .sbc-branding-board-wrap { margin-right:-1rem; } }
+        </style>
+        <section class="sbc-branding-gallery-hero">
+            <span>SBCFBL Visual Archive</span>
+            <h1>League Branding Gallery</h1>
+            <p>All thirty franchises in one place: team marks, custom typography, three game uniforms, and every home floor.</p>
+        </section>
+    """)
+
+    jersey_path = APP_DIR / "jersey_team_configs.csv"
+    jersey_mtime = jersey_path.stat().st_mtime if jersey_path.exists() else 0
+    court_path = APP_DIR / "court_team_configs.csv"
+    court_mtime = court_path.stat().st_mtime if court_path.exists() else 0
+    rows = []
+    with st.spinner("Building the complete 30-team visual archive..."):
+        for team in sorted(team_info):
+            info = team_info[team]
+            primary = str(info.get("bg", "#111827"))
+            font_name = TEAM_FONTS.get(team, "Poppins")
+            uniform_images = {
+                edition: branding_thumbnail_uri(league_branding_uniform_thumbnail(team, edition, jersey_mtime))
+                for edition in ("Association", "Icon", "Statement")
+            }
+            court_image = branding_thumbnail_uri(league_branding_court_thumbnail(team, court_mtime))
+            rows.append(f"""
+                <section class="sbc-branding-row" style="--row-primary:{escape(primary, quote=True)};--row-font:'{escape(font_name, quote=True)}'">
+                    <div class="sbc-branding-team">
+                        <img loading="lazy" src="{escape(str(info.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
+                        <div><small>{escape(str(info.get('conf', '')))} / {escape(str(info.get('div', '')))}</small><strong>{escape(live_team_full_name(team))}</strong><em>{escape(font_name)}</em></div>
+                    </div>
+                    <div class="sbc-branding-asset"><img loading="lazy" src="{uniform_images['Association']}" alt="{escape(team, quote=True)} Association jersey front"></div>
+                    <div class="sbc-branding-asset"><img loading="lazy" src="{uniform_images['Icon']}" alt="{escape(team, quote=True)} Icon jersey front"></div>
+                    <div class="sbc-branding-asset"><img loading="lazy" src="{uniform_images['Statement']}" alt="{escape(team, quote=True)} Statement jersey front"></div>
+                    <div class="sbc-branding-asset sbc-branding-court"><img loading="lazy" src="{court_image}" alt="{escape(team, quote=True)} home court"></div>
+                </section>
+            """)
+    board_head = '<div class="sbc-branding-board-wrap"><div class="sbc-branding-board-head"><span>Franchise</span><span>Association</span><span>Icon</span><span>Statement</span><span>Home Court</span></div>'
+    render_html(board_head + "".join(rows) + "</div>")
 
 
 #ABC 
