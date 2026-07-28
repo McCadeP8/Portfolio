@@ -3801,7 +3801,7 @@ def render_league_branding_gallery():
         .sbc-branding-team small,.sbc-branding-team strong,.sbc-branding-team em { display:block; }
         .sbc-branding-team small { margin-bottom:5px; color:#64748b; font-size:.55rem; font-weight:950; letter-spacing:.11em; text-transform:uppercase; }
         .sbc-branding-team strong { color:var(--row-primary); font-family:var(--row-font),sans-serif; font-size:clamp(1rem,1.55vw,1.55rem); line-height:1.02; }
-        .sbc-branding-team em { margin-top:6px; color:var(--row-primary); font-family:var(--row-font),sans-serif; font-size:.72rem; font-style:normal; font-weight:950; letter-spacing:.025em; }
+        .sbc-branding-team em { width:fit-content; margin-top:7px; padding:4px 8px; border-radius:999px; color:var(--row-motto-text); background:var(--row-primary); font-family:var(--row-font),sans-serif; font-size:.68rem; font-style:normal; font-weight:950; letter-spacing:.025em; box-shadow:0 3px 8px color-mix(in srgb,var(--row-primary) 22%,transparent); }
         .sbc-branding-team i { display:block; margin-top:3px; color:#94a3b8; font-size:.5rem; font-style:normal; font-weight:850; }
         .sbc-branding-asset { display:flex; align-items:center; justify-content:center; height:154px; overflow:hidden; border:1px solid #e2e8f0; border-radius:11px; background:#f5f7fb; }
         .sbc-branding-asset img { display:block; width:100%; height:100%; object-fit:contain; }
@@ -3826,13 +3826,14 @@ def render_league_branding_gallery():
             primary = str(info.get("bg", "#111827"))
             font_name = TEAM_FONTS.get(team, "Poppins")
             motto = str(info.get("motto", ""))
+            motto_text = branding_contrast_color(primary)
             uniform_images = {
                 edition: branding_thumbnail_uri(league_branding_uniform_thumbnail(team, edition, jersey_mtime))
                 for edition in ("Association", "Icon", "Statement")
             }
             court_image = branding_thumbnail_uri(league_branding_court_thumbnail(team, court_mtime))
             rows.append(f"""
-                <section class="sbc-branding-row" style="--row-primary:{escape(primary, quote=True)};--row-font:'{escape(font_name, quote=True)}'">
+                <section class="sbc-branding-row" style="--row-primary:{escape(primary, quote=True)};--row-motto-text:{escape(motto_text, quote=True)};--row-font:'{escape(font_name, quote=True)}'">
                     <div class="sbc-branding-team">
                         <img loading="lazy" src="{escape(str(info.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
                         <div><small>{escape(str(info.get('conf', '')))} / {escape(str(info.get('div', '')))}</small><strong>{escape(live_team_full_name(team))}</strong><em>{escape(motto)}</em><i>{escape(font_name)}</i></div>
@@ -10992,6 +10993,24 @@ st.markdown(
         line-height: 1.35;
     }}
 
+    .sbc-team-motto-badge {{
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        margin: 0.48rem 0 0.34rem;
+        padding: 0.3rem 0.68rem;
+        border: 1px solid rgba(255, 255, 255, 0.42);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+        font-family: var(--sbc-team-font);
+        font-size: 0.88rem;
+        font-weight: 950;
+        letter-spacing: 0.035em;
+        line-height: 1;
+        box-shadow: 0 5px 14px rgba(15, 23, 42, 0.18);
+    }}
+
     .sbc-draft-grid {{
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -16465,7 +16484,8 @@ if main_page == "Team Hub" and selected_team_page == "Cap":
                 <div>
                     <div class="sbc-draft-eyebrow">{season_label} Season Cap Office</div>
                     <div class="sbc-draft-heading">{team_name_html} {nickname_html} Cap</div>
-                    <div class="sbc-draft-subcopy"><strong>{motto_html}</strong> &nbsp;·&nbsp; Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
+                    <div class="sbc-team-motto-badge">{motto_html}</div>
+                    <div class="sbc-draft-subcopy">Roster construction, cap position, tax exposure, exceptions, free agents, and rights inventory.</div>
                 </div>
             </div>
         </div>
@@ -16635,7 +16655,8 @@ if main_page == "Team Hub" and selected_team_page == "Picks":
                 <div>
                     <div class="sbc-draft-eyebrow">{current_year}-{str(current_year + 6)[-2:]} Draft Room</div>
                     <div class="sbc-draft-heading">{team_name_html} {nickname_html} Picks</div>
-                    <div class="sbc-draft-subcopy"><strong>{motto_html}</strong> &nbsp;·&nbsp; A clean view of owned assets, shared-control picks, locked picks, and outbound picks now controlled elsewhere.</div>
+                    <div class="sbc-team-motto-badge">{motto_html}</div>
+                    <div class="sbc-draft-subcopy">A clean view of owned assets, shared-control picks, locked picks, and outbound picks now controlled elsewhere.</div>
                 </div>
             </div>
         </div>
@@ -16730,7 +16751,8 @@ if main_page == "Team Hub" and selected_team_page == "Live":
                 <div>
                     <div class="sbc-draft-eyebrow">Live Matchup Center</div>
                     <div class="sbc-draft-heading">{team_name_html} {nickname_html} Live</div>
-                    <div class="sbc-draft-subcopy"><strong>{motto_html}</strong> &nbsp;·&nbsp; Period scoreboards, matchup category battles, and the team trend line for the selected season.</div>
+                    <div class="sbc-team-motto-badge">{motto_html}</div>
+                    <div class="sbc-draft-subcopy">Period scoreboards, matchup category battles, and the team trend line for the selected season.</div>
                 </div>
             </div>
         </div>
@@ -16859,7 +16881,8 @@ if main_page == "Team Hub" and selected_team_page == "Schedule":
                 <div>
                     <div class="sbc-draft-eyebrow">{SelectedScheduleYear} Travel Desk / Regular Season {escape(schedule_record)}</div>
                     <div class="sbc-draft-heading">{team_name_html} {nickname_html} Schedule</div>
-                    <div class="sbc-draft-subcopy"><strong>{motto_html}</strong> &nbsp;·&nbsp; Opponent flow, home-road balance, matchup types, results, and travel load by season.</div>
+                    <div class="sbc-team-motto-badge">{motto_html}</div>
+                    <div class="sbc-draft-subcopy">Opponent flow, home-road balance, matchup types, results, and travel load by season.</div>
                 </div>
             </div>
         </div>
@@ -16914,7 +16937,8 @@ if main_page == "Team Hub" and selected_team_page == "History" and team_history_
                 <div>
                     <div class="sbc-draft-eyebrow">Franchise Archive</div>
                     <div class="sbc-draft-heading">{team_name_html} {nickname_html} Franchise History</div>
-                    <div class="sbc-draft-subcopy"><strong>{motto_html}</strong> &nbsp;·&nbsp; Every season, finish, postseason result, championship, league rank, and franchise player record in one archive.</div>
+                    <div class="sbc-team-motto-badge">{motto_html}</div>
+                    <div class="sbc-draft-subcopy">Every season, finish, postseason result, championship, league rank, and franchise player record in one archive.</div>
                 </div>
             </div>
         </div>
