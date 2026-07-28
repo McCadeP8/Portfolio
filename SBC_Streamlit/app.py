@@ -5,6 +5,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from streamlit_folium import st_folium
 import pandas as pd
+import numpy as np
 import altair as alt
 import pyarrow.parquet as pq
 import re as re
@@ -8187,6 +8188,7 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
     final["_pct"] = final["_pct"].fillna(0)
     awards = franchise_awards_for_team(team, team_awards_df)
     games = history_completed_games(schedule_df, ["Play-In", "Playoffs"])
+    ist_games_all = history_completed_games(schedule_df, ["In-Season Tournament"])
     rows = []
     for year in sorted(final.loc[final["Team"].astype(str) == team, "_year"].astype(int).unique()):
         team_row = final[(final["_year"] == year) & (final["Team"].astype(str) == team)].iloc[0]
@@ -8249,6 +8251,41 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
             else:
                 verb = "Won" if won else "Lost"
                 outcome = f"{verb} {last.get('Round', 'Playoffs')} vs {opponent}, {format_score_value(team_score)}–{format_score_value(opp_score)}"
+
+        season_ist = ist_games_all[
+            (pd.to_numeric(ist_games_all["Year"], errors="coerce") == year)
+            & ((ist_games_all["TeamA"].astype(str) == team) | (ist_games_all["TeamB"].astype(str) == team))
+        ].copy() if not ist_games_all.empty else pd.DataFrame()
+        ist_wins = 0
+        ist_losses = 0
+        for _, ist_game in season_ist.iterrows():
+            team_score = score_numeric(ist_game["TeamAScore"] if str(ist_game["TeamA"]) == team else ist_game["TeamBScore"])
+            opp_score = score_numeric(ist_game["TeamBScore"] if str(ist_game["TeamA"]) == team else ist_game["TeamAScore"])
+            if team_score >= opp_score:
+                ist_wins += 1
+            else:
+                ist_losses += 1
+        ist_record = f"{ist_wins}-{ist_losses}" if not season_ist.empty else "—"
+        knockout = season_ist[~season_ist["Round"].astype(str).eq("Group Stage")].copy() if not season_ist.empty else pd.DataFrame()
+        if knockout.empty:
+            ist_result = "Missed Knockout"
+        else:
+            round_order = {"IST Quarterfinals": 1, "IST Semifinals": 2, "IST Championship": 3}
+            knockout["_ist_round_rank"] = knockout["Round"].astype(str).map(round_order).fillna(0)
+            last_ist = knockout.sort_values(["_ist_round_rank", "Period"]).iloc[-1]
+            opponent = last_ist["TeamB"] if str(last_ist["TeamA"]) == team else last_ist["TeamA"]
+            team_score = score_numeric(last_ist["TeamAScore"] if str(last_ist["TeamA"]) == team else last_ist["TeamBScore"])
+            opp_score = score_numeric(last_ist["TeamBScore"] if str(last_ist["TeamA"]) == team else last_ist["TeamAScore"])
+            won = team_score >= opp_score
+            round_label = {
+                "IST Quarterfinals": "Quarterfinals",
+                "IST Semifinals": "Semifinals",
+                "IST Championship": "Finals",
+            }.get(str(last_ist.get("Round", "")), "Knockout")
+            if won and str(last_ist.get("Round", "")) == "IST Championship":
+                ist_result = f"Won SBC Cup vs {opponent}, {format_score_value(team_score)}–{format_score_value(opp_score)}"
+            else:
+                ist_result = f"{'Won' if won else 'Lost'} {round_label} vs {opponent}, {format_score_value(team_score)}–{format_score_value(opp_score)}"
         rows.append({
             "Year": year,
             "Season": season_label_from_year(year),
@@ -8259,6 +8296,8 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
             "Conference Finish": f"{conference_finish} {conference}",
             "Division Finish": f"{division_finish} {division}",
             "Season Result": outcome,
+            "IST Record": ist_record,
+            "IST Result": ist_result,
             "Honors": " · ".join(honors) if honors else "—",
             "Wins": int(team_row["_wins"]),
             "Losses": int(team_row["_losses"]),
@@ -8271,15 +8310,19 @@ def franchise_season_stat_ranks(team, team_stats_df):
     if team_stats_df is None or team_stats_df.empty or not {"Team", "Year"}.issubset(team_stats_df.columns):
         return pd.DataFrame()
     stats = team_stats_df.copy()
+    if "Type" in stats.columns:
+        stats = stats[stats["Type"].astype(str).eq("Regular Season")].copy()
     stats["Year"] = pd.to_numeric(stats["Year"], errors="coerce")
     stats = stats.dropna(subset=["Year"])
-    sum_cols = ["PTS", "AST", "OREB", "DREB", "ST", "BLK", "TO", "3PTM", "2PTA", "3PTA", "FTA"]
+    sum_cols = ["MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     for col in sum_cols:
         stats[col] = pd.to_numeric(stats.get(col, 0), errors="coerce").fillna(0)
     totals = stats.groupby(["Year", "Team"], as_index=False)[sum_cols].sum()
-    totals["REB"] = totals["OREB"] + totals["DREB"]
     totals["TS%"] = (totals["PTS"] / (2 * (totals["2PTA"] + totals["3PTA"] + 0.44 * totals["FTA"]))).where((totals["2PTA"] + totals["3PTA"] + 0.44 * totals["FTA"]) > 0, 0)
-    categories = ["PTS", "AST", "REB", "ST", "BLK", "3PTM", "TS%", "TO"]
+    totals["2PT%"] = (totals["2PTM"] / totals["2PTA"]).where(totals["2PTA"] > 0, 0)
+    totals["3PT%"] = (totals["3PTM"] / totals["3PTA"]).where(totals["3PTA"] > 0, 0)
+    totals["FT%"] = (totals["FTM"] / totals["FTA"]).where(totals["FTA"] > 0, 0)
+    categories = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     rows = []
     for year, year_rows in totals.groupby("Year"):
         team_row = year_rows[year_rows["Team"].astype(str) == team]
@@ -8295,6 +8338,291 @@ def franchise_season_stat_ranks(team, team_stats_df):
     return pd.DataFrame(rows).sort_values("Year").reset_index(drop=True)
 
 
+PRIVATE_ANALYTICS_CATEGORIES = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+PRIVATE_ANALYTICS_PERCENTAGES = {"TS%", "2PT%", "3PT%", "FT%"}
+
+
+@st.cache_data(ttl=86400)
+def build_private_matchup_analytics(schedule_df, team_stats_df, player_matchup_df):
+    categories = PRIVATE_ANALYTICS_CATEGORIES
+    empty = (pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), 0)
+    if schedule_df is None or schedule_df.empty or team_stats_df is None or team_stats_df.empty:
+        return empty
+    required_stats = {"Year", "Period", "Team", *categories}
+    if not required_stats.issubset(team_stats_df.columns):
+        return empty
+
+    games = history_completed_games(schedule_df)
+    if games.empty:
+        return empty
+    games["Year"] = pd.to_numeric(games["Year"], errors="coerce")
+    games["Period"] = pd.to_numeric(games["Period"], errors="coerce")
+    games = games.dropna(subset=["Year", "Period"]).copy()
+
+    stats = team_stats_df[["Year", "Period", "Team", *categories]].copy()
+    stats["Year"] = pd.to_numeric(stats["Year"], errors="coerce")
+    stats["Period"] = pd.to_numeric(stats["Period"], errors="coerce")
+    for category in categories:
+        stats[category] = pd.to_numeric(stats[category], errors="coerce")
+
+    period_gp = pd.DataFrame(columns=["Year", "Period", "NBA_Games"])
+    player_required = {"sbc_year", "sbc_period", "nba_game_ids"}
+    if player_matchup_df is not None and not player_matchup_df.empty and player_required.issubset(player_matchup_df.columns):
+        player_gp = player_matchup_df[list(player_required)].copy()
+        player_gp["nba_game_id"] = player_gp["nba_game_ids"].astype(str).str.findall(r"\d{9}")
+        player_gp = player_gp.explode("nba_game_id").dropna(subset=["nba_game_id"])
+        period_gp = player_gp.groupby(["sbc_year", "sbc_period"], as_index=False)["nba_game_id"].nunique()
+        period_gp = period_gp.rename(columns={"sbc_year": "Year", "sbc_period": "Period", "nba_game_id": "NBA_Games"})
+    games = games.merge(period_gp, on=["Year", "Period"], how="left")
+
+    left = stats.rename(columns={"Team": "TeamA", **{column: f"{column}_A" for column in categories}})
+    right = stats.rename(columns={"Team": "TeamB", **{column: f"{column}_B" for column in categories}})
+    joined = games.merge(left, on=["Year", "Period", "TeamA"], how="inner").merge(right, on=["Year", "Period", "TeamB"], how="inner")
+    if joined.empty:
+        return empty
+    joined["Overall Side"] = np.where(joined["TeamAScoreNum"] > joined["TeamBScoreNum"], "A", np.where(joined["TeamBScoreNum"] > joined["TeamAScoreNum"], "B", ""))
+
+    winner_sides = {}
+    target_rows = []
+    importance_rows = []
+    for category in categories:
+        a = pd.to_numeric(joined[f"{category}_A"], errors="coerce")
+        b = pd.to_numeric(joined[f"{category}_B"], errors="coerce")
+        if category == "TO":
+            side = np.where(a < b, "A", np.where(b < a, "B", ""))
+        else:
+            side = np.where(a > b, "A", np.where(b > a, "B", ""))
+        side = pd.Series(side, index=joined.index)
+        winner_sides[category] = side
+        winning_value = pd.Series(np.where(side.eq("A"), a, np.where(side.eq("B"), b, np.nan)), index=joined.index, dtype=float)
+        if category not in PRIVATE_ANALYTICS_PERCENTAGES:
+            winning_value = winning_value / pd.to_numeric(joined["NBA_Games"], errors="coerce").replace(0, np.nan)
+        clean_target = winning_value.replace([np.inf, -np.inf], np.nan).dropna()
+        target_rows.append({
+            "Category": category,
+            "Mean": clean_target.mean(),
+            "Median": clean_target.median(),
+            "Sample": int(clean_target.size),
+            "Unit": "percentage" if category in PRIVATE_ANALYTICS_PERCENTAGES else "per NBA game",
+        })
+        eligible = side.ne("") & joined["Overall Side"].ne("")
+        matches = side[eligible].eq(joined.loc[eligible, "Overall Side"])
+        importance_rows.append({
+            "Category": category,
+            "Match Rate": float(matches.mean()) if not matches.empty else np.nan,
+            "Matchups": int(matches.size),
+        })
+
+    matrix = pd.DataFrame(index=categories, columns=categories, dtype=float)
+    for row_category in categories:
+        for col_category in categories:
+            row_side = winner_sides[row_category]
+            col_side = winner_sides[col_category]
+            eligible = row_side.ne("") & col_side.ne("")
+            matrix.loc[row_category, col_category] = row_side[eligible].eq(col_side[eligible]).mean() if eligible.any() else np.nan
+    return pd.DataFrame(target_rows), pd.DataFrame(importance_rows), matrix, int(len(joined))
+
+
+def analytics_heat_color(value):
+    if pd.isna(value):
+        return "#f1f5f9", "#64748b"
+    strength = max(0.0, min(1.0, float(value)))
+    if strength < 0.5:
+        mix = strength / 0.5
+        start, end = (254, 226, 226), (255, 247, 237)
+    else:
+        mix = (strength - 0.5) / 0.5
+        start, end = (255, 247, 237), (187, 247, 208)
+    rgb = tuple(round(start[index] + (end[index] - start[index]) * mix) for index in range(3))
+    return f"rgb{rgb}", "#172033"
+
+
+@st.cache_data(ttl=86400)
+def build_private_strategy_analytics(schedule_df, team_stats_df):
+    categories = PRIVATE_ANALYTICS_CATEGORIES
+    empty = (pd.DataFrame(), pd.DataFrame(), pd.DataFrame())
+    if schedule_df is None or schedule_df.empty or team_stats_df is None or team_stats_df.empty:
+        return empty
+    games = history_completed_games(schedule_df)
+    stats = team_stats_df[["Year", "Period", "Team", *categories]].copy()
+    for key in ["Year", "Period"]:
+        games[key] = pd.to_numeric(games[key], errors="coerce")
+        stats[key] = pd.to_numeric(stats[key], errors="coerce")
+    for category in categories:
+        stats[category] = pd.to_numeric(stats[category], errors="coerce")
+    left = stats.rename(columns={"Team": "TeamA", **{category: f"{category}_A" for category in categories}})
+    right = stats.rename(columns={"Team": "TeamB", **{category: f"{category}_B" for category in categories}})
+    joined = games.merge(left, on=["Year", "Period", "TeamA"], how="inner").merge(right, on=["Year", "Period", "TeamB"], how="inner")
+    if joined.empty:
+        return empty
+    sides = {}
+    for category in categories:
+        a, b = joined[f"{category}_A"], joined[f"{category}_B"]
+        sides[category] = pd.Series(
+            np.where(a < b, "A", np.where(b < a, "B", "")) if category == "TO" else np.where(a > b, "A", np.where(b > a, "B", "")),
+            index=joined.index,
+        )
+    side_table = pd.DataFrame(sides, index=joined.index)
+    observations = []
+    for side, other in [("A", "B"), ("B", "A")]:
+        wins = side_table.eq(side)
+        decisions = side_table.ne("")
+        detail_side = pd.DataFrame({
+            "Team": joined[f"Team{side}"].astype(str).to_numpy(),
+            "Opponent": joined[f"Team{other}"].astype(str).to_numpy(),
+            "Won Matchup": (joined[f"Team{side}ScoreNum"].to_numpy() > joined[f"Team{other}ScoreNum"].to_numpy()),
+            "Category Wins": wins.sum(axis=1).to_numpy(),
+        })
+        detail_side["Winning Set"] = wins.apply(lambda row: tuple(row.index[row.to_numpy()]), axis=1).to_numpy()
+        for category in categories:
+            detail_side[f"{category} Decision"] = decisions[category].to_numpy()
+            detail_side[f"{category} Win"] = wins[category].to_numpy()
+        observations.append(detail_side)
+    detail = pd.concat(observations, ignore_index=True)
+    path = detail.groupby("Category Wins", as_index=False).agg(Matchups=("Team", "size"), Wins=("Won Matchup", "sum"))
+    path["Win Rate"] = path["Wins"] / path["Matchups"]
+    path = pd.DataFrame({"Category Wins": range(14)}).merge(path, on="Category Wins", how="left").fillna(0)
+    seven = detail[detail["Category Wins"] == 7]
+    combos = seven.groupby("Winning Set", as_index=False).agg(Appearances=("Team", "size"), Wins=("Won Matchup", "sum")) if not seven.empty else pd.DataFrame(columns=["Winning Set", "Appearances", "Wins"])
+    if not combos.empty:
+        combos["Win Rate"] = combos["Wins"] / combos["Appearances"]
+        combos = combos.sort_values(["Wins", "Win Rate", "Appearances"], ascending=False).reset_index(drop=True)
+    return path, combos, detail
+
+
+def render_private_team_analytics(schedule_df, team_stats_df, player_matchup_df):
+    with st.form("vegas_private_analytics_access", border=False):
+        password = st.text_input("Analytics access", type="password", placeholder="Enter analytics password", key="vegas_private_analytics_password")
+        submitted = st.form_submit_button("Unlock Analytics", use_container_width=True)
+    if submitted:
+        st.session_state["vegas_private_analytics_unlocked"] = password == "DealDamage"
+        st.session_state["vegas_private_analytics_failed"] = password != "DealDamage"
+    if not st.session_state.get("vegas_private_analytics_unlocked", False):
+        if st.session_state.get("vegas_private_analytics_failed", False):
+            st.error("Incorrect analytics password.")
+        render_html('<div class="sbc-empty-state">🔒 Private Vegas analytics. Enter the password to load the historical models.</div>')
+        return
+    analytics_years = sorted(
+        pd.to_numeric(schedule_df.get("Year", pd.Series(dtype=float)), errors="coerce").dropna().astype(int).unique().tolist(),
+        reverse=True,
+    )
+    analysis_window = st.selectbox("Analysis Window", ["All-Time", *analytics_years], key="vegas_analytics_window")
+    if analysis_window == "All-Time":
+        analysis_schedule = schedule_df
+        analysis_stats = team_stats_df
+        analysis_players = player_matchup_df
+        window_label = "All-Time"
+    else:
+        selected_year = int(analysis_window)
+        analysis_schedule = schedule_df[pd.to_numeric(schedule_df["Year"], errors="coerce") == selected_year].copy()
+        analysis_stats = team_stats_df[pd.to_numeric(team_stats_df["Year"], errors="coerce") == selected_year].copy()
+        analysis_players = player_matchup_df[pd.to_numeric(player_matchup_df["sbc_year"], errors="coerce") == selected_year].copy() if "sbc_year" in player_matchup_df.columns else player_matchup_df
+        window_label = season_label_from_year(selected_year)
+    targets, importance, matrix, matchup_count = build_private_matchup_analytics(analysis_schedule, analysis_stats, analysis_players)
+    if targets.empty:
+        render_html('<div class="sbc-empty-state">The historical matchup model could not be built from the current archives.</div>')
+        return
+
+    primary = str(team_info.get("Vegas", {}).get("bg", "#172033"))
+    secondary = str(team_info.get("Vegas", {}).get("bg2", primary))
+    render_html(f'''
+        <style>
+        .sbc-analytics-shell{{--analytics-primary:{escape(primary, quote=True)};--analytics-secondary:{escape(secondary, quote=True)};}}
+        .sbc-analytics-intro{{margin:16px 0 22px;padding:18px 20px;border-radius:16px;color:#fff;background:linear-gradient(120deg,var(--analytics-primary),var(--analytics-secondary));box-shadow:0 14px 30px rgba(15,23,42,.14)}}
+        .sbc-analytics-intro strong{{display:block;font-size:1.18rem;font-weight:950}} .sbc-analytics-intro span{{display:block;margin-top:5px;font-size:.72rem;font-weight:750;opacity:.82}}
+        .sbc-analytics-targets{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:28px}}
+        .sbc-analytics-target{{padding:13px;border:1px solid color-mix(in srgb,var(--analytics-primary) 22%,#dbe3ec);border-radius:13px;background:#fff;box-shadow:0 8px 20px rgba(15,23,42,.055)}}
+        .sbc-analytics-target b{{display:block;color:var(--analytics-primary);font-size:.62rem;font-weight:950;letter-spacing:.08em;text-transform:uppercase}}
+        .sbc-analytics-target strong{{display:block;margin-top:7px;color:#111827;font-size:1.16rem;font-weight:950}} .sbc-analytics-target span{{display:block;margin-top:4px;color:#64748b;font-size:.64rem;font-weight:800}}
+        .sbc-analytics-bars{{display:grid;gap:8px;margin-bottom:28px}} .sbc-analytics-bar-row{{display:grid;grid-template-columns:58px minmax(0,1fr) 64px;align-items:center;gap:9px}}
+        .sbc-analytics-bar-row b{{font-size:.68rem;font-weight:950;text-align:right}} .sbc-analytics-bar-row strong{{font-size:.72rem;font-weight:950}}
+        .sbc-analytics-bar{{display:flex;overflow:hidden;height:22px;border-radius:7px;background:#fee2e2;box-shadow:inset 0 0 0 1px rgba(15,23,42,.08)}}
+        .sbc-analytics-bar i{{display:block;height:100%;background:linear-gradient(90deg,#16a34a,#4ade80)}} .sbc-analytics-bar em{{flex:1;background:linear-gradient(90deg,#fecaca,#ef4444)}}
+        .sbc-analytics-matrix-wrap{{overflow:auto;border:1px solid #dbe3ec;border-radius:12px;background:#fff;box-shadow:0 10px 25px rgba(15,23,42,.07)}}
+        .sbc-analytics-matrix{{width:100%;min-width:850px;border-collapse:collapse;table-layout:fixed}} .sbc-analytics-matrix th{{padding:8px 4px;color:#fff;background:var(--analytics-primary);font-size:.56rem;font-weight:950;text-align:center}}
+        .sbc-analytics-matrix th:first-child{{width:54px}} .sbc-analytics-matrix td{{height:38px;border:1px solid rgba(15,23,42,.07);font-size:.6rem;font-weight:950;text-align:center}}
+        .sbc-path-bars,.sbc-scout-bars{{display:grid;gap:7px;margin-bottom:24px}} .sbc-path-row,.sbc-scout-row{{display:grid;grid-template-columns:86px minmax(0,1fr) 68px 76px;align-items:center;gap:8px}}
+        .sbc-path-row b,.sbc-scout-row b{{font-size:.66rem;font-weight:950;text-align:right}} .sbc-path-track,.sbc-scout-track{{overflow:hidden;height:20px;border-radius:6px;background:#fee2e2;box-shadow:inset 0 0 0 1px rgba(15,23,42,.07)}}
+        .sbc-path-track i,.sbc-scout-track i{{display:block;height:100%;background:linear-gradient(90deg,#16a34a,#4ade80)}} .sbc-path-row strong,.sbc-scout-row strong{{font-size:.7rem;font-weight:950}} .sbc-path-row em,.sbc-scout-row em{{color:#64748b;font-size:.58rem;font-style:normal;font-weight:800}}
+        .sbc-path-table{{width:100%;border-collapse:collapse}} .sbc-path-table th{{padding:8px;color:#fff;background:var(--analytics-primary);font-size:.58rem;font-weight:950;text-align:left;text-transform:uppercase}} .sbc-path-table td{{padding:8px;border-top:1px solid #e5e7eb;font-size:.68rem;font-weight:800}}
+        .sbc-path-set{{color:var(--analytics-primary);font-weight:950!important}}
+        .sbc-scout-summary{{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:10px 0 17px}} .sbc-scout-summary div{{padding:12px;border:1px solid #dbe3ec;border-radius:11px;background:#fff}} .sbc-scout-summary b{{display:block;color:#64748b;font-size:.58rem;text-transform:uppercase}} .sbc-scout-summary strong{{display:block;margin-top:5px;font-size:1.05rem;font-weight:950}}
+        @media(max-width:800px){{.sbc-analytics-targets{{grid-template-columns:repeat(2,1fr)}}}}
+        </style>
+        <div class="sbc-analytics-shell"><div class="sbc-analytics-intro"><strong>Vegas Matchup Analytics Lab · {escape(window_label)}</strong><span>{matchup_count:,} historical SBC matchups with matched team production. Tied categories are excluded from winner-agreement rates.</span></div></div>
+    ''')
+
+    render_html('<div class="sbc-awards-section-head"><span>Winning Targets</span><em>Mean and median winning production, normalized by the winning roster’s NBA games played.</em></div>')
+    target_cards = []
+    for _, row in targets.iterrows():
+        category = str(row["Category"])
+        if category in PRIVATE_ANALYTICS_PERCENTAGES:
+            median_text, mean_text = f'{row["Median"]:.1%}', f'{row["Mean"]:.1%}'
+        else:
+            median_text, mean_text = f'{row["Median"]:,.2f}', f'{row["Mean"]:,.2f}'
+        target_cards.append(f'<article class="sbc-analytics-target"><b>{escape(category)}</b><strong>{escape(median_text)} median</strong><span>{escape(mean_text)} mean · {int(row["Sample"]):,} decisions · {escape(str(row["Unit"]))}</span></article>')
+    render_html(f'<div class="sbc-analytics-shell"><div class="sbc-analytics-targets">{"".join(target_cards)}</div></div>')
+
+    render_html('<div class="sbc-awards-section-head"><span>Category Importance</span><em>How often each category winner also won the overall SBC matchup.</em></div>')
+    bar_rows = []
+    for _, row in importance.sort_values("Match Rate", ascending=False).iterrows():
+        rate = 0 if pd.isna(row["Match Rate"]) else float(row["Match Rate"])
+        bar_rows.append(f'<div class="sbc-analytics-bar-row"><b>{escape(str(row["Category"]))}</b><div class="sbc-analytics-bar" title="{rate:.1%} match"><i style="width:{rate * 100:.2f}%"></i><em></em></div><strong>{rate:.1%}</strong></div>')
+    render_html(f'<div class="sbc-analytics-shell"><div class="sbc-analytics-bars">{"".join(bar_rows)}</div></div>')
+
+    render_html('<div class="sbc-awards-section-head"><span>Category Winner Correlation</span><em>Percent of matchups where the row and column categories were won by the same team.</em></div>')
+    matrix_head = '<th></th>' + "".join(f'<th>{escape(category)}</th>' for category in PRIVATE_ANALYTICS_CATEGORIES)
+    matrix_rows = []
+    for row_category in PRIVATE_ANALYTICS_CATEGORIES:
+        cells = []
+        for col_category in PRIVATE_ANALYTICS_CATEGORIES:
+            value = matrix.loc[row_category, col_category]
+            background, color = analytics_heat_color(value)
+            label = "—" if pd.isna(value) else f"{value:.0%}"
+            cells.append(f'<td style="background:{background};color:{color}">{escape(label)}</td>')
+        matrix_rows.append(f'<tr><th>{escape(row_category)}</th>{"".join(cells)}</tr>')
+    render_html(f'<div class="sbc-analytics-shell"><div class="sbc-analytics-matrix-wrap"><table class="sbc-analytics-matrix"><thead><tr>{matrix_head}</tr></thead><tbody>{"".join(matrix_rows)}</tbody></table></div></div>')
+
+    path, seven_combos, scouting = build_private_strategy_analytics(analysis_schedule, analysis_stats)
+    render_html('<div class="sbc-awards-section-head"><span>Path to Seven</span><em>Overall matchup win probability based on the number of scoring categories won.</em></div>')
+    path_rows = []
+    for _, row in path.iterrows():
+        count = int(row["Category Wins"])
+        rate = float(row["Win Rate"])
+        matchups = int(row["Matchups"])
+        path_rows.append(f'<div class="sbc-path-row"><b>{count} categories</b><div class="sbc-path-track"><i style="width:{rate * 100:.2f}%"></i></div><strong>{rate:.1%}</strong><em>{matchups:,} team-games</em></div>')
+    render_html(f'<div class="sbc-analytics-shell"><div class="sbc-path-bars">{"".join(path_rows)}</div></div>')
+    if not seven_combos.empty:
+        combo_rows = []
+        for _, row in seven_combos.head(12).iterrows():
+            category_set = " · ".join(row["Winning Set"])
+            combo_rows.append(f'<tr><td class="sbc-path-set">{escape(category_set)}</td><td>{int(row["Wins"]):,}</td><td>{int(row["Appearances"]):,}</td><td>{float(row["Win Rate"]):.1%}</td></tr>')
+        render_html(f'<div class="sbc-analytics-shell"><div class="sbc-analytics-matrix-wrap"><table class="sbc-path-table"><thead><tr><th>Seven-Category Recipe</th><th>Wins</th><th>Uses</th><th>Win Rate</th></tr></thead><tbody>{"".join(combo_rows)}</tbody></table></div></div>')
+
+    render_html('<div class="sbc-awards-section-head"><span>Opponent Scouting</span><em>Scout Vegas or any other franchise against the league or one specific opponent.</em></div>')
+    scout_teams = sorted(scouting["Team"].astype(str).unique().tolist())
+    scout_col, opponent_col = st.columns(2)
+    with scout_col:
+        scout_team = st.selectbox("Scout Team", scout_teams, index=scout_teams.index("Vegas") if "Vegas" in scout_teams else 0, key="private_scout_team")
+    opponent_options = ["All Opponents", *[team for team in scout_teams if team != scout_team]]
+    with opponent_col:
+        scout_opponent = st.selectbox("Opponent", opponent_options, key="private_scout_opponent")
+    scout_rows = scouting[scouting["Team"].astype(str) == scout_team].copy()
+    if scout_opponent != "All Opponents":
+        scout_rows = scout_rows[scout_rows["Opponent"].astype(str) == scout_opponent].copy()
+    scout_wins = int(scout_rows["Won Matchup"].sum()) if not scout_rows.empty else 0
+    scout_losses = int(len(scout_rows) - scout_wins)
+    scout_rate = scout_wins / len(scout_rows) if len(scout_rows) else 0
+    scout_title = f'{scout_team} vs {scout_opponent}'
+    render_html(f'<div class="sbc-analytics-shell"><div class="sbc-scout-summary"><div><b>Scouting View</b><strong>{escape(scout_title)}</strong></div><div><b>Matchup Record</b><strong>{scout_wins}-{scout_losses}</strong></div><div><b>Overall Win Rate</b><strong>{scout_rate:.1%}</strong></div></div></div>')
+    scout_bars = []
+    for category in PRIVATE_ANALYTICS_CATEGORIES:
+        eligible = scout_rows[scout_rows[f"{category} Decision"]]
+        rate = float(eligible[f"{category} Win"].mean()) if not eligible.empty else 0
+        scout_bars.append(f'<div class="sbc-scout-row"><b>{escape(category)}</b><div class="sbc-scout-track"><i style="width:{rate * 100:.2f}%"></i></div><strong>{rate:.1%}</strong><em>{len(eligible):,} decisions</em></div>')
+    render_html(f'<div class="sbc-analytics-shell"><div class="sbc-scout-bars">{"".join(scout_bars)}</div></div>')
+
+
 def render_franchise_history_dashboard(team, standings_df, schedule_df, team_stats_df, team_awards_df):
     ledger = franchise_season_ledger(team, standings_df, schedule_df, team_awards_df)
     ranks = franchise_season_stat_ranks(team, team_stats_df)
@@ -8302,27 +8630,41 @@ def render_franchise_history_dashboard(team, standings_df, schedule_df, team_sta
     wins = int(ledger["Wins"].sum()) if not ledger.empty else 0
     losses = int(ledger["Losses"].sum()) if not ledger.empty else 0
     playoff_appearances = int(ledger["Playoffs"].sum()) if not ledger.empty else 0
-    award_counts = awards["Award"].astype(str).value_counts() if not awards.empty else pd.Series(dtype=int)
+    def award_years(award_names):
+        if awards.empty:
+            return "—"
+        names = {str(value) for value in award_names}
+        years = sorted(
+            {int(value) for value in pd.to_numeric(awards.loc[awards["Award"].astype(str).isin(names), "Year"], errors="coerce").dropna()},
+            reverse=True,
+        )
+        return ", ".join(str(year) for year in years) if years else "—"
+
+    conference_awards = ["WC Champion", "EC Champion"]
+    division_awards = [f"{division} Champion" for division in ["Pacific", "Northwest", "Southwest", "Central", "Atlantic", "Southeast"]]
     metric_values = [
-        ("📚", "Seasons", len(ledger)), ("🏀", "Regular-Season Record", f"{wins}-{losses}"),
-        ("🎟️", "Playoff Appearances", playoff_appearances), ("🏆", "League Titles", int(award_counts.get("Champion", 0))),
-        ("🥇", "Conference Titles", int(award_counts.get("WC Champion", 0) + award_counts.get("EC Champion", 0))),
-        ("🚩", "Division Titles", int(sum(award_counts.get(f"{division} Champion", 0) for division in ["Pacific", "Northwest", "Southwest", "Central", "Atlantic", "Southeast"]))),
+        ("📚", "Seasons", len(ledger), False), ("🏀", "Regular-Season Record", f"{wins}-{losses}", False),
+        ("🎟️", "Playoff Appearances", playoff_appearances, False),
+        ("🏆", "SBCFBL Championship", award_years(["Champion"]), True),
+        ("🥇", "Conference Championship", award_years(conference_awards), True),
+        ("🚩", "Division Championship", award_years(division_awards), True),
+        ("🏆", "SBC Cup Championship", award_years(["Cup Winner"]), True),
     ]
     primary = str(team_info.get(team, {}).get("bg", "#1f2937"))
     secondary = str(team_info.get(team, {}).get("bg2", primary))
     logo = str(team_info.get(team, {}).get("logo", ""))
     metric_cards = "".join(
-        f'<article class="sbc-franchise-metric"><span>{icon}</span><strong>{escape(str(value))}</strong><em>{escape(label)}</em></article>'
-        for icon, label, value in metric_values
+        f'<article class="sbc-franchise-metric{" sbc-franchise-metric-years" if is_years else ""}"><span>{icon}</span><strong>{escape(str(value))}</strong><em>{escape(label)}</em></article>'
+        for icon, label, value, is_years in metric_values
     )
     render_html(f"""
         <style>
         .sbc-franchise-shell {{ --franchise-primary:{escape(primary, quote=True)}; --franchise-secondary:{escape(secondary, quote=True)}; }}
-        .sbc-franchise-metrics {{ display:grid; grid-template-columns:repeat(6,minmax(125px,1fr)); gap:10px; margin:18px 0 28px; }}
+        .sbc-franchise-metrics {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin:18px 0 28px; }}
         .sbc-franchise-metric {{ min-height:118px; padding:16px 14px; border:1px solid color-mix(in srgb,var(--franchise-primary) 24%,#dbe3ec); border-radius:16px; background:linear-gradient(145deg,#fff,color-mix(in srgb,var(--franchise-secondary) 8%,#fff)); box-shadow:0 10px 25px rgba(15,23,42,.07); }}
         .sbc-franchise-metric span {{ display:block; font-size:1.35rem; }}
         .sbc-franchise-metric strong {{ display:block; margin-top:9px; color:#0f172a; font-size:1.55rem; font-weight:950; line-height:1; }}
+        .sbc-franchise-metric-years strong {{ font-size:1.02rem; line-height:1.25; }}
         .sbc-franchise-metric em {{ display:block; margin-top:7px; color:#64748b; font-size:.66rem; font-style:normal; font-weight:900; letter-spacing:.07em; line-height:1.2; text-transform:uppercase; }}
         .sbc-franchise-season-grid {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }}
         .sbc-franchise-season {{ overflow:hidden; border:1px solid color-mix(in srgb,var(--franchise-primary) 28%,#d8e0e9); border-radius:18px; background:#fff; box-shadow:0 12px 28px rgba(15,23,42,.08); }}
@@ -8372,6 +8714,20 @@ def render_franchise_history_dashboard(team, standings_df, schedule_df, team_sta
         .sbc-production-table td:first-child {{ background:#fff; box-shadow:5px 0 10px rgba(15,23,42,.04); }}
         .sbc-production-value {{ display:block; color:#111827; font-size:.86rem; font-weight:950; }}
         .sbc-production-rank {{ display:inline-block; margin-top:4px; padding:2px 6px; border-radius:999px; color:#fff; background:var(--franchise-primary); font-size:.55rem; font-weight:950; }}
+        .sbc-franchise-table-wrap {{ border:1px solid color-mix(in srgb,var(--franchise-primary) 26%,#d9e0e8); border-radius:10px; box-shadow:0 12px 30px rgba(15,23,42,.08); }}
+        .sbc-franchise-ledger-table {{ min-width:1280px; }}
+        .sbc-franchise-production-table {{ width:100%; min-width:0; table-layout:fixed; text-align:center; }}
+        .sbc-franchise-ledger-table th {{ color:#fff; background:linear-gradient(120deg,var(--franchise-primary),var(--franchise-secondary)); border-right:1px solid rgba(255,255,255,.16); }}
+        .sbc-franchise-production-table th {{ padding:.42rem .24rem; color:#172033; background:linear-gradient(135deg,color-mix(in srgb,var(--franchise-primary) 16%,#fff),color-mix(in srgb,var(--franchise-secondary) 10%,#fff)); font-size:.58rem; letter-spacing:.025em; text-align:center; }}
+        .sbc-franchise-ledger-table tbody tr:nth-child(even) td,.sbc-franchise-production-table tbody tr:nth-child(even) td {{ background:color-mix(in srgb,var(--franchise-secondary) 6%,#fff); }}
+        .sbc-franchise-ledger-table tbody tr:hover td,.sbc-franchise-production-table tbody tr:hover td {{ background:color-mix(in srgb,var(--franchise-secondary) 13%,#fff); }}
+        .sbc-franchise-season-cell {{ color:var(--franchise-primary) !important; font-size:.88rem !important; font-weight:950 !important; }}
+        .sbc-franchise-record-cell {{ color:#172033; font-weight:900 !important; }}
+        .sbc-franchise-result-cell {{ min-width:245px; max-width:340px; line-height:1.35; white-space:normal !important; }}
+        .sbc-franchise-production-table td {{ min-width:0; padding:.32rem .18rem; text-align:center; }}
+        .sbc-franchise-production-table th:first-child,.sbc-franchise-production-table td:first-child {{ width:5.4rem; text-align:left; }}
+        .sbc-franchise-production-table td span {{ display:block; color:#111827; font-size:.67rem; font-weight:950; line-height:1; }}
+        .sbc-franchise-production-table td em {{ display:block; margin-top:.12rem; padding:0; color:#64748b; background:transparent; font-size:.5rem; font-style:normal; font-weight:900; line-height:1; white-space:nowrap; }}
         @media(max-width:1050px) {{ .sbc-franchise-metrics {{ grid-template-columns:repeat(3,1fr); }} .sbc-franchise-rank-grid {{ grid-template-columns:repeat(4,1fr); }} }}
         @media(max-width:700px) {{ .sbc-franchise-season-grid {{ grid-template-columns:1fr; }} .sbc-franchise-metrics {{ grid-template-columns:repeat(2,1fr); }} .sbc-franchise-rank-grid {{ grid-template-columns:repeat(2,1fr); }} }}
         </style>
@@ -8382,40 +8738,50 @@ def render_franchise_history_dashboard(team, standings_df, schedule_df, team_sta
     if ledger.empty:
         render_html('<div class="sbc-empty-state">No franchise season history is available.</div>')
     else:
+        season_columns = [
+            ("Season", "Season"), ("Record", "Record"), ("Conference Record", "Conf. Record"),
+            ("Division Record", "Div. Record"), ("Conference Finish", "Conference"),
+            ("Division Finish", "Division"), ("Season Result", "Season Result"),
+            ("IST Record", "IST Record"), ("IST Result", "IST Result"),
+        ]
+        season_head = "".join(f"<th>{escape(label)}</th>" for _, label in season_columns)
         season_rows = []
         for _, row in ledger.iterrows():
-            honors = str(row.get("Honors", "—"))
-            honors_html = "—" if honors in {"—", ""} else f'<span class="sbc-history-honor">{escape(honors)}</span>'
-            season_rows.append(f"""
-                <tr><td class="sbc-history-season">{escape(str(row.get('Season', '')))}</td>
-                <td class="sbc-history-record">{escape(str(row.get('Record', '—')))}</td>
-                <td>{escape(str(row.get('Conference Record', '—')))}</td><td>{escape(str(row.get('Division Record', '—')))}</td>
-                <td>{escape(str(row.get('League Finish', '—')))}</td><td>{escape(str(row.get('Conference Finish', '—')))}</td>
-                <td>{escape(str(row.get('Division Finish', '—')))}</td><td class="sbc-history-result">{escape(str(row.get('Season Result', '—')))}</td>
-                <td>{honors_html}</td></tr>
-            """)
-        render_html(f'''<div class="sbc-franchise-shell"><div class="sbc-history-table-wrap"><table class="sbc-history-table">
-            <thead><tr><th>Season</th><th>Record</th><th>Conf. Record</th><th>Div. Record</th><th>League Finish</th><th>Conference Finish</th><th>Division Finish</th><th>Season Result</th><th>Honors</th></tr></thead>
+            cells = []
+            for column, _ in season_columns:
+                value = escape(str(row.get(column, "—")))
+                if column == "Season":
+                    cells.append(f'<td class="sbc-franchise-season-cell">{value}</td>')
+                elif column in ["Record", "Conference Record", "Division Record", "IST Record"]:
+                    cells.append(f'<td class="sbc-franchise-record-cell">{value}</td>')
+                elif column in ["Season Result", "IST Result"]:
+                    cells.append(f'<td class="sbc-franchise-result-cell">{value}</td>')
+                else:
+                    cells.append(f"<td>{value}</td>")
+            season_rows.append(f'<tr>{"".join(cells)}</tr>')
+        render_html(f'''<div class="sbc-franchise-shell"><div class="sbc-history-table-wrap sbc-franchise-table-wrap">
+            <table class="sbc-history-overview-table sbc-franchise-ledger-table"><thead><tr>{season_head}</tr></thead>
             <tbody>{"".join(season_rows)}</tbody></table></div></div>''')
 
     render_html('<div class="sbc-awards-section-head"><span>Production &amp; League Rank</span><em>Season totals and efficiency paired directly with the franchise’s league position.</em></div>')
     if ranks.empty:
         render_html('<div class="sbc-empty-state">No historical team-stat rankings are available.</div>')
         return
-    categories = ["PTS", "AST", "REB", "ST", "BLK", "3PTM", "TS%", "TO"]
+    categories = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     production_rows = []
     for _, row in ranks.sort_values("Year", ascending=False).iterrows():
         league_size = max(1, int(row.get("League Size", 1)))
         stat_cells = []
         for category in categories:
             value = float(row.get(category, 0))
-            value_text = f"{value:.1%}" if category == "TS%" else f"{value:,.0f}"
+            value_text = f"{value:.1%}" if category in ["TS%", "2PT%", "3PT%", "FT%"] else (f"{value:+,.0f}" if category == "+/-" else f"{value:,.0f}")
             rank = int(row.get(f"{category} Rank", league_size))
-            stat_cells.append(f'<td><span class="sbc-production-value">{escape(value_text)}</span><span class="sbc-production-rank">#{rank} / {league_size}</span></td>')
-        production_rows.append(f'<tr><td class="sbc-history-season">{escape(str(row.get("Season", "")))}</td>{"".join(stat_cells)}</tr>')
-    headers = "".join(f"<th>{escape(category)}</th>" for category in categories)
-    render_html(f'''<div class="sbc-franchise-shell"><div class="sbc-history-table-wrap"><table class="sbc-history-table sbc-production-table">
-        <thead><tr><th>Season</th>{headers}</tr></thead><tbody>{"".join(production_rows)}</tbody></table></div></div>''')
+            stat_cells.append(f'<td><span>{escape(value_text)}</span><em>#{rank}</em></td>')
+        production_rows.append(f'<tr><td class="sbc-franchise-season-cell">{escape(str(row.get("Season", "")))}</td>{"".join(stat_cells)}</tr>')
+    production_head = '<th>Season</th>' + "".join(f"<th>{escape(category)}</th>" for category in categories)
+    render_html(f'''<div class="sbc-franchise-shell"><div class="sbc-history-table-wrap sbc-history-stats-wrap sbc-franchise-table-wrap">
+        <table class="sbc-history-overview-table sbc-history-stats-table sbc-franchise-production-table"><thead><tr>{production_head}</tr></thead>
+        <tbody>{"".join(production_rows)}</tbody></table></div></div>''')
 
 
 def history_regular_season_h2h_matrix(schedule_df):

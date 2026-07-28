@@ -29,6 +29,12 @@ FONT_DIR = APP_DIR / ".streamlit_cache" / "jersey_fonts"
 TEAMS = sorted(team_info)
 EDITIONS = ["Association", "Icon", "Statement"]
 
+# Keep the editor permissive for intentionally oversized jersey typography.
+# Matplotlib accepts font sizes well beyond the jersey silhouette, which is
+# useful for cropped, edge-to-edge, and other experimental treatments.
+TEXT_FONT_SIZE_MAX = 300.0
+NUMBER_FONT_SIZE_MAX = 500.0
+
 TEAM_FONTS = {
     "Albuquerque": "Amatic SC", "Anaheim": "Baloo 2", "Anchorage": "Fjalla One",
     "Austin": "Creepster", "Baltimore": "Lobster", "Birmingham": "Rye", "Boise": "Neucha",
@@ -119,9 +125,15 @@ def default_table() -> pd.DataFrame:
 
 def read_config_table() -> pd.DataFrame:
     if CONFIG_PATH.exists():
-        table = pd.read_csv(CONFIG_PATH).fillna("")
+        # "None" is a real design option for stripes, not a missing value.
+        table = pd.read_csv(CONFIG_PATH, keep_default_na=False).fillna("")
     else:
         table = default_table()
+    # Older reads converted the literal "None" stripe choice to a blank. Both
+    # render identically, but normalize it so widgets and future saves are valid.
+    for stripe_column in ("stripe_style", "shorts_stripe_style"):
+        if stripe_column in table:
+            table.loc[table[stripe_column].astype(str).str.strip().eq(""), stripe_column] = "None"
     existing = set(zip(table.get("team", []), table.get("edition", [])))
     missing = [edition_defaults(team, edition).to_dict() for team in TEAMS for edition in EDITIONS if (team, edition) not in existing]
     if missing:
@@ -195,6 +207,12 @@ def read_config_table() -> pd.DataFrame:
 
 def bool_value(value) -> bool:
     return value if isinstance(value, bool) else str(value).lower() in {"true", "1", "yes"}
+
+
+def option_index(options: list[str], saved, fallback: str) -> int:
+    """Return a safe widget index for legacy or malformed saved values."""
+    value = str(saved).strip()
+    return options.index(value) if value in options else options.index(fallback)
 
 
 @st.cache_resource(show_spinner=False)
@@ -291,24 +309,24 @@ with st.sidebar:
         player_name_color = palette_control("Player name", saved["player_name_color"], team, f"{prefix}_name_color")
 
     with st.expander("Jersey construction", expanded=True):
-        collar_style = st.selectbox("Collar", COLLARS, index=COLLARS.index(str(saved["collar_style"])), key=f"{prefix}_collar")
-        stripe_style = st.selectbox("Jersey stripe", JERSEY_STRIPES, index=JERSEY_STRIPES.index(str(saved["stripe_style"])), key=f"{prefix}_stripe")
+        collar_style = st.selectbox("Collar", COLLARS, index=option_index(COLLARS, saved.get("collar_style"), "Crew"), key=f"{prefix}_collar")
+        stripe_style = st.selectbox("Jersey stripe", JERSEY_STRIPES, index=option_index(JERSEY_STRIPES, saved.get("stripe_style"), "None"), key=f"{prefix}_stripe")
         trim_width = st.select_slider("Trim weight", options=[1.2, 1.7, 2.2, 2.8, 3.4], value=float(saved["trim_width"]), key=f"{prefix}_trim_width")
         number_outline_width = st.select_slider("Number outline", options=[0.0, 1.0, 2.0, 3.0, 4.0], value=float(saved["number_outline_width"]), key=f"{prefix}_outline_width")
 
     with st.expander("Front text placement", expanded=True):
-        front_wordmark_size = st.number_input("Wordmark font size", 15.0, 60.0, float(saved.get("front_wordmark_size", 35)), 1.0, key=f"{prefix}_front_wordmark_size")
+        front_wordmark_size = st.number_input("Wordmark font size", 15.0, TEXT_FONT_SIZE_MAX, float(saved.get("front_wordmark_size", 35)), 1.0, key=f"{prefix}_front_wordmark_size")
         front_wordmark_x = st.number_input("Wordmark horizontal position", -20.0, 20.0, float(saved.get("front_wordmark_x", 0)), .5, key=f"{prefix}_front_wordmark_x")
         front_wordmark_y = st.number_input("Wordmark vertical position", 8.0, 65.0, float(saved.get("front_wordmark_y", 29)), .5, key=f"{prefix}_front_wordmark_y")
-        front_number_size = st.number_input("Front number font size", 30.0, 90.0, float(saved.get("front_number_size", 60)), 1.0, key=f"{prefix}_front_number_size")
+        front_number_size = st.number_input("Front number font size", 30.0, NUMBER_FONT_SIZE_MAX, float(saved.get("front_number_size", 60)), 1.0, key=f"{prefix}_front_number_size")
         front_number_x = st.number_input("Front number horizontal position", -20.0, 20.0, float(saved.get("front_number_x", 8)), .5, key=f"{prefix}_front_number_x")
         front_number_y = st.number_input("Front number vertical position", 15.0, 68.0, float(saved.get("front_number_y", 45)), .5, key=f"{prefix}_front_number_y")
 
     with st.expander("Back text placement", expanded=True):
-        back_name_size = st.number_input("Player-name font size", 15.0, 60.0, float(saved.get("back_name_size", 36)), 1.0, key=f"{prefix}_back_name_size")
+        back_name_size = st.number_input("Player-name font size", 15.0, TEXT_FONT_SIZE_MAX, float(saved.get("back_name_size", 36)), 1.0, key=f"{prefix}_back_name_size")
         back_name_x = st.number_input("Player-name horizontal position", -20.0, 20.0, float(saved.get("back_name_x", 0)), .5, key=f"{prefix}_back_name_x")
         back_name_y = st.number_input("Player-name vertical position", 8.0, 55.0, float(saved.get("back_name_y", 18)), .5, key=f"{prefix}_back_name_y")
-        back_number_size = st.number_input("Back number font size", 40.0, 110.0, float(saved.get("back_number_size", 80)), 1.0, key=f"{prefix}_back_number_size")
+        back_number_size = st.number_input("Back number font size", 40.0, NUMBER_FONT_SIZE_MAX, float(saved.get("back_number_size", 80)), 1.0, key=f"{prefix}_back_number_size")
         back_number_x = st.number_input("Back number horizontal position", -20.0, 20.0, float(saved.get("back_number_x", 0)), .5, key=f"{prefix}_back_number_x")
         back_number_y = st.number_input("Back number vertical position", 18.0, 68.0, float(saved.get("back_number_y", 43)), .5, key=f"{prefix}_back_number_y")
 
@@ -373,13 +391,17 @@ with preview_tab:
         st.download_button("Download configuration", json.dumps(config.to_dict(), indent=2), file_name=f"{safe_name}.json", mime="application/json", use_container_width=True)
 
 with gallery_tab:
-    st.caption("Saved designs for all three editions. Unsaved changes appear only in the preview tab.")
+    st.caption(f"All three editions. {edition} reflects your live controls; the other two show their saved designs.")
     columns = st.columns(3)
     for column, gallery_edition in zip(columns, EDITIONS):
-        row = table[(table["team"] == team) & (table["edition"] == gallery_edition)].iloc[0].to_dict()
-        gallery_config = JerseyConfig.from_mapping(row)
-        gallery_logo_team = str(row.get("logo_team") or team)
-        gallery_logo = team_info[gallery_logo_team]["logo"] if gallery_logo_team in team_info else None
+        if gallery_edition == edition:
+            gallery_config = config
+            gallery_logo = logo_source
+        else:
+            row = table[(table["team"] == team) & (table["edition"] == gallery_edition)].iloc[0].to_dict()
+            gallery_config = JerseyConfig.from_mapping(row)
+            gallery_logo_team = str(row.get("logo_team") or team)
+            gallery_logo = team_info[gallery_logo_team]["logo"] if gallery_logo_team in team_info else None
         gallery_fig, _ = draw_uniform(gallery_config, logo=gallery_logo, view="front")
         with column:
             st.subheader(gallery_edition)

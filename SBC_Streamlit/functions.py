@@ -16,7 +16,8 @@ import altair as alt
 import unicodedata
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
 
-SNAPSHOT_DIR = Path(__file__).resolve().parent / "data_snapshots"
+APP_DIR = Path(__file__).resolve().parent
+SNAPSHOT_DIR = APP_DIR / "data_snapshots"
 
 
 def read_csv_snapshot(name: str, url: str, ttl_seconds: int = 86400, **kwargs) -> pd.DataFrame:
@@ -115,12 +116,12 @@ def get_period_calendar() -> pd.DataFrame:
 
 @st.cache_data(ttl=86400)
 def get_all_time_team_stats() -> pd.DataFrame:
-    df = pd.read_parquet("SBC_Streamlit/all_team_stats_history.parquet")
+    df = pd.read_parquet(APP_DIR / "all_team_stats_history.parquet")
     return df
 
 @st.cache_data(ttl=86400)
 def get_all_time_rosters() -> pd.DataFrame:
-    df = pd.read_parquet("SBC_Streamlit/all_time_rosters_history.parquet")
+    df = pd.read_parquet(APP_DIR / "all_time_rosters_history.parquet")
     return df
 
 @st.cache_data(ttl=86400)
@@ -178,7 +179,7 @@ def get_fantrax_players() -> pd.DataFrame:
 
 @st.cache_data(ttl=86400)
 def get_standings() -> pd.DataFrame:
-    df = pd.read_parquet("SBC_Streamlit/all_time_standings.parquet")
+    df = pd.read_parquet(APP_DIR / "all_time_standings.parquet")
     return df
 
 @st.cache_data()
@@ -222,7 +223,7 @@ def get_team_award_history() -> pd.DataFrame:
 
 @st.cache_data()
 def get_all_time_schedule() -> pd.DataFrame:
-    df = pd.read_parquet("SBC_Streamlit/all_time_scores.parquet")
+    df = pd.read_parquet(APP_DIR / "all_time_scores.parquet")
     return df
 
 def current_matchup_period() -> float:
