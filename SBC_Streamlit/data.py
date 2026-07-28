@@ -202,6 +202,22 @@ team_info = {
         "nickname": "Blackjack", "lat": 36.1, "lon": -115.08},
 }
 
+team_mottos = {
+    "Albuquerque": "#RollUp", "Anaheim": "#MouseInTheHouse", "Anchorage": "#FearThePod",
+    "Austin": "#BatCountry", "Baltimore": "#GetCrabby", "Birmingham": "#StealTheShow",
+    "Boise": "#DigDeep", "Buffalo": "#DefyTheOdds", "Cincinnati": "#FiveWay",
+    "Columbus": "#ArchMadness", "Des Moines": "#TrashTalk", "El Paso": "#StrikeFirst",
+    "Honolulu": "#ShineOn", "Jacksonville": "#SeaTheFuture", "Kentucky": "#RunWithUs",
+    "Lansing": "#TroubledWaters", "Lincoln": "#BullyBall", "Little Rock": "#BelieveTheHype",
+    "Manchester": "#AgainstTheCurrent", "Nashville": "#StringTogether", "Pittsburgh": "#BuiltDifferent",
+    "Providence": "#MakeTheJourney", "San Diego": "#SealTheDeal", "San Jose": "#FearTheFlock",
+    "Seattle": "#StayGrounded", "St. Louis": "#RouteToVictory", "Tampa Bay": "#StandTall",
+    "Tulsa": "#SoundTheSirens", "Vancouver": "#IntoTheWoods", "Vegas": "#DealDamage",
+}
+
+for team_name, motto in team_mottos.items():
+    team_info[team_name]["motto"] = motto
+
 cap_sheets_to_fantrax_name_fix = {
     "Eugeny Omoruyi": "Eugene Omoruyi",
     "Kenneth Lofton Jr.": "Kenneth Lofton",
