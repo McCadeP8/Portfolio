@@ -3194,6 +3194,104 @@ def render_player_matchup_highs(rows, empty_text):
     """)
 
 
+def player_relationship_records(selected_player_id, matchup_type, matchup_archive, schedule_df):
+    """Aggregate completed SBCFBL results shared with teammates and opponents."""
+    columns = ["Relationship", "fantrax_id", "fantrax_name", "espn_player_id", "G", "W", "L", "W%"]
+    if matchup_archive is None or matchup_archive.empty or schedule_df is None or schedule_df.empty:
+        return pd.DataFrame(columns=columns)
+    required_archive = {"fantrax_id", "fantrax_name", "sbc_year", "sbc_period", "sbc_matchup_type", "sbc_team_key", "GP"}
+    required_schedule = {"Year", "Period", "Type", "TeamA", "TeamB", "TeamAScore", "TeamBScore"}
+    if not required_archive.issubset(matchup_archive.columns) or not required_schedule.issubset(schedule_df.columns):
+        return pd.DataFrame(columns=columns)
+
+    appearances = matchup_archive.copy()
+    appearances = appearances[
+        (appearances["sbc_matchup_type"].astype(str) == str(matchup_type))
+        & (pd.to_numeric(appearances["GP"], errors="coerce").fillna(0) > 0)
+    ].copy()
+    if appearances.empty:
+        return pd.DataFrame(columns=columns)
+    appearances["_year"] = pd.to_numeric(appearances["sbc_year"], errors="coerce").astype("Int64")
+    appearances["_period"] = pd.to_numeric(appearances["sbc_period"], errors="coerce").astype("Int64")
+    appearances["_team"] = appearances["sbc_team_key"].apply(resolve_team_key)
+    appearances = appearances.drop_duplicates(["fantrax_id", "_year", "_period", "sbc_matchup_type", "_team"])
+
+    selected = appearances[appearances["fantrax_id"].astype(str) == str(selected_player_id)].copy()
+    if selected.empty:
+        return pd.DataFrame(columns=columns)
+
+    schedule = schedule_df[schedule_df["Type"].astype(str) == str(matchup_type)].copy()
+    schedule["_year"] = pd.to_numeric(schedule["Year"], errors="coerce").astype("Int64")
+    schedule["_period"] = pd.to_numeric(schedule["Period"], errors="coerce").astype("Int64")
+    schedule["_score_a"] = pd.to_numeric(schedule["TeamAScore"], errors="coerce")
+    schedule["_score_b"] = pd.to_numeric(schedule["TeamBScore"], errors="coerce")
+    schedule["_team_a"] = schedule["TeamA"].apply(resolve_team_key)
+    schedule["_team_b"] = schedule["TeamB"].apply(resolve_team_key)
+    schedule = schedule.dropna(subset=["_score_a", "_score_b"])
+    schedule = schedule[schedule["_score_a"] != schedule["_score_b"]].copy()
+    appearance_groups = {
+        (int(year), int(period)): frame
+        for (year, period), frame in appearances.groupby(["_year", "_period"])
+        if pd.notna(year) and pd.notna(period)
+    }
+
+    shared_games = []
+    for _, selected_row in selected.iterrows():
+        year, period, selected_team = selected_row["_year"], selected_row["_period"], selected_row["_team"]
+        games = schedule[
+            (schedule["_year"] == year)
+            & (schedule["_period"] == period)
+            & ((schedule["_team_a"] == selected_team) | (schedule["_team_b"] == selected_team))
+        ]
+        for _, game in games.iterrows():
+            selected_is_a = game["_team_a"] == selected_team
+            opponent = game["_team_b"] if selected_is_a else game["_team_a"]
+            selected_score = game["_score_a"] if selected_is_a else game["_score_b"]
+            opponent_score = game["_score_b"] if selected_is_a else game["_score_a"]
+            result = "W" if selected_score > opponent_score else "L"
+            period_players = appearance_groups.get((int(year), int(period)), appearances.iloc[0:0])
+            period_players = period_players[
+                (period_players["fantrax_id"].astype(str) != str(selected_player_id))
+                & (period_players["_team"].isin([selected_team, opponent]))
+            ]
+            for _, player in period_players.iterrows():
+                shared_games.append({
+                    "Relationship": "Teammate" if player["_team"] == selected_team else "Opponent",
+                    "fantrax_id": str(player["fantrax_id"]),
+                    "fantrax_name": str(player["fantrax_name"]),
+                    "espn_player_id": player.get("espn_player_id", ""),
+                    "Result": result,
+                    "_game": str(game.get("Game_ID", f"{year}-{period}-{selected_team}-{opponent}")),
+                })
+    if not shared_games:
+        return pd.DataFrame(columns=columns)
+    shared = pd.DataFrame(shared_games).drop_duplicates(["Relationship", "fantrax_id", "_game"])
+    grouped = shared.groupby(["Relationship", "fantrax_id", "fantrax_name", "espn_player_id"], dropna=False, as_index=False).agg(
+        G=("_game", "nunique"), W=("Result", lambda values: int((values == "W").sum())), L=("Result", lambda values: int((values == "L").sum())),
+    )
+    grouped["W%"] = grouped["W"].div(grouped["G"].replace(0, pd.NA))
+    return grouped.sort_values(["G", "W%", "fantrax_name"], ascending=[False, False, True]).reset_index(drop=True)
+
+
+def render_player_relationship_table(rows, relationship):
+    scoped = rows[rows["Relationship"] == relationship].copy() if rows is not None and not rows.empty else pd.DataFrame()
+    if scoped.empty:
+        render_html(f'<div class="sbc-empty-state">No qualifying {escape(relationship.lower())} games match this filter.</div>')
+        return
+    body = []
+    for _, row in scoped.iterrows():
+        image = espn_headshot_url(row.get("espn_player_id", "")) if not is_blank_value(row.get("espn_player_id", "")) else DRAFT_SILHOUETTE
+        body.append(f"""
+            <tr><td><span class="sbc-history-player-cell"><img src="{escape(str(image), quote=True)}" alt=""><strong>{escape(str(row['fantrax_name']))}</strong></span></td>
+            <td>{int(row['G'])}</td><td>{int(row['W'])}</td><td>{int(row['L'])}</td><td>{float(row['W%']):.1%}</td></tr>
+        """)
+    render_html(f"""
+        <div class="sbc-box-table-scroll"><table class="sbc-history-overview-table sbc-matchup-high-table">
+            <thead><tr><th>{escape(relationship)}</th><th>G</th><th>W</th><th>L</th><th>W%</th></tr></thead><tbody>{''.join(body)}</tbody>
+        </table></div>
+    """)
+
+
 def aggregate_matchup_player_rows(rows, basis="total", group_by_team=True):
     if rows is None or rows.empty:
         return pd.DataFrame()
@@ -17234,6 +17332,20 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         render_player_stats_table(season_rows, empty_text)
         render_html('<div class="sbc-awards-section-head"><span>Matchup Leaders</span><em>Best single SBCFBL matchup performance by category.</em></div>')
         render_player_matchup_highs(section_rows, "No matchup highs are available for this player and stat type.")
+        render_html(f'<div class="sbc-awards-section-head"><span>Shared Game Records</span><em>{escape(stat_mode)} only. Both players must have been started and appeared in at least one NBA game during the matchup.</em></div>')
+        relationship_rows = player_relationship_records(
+            selected_player_id,
+            type_value,
+            load_sbc_player_matchup_stats_archive(),
+            all_time_schedule,
+        )
+        teammate_col, opponent_col = st.columns(2, gap="large")
+        with teammate_col:
+            render_html('<div class="sbc-section-label">Teammates</div>')
+            render_player_relationship_table(relationship_rows, "Teammate")
+        with opponent_col:
+            render_html('<div class="sbc-section-label">Opponents</div>')
+            render_player_relationship_table(relationship_rows, "Opponent")
         render_award_detail_ledger(awards_table)
 
 if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "All-Time Stats":
