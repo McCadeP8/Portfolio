@@ -3287,7 +3287,7 @@ def render_player_relationship_table(rows, relationship):
         """)
     render_html(f"""
         <div class="sbc-box-table-scroll"><table class="sbc-history-overview-table sbc-matchup-high-table">
-            <thead><tr><th>{escape(relationship)}</th><th>G</th><th>W</th><th>L</th><th>W%</th></tr></thead><tbody>{''.join(body)}</tbody>
+            <thead><tr><th>{escape(relationship)}</th><th>GP</th><th>Wins</th><th>Losses</th><th>Win%</th></tr></thead><tbody>{''.join(body)}</tbody>
         </table></div>
     """)
 
@@ -3647,7 +3647,9 @@ def render_team_branding(team):
         .sbc-brand-hero div { position:relative; z-index:1; }
         .sbc-brand-hero h1 { margin:5px 0 7px; color:white; font-family:var(--brand-font),sans-serif; font-size:clamp(2.4rem,5.2vw,4.8rem); line-height:1; }
         .sbc-brand-hero p { margin:0; color:rgba(255,255,255,.9); font-weight:700; }
-        .sbc-brand-motto { margin:9px 0 7px; color:#fff; font-family:var(--brand-font),sans-serif; font-size:1.15rem; font-weight:950; letter-spacing:.035em; }
+        .sbc-brand-motto-card { display:flex; align-items:center; justify-content:space-between; gap:22px; margin:-10px 0 28px; padding:18px 24px; overflow:hidden; border-radius:18px; color:#fff; background:linear-gradient(110deg,color-mix(in srgb,var(--brand-primary) 80%,#111827),color-mix(in srgb,var(--brand-secondary) 72%,#111827)); box-shadow:0 12px 30px rgba(15,23,42,.15); }
+        .sbc-brand-motto-card span { font-size:.68rem; font-weight:950; letter-spacing:.18em; text-transform:uppercase; opacity:.76; }
+        .sbc-brand-motto-card strong { font-family:var(--brand-font),sans-serif; font-size:clamp(1.45rem,3vw,2.6rem); font-weight:950; letter-spacing:.035em; line-height:1; }
         .sbc-brand-kicker { font-size:.74rem; font-weight:900; letter-spacing:.18em; text-transform:uppercase; }
         .sbc-brand-section-title { margin:8px 0 12px; color:#64748b; font-size:.76rem; font-weight:900; letter-spacing:.15em; text-transform:uppercase; }
         .sbc-brand-art-title { margin-top:30px; padding-top:22px; border-top:1px solid #dbe3ee; }
@@ -3665,7 +3667,7 @@ def render_team_branding(team):
         .sbc-brand-edition-heading { display:flex; align-items:baseline; justify-content:space-between; margin:22px 0 6px; padding:12px 16px; border-left:5px solid var(--brand-primary,#334155); border-radius:0 12px 12px 0; background:#fff; color:#0f172a; font-size:1rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
         .sbc-brand-edition-heading span { color:#94a3b8; font-size:.68rem; letter-spacing:.14em; }
         div[data-testid="stSegmentedControl"] button[aria-pressed="true"] p { color:#fff !important; }
-        @media(max-width:700px) { .sbc-brand-hero { padding:24px; gap:18px; } .sbc-brand-hero img { width:94px; height:94px; } .sbc-brand-glyph-grid { gap:2px; } .sbc-brand-glyph { min-height:38px; border-radius:4px; font-size:clamp(.55rem,2.5vw,.9rem); } }
+        @media(max-width:700px) { .sbc-brand-hero { padding:24px; gap:18px; } .sbc-brand-hero img { width:94px; height:94px; } .sbc-brand-motto-card { align-items:flex-start; flex-direction:column; gap:7px; } .sbc-brand-glyph-grid { gap:2px; } .sbc-brand-glyph { min-height:38px; border-radius:4px; font-size:clamp(.55rem,2.5vw,.9rem); } }
         </style>
     """)
 
@@ -3675,9 +3677,14 @@ def render_team_branding(team):
             <div>
                 <div class="sbc-brand-kicker">SBC Franchise Identity</div>
                 <h1>{escape(full_name)}</h1>
-                <div class="sbc-brand-motto">{escape(motto)}</div>
                 <p>{escape(city)}, {escape(region)} &nbsp;·&nbsp; {escape(str(info['conf']))} Conference &nbsp;·&nbsp; {escape(str(info['div']))} Division</p>
             </div>
+        </section>
+    """)
+
+    render_html(f"""
+        <section class="sbc-brand-motto-card" style="--brand-primary:{escape(primary)};--brand-secondary:{escape(secondary)};--brand-font:'{escape(font_name, quote=True)}'">
+            <span>Team Motto</span><strong>{escape(motto)}</strong>
         </section>
     """)
 
@@ -3741,7 +3748,7 @@ def render_team_branding(team):
     for column, edition in zip(edition_columns, ["Association", "Icon", "Statement"]):
         with column:
             row = jersey_rows[jersey_rows["edition"].astype(str) == edition]
-            render_html(f'<div class="sbc-brand-edition-heading">{escape(edition)} <span>Front &amp; Back</span></div>')
+            render_html(f'<div class="sbc-brand-edition-heading">{escape(edition)} <span>Front</span></div>')
             if row.empty:
                 st.info(f"No {edition} configuration saved.")
                 continue
@@ -3749,7 +3756,7 @@ def render_team_branding(team):
             uniform_config = apply_resolved_brand_font(JerseyConfig.from_mapping(values), values.get("font_path", ""))
             logo_team = str(values.get("logo_team") or team)
             uniform_logo = team_info.get(logo_team, info).get("logo")
-            uniform_figure, _ = draw_uniform(uniform_config, logo=uniform_logo, view="front_and_back", dpi=130, background="#F5F7FB")
+            uniform_figure, _ = draw_uniform(uniform_config, logo=uniform_logo, view="front", dpi=130, background="#F5F7FB")
             st.pyplot(uniform_figure, use_container_width=True)
             plt.close(uniform_figure)
 
@@ -17339,13 +17346,10 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
             load_sbc_player_matchup_stats_archive(),
             all_time_schedule,
         )
-        teammate_col, opponent_col = st.columns(2, gap="large")
-        with teammate_col:
-            render_html('<div class="sbc-section-label">Teammates</div>')
-            render_player_relationship_table(relationship_rows, "Teammate")
-        with opponent_col:
-            render_html('<div class="sbc-section-label">Opponents</div>')
-            render_player_relationship_table(relationship_rows, "Opponent")
+        render_html('<div class="sbc-section-label">Teammates</div>')
+        render_player_relationship_table(relationship_rows, "Teammate")
+        render_html('<div class="sbc-section-label">Opponents</div>')
+        render_player_relationship_table(relationship_rows, "Opponent")
         render_award_detail_ledger(awards_table)
 
 if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "All-Time Stats":
