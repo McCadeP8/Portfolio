@@ -2488,7 +2488,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
                     <b class="{'sbc-box-dialog-score-win' if a_winner else ''}">{escape(format_score_value(score_a))}</b>
                 </div>
                 <div class="sbc-box-dialog-score">
-                    <i>Final</i>
+                    <i>{escape(str(matchup_row.get('_display_status', 'Final')))}</i>
                 </div>
                 <div class="sbc-box-dialog-team sbc-box-dialog-team-home" style="--box-team:{escape(str(color_b), quote=True)};--box-team-secondary:{escape(str(secondary_b), quote=True)};--box-team-font:{escape(str(font_b), quote=True)};">
                     <b class="{'sbc-box-dialog-score-win' if b_winner else ''}">{escape(format_score_value(score_b))}</b>
@@ -3508,7 +3508,7 @@ need_standings = need_landing or need_league_overview or need_league_standings o
 need_dh = need_history_draft
 need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "History"]) or need_history_stats or need_history_awards
 need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
-need_all_time_rosters = need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
+need_all_time_rosters = need_landing or need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
 need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding")
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_history_awards
@@ -17721,16 +17721,22 @@ if main_page == "Overview":
     def front_team_v2(team):
         name = str(team)
         info = team_info.get(name, {})
-        return {"name": name, "nick": str(info.get("nickname", name)), "abbr": TEAM_ABBREVIATIONS.get(name, name[:3].upper()), "logo": str(info.get("logo", LEAGUE_LOGO)), "color": str(info.get("bg", LEAGUE_PRIMARY))}
+        return {"name": name, "nick": str(info.get("nickname", name)), "abbr": TEAM_ABBREVIATIONS.get(name, name[:3].upper()), "logo": str(info.get("logo", LEAGUE_LOGO)), "wordmark": str(info.get("wordmark", info.get("logo", LEAGUE_LOGO))), "color": str(info.get("bg", LEAGUE_PRIMARY))}
 
     matchup_windows = []
-    for label, date_label, matchup_period in [("Last matchup", "Jan 7", 7), ("Current matchup", "Jan 14", 8), ("Next matchup", "Jan 21", 9)]:
+    for label, date_label, matchup_period in [("Jan 9–Jan 12", "Jan 9–12", 7), ("Jan 13–Jan 15", "Jan 13–15", 8), ("Jan 16–Jan 20", "Jan 16–20", 9)]:
         window_games = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == matchup_period)]
         games = []
-        for _, game in window_games.iterrows():
+        for game_index, (_, game) in enumerate(window_games.iterrows()):
             a, b = front_team_v2(game.get("TeamA", "TBD")), front_team_v2(game.get("TeamB", "TBD"))
             av, bv = game.get("_a"), game.get("_b")
-            games.append({"a": a, "b": b, "as": None if pd.isna(av) else round(float(av), 1), "bs": None if pd.isna(bv) else round(float(bv), 1), "type": str(game.get("Type", "Regular Season")), "round": str(game.get("Round", "")), "id": str(game.get("Game_ID", ""))})
+            display_type = str(game.get("Type", "Regular Season"))
+            if matchup_period == front_period and game_index == 1:
+                display_type = "In-Season Tournament"
+            if matchup_period == front_period and game_index == 2:
+                display_type = "Playoffs"
+            status = "FINAL" if matchup_period < front_period else (f"IN PROGRESS · {58 + (game_index % 6) * 6}%" if matchup_period == front_period else "UPCOMING")
+            games.append({"key": f"{matchup_period}-{game_index}", "a": a, "b": b, "as": None if pd.isna(av) else round(float(av), 1), "bs": None if pd.isna(bv) else round(float(bv), 1), "type": display_type, "round": str(game.get("Round", "")), "status": status, "id": str(game.get("Game_ID", ""))})
         matchup_windows.append({"label": label, "date": date_label, "period": matchup_period, "games": games})
 
     scoreboard_payload = json.dumps(matchup_windows).replace("</", "<\\/")
@@ -17741,7 +17747,6 @@ if main_page == "Overview":
       <div class="track" id="track"></div>
       <button class="arrow" id="next" aria-label="Scroll scores right">&#8250;</button>
     </div>
-    <div class="modal" id="modal"><div class="dialog"><button class="close" id="close">&times;</button><div id="detail"></div></div></div>
     <style>
       *{{box-sizing:border-box}} body{{margin:0;background:transparent;font-family:Arial,sans-serif;color:#17212b;overflow:hidden}}
       #sbc-scorebar{{height:112px;display:grid;grid-template-columns:36px 145px minmax(0,1fr) 36px;align-items:stretch;border:1px solid #d8dee5;border-radius:12px;background:#f7f8fa;overflow:hidden}}
@@ -17749,23 +17754,17 @@ if main_page == "Overview":
       select{{width:100%;border:0;background:transparent;font-weight:800;font-size:12px;outline:0;color:#17212b}}
       .arrow{{border:0;background:#fff;color:#17212b;font-size:27px;cursor:pointer}} .arrow:hover{{background:#eef2f5;color:#d91f2b}}
       .track{{display:flex;gap:0;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;background:#eef1f4}} .track::-webkit-scrollbar{{display:none}}
-      .game{{flex:0 0 176px;border:0;border-right:1px solid #ccd3da;background:#fff;padding:9px 11px;text-align:left;cursor:pointer}} .game:hover{{background:#f5f8fa;box-shadow:inset 0 -3px #e32231}}
-      .meta{{display:flex;justify-content:space-between;color:#78838e;font-size:8px;font-weight:800;letter-spacing:.08em;margin-bottom:5px}} .meta b{{color:#d91f2b}}
+      .game{{flex:0 0 176px;border:0;border-right:1px solid #ccd3da;background:#fff;padding:9px 11px;text-align:left;cursor:pointer;text-decoration:none;color:#17212b}} .game:hover{{background:#f5f8fa;box-shadow:inset 0 -3px #e32231}}
+      .meta{{display:flex;justify-content:flex-start;gap:5px;align-items:center;color:#78838e;font-size:8px;font-weight:800;letter-spacing:.06em;margin-bottom:5px;white-space:nowrap}} .meta b{{color:#d91f2b}} .meta i{{font-style:normal;border-radius:3px;padding:2px 4px;color:#fff;background:#183c5a;font-size:7px}} .meta i.ist{{background:#7b2cbf}} .meta i.playoffs{{background:#d48a00}}
       .team{{display:grid;grid-template-columns:21px 1fr auto;gap:6px;align-items:center;height:29px}} .team img{{width:20px;height:20px;object-fit:contain}} .team span{{font-size:11px;font-weight:900}} .team strong{{font-size:13px;font-variant-numeric:tabular-nums}}
-      .modal{{display:none;position:fixed;inset:0;background:rgba(5,15,25,.68);z-index:20;align-items:center;justify-content:center;padding:16px}} .modal.open{{display:flex}}
-      .dialog{{width:min(520px,96vw);background:#fff;border-radius:16px;padding:25px;position:relative;box-shadow:0 22px 60px rgba(0,0,0,.35)}} .close{{position:absolute;right:12px;top:8px;border:0;background:none;font-size:25px;cursor:pointer}}
-      .detail-kicker{{font-size:10px;color:#d91f2b;text-transform:uppercase;font-weight:900;letter-spacing:.12em}} .detail-title{{font-size:13px;color:#6f7a85;margin:5px 0 20px}}
-      .detail-team{{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #e2e6ea}} .detail-team img{{width:42px;height:42px;object-fit:contain}} .detail-team b{{font-size:18px}} .detail-team span{{font-size:28px;font-weight:950}}
-      .detail-foot{{display:flex;justify-content:space-between;margin-top:16px;color:#7a8490;font-size:10px}} @media(max-width:650px){{#sbc-scorebar{{grid-template-columns:30px 108px minmax(0,1fr) 30px}}.game{{flex-basis:160px}}}}
+      @media(max-width:650px){{#sbc-scorebar{{grid-template-columns:30px 108px minmax(0,1fr) 30px}}.game{{flex-basis:160px}}}}
     </style>
     <script>
-      const windows={scoreboard_payload}, select=document.getElementById('window'), track=document.getElementById('track'), modal=document.getElementById('modal'), detail=document.getElementById('detail');
+      const windows={scoreboard_payload}, select=document.getElementById('window'), track=document.getElementById('track');
       windows.forEach((w,i)=>{{const o=document.createElement('option');o.value=i;o.textContent=w.label;select.appendChild(o)}}); select.value=1;
       const fmt=v=>v===null?'0–0':Number(v).toFixed(1); const esc=s=>String(s).replace(/[&<>\"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}}[c]));
-      const resize=h=>window.parent.postMessage({{isStreamlitMessage:true,type:'streamlit:setFrameHeight',height:h}},'*');
-      function openGame(g,w){{const margin=(g.as!==null&&g.bs!==null)?Math.abs(g.as-g.bs).toFixed(1):'—';detail.innerHTML=`<div class="detail-kicker">Full box score · ${{esc(w.label)}}</div><div class="detail-title">January ${{w.date.replace('Jan ','')}}, 2025 · Matchup ${{w.period}} · ${{esc(g.type)}}</div><div class="detail-team"><img src="${{g.a.logo}}"><b>${{esc(g.a.name)}} ${{esc(g.a.nick)}}</b><span>${{fmt(g.as)}}</span></div><div class="detail-team"><img src="${{g.b.logo}}"><b>${{esc(g.b.name)}} ${{esc(g.b.nick)}}</b><span>${{fmt(g.bs)}}</span></div><div class="detail-foot"><b>Margin: ${{margin}}</b><span>Game ${{esc(g.id||'SBC')}}</span></div>`;resize(330);modal.classList.add('open')}}
-      function render(){{const w=windows[Number(select.value)];track.innerHTML='';w.games.forEach((g,i)=>{{const btn=document.createElement('button');btn.className='game';btn.innerHTML=`<div class="meta"><b>${{g.as===null?'UPCOMING':'FINAL'}}</b><span>${{w.date}} · ${{i+1}}/${{w.games.length}}</span></div><div class="team"><img src="${{g.a.logo}}"><span>${{esc(g.a.abbr)}}</span><strong>${{fmt(g.as)}}</strong></div><div class="team"><img src="${{g.b.logo}}"><span>${{esc(g.b.abbr)}}</span><strong>${{fmt(g.bs)}}</strong></div>`;btn.onclick=()=>openGame(g,w);track.appendChild(btn)}});track.scrollLeft=0}}
-      const shut=()=>{{modal.classList.remove('open');resize(120)}};select.onchange=render;document.getElementById('prev').onclick=()=>track.scrollBy({{left:-528,behavior:'smooth'}});document.getElementById('next').onclick=()=>track.scrollBy({{left:528,behavior:'smooth'}});document.getElementById('close').onclick=shut;modal.onclick=e=>{{if(e.target===modal)shut()}};render();resize(120);
+      function render(){{const w=windows[Number(select.value)];track.innerHTML='';w.games.forEach((g)=>{{const link=document.createElement('a');link.className='game';const destination=new URL(document.referrer||window.location.href);destination.search='';destination.searchParams.set('sbc_game',g.key);link.href=destination.toString();link.target='_top';const badge=g.type==='In-Season Tournament'?'<i class="ist">IST</i>':(g.type==='Playoffs'?'<i class="playoffs">PLAYOFFS</i>':'');link.innerHTML=`<div class="meta"><b>${{esc(g.status)}}</b>${{badge}}</div><div class="team"><img src="${{g.a.logo}}"><span>${{esc(g.a.abbr)}}</span><strong>${{fmt(g.as)}}</strong></div><div class="team"><img src="${{g.b.logo}}"><span>${{esc(g.b.abbr)}}</span><strong>${{fmt(g.bs)}}</strong></div>`;track.appendChild(link)}});track.scrollLeft=0}}
+      select.onchange=render;document.getElementById('prev').onclick=()=>track.scrollBy({{left:-528,behavior:'smooth'}});document.getElementById('next').onclick=()=>track.scrollBy({{left:528,behavior:'smooth'}});render();
     </script>
     """, height=120, scrolling=False)
 
@@ -17786,36 +17785,89 @@ if main_page == "Overview":
         for seed, (_, row) in enumerate(conf.iterrows(), 1):
             team = front_team_v2(row["Team"])
             marker = '<div class="sbc-cut sbc-cut-playoff"><span>Top 6 · playoff line</span></div>' if seed == 7 else ('<div class="sbc-cut sbc-cut-playin"><span>Top 10 · play-in line</span></div>' if seed == 11 else '')
-            rows.append(marker + f'<div class="sbc-v2-standing"><span>{seed}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["abbr"])}</b><em>{escape(str(row.get("Record", "—")))}</em></div>')
+            rows.append(marker + f'<div class="sbc-v2-standing"><span>{seed}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["name"] + " " + team["nick"])}</b><em>{escape(str(row.get("Record", "—")))}</em></div>')
         conference_html.append(f'<div class="sbc-v2-conf"><h4>{conference} Conference</h4>{"".join(rows)}</div>')
 
     story_teams = [front_team_v2(t) for t in front_table["Team"].astype(str).head(15).tolist()] if not front_table.empty else [front_team_v2(t) for t in Teams[:15]]
     headline_texts = [
         f"{leader['nick']} seize the league's best record as the calendar turns", "Six contenders, four spots: the playoff race has officially arrived", "The deadline decisions every front office has to get right", "Anonymous GM poll: the SBC's toughest matchup", "Five players changing the shape of the title race", "Why the middle of the table refuses to separate", "The bold trade idea that could swing each conference", "Rookie report: which newcomers are earning real minutes?", "Injury returns that could reset the power rankings", "The case for patience—and the teams that cannot afford it", "Inside the numbers behind the league's fastest risers", "Weekend watch guide: the matchups that actually matter"
-    ]
-    headlines_html = "".join(f'<div class="sbc-v2-headline"><span>{i+1:02d}</span><div><b>{escape(text)}</b><em>{["34m", "1h", "2h", "3h", "5h", "Yesterday"][i % 6]} · SBC League Desk</em></div></div>' for i, text in enumerate(headline_texts))
+    ][:8]
+    headlines_html = "".join(f'<a class="sbc-v2-headline" href="?sbc_article={i}" target="_self"><div><b>{escape(text)}</b><em>{["34m", "1h", "2h", "3h", "5h", "Yesterday"][i % 6]} · SBC League Desk</em></div></a>' for i, text in enumerate(headline_texts))
     transaction_actions = ["acquire veteran scoring in a two-team deal", "sign a free agent to a two-year contract", "exercise a team option", "waive a reserve guard", "match a restricted offer sheet"]
-    transactions_html = "".join(f'<div class="sbc-v2-transaction"><img src="{escape(team["logo"], quote=True)}"><div><b>{escape(team["name"])} {transaction_actions[i % len(transaction_actions)]}</b><span>Transaction processed · Jan {14-i if i < 14 else 1}</span></div></div>' for i, team in enumerate(story_teams))
+    transactions_html = "".join(f'<div class="sbc-v2-transaction"><img src="{escape(team["logo"], quote=True)}"><div><b>{escape(team["name"])} {transaction_actions[i % len(transaction_actions)]}</b><span>Transaction processed · Jan {14-i}</span></div></div>' for i, team in enumerate(story_teams[:6]))
+
+    render_html("""
+    <style>
+      div[data-testid="stDialog"] div[role="dialog"] { width:min(1500px,calc(100vw - 32px)); max-width:none; }
+      div[data-testid="stDialog"] div[role="dialog"] > div { max-height:calc(100vh - 36px); }
+      .sbc-article-body{max-width:900px;margin:0 auto;padding:.5rem 1.2rem 2rem}.sbc-article-body .dek{font-size:1.18rem;line-height:1.55;color:#526170;border-bottom:1px solid #dfe5ea;padding-bottom:1.2rem}.sbc-article-body p{font-size:1rem;line-height:1.75;color:#263442}.sbc-article-body .byline{font-size:.75rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#d92332;margin:1rem 0}
+    </style>
+    """)
+
+    game_query = str(st.query_params.get("sbc_game", ""))
+    if game_query:
+        query_token = f"game:{game_query}"
+        if st.session_state.get("_sbc_front_dialog_query") == query_token:
+            del st.query_params["sbc_game"]
+            game_query = ""
+        else:
+            st.session_state["_sbc_front_dialog_query"] = query_token
+    if game_query:
+        try:
+            query_period, query_index = [int(value) for value in game_query.split("-", 1)]
+            query_rows = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == query_period)]
+            if 0 <= query_index < query_rows.shape[0]:
+                matchup_dialog_row = query_rows.iloc[query_index].to_dict()
+                if query_period == front_period and query_index == 1:
+                    matchup_dialog_row["Type"] = "In-Season Tournament"
+                elif query_period == front_period and query_index == 2:
+                    matchup_dialog_row["Type"] = "Playoffs"
+                matchup_dialog_row["_display_status"] = "Final" if query_period < front_period else (f"In Progress · {58 + (query_index % 6) * 6}%" if query_period == front_period else "Upcoming")
+                render_matchup_boxscore_dialog(matchup_dialog_row, all_time_rosters)
+        except (TypeError, ValueError, IndexError):
+            if "sbc_game" in st.query_params:
+                del st.query_params["sbc_game"]
+
+    article_query = str(st.query_params.get("sbc_article", ""))
+    if article_query:
+        article_token = f"article:{article_query}"
+        if st.session_state.get("_sbc_front_dialog_query") == article_token:
+            del st.query_params["sbc_article"]
+            article_query = ""
+        else:
+            st.session_state["_sbc_front_dialog_query"] = article_token
+    if article_query:
+        article_index = -1 if article_query == "big" else int(article_query) if article_query.isdigit() else 0
+        article_title = f"{leader['nick']} own the moment" if article_index == -1 else headline_texts[min(article_index, len(headline_texts) - 1)]
+
+        @st.dialog("SBC League Desk", width="large")
+        def render_front_article(title):
+            render_html(f"""
+            <article class="sbc-article-body"><div class="byline">SBC League Desk · January 14, 2025</div><h1>{escape(title)}</h1><p class="dek">The season has reached the point where every result changes the conversation. Here is what matters, what comes next, and why the league is paying attention.</p><p>This is placeholder article copy for the landing-page prototype. A real story can eventually pull from a commissioner-written post, league announcement, recap, or automated matchup summary.</p><p>The central question is no longer whether the race will tighten, but which teams are built to survive it. Front offices have spent months balancing immediate production against long-term flexibility, and the January schedule is exposing every choice.</p><p>Several executives around the league pointed to depth as the deciding factor. Stars still drive the biggest nights, but the teams gaining ground are getting useful performances from the entire roster.</p><p>There is plenty of basketball left. For now, the table provides the clearest answer—and the next matchup window offers everyone a chance to rewrite it.</p></article>
+            """)
+
+        render_front_article(article_title)
 
     render_html(f"""
     <style>
-      .sbc-front-v2{{color:#17212b}} .sbc-v2-grid{{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(420px,1fr);gap:15px;align-items:start}}
-      .sbc-v2-left,.sbc-v2-right{{display:flex;flex-direction:column;gap:15px}} .sbc-v2-panel{{background:#fff;border:1px solid #dce2e8;border-radius:14px;padding:16px;box-shadow:0 3px 12px rgba(22,34,46,.06)}}
-      .sbc-v2-hero{{min-height:410px;border-radius:16px;overflow:hidden;position:relative;padding:28px;display:flex;align-items:flex-end;background:radial-gradient(circle at 78% 32%,{leader['color']} 0,transparent 36%),linear-gradient(122deg,#07131f 8%,#112f49 58%,#07131f 100%);box-shadow:0 12px 34px rgba(8,24,39,.2)}}
-      .sbc-v2-hero:after{{content:'';position:absolute;width:420px;height:420px;right:-30px;top:0;background:url('{escape(leader['logo'], quote=True)}') center/contain no-repeat;opacity:.55;filter:drop-shadow(0 18px 25px rgba(0,0,0,.35))}}
-      .sbc-v2-copy{{position:relative;z-index:1;color:#fff;max-width:680px;text-shadow:0 2px 12px rgba(0,0,0,.35)}} .sbc-v2-copy span{{display:inline-flex;padding:5px 9px;background:#e32231;border-radius:5px;font-size:.65rem;letter-spacing:.13em;font-weight:950;text-transform:uppercase}}
+      .sbc-front-v2{{color:#17212b}} .sbc-v2-grid{{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(420px,1fr);gap:15px;align-items:stretch}}
+      .sbc-v2-left,.sbc-v2-right{{display:flex;flex-direction:column;gap:15px;height:100%}} .sbc-v2-panel{{background:#fff;border:1px solid #dce2e8;border-radius:14px;padding:16px;box-shadow:0 3px 12px rgba(22,34,46,.06)}} .sbc-v2-news,.sbc-v2-transactions{{flex:1}}
+      .sbc-v2-hero{{min-height:410px;border-radius:16px;overflow:hidden;position:relative;padding:28px;display:flex;align-items:flex-end;background:linear-gradient(90deg,rgba(4,17,29,.96) 0%,rgba(4,17,29,.72) 48%,rgba(4,17,29,.20) 100%),url('{escape(leader['wordmark'], quote=True)}') center/cover no-repeat;box-shadow:0 12px 34px rgba(8,24,39,.2);text-decoration:none}}
+      .sbc-v2-hero-art{{position:absolute;width:300px;height:300px;right:24px;top:55px;object-fit:contain;opacity:.88;filter:drop-shadow(0 18px 25px rgba(0,0,0,.42));z-index:0}}
+      .sbc-v2-story-tag{{position:absolute;top:22px;left:24px;z-index:3;display:inline-flex;padding:5px 9px;background:#e32231;color:#fff;border-radius:5px;font-size:.65rem;letter-spacing:.13em;font-weight:950;text-transform:uppercase}}
+      .sbc-v2-copy{{position:relative;z-index:1;color:#fff;max-width:680px;text-shadow:0 2px 12px rgba(0,0,0,.35)}}
       .sbc-v2-copy h1{{font-family:'Bungee','Arial Black',sans-serif;font-size:clamp(2rem,4.4vw,4rem);line-height:.98;letter-spacing:-.035em;margin:13px 0 12px}} .sbc-v2-copy p{{font-size:1rem;line-height:1.45;font-weight:720;max-width:610px;margin:0;color:#eaf0f5}}
       .sbc-v2-head{{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #17212b;padding-bottom:9px;margin-bottom:5px}} .sbc-v2-head b{{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}} .sbc-v2-head span{{font-size:.65rem;color:#e32231;font-weight:900}}
-      .sbc-v2-headline{{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:14px 0;border-bottom:1px solid #e4e8ec}} .sbc-v2-headline:last-child{{border:0}} .sbc-v2-headline>span{{font-size:.68rem;color:#e32231;font-weight:950;padding-top:2px}} .sbc-v2-headline b{{display:block;font-size:.91rem;line-height:1.28}} .sbc-v2-headline em{{display:block;font-style:normal;color:#7b8690;font-size:.67rem;margin-top:4px}}
+      .sbc-v2-headline{{display:block;padding:14px 0;border-bottom:1px solid #e4e8ec;text-decoration:none;color:#17212b}} .sbc-v2-headline:hover b{{color:#d92332}} .sbc-v2-headline:last-child{{border:0}} .sbc-v2-headline b{{display:block;font-size:.91rem;line-height:1.28}} .sbc-v2-headline em{{display:block;font-style:normal;color:#7b8690;font-size:.67rem;margin-top:4px}}
       .sbc-v2-standings{{display:grid;grid-template-columns:1fr 1fr;gap:18px}} .sbc-v2-conf h4{{margin:4px 0 7px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}}
-      .sbc-v2-standing{{display:grid;grid-template-columns:16px 23px 1fr auto;gap:6px;align-items:center;min-height:29px;border-bottom:1px solid #edf0f2;font-size:.69rem}} .sbc-v2-standing img{{width:21px;height:21px;object-fit:contain}} .sbc-v2-standing>span{{color:#8b959f}} .sbc-v2-standing em{{font-style:normal;font-weight:900}}
+      .sbc-v2-standing{{display:grid;grid-template-columns:16px 23px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:29px;border-bottom:1px solid #edf0f2;font-size:.64rem}} .sbc-v2-standing img{{width:21px;height:21px;object-fit:contain}} .sbc-v2-standing>span{{color:#8b959f}} .sbc-v2-standing b{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}} .sbc-v2-standing em{{font-style:normal;font-weight:900}}
       .sbc-cut{{height:19px;display:flex;align-items:center;position:relative}} .sbc-cut:before{{content:'';height:2px;position:absolute;left:0;right:0}} .sbc-cut span{{position:relative;background:#fff;padding-right:6px;font-size:.52rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}} .sbc-cut-playoff:before{{background:#159447}} .sbc-cut-playoff span{{color:#11763a}} .sbc-cut-playin:before{{background:#e49a17}} .sbc-cut-playin span{{color:#a56a00}}
       .sbc-v2-transaction{{display:grid;grid-template-columns:32px 1fr;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #e4e8ec}} .sbc-v2-transaction:last-child{{border:0}} .sbc-v2-transaction img{{width:29px;height:29px;object-fit:contain}} .sbc-v2-transaction b{{display:block;font-size:.76rem;line-height:1.2}} .sbc-v2-transaction span{{color:#7b8690;font-size:.63rem}}
       @media(max-width:950px){{.sbc-v2-grid{{grid-template-columns:1fr}}}} @media(max-width:620px){{.sbc-v2-standings{{grid-template-columns:1fr}}.sbc-v2-hero{{min-height:380px;padding:21px}}.sbc-v2-hero:after{{width:280px;height:280px;opacity:.38}}}}
     </style>
     <div class="sbc-front-v2"><div class="sbc-v2-grid">
-      <div class="sbc-v2-left"><section class="sbc-v2-hero"><div class="sbc-v2-copy"><span>The Big Story</span><h1>{escape(leader['nick'])} own the moment.</h1><p>{escape(leader['name'])} sits atop the January 14 table at {leader_record}. The contenders are lining up behind them—and every matchup now carries postseason weight.</p></div></section><section class="sbc-v2-panel"><div class="sbc-v2-head"><b>Top Headlines</b><span>Latest</span></div>{headlines_html}</section></div>
-      <div class="sbc-v2-right"><section class="sbc-v2-panel"><div class="sbc-v2-head"><b>Standings</b><span>Jan 14, 2025</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
+      <div class="sbc-v2-left"><a class="sbc-v2-hero" href="?sbc_article=big" target="_self"><span class="sbc-v2-story-tag">The Big Story</span><img class="sbc-v2-hero-art" src="{escape(leader['logo'], quote=True)}" alt="{escape(leader['name'], quote=True)} logo"><div class="sbc-v2-copy"><h1>{escape(leader['nick'])} own the moment.</h1><p>{escape(leader['name'])} sits atop the January 14 table at {leader_record}. The contenders are lining up behind them—and every matchup now carries postseason weight.</p></div></a><section class="sbc-v2-panel sbc-v2-news"><div class="sbc-v2-head"><b>Top Headlines</b><span>Latest</span></div>{headlines_html}</section></div>
+      <div class="sbc-v2-right"><section class="sbc-v2-panel"><div class="sbc-v2-head"><b>Standings</b><span>Jan 14, 2025</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
     </div></div>
     """)
 
