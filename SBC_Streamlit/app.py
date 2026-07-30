@@ -12127,6 +12127,33 @@ st.markdown(
         color: var(--sbc-ink) !important;
     }}
 
+    div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) {{
+        display: flex !important;
+        flex-direction: column !important;
+        height: calc(100vh - 32px) !important;
+        height: calc(100dvh - 32px) !important;
+        max-height: calc(100vh - 32px) !important;
+        max-height: calc(100dvh - 32px) !important;
+        overflow: hidden !important;
+    }}
+
+    div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) > div:has(> div[data-testid="stVerticalBlock"]) {{
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        background: #ffffff !important;
+    }}
+
+    div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) > div:has(> div[data-testid="stVerticalBlock"]) > div[data-testid="stVerticalBlock"] {{
+        min-height: 100%;
+        background: #ffffff !important;
+        padding-bottom: 1rem;
+    }}
+
     div[data-testid="stDialog"] div[role="dialog"] h1,
     div[data-testid="stDialog"] div[role="dialog"] h2,
     div[data-testid="stDialog"] div[role="dialog"] h3,
