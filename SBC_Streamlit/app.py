@@ -97,6 +97,10 @@ def render_html(markup):
 
 
 APP_DIR = Path(__file__).resolve().parent
+front_scoreboard_component = components.declare_component(
+    "front_scoreboard",
+    path=str(APP_DIR / "front_scoreboard_component"),
+)
 
 TEAM_FONTS = {
     "Albuquerque": "Amatic SC",
@@ -17739,40 +17743,35 @@ if main_page == "Overview":
             games.append({"key": f"{matchup_period}-{game_index}", "a": a, "b": b, "as": None if pd.isna(av) else round(float(av), 1), "bs": None if pd.isna(bv) else round(float(bv), 1), "type": display_type, "round": str(game.get("Round", "")), "status": status, "id": str(game.get("Game_ID", ""))})
         matchup_windows.append({"label": label, "date": date_label, "period": matchup_period, "games": games})
 
-    scoreboard_payload = json.dumps(matchup_windows).replace("</", "<\\/")
-    scoreboard_component_html = f"""
-    <div id="sbc-scorebar">
-      <button class="arrow" id="prev" aria-label="Scroll scores left">&#8249;</button>
-      <div class="pick"><span>Matchup window</span><select id="window"></select></div>
-      <div class="track" id="track"></div>
-      <button class="arrow" id="next" aria-label="Scroll scores right">&#8250;</button>
-    </div>
-    <div class="score-modal" id="score-modal"><button class="score-close" id="score-close" aria-label="Close box score">&times;</button><div class="score-dialog" id="score-detail"></div></div>
-    <style>
-      *{{box-sizing:border-box}} body{{margin:0;background:transparent;font-family:Arial,sans-serif;color:#17212b;overflow:hidden}}
-      #sbc-scorebar{{height:112px;display:grid;grid-template-columns:36px 145px minmax(0,1fr) 36px;align-items:stretch;border:1px solid #d8dee5;border-radius:12px;background:#f7f8fa;overflow:hidden}}
-      .pick{{padding:15px 10px;border-right:1px solid #d8dee5;background:#fff}} .pick span{{display:block;color:#7a8490;font-size:9px;text-transform:uppercase;letter-spacing:.09em;font-weight:800;margin-bottom:8px}}
-      select{{width:100%;border:0;background:transparent;font-weight:800;font-size:12px;outline:0;color:#17212b}}
-      .arrow{{border:0;background:#fff;color:#17212b;font-size:27px;cursor:pointer}} .arrow:hover{{background:#eef2f5;color:#d91f2b}}
-      .track{{display:flex;gap:0;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;background:#eef1f4}} .track::-webkit-scrollbar{{display:none}}
-      .game{{flex:0 0 176px;border:0;border-right:1px solid #ccd3da;background:#fff;padding:9px 11px;text-align:left;cursor:pointer;text-decoration:none;color:#17212b}} .game:hover{{background:#f5f8fa;box-shadow:inset 0 -3px #e32231}}
-      .meta{{display:flex;justify-content:flex-start;gap:5px;align-items:center;color:#78838e;font-size:8px;font-weight:800;letter-spacing:.06em;margin-bottom:5px;white-space:nowrap}} .meta b{{color:#d91f2b}} .meta i{{font-style:normal;border-radius:3px;padding:2px 4px;color:#fff;background:#183c5a;font-size:7px}} .meta i.ist{{background:#7b2cbf}} .meta i.playoffs{{background:#d48a00}}
-      .team{{display:grid;grid-template-columns:21px 1fr auto;gap:6px;align-items:center;height:29px}} .team img{{width:20px;height:20px;object-fit:contain}} .team span{{font-size:11px;font-weight:900}} .team strong{{font-size:13px;font-variant-numeric:tabular-nums}}
-      .score-modal{{display:none;position:fixed;inset:0;z-index:50;background:rgba(5,15,25,.76);padding:28px;align-items:center;justify-content:center}} .score-modal.open{{display:flex}} .score-dialog{{width:min(760px,96vw);background:#fff;border-radius:16px;padding:32px;box-shadow:0 22px 60px rgba(0,0,0,.38)}} .score-close{{position:absolute;right:22px;top:18px;z-index:60;width:38px;height:38px;border:0;border-radius:50%;background:#fff;color:#17212b;font-size:25px;line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}} .detail-kicker{{font-size:10px;color:#d91f2b;text-transform:uppercase;font-weight:900;letter-spacing:.12em}} .detail-title{{font-size:13px;color:#6f7a85;margin:6px 0 22px}} .detail-team{{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:12px;padding:15px 0;border-bottom:1px solid #e2e6ea}} .detail-team img{{width:50px;height:50px;object-fit:contain}} .detail-team b{{font-size:20px}} .detail-team span{{font-size:30px;font-weight:950}} .detail-foot{{display:flex;justify-content:space-between;margin-top:18px;color:#7a8490;font-size:11px}}
-      @media(max-width:650px){{#sbc-scorebar{{grid-template-columns:30px 108px minmax(0,1fr) 30px}}.game{{flex-basis:160px}}}}
-    </style>
-    <script>
-      const windows={scoreboard_payload}, select=document.getElementById('window'), track=document.getElementById('track');
-      windows.forEach((w,i)=>{{const o=document.createElement('option');o.value=i;o.textContent=w.label;select.appendChild(o)}}); select.value=1;
-      const fmt=v=>v===null?'0–0':Number(v).toFixed(1); const esc=s=>String(s).replace(/[&<>\"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}}[c]));
-      const scoreModal=document.getElementById('score-modal'),scoreDetail=document.getElementById('score-detail');const resize=h=>window.parent.postMessage({{isStreamlitMessage:true,type:'streamlit:setFrameHeight',height:h}},'*');
-      function openBox(event,g,w){{event.preventDefault();const margin=(g.as!==null&&g.bs!==null)?Math.abs(g.as-g.bs).toFixed(1):'—';scoreDetail.innerHTML=`<div class="detail-kicker">Full box score · ${{esc(g.status)}}</div><div class="detail-title">${{esc(w.label)}} · ${{esc(g.type)}}</div><div class="detail-team"><img src="${{g.a.logo}}"><b>${{esc(g.a.name)}} ${{esc(g.a.nick)}}</b><span>${{fmt(g.as)}}</span></div><div class="detail-team"><img src="${{g.b.logo}}"><b>${{esc(g.b.name)}} ${{esc(g.b.nick)}}</b><span>${{fmt(g.bs)}}</span></div><div class="detail-foot"><b>Current margin: ${{margin}}</b><span>Game ${{esc(g.id||'SBC')}}</span></div>`;scoreModal.classList.add('open');resize(680)}}
-      function closeBox(){{scoreModal.classList.remove('open');resize(120)}}
-      function render(){{const w=windows[Number(select.value)];track.innerHTML='';w.games.forEach((g)=>{{const link=document.createElement('a');link.className='game';link.href='#';link.onclick=(event)=>openBox(event,g,w);const badge=g.type==='In-Season Tournament'?'<i class="ist">IST</i>':(g.type==='Playoffs'?'<i class="playoffs">PLAYOFFS</i>':'');link.innerHTML=`<div class="meta"><b>${{esc(g.status)}}</b>${{badge}}</div><div class="team"><img src="${{g.a.logo}}"><span>${{esc(g.a.abbr)}}</span><strong>${{fmt(g.as)}}</strong></div><div class="team"><img src="${{g.b.logo}}"><span>${{esc(g.b.abbr)}}</span><strong>${{fmt(g.bs)}}</strong></div>`;track.appendChild(link)}});track.scrollLeft=0}}
-      select.onchange=render;document.getElementById('prev').onclick=()=>track.scrollBy({{left:-528,behavior:'smooth'}});document.getElementById('next').onclick=()=>track.scrollBy({{left:528,behavior:'smooth'}});document.getElementById('score-close').onclick=closeBox;render();resize(120);
-    </script>
-    """
-    components.html(scoreboard_component_html, height=120, scrolling=False)
+    def front_dialog_matchup(game_key):
+        query_period, query_index = [int(value) for value in str(game_key).split("-", 1)]
+        query_rows = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == query_period)]
+        if not 0 <= query_index < query_rows.shape[0]:
+            return None
+        matchup_dialog_row = query_rows.iloc[query_index].to_dict()
+        if query_period == front_period and query_index == 1:
+            matchup_dialog_row["Type"] = "In-Season Tournament"
+        elif query_period == front_period and query_index == 2:
+            matchup_dialog_row["Type"] = "Playoffs"
+        matchup_dialog_row["_display_status"] = "Final" if query_period < front_period else (f"In Progress · {58 + (query_index % 6) * 6}%" if query_period == front_period else "Upcoming")
+        return matchup_dialog_row
+
+    scorebar_selection = front_scoreboard_component(
+        windows=matchup_windows,
+        initial_index=1,
+        key="front_scoreboard_component",
+        default=None,
+    )
+    if isinstance(scorebar_selection, dict):
+        selection_nonce = str(scorebar_selection.get("nonce", ""))
+        if selection_nonce and selection_nonce != st.session_state.get("front_scoreboard_selection_nonce"):
+            st.session_state["front_scoreboard_selection_nonce"] = selection_nonce
+            try:
+                selected_matchup_row = front_dialog_matchup(scorebar_selection.get("key", ""))
+            except (TypeError, ValueError, IndexError):
+                selected_matchup_row = None
+            if selected_matchup_row is not None:
+                render_matchup_boxscore_dialog(selected_matchup_row, all_time_rosters)
 
     front_table = standings[(standings["Year"] == front_year) & (standings["Period"] == front_period)].copy()
     if front_table.empty:
