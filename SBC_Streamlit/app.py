@@ -17712,6 +17712,114 @@ if main_page == "League Hub" and selected_league_page == "Draft Picks":
 
     '''
 if main_page == "Overview":
+    # Editorial preview date requested for the landing-page prototype.
+    front_year, front_period = 2025, 8
+    front_scores = all_time_schedule.copy()
+    front_scores["_a"] = pd.to_numeric(front_scores["TeamAScore"], errors="coerce")
+    front_scores["_b"] = pd.to_numeric(front_scores["TeamBScore"], errors="coerce")
+
+    def front_team_v2(team):
+        name = str(team)
+        info = team_info.get(name, {})
+        return {"name": name, "nick": str(info.get("nickname", name)), "abbr": TEAM_ABBREVIATIONS.get(name, name[:3].upper()), "logo": str(info.get("logo", LEAGUE_LOGO)), "color": str(info.get("bg", LEAGUE_PRIMARY))}
+
+    matchup_windows = []
+    for label, date_label, matchup_period in [("Last matchup", "Jan 7", 7), ("Current matchup", "Jan 14", 8), ("Next matchup", "Jan 21", 9)]:
+        window_games = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == matchup_period)]
+        games = []
+        for _, game in window_games.iterrows():
+            a, b = front_team_v2(game.get("TeamA", "TBD")), front_team_v2(game.get("TeamB", "TBD"))
+            av, bv = game.get("_a"), game.get("_b")
+            games.append({"a": a, "b": b, "as": None if pd.isna(av) else round(float(av), 1), "bs": None if pd.isna(bv) else round(float(bv), 1), "type": str(game.get("Type", "Regular Season")), "round": str(game.get("Round", "")), "id": str(game.get("Game_ID", ""))})
+        matchup_windows.append({"label": label, "date": date_label, "period": matchup_period, "games": games})
+
+    scoreboard_payload = json.dumps(matchup_windows).replace("</", "<\\/")
+    components.html(f"""
+    <div id="sbc-scorebar">
+      <button class="arrow" id="prev" aria-label="Scroll scores left">&#8249;</button>
+      <div class="pick"><span>Matchup window</span><select id="window"></select></div>
+      <div class="track" id="track"></div>
+      <button class="arrow" id="next" aria-label="Scroll scores right">&#8250;</button>
+    </div>
+    <div class="modal" id="modal"><div class="dialog"><button class="close" id="close">&times;</button><div id="detail"></div></div></div>
+    <style>
+      *{{box-sizing:border-box}} body{{margin:0;background:transparent;font-family:Arial,sans-serif;color:#17212b;overflow:hidden}}
+      #sbc-scorebar{{height:112px;display:grid;grid-template-columns:36px 145px minmax(0,1fr) 36px;align-items:stretch;border:1px solid #d8dee5;border-radius:12px;background:#f7f8fa;overflow:hidden}}
+      .pick{{padding:15px 10px;border-right:1px solid #d8dee5;background:#fff}} .pick span{{display:block;color:#7a8490;font-size:9px;text-transform:uppercase;letter-spacing:.09em;font-weight:800;margin-bottom:8px}}
+      select{{width:100%;border:0;background:transparent;font-weight:800;font-size:12px;outline:0;color:#17212b}}
+      .arrow{{border:0;background:#fff;color:#17212b;font-size:27px;cursor:pointer}} .arrow:hover{{background:#eef2f5;color:#d91f2b}}
+      .track{{display:flex;gap:0;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;background:#eef1f4}} .track::-webkit-scrollbar{{display:none}}
+      .game{{flex:0 0 176px;border:0;border-right:1px solid #ccd3da;background:#fff;padding:9px 11px;text-align:left;cursor:pointer}} .game:hover{{background:#f5f8fa;box-shadow:inset 0 -3px #e32231}}
+      .meta{{display:flex;justify-content:space-between;color:#78838e;font-size:8px;font-weight:800;letter-spacing:.08em;margin-bottom:5px}} .meta b{{color:#d91f2b}}
+      .team{{display:grid;grid-template-columns:21px 1fr auto;gap:6px;align-items:center;height:29px}} .team img{{width:20px;height:20px;object-fit:contain}} .team span{{font-size:11px;font-weight:900}} .team strong{{font-size:13px;font-variant-numeric:tabular-nums}}
+      .modal{{display:none;position:fixed;inset:0;background:rgba(5,15,25,.68);z-index:20;align-items:center;justify-content:center;padding:16px}} .modal.open{{display:flex}}
+      .dialog{{width:min(520px,96vw);background:#fff;border-radius:16px;padding:25px;position:relative;box-shadow:0 22px 60px rgba(0,0,0,.35)}} .close{{position:absolute;right:12px;top:8px;border:0;background:none;font-size:25px;cursor:pointer}}
+      .detail-kicker{{font-size:10px;color:#d91f2b;text-transform:uppercase;font-weight:900;letter-spacing:.12em}} .detail-title{{font-size:13px;color:#6f7a85;margin:5px 0 20px}}
+      .detail-team{{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #e2e6ea}} .detail-team img{{width:42px;height:42px;object-fit:contain}} .detail-team b{{font-size:18px}} .detail-team span{{font-size:28px;font-weight:950}}
+      .detail-foot{{display:flex;justify-content:space-between;margin-top:16px;color:#7a8490;font-size:10px}} @media(max-width:650px){{#sbc-scorebar{{grid-template-columns:30px 108px minmax(0,1fr) 30px}}.game{{flex-basis:160px}}}}
+    </style>
+    <script>
+      const windows={scoreboard_payload}, select=document.getElementById('window'), track=document.getElementById('track'), modal=document.getElementById('modal'), detail=document.getElementById('detail');
+      windows.forEach((w,i)=>{{const o=document.createElement('option');o.value=i;o.textContent=w.label;select.appendChild(o)}}); select.value=1;
+      const fmt=v=>v===null?'0–0':Number(v).toFixed(1); const esc=s=>String(s).replace(/[&<>\"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}}[c]));
+      const resize=h=>window.parent.postMessage({{isStreamlitMessage:true,type:'streamlit:setFrameHeight',height:h}},'*');
+      function openGame(g,w){{const margin=(g.as!==null&&g.bs!==null)?Math.abs(g.as-g.bs).toFixed(1):'—';detail.innerHTML=`<div class="detail-kicker">Full box score · ${{esc(w.label)}}</div><div class="detail-title">January ${{w.date.replace('Jan ','')}}, 2025 · Matchup ${{w.period}} · ${{esc(g.type)}}</div><div class="detail-team"><img src="${{g.a.logo}}"><b>${{esc(g.a.name)}} ${{esc(g.a.nick)}}</b><span>${{fmt(g.as)}}</span></div><div class="detail-team"><img src="${{g.b.logo}}"><b>${{esc(g.b.name)}} ${{esc(g.b.nick)}}</b><span>${{fmt(g.bs)}}</span></div><div class="detail-foot"><b>Margin: ${{margin}}</b><span>Game ${{esc(g.id||'SBC')}}</span></div>`;resize(330);modal.classList.add('open')}}
+      function render(){{const w=windows[Number(select.value)];track.innerHTML='';w.games.forEach((g,i)=>{{const btn=document.createElement('button');btn.className='game';btn.innerHTML=`<div class="meta"><b>${{g.as===null?'UPCOMING':'FINAL'}}</b><span>${{w.date}} · ${{i+1}}/${{w.games.length}}</span></div><div class="team"><img src="${{g.a.logo}}"><span>${{esc(g.a.abbr)}}</span><strong>${{fmt(g.as)}}</strong></div><div class="team"><img src="${{g.b.logo}}"><span>${{esc(g.b.abbr)}}</span><strong>${{fmt(g.bs)}}</strong></div>`;btn.onclick=()=>openGame(g,w);track.appendChild(btn)}});track.scrollLeft=0}}
+      const shut=()=>{{modal.classList.remove('open');resize(120)}};select.onchange=render;document.getElementById('prev').onclick=()=>track.scrollBy({{left:-528,behavior:'smooth'}});document.getElementById('next').onclick=()=>track.scrollBy({{left:528,behavior:'smooth'}});document.getElementById('close').onclick=shut;modal.onclick=e=>{{if(e.target===modal)shut()}};render();resize(120);
+    </script>
+    """, height=120, scrolling=False)
+
+    front_table = standings[(standings["Year"] == front_year) & (standings["Period"] == front_period)].copy()
+    if front_table.empty:
+        available_year = int(standings["Year"].max()) if not standings.empty else current_year - 1
+        available_period = int(standings.loc[standings["Year"] == available_year, "Period"].max()) if not standings.empty else 1
+        front_table = standings[(standings["Year"] == available_year) & (standings["Period"] == available_period)].copy()
+    front_table["_wins"] = pd.to_numeric(front_table["Record"].astype(str).str.extract(r"^(\d+)")[0], errors="coerce").fillna(0)
+    front_table = front_table.sort_values(["_wins", "Team"], ascending=[False, True])
+    leader = front_team_v2(front_table.iloc[0]["Team"]) if not front_table.empty else front_team_v2("Vegas")
+    leader_record = escape(str(front_table.iloc[0].get("Record", "—"))) if not front_table.empty else "—"
+
+    conference_html = []
+    for conference in ["West", "East"]:
+        conf = front_table[front_table["Team"].map(lambda t: team_info.get(str(t), {}).get("conf")) == conference].head(15)
+        rows = []
+        for seed, (_, row) in enumerate(conf.iterrows(), 1):
+            team = front_team_v2(row["Team"])
+            marker = '<div class="sbc-cut sbc-cut-playoff"><span>Top 6 · playoff line</span></div>' if seed == 7 else ('<div class="sbc-cut sbc-cut-playin"><span>Top 10 · play-in line</span></div>' if seed == 11 else '')
+            rows.append(marker + f'<div class="sbc-v2-standing"><span>{seed}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["abbr"])}</b><em>{escape(str(row.get("Record", "—")))}</em></div>')
+        conference_html.append(f'<div class="sbc-v2-conf"><h4>{conference} Conference</h4>{"".join(rows)}</div>')
+
+    story_teams = [front_team_v2(t) for t in front_table["Team"].astype(str).head(15).tolist()] if not front_table.empty else [front_team_v2(t) for t in Teams[:15]]
+    headline_texts = [
+        f"{leader['nick']} seize the league's best record as the calendar turns", "Six contenders, four spots: the playoff race has officially arrived", "The deadline decisions every front office has to get right", "Anonymous GM poll: the SBC's toughest matchup", "Five players changing the shape of the title race", "Why the middle of the table refuses to separate", "The bold trade idea that could swing each conference", "Rookie report: which newcomers are earning real minutes?", "Injury returns that could reset the power rankings", "The case for patience—and the teams that cannot afford it", "Inside the numbers behind the league's fastest risers", "Weekend watch guide: the matchups that actually matter"
+    ]
+    headlines_html = "".join(f'<div class="sbc-v2-headline"><span>{i+1:02d}</span><div><b>{escape(text)}</b><em>{["34m", "1h", "2h", "3h", "5h", "Yesterday"][i % 6]} · SBC League Desk</em></div></div>' for i, text in enumerate(headline_texts))
+    transaction_actions = ["acquire veteran scoring in a two-team deal", "sign a free agent to a two-year contract", "exercise a team option", "waive a reserve guard", "match a restricted offer sheet"]
+    transactions_html = "".join(f'<div class="sbc-v2-transaction"><img src="{escape(team["logo"], quote=True)}"><div><b>{escape(team["name"])} {transaction_actions[i % len(transaction_actions)]}</b><span>Transaction processed · Jan {14-i if i < 14 else 1}</span></div></div>' for i, team in enumerate(story_teams))
+
+    render_html(f"""
+    <style>
+      .sbc-front-v2{{color:#17212b}} .sbc-v2-grid{{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(420px,1fr);gap:15px;align-items:start}}
+      .sbc-v2-left,.sbc-v2-right{{display:flex;flex-direction:column;gap:15px}} .sbc-v2-panel{{background:#fff;border:1px solid #dce2e8;border-radius:14px;padding:16px;box-shadow:0 3px 12px rgba(22,34,46,.06)}}
+      .sbc-v2-hero{{min-height:410px;border-radius:16px;overflow:hidden;position:relative;padding:28px;display:flex;align-items:flex-end;background:radial-gradient(circle at 78% 32%,{leader['color']} 0,transparent 36%),linear-gradient(122deg,#07131f 8%,#112f49 58%,#07131f 100%);box-shadow:0 12px 34px rgba(8,24,39,.2)}}
+      .sbc-v2-hero:after{{content:'';position:absolute;width:420px;height:420px;right:-30px;top:0;background:url('{escape(leader['logo'], quote=True)}') center/contain no-repeat;opacity:.55;filter:drop-shadow(0 18px 25px rgba(0,0,0,.35))}}
+      .sbc-v2-copy{{position:relative;z-index:1;color:#fff;max-width:680px;text-shadow:0 2px 12px rgba(0,0,0,.35)}} .sbc-v2-copy span{{display:inline-flex;padding:5px 9px;background:#e32231;border-radius:5px;font-size:.65rem;letter-spacing:.13em;font-weight:950;text-transform:uppercase}}
+      .sbc-v2-copy h1{{font-family:'Bungee','Arial Black',sans-serif;font-size:clamp(2rem,4.4vw,4rem);line-height:.98;letter-spacing:-.035em;margin:13px 0 12px}} .sbc-v2-copy p{{font-size:1rem;line-height:1.45;font-weight:720;max-width:610px;margin:0;color:#eaf0f5}}
+      .sbc-v2-head{{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #17212b;padding-bottom:9px;margin-bottom:5px}} .sbc-v2-head b{{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}} .sbc-v2-head span{{font-size:.65rem;color:#e32231;font-weight:900}}
+      .sbc-v2-headline{{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:14px 0;border-bottom:1px solid #e4e8ec}} .sbc-v2-headline:last-child{{border:0}} .sbc-v2-headline>span{{font-size:.68rem;color:#e32231;font-weight:950;padding-top:2px}} .sbc-v2-headline b{{display:block;font-size:.91rem;line-height:1.28}} .sbc-v2-headline em{{display:block;font-style:normal;color:#7b8690;font-size:.67rem;margin-top:4px}}
+      .sbc-v2-standings{{display:grid;grid-template-columns:1fr 1fr;gap:18px}} .sbc-v2-conf h4{{margin:4px 0 7px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}}
+      .sbc-v2-standing{{display:grid;grid-template-columns:16px 23px 1fr auto;gap:6px;align-items:center;min-height:29px;border-bottom:1px solid #edf0f2;font-size:.69rem}} .sbc-v2-standing img{{width:21px;height:21px;object-fit:contain}} .sbc-v2-standing>span{{color:#8b959f}} .sbc-v2-standing em{{font-style:normal;font-weight:900}}
+      .sbc-cut{{height:19px;display:flex;align-items:center;position:relative}} .sbc-cut:before{{content:'';height:2px;position:absolute;left:0;right:0}} .sbc-cut span{{position:relative;background:#fff;padding-right:6px;font-size:.52rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}} .sbc-cut-playoff:before{{background:#159447}} .sbc-cut-playoff span{{color:#11763a}} .sbc-cut-playin:before{{background:#e49a17}} .sbc-cut-playin span{{color:#a56a00}}
+      .sbc-v2-transaction{{display:grid;grid-template-columns:32px 1fr;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #e4e8ec}} .sbc-v2-transaction:last-child{{border:0}} .sbc-v2-transaction img{{width:29px;height:29px;object-fit:contain}} .sbc-v2-transaction b{{display:block;font-size:.76rem;line-height:1.2}} .sbc-v2-transaction span{{color:#7b8690;font-size:.63rem}}
+      @media(max-width:950px){{.sbc-v2-grid{{grid-template-columns:1fr}}}} @media(max-width:620px){{.sbc-v2-standings{{grid-template-columns:1fr}}.sbc-v2-hero{{min-height:380px;padding:21px}}.sbc-v2-hero:after{{width:280px;height:280px;opacity:.38}}}}
+    </style>
+    <div class="sbc-front-v2"><div class="sbc-v2-grid">
+      <div class="sbc-v2-left"><section class="sbc-v2-hero"><div class="sbc-v2-copy"><span>The Big Story</span><h1>{escape(leader['nick'])} own the moment.</h1><p>{escape(leader['name'])} sits atop the January 14 table at {leader_record}. The contenders are lining up behind them—and every matchup now carries postseason weight.</p></div></section><section class="sbc-v2-panel"><div class="sbc-v2-head"><b>Top Headlines</b><span>Latest</span></div>{headlines_html}</section></div>
+      <div class="sbc-v2-right"><section class="sbc-v2-panel"><div class="sbc-v2-head"><b>Standings</b><span>Jan 14, 2025</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
+    </div></div>
+    """)
+
+if False and main_page == "Overview":
     # The front page intentionally falls back to the latest completed snapshot in the offseason.
     scored_schedule = all_time_schedule.copy()
     if not scored_schedule.empty:
