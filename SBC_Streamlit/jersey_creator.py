@@ -105,7 +105,7 @@ def edition_defaults(team: str, edition: str) -> JerseyConfig:
         wordmark_font=font_label, font_family=font_family,
         logo_team=team, jersey_logo_x=logo_x, jersey_logo_y=logo_y,
         jersey_logo_scale=logo_scale, front_number_x=front_number_x,
-        front_number_y=front_number_y, number="27", trim_width=3.4,
+        front_number_y=front_number_y, number="00" if team == "Pittsburgh" else "27", trim_width=3.4,
         number_outline_width=4.0, front_wordmark_size=wordmark_size,
         front_wordmark_x=wordmark_x, front_wordmark_y=wordmark_y,
         front_number_size=number_size, back_name_size=name_size,
@@ -126,7 +126,13 @@ def default_table() -> pd.DataFrame:
 def read_config_table() -> pd.DataFrame:
     if CONFIG_PATH.exists():
         # "None" is a real design option for stripes, not a missing value.
-        table = pd.read_csv(CONFIG_PATH, keep_default_na=False).fillna("")
+        # Numbers are stored as text so valid leading-zero values such as 00
+        # survive every load/edit/save cycle.
+        table = pd.read_csv(
+            CONFIG_PATH,
+            keep_default_na=False,
+            dtype={"number": str},
+        ).fillna("")
     else:
         table = default_table()
     # Older reads converted the literal "None" stripe choice to a blank. Both

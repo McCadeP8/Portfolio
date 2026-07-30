@@ -3520,7 +3520,14 @@ league_font_css = escape(str(LEAGUE_FONT), quote=True)
 def load_branding_table(path_text, modified_time):
     del modified_time
     path = Path(path_text)
-    return pd.read_csv(path).fillna("") if path.exists() else pd.DataFrame()
+    if not path.exists():
+        return pd.DataFrame()
+    read_options = {"keep_default_na": False}
+    if path.name == "jersey_team_configs.csv":
+        # Jersey numbers are identifiers, not quantities: preserve valid
+        # basketball numbers with leading zeroes (for example, Pittsburgh 00).
+        read_options["dtype"] = {"number": str}
+    return pd.read_csv(path, **read_options).fillna("")
 
 
 def branding_contrast_color(hex_color):
