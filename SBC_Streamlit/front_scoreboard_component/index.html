@@ -161,11 +161,57 @@
 
     @media (max-width: 650px) {
       #sbc-scorebar {
-        grid-template-columns: 30px 108px minmax(0, 1fr) 30px;
+        height: 138px;
+        grid-template-columns: 34px minmax(0, 1fr) 34px;
+        grid-template-rows: 42px minmax(0, 1fr);
+      }
+
+      .pick {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        padding: 8px 12px;
+        border-right: 0;
+        border-bottom: 1px solid #d8dee5;
+      }
+
+      .pick span {
+        flex: 0 0 auto;
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      select {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+        text-align: right;
+      }
+
+      #prev {
+        grid-column: 1;
+        grid-row: 2;
+      }
+
+      .track {
+        grid-column: 2;
+        grid-row: 2;
+        scroll-snap-type: x mandatory;
+      }
+
+      #next {
+        grid-column: 3;
+        grid-row: 2;
       }
 
       .game {
-        flex-basis: 160px;
+        flex: 0 0 100%;
+        min-width: 0;
+        padding: 8px 12px;
+        scroll-snap-align: start;
       }
     }
   </style>
@@ -197,6 +243,10 @@
 
     function setFrameHeight(height) {
       sendMessage("streamlit:setFrameHeight", { height });
+    }
+
+    function syncFrameHeight() {
+      setFrameHeight(window.innerWidth <= 650 ? 146 : 120);
     }
 
     function setComponentValue(value) {
@@ -283,7 +333,7 @@
       });
       select.value = String(selectedIndex);
       renderGames();
-      setFrameHeight(120);
+      syncFrameHeight();
     }
 
     select.addEventListener("change", () => {
@@ -291,11 +341,13 @@
       renderGames();
     });
     document.getElementById("prev").addEventListener("click", () => {
-      track.scrollBy({ left: -528, behavior: "smooth" });
+      track.scrollBy({ left: window.innerWidth <= 650 ? -track.clientWidth : -528, behavior: "smooth" });
     });
     document.getElementById("next").addEventListener("click", () => {
-      track.scrollBy({ left: 528, behavior: "smooth" });
+      track.scrollBy({ left: window.innerWidth <= 650 ? track.clientWidth : 528, behavior: "smooth" });
     });
+
+    window.addEventListener("resize", syncFrameHeight);
 
     window.addEventListener("message", event => {
       if (event.data?.type === "streamlit:render") {
@@ -304,7 +356,7 @@
     });
 
     sendMessage("streamlit:componentReady", { apiVersion: 1 });
-    setFrameHeight(120);
+    syncFrameHeight();
   </script>
 </body>
 </html>

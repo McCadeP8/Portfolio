@@ -12577,6 +12577,194 @@ st.markdown(
         white-space: nowrap;
     }}
 
+    @media (max-width: 640px) {{
+        div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) {{
+            width: calc(100vw - 0.75rem) !important;
+            max-width: calc(100vw - 0.75rem) !important;
+            height: calc(100vh - 56px) !important;
+            height: calc(100dvh - 56px) !important;
+            max-height: calc(100vh - 56px) !important;
+            max-height: calc(100dvh - 56px) !important;
+            border-radius: 12px !important;
+        }}
+
+        div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) > div:has(> div[data-testid="stVerticalBlock"]) {{
+            padding: 0.45rem 0.5rem 0 !important;
+            scrollbar-gutter: auto;
+        }}
+
+        div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) > div:has(> div[data-testid="stVerticalBlock"]) > div[data-testid="stVerticalBlock"] {{
+            gap: 0.55rem !important;
+        }}
+
+        div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) [data-baseweb="tab-list"] {{
+            overflow-x: auto;
+            overscroll-behavior-x: contain;
+            scrollbar-width: none;
+        }}
+
+        div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) [data-baseweb="tab-list"]::-webkit-scrollbar {{
+            display: none;
+        }}
+
+        div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) [role="tab"] {{
+            flex: 0 0 auto;
+            min-height: 2.5rem;
+            padding-inline: 0.72rem;
+            white-space: nowrap;
+        }}
+
+        .sbc-box-dialog-kicker {{
+            font-size: 0.62rem;
+            padding: 0.45rem 0.65rem;
+        }}
+
+        .sbc-box-dialog-title {{
+            font-size: 1rem;
+            padding: 0.7rem 0.7rem 0;
+        }}
+
+        .sbc-box-dialog-matchup {{
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.5rem;
+            padding: 0.65rem 0.7rem 0.75rem;
+        }}
+
+        .sbc-box-dialog-team,
+        .sbc-box-dialog-team-home {{
+            grid-template-columns: 2.8rem minmax(0, 1fr) auto;
+            gap: 0.55rem;
+            min-width: 0;
+            padding: 0.6rem 0.65rem;
+            text-align: left;
+        }}
+
+        .sbc-box-dialog-team-home img {{
+            grid-column: 1;
+            grid-row: 1;
+        }}
+
+        .sbc-box-dialog-team-home div {{
+            grid-column: 2;
+            grid-row: 1;
+        }}
+
+        .sbc-box-dialog-team-home b {{
+            grid-column: 3;
+            grid-row: 1;
+        }}
+
+        .sbc-box-dialog-team img {{
+            width: 2.7rem;
+            height: 2.7rem;
+        }}
+
+        .sbc-box-dialog-team strong {{
+            font-size: 0.95rem;
+        }}
+
+        .sbc-box-dialog-team em {{
+            margin-top: 0.22rem;
+            font-size: 0.66rem;
+        }}
+
+        .sbc-box-dialog-team b {{
+            font-size: 1.85rem;
+        }}
+
+        .sbc-box-dialog-score {{
+            padding: 0.45rem 0.7rem;
+        }}
+
+        .sbc-box-panel {{
+            margin-top: 0.55rem;
+        }}
+
+        .sbc-box-category-table th:nth-child(1),
+        .sbc-box-category-table td:nth-child(1),
+        .sbc-box-category-table th:nth-child(3),
+        .sbc-box-category-table td:nth-child(3) {{
+            width: 38%;
+        }}
+
+        .sbc-box-category-table th:nth-child(2),
+        .sbc-box-category-table td:nth-child(2) {{
+            width: 24%;
+        }}
+
+        .sbc-box-category-team-name {{
+            overflow: visible;
+            font-size: 0.78rem;
+            line-height: 1.05;
+            text-overflow: clip;
+            white-space: normal;
+        }}
+
+        .sbc-box-category-table th,
+        .sbc-box-category-table td {{
+            padding-left: 0.22rem;
+            padding-right: 0.22rem;
+        }}
+
+        .sbc-box-category-name strong {{
+            font-size: 0.72rem;
+        }}
+
+        .sbc-box-stat-cell strong {{
+            font-size: 0.78rem;
+        }}
+
+        .sbc-box-table-scroll {{
+            overflow-x: auto;
+            overscroll-behavior-x: contain;
+            -webkit-overflow-scrolling: touch;
+        }}
+
+        .sbc-box-team-head {{
+            min-height: 3.6rem;
+            padding: 0.58rem 0.65rem;
+        }}
+
+        .sbc-box-team-head::after {{
+            content: "Swipe stats →";
+            flex: 0 0 auto;
+            margin-left: auto;
+            color: rgba(255,255,255,0.76);
+            font-size: 0.58rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }}
+
+        .sbc-box-team-head img {{
+            width: 2.35rem;
+            height: 2.35rem;
+        }}
+
+        .sbc-box-team-head span {{
+            font-size: 0.92rem;
+        }}
+
+        .sbc-box-player-table {{
+            min-width: 47rem;
+        }}
+
+        .sbc-box-player-cell {{
+            grid-template-columns: 1.9rem minmax(6.2rem, 1fr);
+            gap: 0.38rem;
+            min-width: 8.8rem;
+        }}
+
+        .sbc-box-player-cell img {{
+            width: 1.85rem;
+            height: 1.85rem;
+        }}
+
+        .sbc-box-player-cell strong {{
+            font-size: 0.7rem;
+        }}
+    }}
+
     .sbc-pbp-panel {{
         border-color: rgba(23, 32, 42, 0.10);
     }}
@@ -16272,6 +16460,77 @@ st.markdown(
     }}
 
     @media (max-width: 560px) {{
+        .sbc-league-masthead {{
+            gap: 0.65rem;
+            padding: 0.65rem 0.72rem;
+        }}
+
+        .sbc-league-masthead img {{
+            width: 3.3rem;
+            height: 3.3rem;
+        }}
+
+        .sbc-league-masthead .sbc-app-eyebrow {{
+            margin-bottom: 0.25rem;
+            font-size: 0.58rem;
+            letter-spacing: 0.08em;
+            line-height: 1.15;
+        }}
+
+        .sbc-league-masthead .sbc-app-title {{
+            font-size: clamp(1.5rem, 7.2vw, 1.85rem);
+            line-height: 0.98;
+        }}
+
+        div[data-testid="stRadio"]:has([role="radiogroup"][aria-label="SBC Office"]) {{
+            width: 100%;
+            overflow-x: auto;
+            overscroll-behavior-x: contain;
+            scrollbar-width: none;
+        }}
+
+        div[data-testid="stRadio"]:has([role="radiogroup"][aria-label="SBC Office"])::-webkit-scrollbar {{
+            display: none;
+        }}
+
+        div[data-testid="stRadio"] [role="radiogroup"][aria-label="SBC Office"] {{
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 0.35rem;
+            width: max-content;
+            min-width: 100%;
+        }}
+
+        div[data-testid="stRadio"] [role="radiogroup"][aria-label="SBC Office"] > label {{
+            flex: 0 0 auto;
+            width: auto !important;
+            min-width: max-content;
+            min-height: 2.5rem;
+            border: 1px solid rgba(23,32,42,0.16);
+            border-radius: 999px;
+            background: #ffffff;
+            padding: 0.45rem 0.7rem;
+            white-space: nowrap;
+        }}
+
+        div[data-testid="stRadio"] [role="radiogroup"][aria-label="SBC Office"] > label:has(input:checked) {{
+            background: {LEAGUE_PRIMARY};
+        }}
+
+        div[data-testid="stRadio"] [role="radiogroup"][aria-label="SBC Office"] > label:has(input:checked) p {{
+            color: #ffffff !important;
+        }}
+
+        div[data-testid="stRadio"] [role="radiogroup"][aria-label="SBC Office"] > label > div:first-child,
+        div[data-testid="stRadio"] [role="radiogroup"][aria-label="SBC Office"] input {{
+            display: none;
+        }}
+
+        div[data-testid="stRadio"] [role="radiogroup"][aria-label="SBC Office"] > label > div:last-child,
+        div[data-testid="stRadio"] [role="radiogroup"][aria-label="SBC Office"] > label p {{
+            white-space: nowrap;
+        }}
+
         .sbc-draft-grid {{
             grid-template-columns: 1fr;
         }}
@@ -17784,9 +18043,10 @@ if main_page == "Overview":
 
     render_html("""
     <style>
-      div[data-testid="stDialog"] div[role="dialog"] { width:min(1500px,calc(100vw - 32px)); max-width:none; }
-      div[data-testid="stDialog"] div[role="dialog"] > div { max-height:calc(100vh - 36px); }
+      div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body){display:flex!important;flex-direction:column!important;width:min(1100px,calc(100vw - 32px))!important;max-width:min(1100px,calc(100vw - 32px))!important;max-height:calc(100vh - 32px)!important;max-height:calc(100dvh - 32px)!important;overflow:hidden!important}
+      div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body)>div:has(>div[data-testid="stVerticalBlock"]){flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable;background:#fff!important}
       .sbc-article-body{max-width:900px;margin:0 auto;padding:.5rem 1.2rem 2rem}.sbc-article-body .dek{font-size:1.18rem;line-height:1.55;color:#526170;border-bottom:1px solid #dfe5ea;padding-bottom:1.2rem}.sbc-article-body p{font-size:1rem;line-height:1.75;color:#263442}.sbc-article-body .byline{font-size:.75rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#d92332;margin:1rem 0}
+      @media(max-width:640px){div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body){width:calc(100vw - .75rem)!important;max-width:calc(100vw - .75rem)!important;height:calc(100vh - 56px)!important;height:calc(100dvh - 56px)!important;max-height:calc(100vh - 56px)!important;max-height:calc(100dvh - 56px)!important;border-radius:12px!important}div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body)>div:has(>div[data-testid="stVerticalBlock"]){padding:.4rem .55rem 0!important;scrollbar-gutter:auto}.sbc-article-body{padding:.2rem .15rem 1.8rem}.sbc-article-body h1{font-size:1.9rem!important;line-height:1.08!important}.sbc-article-body .byline{font-size:.66rem;line-height:1.35;margin:.7rem 0}.sbc-article-body .dek{font-size:1.05rem;line-height:1.55;padding-bottom:1rem}.sbc-article-body p{font-size:.96rem;line-height:1.7}}
     </style>
     """)
 
@@ -17836,11 +18096,30 @@ if main_page == "Overview":
       .sbc-v2-standing{{display:grid;grid-template-columns:16px 23px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:29px;border-bottom:1px solid #edf0f2;font-size:.64rem}} .sbc-v2-standing img{{width:21px;height:21px;object-fit:contain}} .sbc-v2-standing>span{{color:#8b959f}} .sbc-v2-standing b{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}} .sbc-v2-standing em{{font-style:normal;font-weight:900}}
       .sbc-cut{{height:19px;display:flex;align-items:center;position:relative}} .sbc-cut:before{{content:'';height:2px;position:absolute;left:0;right:0}} .sbc-cut span{{position:relative;background:#fff;padding-right:6px;font-size:.52rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}} .sbc-cut-playoff:before{{background:#159447}} .sbc-cut-playoff span{{color:#11763a}} .sbc-cut-playin:before{{background:#e49a17}} .sbc-cut-playin span{{color:#a56a00}}
       .sbc-v2-transaction{{display:grid;grid-template-columns:32px 1fr;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #e4e8ec}} .sbc-v2-transaction:last-child{{border:0}} .sbc-v2-transaction img{{width:29px;height:29px;object-fit:contain}} .sbc-v2-transaction b{{display:block;font-size:.76rem;line-height:1.2}} .sbc-v2-transaction span{{color:#7b8690;font-size:.63rem}}
-      @media(max-width:950px){{.sbc-v2-grid{{grid-template-columns:1fr}}}} @media(max-width:620px){{.sbc-v2-standings{{grid-template-columns:1fr}}.sbc-v2-hero{{min-height:380px;padding:21px}}.sbc-v2-hero:after{{width:280px;height:280px;opacity:.38}}}}
+      @media(max-width:950px){{.sbc-v2-grid{{grid-template-columns:1fr}}}}
+      @media(max-width:620px){{
+        .sbc-v2-grid,.sbc-v2-left,.sbc-v2-right{{gap:12px}}
+        .sbc-v2-panel{{padding:13px;border-radius:12px}}
+        .sbc-v2-hero{{min-height:420px;padding:20px;align-items:flex-end;background:linear-gradient(180deg,rgba(4,17,29,.48) 0%,rgba(4,17,29,.56) 43%,rgba(4,17,29,.98) 100%),url('{escape(leader['wordmark'], quote=True)}') center/cover no-repeat}}
+        .sbc-v2-hero-art{{width:220px;height:220px;top:58px;right:auto;left:50%;transform:translateX(-50%);opacity:.62}}
+        .sbc-v2-story-tag{{top:18px;left:20px}}
+        .sbc-v2-copy{{max-width:none}}
+        .sbc-v2-copy h1{{font-size:clamp(1.85rem,9vw,2.35rem);line-height:1.02;margin:11px 0 10px}}
+        .sbc-v2-copy p{{font-size:.9rem;line-height:1.42}}
+        .sbc-v2-headline{{min-height:3.6rem;padding:12px 0}}
+        .sbc-v2-headline b{{font-size:.88rem;line-height:1.32}}
+        .sbc-v2-right .sbc-v2-transactions{{order:1}}
+        .sbc-v2-right .sbc-v2-standings-panel{{order:2}}
+        .sbc-v2-standings{{grid-template-columns:1fr;gap:12px}}
+        .sbc-v2-standing{{min-height:32px;font-size:.7rem}}
+        .sbc-v2-transaction{{grid-template-columns:36px 1fr;min-height:3.5rem}}
+        .sbc-v2-transaction img{{width:32px;height:32px}}
+        .sbc-v2-transaction b{{font-size:.8rem;line-height:1.25}}
+      }}
     </style>
     <div class="sbc-front-v2"><div class="sbc-v2-grid">
       <div class="sbc-v2-left"><a class="sbc-v2-hero" href="?sbc_article=big" target="_self"><span class="sbc-v2-story-tag">The Big Story</span><img class="sbc-v2-hero-art" src="{escape(leader['logo'], quote=True)}" alt="{escape(leader['name'], quote=True)} logo"><div class="sbc-v2-copy"><h1>{escape(leader['nick'])} own the moment.</h1><p>{escape(leader['name'])} sits atop the January 14 table at {leader_record}. The contenders are lining up behind them—and every matchup now carries postseason weight.</p></div></a><section class="sbc-v2-panel sbc-v2-news"><div class="sbc-v2-head"><b>Top Headlines</b><span>Latest</span></div>{headlines_html}</section></div>
-      <div class="sbc-v2-right"><section class="sbc-v2-panel"><div class="sbc-v2-head"><b>Standings</b><span>Jan 14, 2025</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
+      <div class="sbc-v2-right"><section class="sbc-v2-panel sbc-v2-standings-panel"><div class="sbc-v2-head"><b>Standings</b><span>Jan 14, 2025</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
     </div></div>
     """)
 
