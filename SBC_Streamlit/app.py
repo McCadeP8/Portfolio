@@ -3427,6 +3427,7 @@ def current_period_index(options):
 
 
 MAIN_NAV_LABELS = {
+    "Overview": "🏠 Overview",
     "Team Hub": "🏠 Team Hub",
     "League Hub": "🏟️ League Hub",
     "Trade Machine": "🔁 Trade Machine",
@@ -3476,7 +3477,8 @@ def nav_label(labels):
     return lambda value: labels.get(value, value)
 
 
-requested_main_page = st.session_state.get("sbc_main_page", "Team Hub")
+requested_main_page = st.session_state.get("sbc_main_page", "Overview")
+need_landing = requested_main_page == "Overview"
 requested_team_page = st.session_state.get("sbc_team_page", "Cap")
 requested_league_page = st.session_state.get("sbc_league_page", "Overview")
 requested_history_page = st.session_state.get("sbc_history_page", "Overview")
@@ -3496,18 +3498,18 @@ need_history_awards = (need_history and requested_history_page in ["Awards", "Ov
 need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
 
-need_df = need_team_data or need_team_history or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
+need_df = need_landing or need_team_data or need_team_history or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
 need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft or (need_history and requested_history_page == "Player Stats")
-need_exceptions = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
-need_base_cap = need_team_data or need_trade_data or need_checks_data or need_league_overview
+need_exceptions = need_landing or need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
+need_base_cap = need_landing or need_team_data or need_trade_data or need_checks_data or need_league_overview
 need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks") or need_trade_data or need_checks_data or need_league_picks
 need_ft = need_checks_data
-need_standings = need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft or need_team_history
+need_standings = need_landing or need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft or need_team_history
 need_dh = need_history_draft
 need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "History"]) or need_history_stats or need_history_awards
 need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_all_time_rosters = need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
-need_all_time_schedule = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding")
+need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding")
 need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_history_awards
 
@@ -16321,7 +16323,7 @@ if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
 main_page = st.radio(
     "SBC Office",
-    ["Team Hub", "League Hub", "Trade Machine", "Free Agency", "About", "Data Checks"],
+    ["Overview", "Team Hub", "League Hub", "Trade Machine", "Free Agency", "About", "Data Checks"],
     index=0,
     format_func=nav_label(MAIN_NAV_LABELS),
     key="sbc_main_page",
@@ -17709,63 +17711,184 @@ if main_page == "League Hub" and selected_league_page == "Draft Picks":
     st.dataframe(all_locked_team_picks, width = "stretch", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
     '''
+if main_page == "Overview":
+    # The front page intentionally falls back to the latest completed snapshot in the offseason.
+    scored_schedule = all_time_schedule.copy()
+    if not scored_schedule.empty:
+        scored_schedule["_a"] = pd.to_numeric(scored_schedule["TeamAScore"], errors="coerce")
+        scored_schedule["_b"] = pd.to_numeric(scored_schedule["TeamBScore"], errors="coerce")
+        scored_schedule = scored_schedule[scored_schedule["_a"].notna() | scored_schedule["_b"].notna()]
+    score_year = int(scored_schedule["Year"].max()) if not scored_schedule.empty else current_year - 1
+    score_period = int(scored_schedule.loc[scored_schedule["Year"] == score_year, "Period"].max()) if not scored_schedule.empty else 1
+    recent_games = scored_schedule[(scored_schedule["Year"] == score_year) & (scored_schedule["Period"] == score_period)].head(5)
+
+    standings_year = int(standings["Year"].max()) if not standings.empty else score_year
+    standings_period = int(standings.loc[standings["Year"] == standings_year, "Period"].max()) if not standings.empty else score_period
+    table = standings[(standings["Year"] == standings_year) & (standings["Period"] == standings_period)].copy()
+    if "Record" in table.columns:
+        table["_wins"] = pd.to_numeric(table["Record"].astype(str).str.extract(r"^(\d+)")[0], errors="coerce").fillna(0)
+        table = table.sort_values(["_wins", "Team"], ascending=[False, True])
+
+    def front_team(team):
+        team = str(team)
+        info = team_info.get(team, {})
+        return {
+            "name": team,
+            "nick": str(info.get("nickname", team)),
+            "abbr": TEAM_ABBREVIATIONS.get(team, team[:3].upper()),
+            "logo": escape(str(info.get("logo", LEAGUE_LOGO)), quote=True),
+            "color": str(info.get("bg", LEAGUE_PRIMARY)),
+        }
+
+    score_cards = []
+    for _, game in recent_games.iterrows():
+        a, b = front_team(game.get("TeamA", "TBD")), front_team(game.get("TeamB", "TBD"))
+        a_score = "—" if pd.isna(game.get("_a")) else f'{float(game.get("_a")):,.1f}'
+        b_score = "—" if pd.isna(game.get("_b")) else f'{float(game.get("_b")):,.1f}'
+        score_cards.append(f'''<div class="sbc-front-score"><div class="sbc-front-score-meta"><span>FINAL</span><em>WK {score_period}</em></div><div><img src="{a['logo']}"><b>{a['abbr']}</b><strong>{a_score}</strong></div><div><img src="{b['logo']}"><b>{b['abbr']}</b><strong>{b_score}</strong></div></div>''')
+    if not score_cards:
+        score_cards.append('<div class="sbc-front-score sbc-front-score-empty"><b>THE NEXT CHAPTER</b><span>Schedule loading soon</span></div>')
+
+    leader = front_team(table.iloc[0]["Team"]) if not table.empty else front_team("Vegas")
+    leader_record = escape(str(table.iloc[0].get("Record", "—"))) if not table.empty else "—"
+    conference_rows = []
+    for conference in ["West", "East"]:
+        conf = table[table["Team"].map(lambda t: team_info.get(str(t), {}).get("conf")) == conference].head(5)
+        rows = "".join(f'''<div class="sbc-front-standing-row"><span>{i}</span><img src="{front_team(row['Team'])['logo']}"><b>{front_team(row['Team'])['abbr']}</b><em>{escape(str(row.get('Record', '—')))}</em></div>''' for i, (_, row) in enumerate(conf.iterrows(), 1))
+        conference_rows.append(f'<div class="sbc-front-conf"><h4>{conference}</h4>{rows or "<p>Standings return opening week.</p>"}</div>')
+
+    other_teams = [front_team(name) for name in table["Team"].astype(str).tolist()[1:5]] if not table.empty else [front_team(n) for n in ["Seattle", "Baltimore", "Honolulu", "Cincinnati"]]
+    while len(other_teams) < 4:
+        other_teams.append(front_team(Teams[len(other_teams)]))
+    west_table = table[table["Team"].map(lambda t: team_info.get(str(t), {}).get("conf")) == "West"]
+    east_table = table[table["Team"].map(lambda t: team_info.get(str(t), {}).get("conf")) == "East"]
+    west_leader = front_team(west_table.iloc[0]["Team"]) if not west_table.empty else other_teams[0]
+    east_leader = front_team(east_table.iloc[0]["Team"]) if not east_table.empty else other_teams[1]
+    render_html(f"""
+        <style>
+        .sbc-front {{ margin-top:.2rem; color:#17212b; }}
+        .sbc-front-scores {{ display:grid; grid-template-columns:repeat({min(5, max(1, len(score_cards)))},minmax(150px,1fr)); gap:8px; margin:0 0 12px; overflow-x:auto; padding-bottom:3px; }}
+        .sbc-front-score {{ min-width:150px; background:#fff; border:1px solid #dbe1e7; border-radius:10px; padding:9px 11px; box-shadow:0 2px 8px rgba(24,33,43,.05); }}
+        .sbc-front-score-meta {{ display:flex; justify-content:space-between; font-size:.6rem; letter-spacing:.09em; margin-bottom:5px; color:#687482; }}
+        .sbc-front-score-meta span {{ color:#c91f2c; font-weight:950; }} .sbc-front-score-meta em {{ font-style:normal; font-weight:800; }}
+        .sbc-front-score>div:not(.sbc-front-score-meta) {{ display:grid; grid-template-columns:20px 1fr auto; align-items:center; gap:6px; min-height:25px; }}
+        .sbc-front-score img {{ width:19px; height:19px; object-fit:contain; }} .sbc-front-score b {{ font-size:.72rem; }} .sbc-front-score strong {{ font-size:.86rem; font-variant-numeric:tabular-nums; }}
+        .sbc-front-score-empty {{ display:flex; flex-direction:column; justify-content:center; }} .sbc-front-score-empty span {{ font-size:.72rem; color:#75808a; }}
+        .sbc-front-grid {{ display:grid; grid-template-columns:minmax(0,1fr) 292px; gap:15px; }}
+        .sbc-front-main {{ min-width:0; }} .sbc-front-rail {{ display:flex; flex-direction:column; gap:13px; }}
+        .sbc-front-hero {{ min-height:430px; border-radius:16px; overflow:hidden; position:relative; padding:28px; display:flex; align-items:flex-end; background:radial-gradient(circle at 78% 32%, {leader['color']} 0, transparent 36%),linear-gradient(122deg,#07131f 8%,#112f49 58%,#07131f 100%); box-shadow:0 12px 34px rgba(8,24,39,.2); }}
+        .sbc-front-hero:after {{ content:''; position:absolute; width:430px; height:430px; right:-35px; top:5px; background:url('{leader['logo']}') center/contain no-repeat; opacity:.56; filter:drop-shadow(0 18px 25px rgba(0,0,0,.35)); }}
+        .sbc-front-hero-copy {{ position:relative; z-index:1; max-width:680px; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.35); }}
+        .sbc-front-kicker {{ display:inline-flex; padding:5px 9px; background:#e32231; border-radius:5px; font-size:.65rem; letter-spacing:.13em; font-weight:950; text-transform:uppercase; }}
+        .sbc-front-hero h1 {{ font-family:'Bungee','Arial Black',sans-serif; font-size:clamp(2rem,4.5vw,4.15rem); line-height:.98; letter-spacing:-.035em; margin:13px 0 12px; max-width:730px; }}
+        .sbc-front-hero p {{ max-width:610px; font-weight:720; font-size:1rem; line-height:1.45; margin:0; color:#eaf0f5; }}
+        .sbc-front-deck {{ display:grid; grid-template-columns:1.12fr .88fr; gap:13px; margin-top:13px; }}
+        .sbc-front-panel {{ background:#fff; border:1px solid #dce2e8; border-radius:13px; padding:15px; box-shadow:0 3px 12px rgba(22,34,46,.06); }}
+        .sbc-front-panel-head {{ display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #17212b; padding-bottom:9px; margin-bottom:8px; }}
+        .sbc-front-panel-head b {{ font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; }} .sbc-front-panel-head span {{ color:#e32231; font-size:.65rem; font-weight:900; }}
+        .sbc-front-headline {{ padding:10px 0; border-bottom:1px solid #e4e8ec; }} .sbc-front-headline:last-child {{ border:0; padding-bottom:1px; }}
+        .sbc-front-headline b {{ display:block; font-size:.86rem; line-height:1.25; }} .sbc-front-headline span {{ display:block; color:#78838e; font-size:.66rem; margin-top:3px; }}
+        .sbc-front-transaction {{ display:grid; grid-template-columns:31px 1fr; gap:9px; align-items:center; padding:9px 0; border-bottom:1px solid #e4e8ec; }} .sbc-front-transaction:last-child {{ border:0; }}
+        .sbc-front-transaction img {{ width:29px; height:29px; object-fit:contain; }} .sbc-front-transaction b {{ display:block; font-size:.77rem; }} .sbc-front-transaction span {{ color:#77828c; font-size:.65rem; }}
+        .sbc-front-standings {{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }} .sbc-front-conf h4 {{ font-size:.69rem; text-transform:uppercase; letter-spacing:.12em; margin:3px 0 7px; }}
+        .sbc-front-standing-row {{ display:grid; grid-template-columns:15px 24px 1fr auto; gap:5px; align-items:center; padding:5px 0; font-size:.7rem; border-bottom:1px solid #edf0f2; }} .sbc-front-standing-row img {{ width:21px; height:21px; object-fit:contain; }} .sbc-front-standing-row span {{ color:#919aa3; }} .sbc-front-standing-row em {{ font-style:normal; font-weight:900; }}
+        .sbc-front-leaders {{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:13px; }}
+        .sbc-front-leader-card {{ border-radius:12px; padding:14px; min-height:122px; color:#fff; position:relative; overflow:hidden; background:#102b43; }} .sbc-front-leader-card img {{ position:absolute; width:88px; height:88px; object-fit:contain; right:-10px; bottom:-10px; opacity:.42; }}
+        .sbc-front-leader-card span {{ font-size:.61rem; letter-spacing:.1em; text-transform:uppercase; font-weight:900; color:#a9c2d6; }} .sbc-front-leader-card strong {{ display:block; font-size:1.5rem; line-height:1; margin:13px 0 5px; }} .sbc-front-leader-card b {{ display:block; max-width:75%; font-size:.72rem; }}
+        .sbc-front-office-note {{ color:#6f7b86; font-size:.76rem; margin:.2rem 0 .8rem; }}
+        @media(max-width:900px) {{ .sbc-front-grid {{ grid-template-columns:1fr; }} .sbc-front-rail {{ display:grid; grid-template-columns:1fr 1fr; }} .sbc-front-scores {{ grid-template-columns:repeat({min(5, max(1, len(score_cards)))},175px); }} }}
+        @media(max-width:620px) {{ .sbc-front-hero {{ min-height:385px; padding:21px; }} .sbc-front-hero:after {{ width:280px;height:280px;right:-30px;top:10px;opacity:.38; }} .sbc-front-deck,.sbc-front-rail,.sbc-front-leaders {{ grid-template-columns:1fr; }} }}
+        </style>
+        <div class="sbc-front">
+            <div class="sbc-front-scores">{''.join(score_cards)}</div>
+            <div class="sbc-front-grid">
+                <main class="sbc-front-main">
+                    <section class="sbc-front-hero"><div class="sbc-front-hero-copy"><span class="sbc-front-kicker">The Big Story</span><h1>{leader['nick']} set the pace.</h1><p>{leader['name']} closed the latest saved league table at {leader_record}. Now the question is whether the rest of the SBC can close the gap when the new season tips.</p></div></section>
+                    <div class="sbc-front-deck">
+                        <section class="sbc-front-panel"><div class="sbc-front-panel-head"><b>Headlines</b><span>League Desk</span></div><div class="sbc-front-headline"><b>The five pressure points that will shape the {current_year-1}-{str(current_year)[-2:]} race</b><span>8 min read · SBC Insiders</span></div><div class="sbc-front-headline"><b>Front offices split on whether patience still pays</b><span>League survey · 2 hours ago</span></div><div class="sbc-front-headline"><b>Early power board: continuity wins the offseason</b><span>Analysis · Yesterday</span></div></section>
+                        <section class="sbc-front-panel"><div class="sbc-front-panel-head"><b>Standings</b><span>Through Wk {standings_period}</span></div><div class="sbc-front-standings">{''.join(conference_rows)}</div></section>
+                    </div>
+                    <div class="sbc-front-leaders">
+                        <div class="sbc-front-leader-card"><span>Best Record</span><strong>{leader_record}</strong><b>{leader['name']} {leader['nick']}</b><img src="{leader['logo']}"></div>
+                        <div class="sbc-front-leader-card"><span>West No. 1</span><strong>{west_leader['abbr']}</strong><b>{west_leader['name']} leads the conference</b><img src="{west_leader['logo']}"></div>
+                        <div class="sbc-front-leader-card"><span>East No. 1</span><strong>{east_leader['abbr']}</strong><b>{east_leader['name']} leads the conference</b><img src="{east_leader['logo']}"></div>
+                    </div>
+                </main>
+                <aside class="sbc-front-rail">
+                    <section class="sbc-front-panel"><div class="sbc-front-panel-head"><b>Top Headlines</b><span>Latest</span></div><div class="sbc-front-headline"><b>{other_teams[0]['nick']} emerge as the summer's most fascinating swing team</b><span>Roster watch · 34m</span></div><div class="sbc-front-headline"><b>Three contenders with one move left to make</b><span>League Desk · 1h</span></div><div class="sbc-front-headline"><b>Why the middle of the table is about to get crowded</b><span>Forecast · 3h</span></div><div class="sbc-front-headline"><b>Anonymous GM poll: the toughest matchup in SBC</b><span>Survey · 5h</span></div></section>
+                    <section class="sbc-front-panel"><div class="sbc-front-panel-head"><b>Transactions</b><span>Offseason Wire</span></div><div class="sbc-front-transaction"><img src="{other_teams[0]['logo']}"><div><b>{other_teams[0]['name']} finalize roster rights decisions</b><span>Team option exercised · Jun 29</span></div></div><div class="sbc-front-transaction"><img src="{other_teams[1]['logo']}"><div><b>{other_teams[1]['name']} add backcourt depth</b><span>Free agent agreement · Jun 28</span></div></div><div class="sbc-front-transaction"><img src="{other_teams[2]['logo']}"><div><b>{other_teams[2]['name']} retain restricted free agent</b><span>Offer matched · Jun 27</span></div></div><div class="sbc-front-transaction"><img src="{other_teams[3]['logo']}"><div><b>{other_teams[3]['name']} complete two-team swap</b><span>Trade processed · Jun 25</span></div></div></section>
+                </aside>
+            </div>
+        </div>
+        """)
+
+    def front_navigate(destination, league_page=None):
+        st.session_state["sbc_main_page"] = destination
+        if league_page:
+            st.session_state["sbc_league_page"] = league_page
+
+    quick1, quick2, quick3, _ = st.columns([1, 1, 1, 2.2])
+    quick1.button("Full scoreboard →", key="front_to_scoreboard", use_container_width=True, on_click=front_navigate, args=("League Hub", "Scoreboard"))
+    quick2.button("Full standings →", key="front_to_standings", use_container_width=True, on_click=front_navigate, args=("League Hub", "Standings"))
+    quick3.button("Player hub →", key="front_to_players", use_container_width=True, on_click=front_navigate, args=("League Hub", "Players"))
+
+    overview_df = overall_cap_table(df, exceptions, base_cap)
+    with st.expander("League office · cap, ledger & payouts"):
+        render_html('<div class="sbc-front-office-note">The original league finance overview now lives here—still one click away without competing with the daily league story.</div>')
+        threshold_cols = st.columns(4)
+        for column, label, value in zip(threshold_cols, ["Salary Cap", "Luxury Tax", "Apron #1", "Apron #2"], [current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2]):
+            with column:
+                st.metric(label, format_money(value), border=True)
+        render_html('<div class="sbc-section-label">Organization Ledger</div>')
+        render_overview_table(overview_df)
+        render_html('<div class="sbc-section-label">League Payouts</div>')
+        render_payout_cards([
+            ("Champion", unit_payout(df, exceptions, base_cap) * 12, "SBCFBL champion base-pool payout."),
+            ("Runner-Up", unit_payout(df, exceptions, base_cap) * 4, "Finals runner-up base-pool payout."),
+            ("Conference Finalist", unit_payout(df, exceptions, base_cap) * 2, "Paid to each conference runner-up."),
+            ("Conference Semifinalist", unit_payout(df, exceptions, base_cap), "Paid to each semifinal loser."),
+            ("Charity Champion", tax_payout_champ(df, exceptions, base_cap), "Champion-directed charity payout."),
+            ("Tax Payback", tax_payout_split(df, exceptions, base_cap), "Split among non-tax organizations."),
+        ])
+
+    render_html('<div class="sbc-section-label">Explore SBC</div>')
+    destinations = [
+        ("🏀 Team Hub", "Team Hub"),
+        ("🏟️ League Hub", "League Hub"),
+        ("🔁 Trade Machine", "Trade Machine"),
+        ("📝 Free Agency", "Free Agency"),
+        ("ℹ️ About", "About"),
+        ("🧪 Data Checks", "Data Checks"),
+    ]
+    destination_cols = st.columns(3)
+    for index, (label, destination) in enumerate(destinations):
+        with destination_cols[index % 3]:
+            st.button(label, key=f"front_destination_{index}", use_container_width=True, on_click=front_navigate, args=(destination,))
+
 if main_page == "League Hub" and selected_league_page == "Overview":
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
                 <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
-                <div>
-                    <div class="sbc-draft-eyebrow">{current_year-1}-{str(current_year)[-2:]} League Office</div>
-                    <div class="sbc-draft-heading">League Overview</div>
-                    <div class="sbc-draft-subcopy">Cap thresholds, organization balances, payout structure, and league-wide financial positioning.</div>
-                </div>
+                <div><div class="sbc-draft-eyebrow">{current_year-1}-{str(current_year)[-2:]} League Office</div><div class="sbc-draft-heading">League Overview</div><div class="sbc-draft-subcopy">Cap thresholds, organization balances, payout structure, and league-wide financial positioning.</div></div>
             </div>
         </div>
-        """)
-
+    """)
     overview_df = overall_cap_table(df, exceptions, base_cap)
-    tax_team_count = (overview_df["Luxury Fee"] > 0).sum() if "Luxury Fee" in overview_df.columns else 0
-    apron_1_team_count = (overview_df["Apron 1 Space"] < 0).sum() if "Apron 1 Space" in overview_df.columns else 0
-    apron_2_team_count = (overview_df["Apron 2 Space"] < 0).sum() if "Apron 2 Space" in overview_df.columns else 0
-
-    render_html(f"""
-        <div class="sbc-draft-grid">
-            <div class="sbc-draft-tile">
-                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">$</div><div class="sbc-draft-tile-value">{format_money(current_salary_cap)}</div></div>
-                <div class="sbc-draft-tile-label">Salary Cap</div>
-                <div class="sbc-draft-tile-note">Primary roster-building threshold for the current league year.</div>
-            </div>
-            <div class="sbc-draft-tile">
-                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">Tax</div><div class="sbc-draft-tile-value">{format_money(current_luxury_tax)}</div></div>
-                <div class="sbc-draft-tile-label">Luxury Tax</div>
-                <div class="sbc-draft-tile-note">{tax_team_count} organizations currently project a luxury fee.</div>
-            </div>
-            <div class="sbc-draft-tile">
-                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">A1</div><div class="sbc-draft-tile-value">{format_money(current_apron_1)}</div></div>
-                <div class="sbc-draft-tile-label">Apron #1</div>
-                <div class="sbc-draft-tile-note">{apron_1_team_count} organizations currently sit above the first apron.</div>
-            </div>
-            <div class="sbc-draft-tile">
-                <div class="sbc-draft-tile-top"><div class="sbc-draft-tile-icon">A2</div><div class="sbc-draft-tile-value">{format_money(current_apron_2)}</div></div>
-                <div class="sbc-draft-tile-label">Apron #2</div>
-                <div class="sbc-draft-tile-note">{apron_2_team_count} organizations currently sit above the second apron.</div>
-            </div>
-        </div>
-        """)
-
+    threshold_cols = st.columns(4)
+    for column, label, value in zip(threshold_cols, ["Salary Cap", "Luxury Tax", "Apron #1", "Apron #2"], [current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2]):
+        with column:
+            st.metric(label, format_money(value), border=True)
     render_html('<div class="sbc-section-label">Organization Ledger</div>')
     render_overview_table(overview_df)
-
     render_html('<div class="sbc-section-label">League Payouts</div>')
     render_payout_cards([
         ("Champion", unit_payout(df, exceptions, base_cap) * 12, "SBCFBL champion base-pool payout."),
         ("Runner-Up", unit_payout(df, exceptions, base_cap) * 4, "Finals runner-up base-pool payout."),
         ("Conference Finalist", unit_payout(df, exceptions, base_cap) * 2, "Paid to each conference runner-up."),
         ("Conference Semifinalist", unit_payout(df, exceptions, base_cap), "Paid to each semifinal loser."),
-        ("Charity Champion", tax_payout_champ(df, exceptions, base_cap), "Champion-directed charity payout from luxury fees."),
+        ("Charity Champion", tax_payout_champ(df, exceptions, base_cap), "Champion-directed charity payout."),
         ("Tax Payback", tax_payout_split(df, exceptions, base_cap), "Split among non-tax organizations."),
-        ("IST Champion", 75, "Flat payout for the SBCFBL Cup champion."),
-        ("IST Runner Up", 15, "Flat payout for the SBCFBL Cup runner-up."),
     ])
     _legacy_tab8 = r'''
     render_html('<div class="sbc-section-label">League Thresholds</div>')
