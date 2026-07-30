@@ -17747,6 +17747,7 @@ if main_page == "Overview":
       <div class="track" id="track"></div>
       <button class="arrow" id="next" aria-label="Scroll scores right">&#8250;</button>
     </div>
+    <div class="score-modal" id="score-modal"><button class="score-close" id="score-close" aria-label="Close box score">&times;</button><iframe id="score-frame" title="Full matchup box score"></iframe></div>
     <style>
       *{{box-sizing:border-box}} body{{margin:0;background:transparent;font-family:Arial,sans-serif;color:#17212b;overflow:hidden}}
       #sbc-scorebar{{height:112px;display:grid;grid-template-columns:36px 145px minmax(0,1fr) 36px;align-items:stretch;border:1px solid #d8dee5;border-radius:12px;background:#f7f8fa;overflow:hidden}}
@@ -17757,14 +17758,18 @@ if main_page == "Overview":
       .game{{flex:0 0 176px;border:0;border-right:1px solid #ccd3da;background:#fff;padding:9px 11px;text-align:left;cursor:pointer;text-decoration:none;color:#17212b}} .game:hover{{background:#f5f8fa;box-shadow:inset 0 -3px #e32231}}
       .meta{{display:flex;justify-content:flex-start;gap:5px;align-items:center;color:#78838e;font-size:8px;font-weight:800;letter-spacing:.06em;margin-bottom:5px;white-space:nowrap}} .meta b{{color:#d91f2b}} .meta i{{font-style:normal;border-radius:3px;padding:2px 4px;color:#fff;background:#183c5a;font-size:7px}} .meta i.ist{{background:#7b2cbf}} .meta i.playoffs{{background:#d48a00}}
       .team{{display:grid;grid-template-columns:21px 1fr auto;gap:6px;align-items:center;height:29px}} .team img{{width:20px;height:20px;object-fit:contain}} .team span{{font-size:11px;font-weight:900}} .team strong{{font-size:13px;font-variant-numeric:tabular-nums}}
+      .score-modal{{display:none;position:fixed;inset:0;z-index:50;background:#f4f7fa;padding:12px}} .score-modal.open{{display:block}} .score-modal iframe{{width:100%;height:100%;border:0;border-radius:12px;background:#fff}} .score-close{{position:absolute;right:22px;top:18px;z-index:60;width:38px;height:38px;border:0;border-radius:50%;background:#17212b;color:#fff;font-size:25px;line-height:1;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}}
       @media(max-width:650px){{#sbc-scorebar{{grid-template-columns:30px 108px minmax(0,1fr) 30px}}.game{{flex-basis:160px}}}}
     </style>
     <script>
       const windows={scoreboard_payload}, select=document.getElementById('window'), track=document.getElementById('track');
       windows.forEach((w,i)=>{{const o=document.createElement('option');o.value=i;o.textContent=w.label;select.appendChild(o)}}); select.value=1;
       const fmt=v=>v===null?'0–0':Number(v).toFixed(1); const esc=s=>String(s).replace(/[&<>\"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}}[c]));
-      function render(){{const w=windows[Number(select.value)];track.innerHTML='';w.games.forEach((g)=>{{const link=document.createElement('a');link.className='game';const destination=new URL(document.referrer||window.location.href);destination.search='';destination.searchParams.set('sbc_game',g.key);link.href=destination.toString();link.target='_top';const badge=g.type==='In-Season Tournament'?'<i class="ist">IST</i>':(g.type==='Playoffs'?'<i class="playoffs">PLAYOFFS</i>':'');link.innerHTML=`<div class="meta"><b>${{esc(g.status)}}</b>${{badge}}</div><div class="team"><img src="${{g.a.logo}}"><span>${{esc(g.a.abbr)}}</span><strong>${{fmt(g.as)}}</strong></div><div class="team"><img src="${{g.b.logo}}"><span>${{esc(g.b.abbr)}}</span><strong>${{fmt(g.bs)}}</strong></div>`;track.appendChild(link)}});track.scrollLeft=0}}
-      select.onchange=render;document.getElementById('prev').onclick=()=>track.scrollBy({{left:-528,behavior:'smooth'}});document.getElementById('next').onclick=()=>track.scrollBy({{left:528,behavior:'smooth'}});render();
+      const scoreModal=document.getElementById('score-modal'),scoreFrame=document.getElementById('score-frame');const resize=h=>window.parent.postMessage({{isStreamlitMessage:true,type:'streamlit:setFrameHeight',height:h}},'*');
+      function openBox(event,destination){{event.preventDefault();scoreFrame.src=destination.toString();scoreModal.classList.add('open');resize(Math.max(820,window.innerHeight))}}
+      function closeBox(){{scoreModal.classList.remove('open');scoreFrame.src='about:blank';resize(120)}}
+      function render(){{const w=windows[Number(select.value)];track.innerHTML='';w.games.forEach((g)=>{{const link=document.createElement('a');link.className='game';const destination=new URL(document.referrer||window.location.href);destination.search='';destination.searchParams.set('sbc_game',g.key);link.href=destination.toString();link.onclick=(event)=>openBox(event,destination);const badge=g.type==='In-Season Tournament'?'<i class="ist">IST</i>':(g.type==='Playoffs'?'<i class="playoffs">PLAYOFFS</i>':'');link.innerHTML=`<div class="meta"><b>${{esc(g.status)}}</b>${{badge}}</div><div class="team"><img src="${{g.a.logo}}"><span>${{esc(g.a.abbr)}}</span><strong>${{fmt(g.as)}}</strong></div><div class="team"><img src="${{g.b.logo}}"><span>${{esc(g.b.abbr)}}</span><strong>${{fmt(g.bs)}}</strong></div>`;track.appendChild(link)}});track.scrollLeft=0}}
+      select.onchange=render;document.getElementById('prev').onclick=()=>track.scrollBy({{left:-528,behavior:'smooth'}});document.getElementById('next').onclick=()=>track.scrollBy({{left:528,behavior:'smooth'}});document.getElementById('score-close').onclick=closeBox;render();resize(120);
     </script>
     """, height=120, scrolling=False)
 
@@ -17806,13 +17811,6 @@ if main_page == "Overview":
 
     game_query = str(st.query_params.get("sbc_game", ""))
     if game_query:
-        query_token = f"game:{game_query}"
-        if st.session_state.get("_sbc_front_dialog_query") == query_token:
-            del st.query_params["sbc_game"]
-            game_query = ""
-        else:
-            st.session_state["_sbc_front_dialog_query"] = query_token
-    if game_query:
         try:
             query_period, query_index = [int(value) for value in game_query.split("-", 1)]
             query_rows = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == query_period)]
@@ -17830,13 +17828,6 @@ if main_page == "Overview":
 
     article_query = str(st.query_params.get("sbc_article", ""))
     if article_query:
-        article_token = f"article:{article_query}"
-        if st.session_state.get("_sbc_front_dialog_query") == article_token:
-            del st.query_params["sbc_article"]
-            article_query = ""
-        else:
-            st.session_state["_sbc_front_dialog_query"] = article_token
-    if article_query:
         article_index = -1 if article_query == "big" else int(article_query) if article_query.isdigit() else 0
         article_title = f"{leader['nick']} own the moment" if article_index == -1 else headline_texts[min(article_index, len(headline_texts) - 1)]
 
@@ -17852,13 +17843,14 @@ if main_page == "Overview":
     <style>
       .sbc-front-v2{{color:#17212b}} .sbc-v2-grid{{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(420px,1fr);gap:15px;align-items:stretch}}
       .sbc-v2-left,.sbc-v2-right{{display:flex;flex-direction:column;gap:15px;height:100%}} .sbc-v2-panel{{background:#fff;border:1px solid #dce2e8;border-radius:14px;padding:16px;box-shadow:0 3px 12px rgba(22,34,46,.06)}} .sbc-v2-news,.sbc-v2-transactions{{flex:1}}
-      .sbc-v2-hero{{min-height:410px;border-radius:16px;overflow:hidden;position:relative;padding:28px;display:flex;align-items:flex-end;background:linear-gradient(90deg,rgba(4,17,29,.96) 0%,rgba(4,17,29,.72) 48%,rgba(4,17,29,.20) 100%),url('{escape(leader['wordmark'], quote=True)}') center/cover no-repeat;box-shadow:0 12px 34px rgba(8,24,39,.2);text-decoration:none}}
+      .sbc-v2-hero{{min-height:410px;border-radius:16px;overflow:hidden;position:relative;padding:28px;display:flex;align-items:flex-end;background:linear-gradient(90deg,rgba(4,17,29,.96) 0%,rgba(4,17,29,.72) 48%,rgba(4,17,29,.20) 100%),url('{escape(leader['wordmark'], quote=True)}') center/cover no-repeat;box-shadow:0 12px 34px rgba(8,24,39,.2);text-decoration:none!important;color:#fff!important}}
+      .sbc-v2-hero:hover,.sbc-v2-hero:visited,.sbc-v2-hero:active{{text-decoration:none!important;color:#fff!important}}
       .sbc-v2-hero-art{{position:absolute;width:300px;height:300px;right:24px;top:55px;object-fit:contain;opacity:.88;filter:drop-shadow(0 18px 25px rgba(0,0,0,.42));z-index:0}}
       .sbc-v2-story-tag{{position:absolute;top:22px;left:24px;z-index:3;display:inline-flex;padding:5px 9px;background:#e32231;color:#fff;border-radius:5px;font-size:.65rem;letter-spacing:.13em;font-weight:950;text-transform:uppercase}}
       .sbc-v2-copy{{position:relative;z-index:1;color:#fff;max-width:680px;text-shadow:0 2px 12px rgba(0,0,0,.35)}}
       .sbc-v2-copy h1{{font-family:'Bungee','Arial Black',sans-serif;font-size:clamp(2rem,4.4vw,4rem);line-height:.98;letter-spacing:-.035em;margin:13px 0 12px}} .sbc-v2-copy p{{font-size:1rem;line-height:1.45;font-weight:720;max-width:610px;margin:0;color:#eaf0f5}}
       .sbc-v2-head{{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #17212b;padding-bottom:9px;margin-bottom:5px}} .sbc-v2-head b{{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}} .sbc-v2-head span{{font-size:.65rem;color:#e32231;font-weight:900}}
-      .sbc-v2-headline{{display:block;padding:14px 0;border-bottom:1px solid #e4e8ec;text-decoration:none;color:#17212b}} .sbc-v2-headline:hover b{{color:#d92332}} .sbc-v2-headline:last-child{{border:0}} .sbc-v2-headline b{{display:block;font-size:.91rem;line-height:1.28}} .sbc-v2-headline em{{display:block;font-style:normal;color:#7b8690;font-size:.67rem;margin-top:4px}}
+      .sbc-v2-headline{{display:block;padding:14px 0;border-bottom:1px solid #e4e8ec;text-decoration:none!important;color:#17212b!important}} .sbc-v2-headline:hover,.sbc-v2-headline:visited,.sbc-v2-headline:active{{text-decoration:none!important;color:#17212b!important}} .sbc-v2-headline:hover b{{color:#d92332}} .sbc-v2-headline:last-child{{border:0}} .sbc-v2-headline b{{display:block;font-size:.91rem;line-height:1.28;text-decoration:none!important}} .sbc-v2-headline em{{display:block;font-style:normal;color:#7b8690;font-size:.67rem;margin-top:4px;text-decoration:none!important}}
       .sbc-v2-standings{{display:grid;grid-template-columns:1fr 1fr;gap:18px}} .sbc-v2-conf h4{{margin:4px 0 7px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}}
       .sbc-v2-standing{{display:grid;grid-template-columns:16px 23px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:29px;border-bottom:1px solid #edf0f2;font-size:.64rem}} .sbc-v2-standing img{{width:21px;height:21px;object-fit:contain}} .sbc-v2-standing>span{{color:#8b959f}} .sbc-v2-standing b{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}} .sbc-v2-standing em{{font-style:normal;font-weight:900}}
       .sbc-cut{{height:19px;display:flex;align-items:center;position:relative}} .sbc-cut:before{{content:'';height:2px;position:absolute;left:0;right:0}} .sbc-cut span{{position:relative;background:#fff;padding-right:6px;font-size:.52rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}} .sbc-cut-playoff:before{{background:#159447}} .sbc-cut-playoff span{{color:#11763a}} .sbc-cut-playin:before{{background:#e49a17}} .sbc-cut-playin span{{color:#a56a00}}
