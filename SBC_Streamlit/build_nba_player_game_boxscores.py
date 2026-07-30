@@ -8,6 +8,12 @@ from typing import Any
 import pandas as pd
 import requests
 
+from sbc_backend.config import BackendSettings
+from sbc_backend.storage import atomic_write_parquet
+
+
+BACKEND_SETTINGS = BackendSettings.from_env(Path(__file__).resolve().parent)
+
 
 STATS_URL = "https://stats.nba.com/stats/leaguegamelog"
 SCHEDULE_URL = (
@@ -816,7 +822,11 @@ def main() -> None:
     boxscores = pd.concat(frames, ignore_index=True).drop_duplicates()
     boxscores = clean_regular_season_boxscores(boxscores)
     boxscores = boxscores.sort_values(["Date", "nba_game_id", "nba_team", "player_name"]).reset_index(drop=True)
-    boxscores.to_parquet(output, index=False)
+    atomic_write_parquet(
+        boxscores,
+        output,
+        row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+    )
     if args.csv:
         boxscores.to_csv(args.csv, index=False)
 

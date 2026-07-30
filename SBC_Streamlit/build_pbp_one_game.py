@@ -9,6 +9,12 @@ from typing import Any
 import pandas as pd
 import requests
 
+from sbc_backend.config import BackendSettings
+from sbc_backend.storage import atomic_write_parquet
+
+
+BACKEND_SETTINGS = BackendSettings.from_env(Path(__file__).resolve().parent)
+
 
 ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
 ESPN_SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary"
@@ -406,10 +412,11 @@ def is_turnover_play(play: dict[str, Any]) -> bool:
     return "traveling" in play_text
 
 
-def read_official_boxscore_game(game_id: str) -> pd.DataFrame:
-    if not OFFICIAL_BOXSCORE_PATH.exists():
+def read_official_boxscore_game(game_id: str, boxscore_path: Path | None = None) -> pd.DataFrame:
+    source = Path(boxscore_path or OFFICIAL_BOXSCORE_PATH)
+    if not source.exists():
         return pd.DataFrame()
-    box = pd.read_parquet(OFFICIAL_BOXSCORE_PATH)
+    box = pd.read_parquet(source)
     if "nba_game_id" not in box.columns:
         return pd.DataFrame()
     return box[box["nba_game_id"].astype(str) == str(game_id)].copy()
@@ -423,8 +430,9 @@ def add_official_adjustments(
     rows: list[dict[str, Any]],
     game_id: str,
     end_play: dict[str, Any],
+    boxscore_path: Path | None = None,
 ) -> None:
-    box = read_official_boxscore_game(game_id)
+    box = read_official_boxscore_game(game_id, boxscore_path)
     if box.empty:
         return
 
@@ -474,7 +482,7 @@ def add_official_adjustments(
                 suffix += 0.001
 
 
-def build_stat_events(game_id: str, game_date: str | None = None) -> pd.DataFrame:
+def build_stat_events(game_id: str, game_date: str | None = None, boxscore_path: Path | None = None) -> pd.DataFrame:
     summary = fetch_json(ESPN_SUMMARY_URL, event=game_id)
     player_names, player_teams = athlete_maps(summary)
     plays = summary.get("plays", [])
@@ -605,7 +613,7 @@ def build_stat_events(game_id: str, game_date: str | None = None) -> pd.DataFram
 
     rows.extend(build_shift_events(plays, summary, player_names, player_teams))
     end_play = next((play for play in reversed(plays) if ((play.get("type") or {}).get("text") or "").lower() in ["end game", "end period"]), plays[-1] if plays else {})
-    add_official_adjustments(rows, game_id, end_play)
+    add_official_adjustments(rows, game_id, end_play, boxscore_path)
 
     events = pd.DataFrame(rows)
     if not events.empty:
@@ -632,10 +640,11 @@ def build_games_for_dates(start_date: str, end_date: str) -> pd.DataFrame:
     return combined.sort_values(["game_date", "game_id", "wallclock", "stat"]).reset_index(drop=True)
 
 
-def load_regular_season_game_index() -> pd.DataFrame:
-    if not OFFICIAL_BOXSCORE_PATH.exists():
-        raise FileNotFoundError(f"Missing box score archive: {OFFICIAL_BOXSCORE_PATH}")
-    box = pd.read_parquet(OFFICIAL_BOXSCORE_PATH)
+def load_regular_season_game_index(boxscore_path: Path | None = None) -> pd.DataFrame:
+    source = Path(boxscore_path or OFFICIAL_BOXSCORE_PATH)
+    if not source.exists():
+        raise FileNotFoundError(f"Missing box score archive: {source}")
+    box = pd.read_parquet(source)
     required = ["Date", "nba_game_id", "nba_season"]
     missing = [col for col in required if col not in box.columns]
     if missing:
@@ -653,8 +662,9 @@ def build_games_from_index(
     start_date: str | None = None,
     end_date: str | None = None,
     checkpoint_dir: Path | None = None,
+    boxscore_path: Path | None = None,
 ) -> pd.DataFrame:
-    games = load_regular_season_game_index()
+    games = load_regular_season_game_index(boxscore_path)
     if seasons:
         season_set = {str(season) for season in seasons}
         games = games[games["nba_season"].isin(season_set)].copy()
@@ -676,10 +686,8 @@ def build_games_from_index(
     grouped = games.groupby(games["Date"].dt.strftime("%Y%m%d"), sort=True)
     for game_date, date_rows in grouped:
         checkpoint_path = checkpoint_dir / f"{game_date}.parquet" if checkpoint_dir is not None else None
-        if checkpoint_path is not None and checkpoint_path.exists():
-            print(f"{game_date}: using checkpoint")
-            frames.append(pd.read_parquet(checkpoint_path))
-            continue
+        day_checkpoint = pd.read_parquet(checkpoint_path) if checkpoint_path is not None and checkpoint_path.exists() else pd.DataFrame()
+        day_checkpoint_ids = set(day_checkpoint["game_id"].astype(str)) if "game_id" in day_checkpoint.columns else set()
         print(f"{game_date}: {len(date_rows):,} games")
         day_frames: list[pd.DataFrame] = []
         for _, game in date_rows.iterrows():
@@ -688,17 +696,28 @@ def build_games_from_index(
             if game_checkpoint_path is not None and game_checkpoint_path.exists():
                 print(f"  using game checkpoint {game_id}")
                 frame = pd.read_parquet(game_checkpoint_path)
+            elif game_id in day_checkpoint_ids:
+                print(f"  using day checkpoint {game_id}")
+                frame = day_checkpoint[day_checkpoint["game_id"].astype(str) == game_id].copy()
             else:
                 print(f"  building {game_id}")
-                frame = build_stat_events(game_id, game_date=game_date)
+                frame = build_stat_events(game_id, game_date=game_date, boxscore_path=boxscore_path)
                 if game_checkpoint_path is not None and not frame.empty:
-                    frame.to_parquet(game_checkpoint_path, index=False)
+                    atomic_write_parquet(
+                        frame,
+                        game_checkpoint_path,
+                        row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+                    )
             if not frame.empty:
                 day_frames.append(frame)
         if day_frames:
             day_frame = pd.concat(day_frames, ignore_index=True).sort_values(["game_date", "game_id", "wallclock", "stat"]).reset_index(drop=True)
             if checkpoint_path is not None:
-                day_frame.to_parquet(checkpoint_path, index=False)
+                atomic_write_parquet(
+                    day_frame,
+                    checkpoint_path,
+                    row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+                )
             frames.append(day_frame)
     if not frames:
         return pd.DataFrame(columns=STAT_COLUMNS)
@@ -744,7 +763,11 @@ def main() -> None:
 
     events_path = out_dir / f"{output_stem}.parquet"
     csv_path = out_dir / f"{output_stem}.csv"
-    events.to_parquet(events_path, index=False)
+    atomic_write_parquet(
+        events,
+        events_path,
+        row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+    )
     events.to_csv(csv_path, index=False)
 
     print(f"built={label}")

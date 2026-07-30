@@ -5,6 +5,7 @@ import pandas as pd
 import os
 import numpy as np  # noqa: F401
 from datetime import datetime
+from pathlib import Path
 from data import current_year, team_info
 from functions import (
     current_matchup_period,
@@ -23,8 +24,16 @@ from functions import (
     read_csv_snapshot,
     send_discord_message,
 )
+from sbc_backend import BackendSettings
+from sbc_backend.storage import atomic_write_parquet
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+APP_DIR = Path(__file__).resolve().parent
+BACKEND_SETTINGS = BackendSettings.from_env(APP_DIR)
+
+
+def dataset_path(filename: str) -> Path:
+    return BACKEND_SETTINGS.data_root / filename
 
 def notify(message: str):
     print(message)
@@ -58,8 +67,8 @@ def refresh_sheet_snapshots():
 
 
 def get_all_team_stats_history() -> pd.DataFrame:
-    history = pd.read_parquet("all_team_stats_history.parquet")
-    all_dates = pd.read_parquet("all_time_scores.parquet")
+    history = pd.read_parquet(dataset_path("all_team_stats_history.parquet"))
+    all_dates = pd.read_parquet(dataset_path("all_time_scores.parquet"))
     all_dates = all_dates[all_dates["Year"] == current_year]
     all_dates = (all_dates[["Year", "Period"]].drop_duplicates().reset_index(drop=True))
     if all_dates.empty:
@@ -85,7 +94,7 @@ def get_all_team_stats_history() -> pd.DataFrame:
     final_df = pd.concat(dfs, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
     final_df["Created"] = pd.Timestamp.now()
-    final_df.to_parquet("all_team_stats_history.parquet", index=False)
+    atomic_write_parquet(final_df, dataset_path("all_team_stats_history.parquet"), row_group_size=BACKEND_SETTINGS.parquet_row_group_size)
     notify("Completed run of get_all_team_stats_history")
     today = datetime.now().date()
     april_15 = datetime(today.year, 4, 15).date()
@@ -93,7 +102,7 @@ def get_all_team_stats_history() -> pd.DataFrame:
         notify("Turn back on Roster Count")
 
 def get_all_time_rosters_history() -> pd.DataFrame:
-    history = pd.read_parquet("all_time_rosters_history.parquet")
+    history = pd.read_parquet(dataset_path("all_time_rosters_history.parquet"))
     csv_url = ("https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429")
     df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=0)
     df = df[df["Year"] == current_year]
@@ -122,11 +131,11 @@ def get_all_time_rosters_history() -> pd.DataFrame:
     final_df = pd.concat(all_rosters, ignore_index=True)
     final_df = pd.concat([df_old, final_df], ignore_index=True)
     final_df["Created"] = pd.Timestamp.now()
-    final_df.to_parquet("all_time_rosters_history.parquet", index=False)
+    atomic_write_parquet(final_df, dataset_path("all_time_rosters_history.parquet"), row_group_size=BACKEND_SETTINGS.parquet_row_group_size)
     notify("Completed run of get_all_time_rosters_history")
 
 def get_all_time_scores() -> pd.DataFrame:
-    df = pd.read_parquet("all_time_scores.parquet")
+    df = pd.read_parquet(dataset_path("all_time_scores.parquet"))
     df_old = df[df["Year"] != current_year]
     df = df[df["Year"] == current_year]
     if df.empty:
@@ -163,12 +172,12 @@ def get_all_time_scores() -> pd.DataFrame:
     df['DivisionGame'] = df.apply(lambda row: get_division(row['TeamA']) == get_division(row['TeamB']), axis=1)
     df.loc[df['Type'] != 'Regular Season', 'DivisionGame'] = False
     df = pd.concat([df_old, df], ignore_index=True)        
-    df.to_parquet("all_time_scores.parquet", index=False)
+    atomic_write_parquet(df, dataset_path("all_time_scores.parquet"), row_group_size=BACKEND_SETTINGS.parquet_row_group_size)
     notify("Completed run of get_all_time_scores")
 
 def get_all_time_standings() -> pd.DataFrame:
-    df2 = pd.read_parquet("all_time_standings.parquet")
-    df = pd.read_parquet("all_time_scores.parquet")
+    df2 = pd.read_parquet(dataset_path("all_time_standings.parquet"))
+    df = pd.read_parquet(dataset_path("all_time_scores.parquet"))
     df = df[df["Year"] == current_year]
     df_old = df2[df2["Year"] != current_year]
     df2 = df2[df2["Year"] == current_year]
@@ -231,11 +240,12 @@ def get_all_time_standings() -> pd.DataFrame:
     df3 = read_csv_snapshot("playoff_ist_seeds", csv_url, ttl_seconds=0)
     df = df.drop(columns=["Playoff Seed", "IST Seed"], errors="ignore")
     df = df.merge(df3, on=["Year", "Team"], how="left")
-    df.to_parquet("all_time_standings.parquet", index=False)
+    atomic_write_parquet(df, dataset_path("all_time_standings.parquet"), row_group_size=BACKEND_SETTINGS.parquet_row_group_size)
     notify("Completed run of get_all_time_standings")
 
 def add_game_to_schedule(game_dict):
-    df = pd.read_parquet("all_time_scores.parquet")
+    schedule_path = dataset_path("all_time_scores.parquet")
+    df = pd.read_parquet(schedule_path)
     year = game_dict["Year"]
     df_year = df[df["Game_ID"].str.startswith(str(year)) & df["Game_ID"].notna()]
     if len(df_year) == 0:
@@ -245,7 +255,7 @@ def add_game_to_schedule(game_dict):
         next_num = nums.max() + 1
     game_dict["Game_ID"] = f"{year}_{str(next_num).zfill(3)}"
     df = pd.concat([df, pd.DataFrame([game_dict])], ignore_index=True)
-    df.to_parquet("all_time_scores.parquet", index=False)
+    atomic_write_parquet(df, schedule_path, row_group_size=BACKEND_SETTINGS.parquet_row_group_size)
     return df
 
 # add_game_to_schedule({

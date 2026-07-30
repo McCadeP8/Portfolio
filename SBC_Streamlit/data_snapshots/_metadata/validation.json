@@ -1,0 +1,139 @@
+{
+  "errors": 0,
+  "items": [
+    {
+      "dataset": "team_stats",
+      "message": "",
+      "path": "all_team_stats_history.parquet",
+      "rows": 7560,
+      "status": "ok"
+    },
+    {
+      "dataset": "rosters",
+      "message": "",
+      "path": "all_time_rosters_history.parquet",
+      "rows": 466763,
+      "status": "ok"
+    },
+    {
+      "dataset": "schedule",
+      "message": "",
+      "path": "all_time_scores.parquet",
+      "rows": 6777,
+      "status": "ok"
+    },
+    {
+      "dataset": "standings",
+      "message": "",
+      "path": "all_time_standings.parquet",
+      "rows": 6660,
+      "status": "ok"
+    },
+    {
+      "dataset": "nba_boxscores",
+      "message": "",
+      "path": "nba_player_game_boxscores_2021_2026.parquet",
+      "rows": 154526,
+      "status": "ok"
+    },
+    {
+      "dataset": "matchup_stats",
+      "message": "",
+      "path": "sbc_player_matchup_stats.parquet",
+      "rows": 119095,
+      "status": "ok"
+    },
+    {
+      "dataset": "fantrax_players",
+      "message": "",
+      "path": "fantrax_players_snapshot.parquet",
+      "rows": 1814,
+      "status": "ok"
+    },
+    {
+      "dataset": "nba_shots_202021",
+      "message": "",
+      "path": "data_snapshots/shots/nba_shots_202021.parquet",
+      "rows": 190968,
+      "status": "ok"
+    },
+    {
+      "dataset": "nba_shots_202122",
+      "message": "",
+      "path": "data_snapshots/shots/nba_shots_202122.parquet",
+      "rows": 216715,
+      "status": "ok"
+    },
+    {
+      "dataset": "nba_shots_202223",
+      "message": "",
+      "path": "data_snapshots/shots/nba_shots_202223.parquet",
+      "rows": 217159,
+      "status": "ok"
+    },
+    {
+      "dataset": "nba_shots_202324",
+      "message": "",
+      "path": "data_snapshots/shots/nba_shots_202324.parquet",
+      "rows": 218687,
+      "status": "ok"
+    },
+    {
+      "dataset": "nba_shots_202425",
+      "message": "",
+      "path": "data_snapshots/shots/nba_shots_202425.parquet",
+      "rows": 219527,
+      "status": "ok"
+    },
+    {
+      "dataset": "nba_shots_202526",
+      "message": "",
+      "path": "data_snapshots/shots/nba_shots_202526.parquet",
+      "rows": 220268,
+      "status": "ok"
+    },
+    {
+      "dataset": "pbp_stat_events_202021",
+      "message": "",
+      "path": "data_snapshots/pbp/pbp_stat_events_202021.parquet",
+      "rows": 766814,
+      "status": "ok"
+    },
+    {
+      "dataset": "pbp_stat_events_202122",
+      "message": "",
+      "path": "data_snapshots/pbp/pbp_stat_events_202122.parquet",
+      "rows": 872686,
+      "status": "ok"
+    },
+    {
+      "dataset": "pbp_stat_events_202223",
+      "message": "",
+      "path": "data_snapshots/pbp/pbp_stat_events_202223.parquet",
+      "rows": 884971,
+      "status": "ok"
+    },
+    {
+      "dataset": "pbp_stat_events_202324",
+      "message": "",
+      "path": "data_snapshots/pbp/pbp_stat_events_202324.parquet",
+      "rows": 885114,
+      "status": "ok"
+    },
+    {
+      "dataset": "pbp_stat_events_202425",
+      "message": "",
+      "path": "data_snapshots/pbp/pbp_stat_events_202425.parquet",
+      "rows": 887185,
+      "status": "ok"
+    },
+    {
+      "dataset": "pbp_stat_events_202526",
+      "message": "",
+      "path": "data_snapshots/pbp/pbp_stat_events_202526.parquet",
+      "rows": 915437,
+      "status": "ok"
+    }
+  ],
+  "ok": true
+}

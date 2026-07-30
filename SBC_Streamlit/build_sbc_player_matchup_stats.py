@@ -6,6 +6,11 @@ from pathlib import Path
 import pandas as pd
 
 from data import team_info
+from sbc_backend.config import BackendSettings
+from sbc_backend.storage import atomic_write_parquet
+
+
+BACKEND_SETTINGS = BackendSettings.from_env(Path(__file__).resolve().parent)
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -13,7 +18,7 @@ SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "O
 
 
 def read_parquet(name):
-    for path in [APP_DIR / name, APP_DIR / "data_snapshots" / name, Path(name)]:
+    for path in [BACKEND_SETTINGS.data_root / name, APP_DIR / name, APP_DIR / "data_snapshots" / name, Path(name)]:
         if path.exists():
             return pd.read_parquet(path)
     raise FileNotFoundError(name)
@@ -192,7 +197,11 @@ def main():
 
     table = build_matchup_stats(args.season)
     output = APP_DIR / args.output
-    table.to_parquet(output, index=False)
+    atomic_write_parquet(
+        table,
+        output,
+        row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+    )
     print(f"Wrote {len(table):,} rows to {output}")
     if not table.empty:
         print(f"Seasons: {int(table['sbc_year'].min())}-{int(table['sbc_year'].max())}")

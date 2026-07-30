@@ -7,7 +7,6 @@ from streamlit_folium import st_folium
 import pandas as pd
 import numpy as np
 import altair as alt
-import pyarrow.parquet as pq
 import re as re
 import json
 import math
@@ -29,6 +28,7 @@ from data import team_info, type_colors, current_salary_cap, current_luxury_tax,
 from court_engine import CourtConfig, draw_branded_court
 from jersey_engine import JerseyConfig, draw_uniform, figure_bytes as jersey_figure_bytes
 from jersey_rotation import select_game_uniforms
+from sbc_backend import BackendSettings, get_repository
 
 
 if not hasattr(st, "_sbc_native_metric"):
@@ -97,6 +97,8 @@ def render_html(markup):
 
 
 APP_DIR = Path(__file__).resolve().parent
+BACKEND_SETTINGS = BackendSettings.from_env(APP_DIR)
+DATA_REPOSITORY = get_repository(APP_DIR)
 front_scoreboard_component = components.declare_component(
     "front_scoreboard",
     path=str(APP_DIR / "front_scoreboard_component"),
@@ -421,28 +423,28 @@ def _read_local_csv(filename):
 
 @st.cache_data(ttl=86400)
 def load_nba_player_boxscores_archive():
-    df = _read_local_parquet("nba_player_game_boxscores_2021_2026.parquet")
+    df = DATA_REPOSITORY.read("nba_boxscores")
     if not df.empty and "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
     return df
 
 
-@st.cache_data(ttl=86400)
-def load_nba_shots_archive():
-    shots_dir = APP_DIR / "data_snapshots" / "shots"
-    season_paths = sorted(shots_dir.glob("nba_shots_20????.parquet"))
-    # Keep the original four-day sample as a fallback during archive creation.
-    paths = season_paths or [shots_dir / "nba_shots_20241022_20241025.parquet"]
-    paths = [path for path in paths if path.exists()]
-    if not paths:
-        return pd.DataFrame()
-    shots = pd.concat([pd.read_parquet(path) for path in paths], ignore_index=True)
+@st.cache_data(ttl=86400, max_entries=64)
+def load_nba_shots_for_games(game_ids_key, game_dates_key=(), mtime=None):
+    shots = DATA_REPOSITORY.read_shots(
+        game_ids_key,
+        game_dates=game_dates_key,
+        columns=[
+            "game_id", "game_date", "shot_id", "sequence_number", "player_id", "nba_team_id",
+            "home_away", "x", "y", "made", "points_attempted", "period", "clock", "description",
+        ],
+    )
+    if shots.empty:
+        return shots
     shots = shots.drop_duplicates(["game_id", "shot_id"])
     for column in ["game_id", "player_id"]:
         if column in shots:
             shots[column] = shots[column].astype(str)
-    # Shot charts intentionally exclude free throws. Keep this defensive filter
-    # even when the parquet was built by an older ingestion version.
     if "description" in shots:
         shots = shots[~shots["description"].astype(str).str.contains("free throw", case=False, na=False)].copy()
     return shots
@@ -454,81 +456,16 @@ def pbp_archive_mtime():
     return max(mtimes) if mtimes else 0
 
 
-def pbp_archive_paths():
-    return [path for path in pbp_archive_candidates() if path.exists()]
-
-
 def pbp_archive_candidates():
-    patterns = [
-        "data_snapshots/pbp/pbp_stat_events_all_regular_season*.parquet",
-        "data_snapshots/pbp/pbp_stat_events_202021.parquet",
-        "data_snapshots/pbp/pbp_stat_events_202122.parquet",
-        "data_snapshots/pbp/pbp_stat_events_202223.parquet",
-        "data_snapshots/pbp/pbp_stat_events_202324.parquet",
-        "data_snapshots/pbp/pbp_stat_events_202425.parquet",
-        "data_snapshots/pbp/pbp_stat_events_202526.parquet",
-        "data_snapshots/pbp/pbp_stat_events_20241022_20241025.parquet",
-    ]
-    roots = [APP_DIR, APP_DIR.parent, Path(".")]
-    candidates: list[Path] = []
-    for root in roots:
-        for pattern in patterns:
-            matches = sorted(root.glob(pattern), key=lambda path: path.stat().st_mtime if path.exists() else 0, reverse=True)
-            candidates.extend(matches)
-            direct = root / pattern
-            if direct.exists():
-                candidates.append(direct)
-    seen: set[Path] = set()
-    ordered: list[Path] = []
-    for candidate in candidates:
-        try:
-            resolved = candidate.resolve()
-        except OSError:
-            resolved = candidate
-        if resolved in seen:
-            continue
-        seen.add(resolved)
-        ordered.append(candidate)
-    return ordered
+    return DATA_REPOSITORY.parquet_paths("data_snapshots/pbp/pbp_stat_events_20????.parquet")
 
 
-@st.cache_data(ttl=86400)
-def load_pbp_stat_events_archive(mtime=None):
-    df = pd.DataFrame()
-    candidates = pbp_archive_paths()
-    if candidates:
-        frames = [pd.read_parquet(candidate) for candidate in candidates]
-        df = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0]
-    if df.empty:
-        return df
-    for col in ["game_id", "player_id"]:
-        if col in df.columns:
-            df[col] = df[col].astype(str)
-    if "wallclock" in df.columns:
-        df["wallclock"] = pd.to_datetime(df["wallclock"], errors="coerce", utc=True)
-    if "value" in df.columns:
-        df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
-    return df
-
-
-def _pbp_archive_read(columns=None, filters=None):
-    candidates = pbp_archive_paths()
-    if not candidates:
-        return pd.DataFrame()
-    read_columns = list(columns) if columns else None
-    try:
-        dataset = pq.ParquetDataset([str(candidate) for candidate in candidates], filters=filters)
-        table = dataset.read(columns=read_columns)
-        return table.to_pandas()
-    except Exception:
-        if filters:
-            fallback_frames = [pd.read_parquet(candidate, columns=read_columns) for candidate in candidates]
-            fallback = pd.concat(fallback_frames, ignore_index=True) if len(fallback_frames) > 1 else fallback_frames[0]
-            for column, op, values in filters:
-                if op == "in":
-                    fallback = fallback[fallback[column].astype(str).isin({str(value) for value in values})]
-            return fallback
-        raise
+def _pbp_archive_read(columns=None, game_ids=(), game_dates=()):
+    return DATA_REPOSITORY.read_pbp(
+        game_ids=game_ids,
+        game_dates=game_dates,
+        columns=columns,
+    )
 
 
 def _normalize_pbp_game_ids(game_ids):
@@ -549,14 +486,15 @@ def _normalize_pbp_game_dates(game_dates):
     return sorted(values)
 
 
-@st.cache_data(ttl=86400)
-def load_pbp_stat_events_for_games(game_ids_key, mtime=None):
+@st.cache_data(ttl=86400, max_entries=128)
+def load_pbp_stat_events_for_games(game_ids_key, game_dates_key=(), mtime=None):
     game_ids = _normalize_pbp_game_ids(game_ids_key)
     if not game_ids:
         return pd.DataFrame()
     df = _pbp_archive_read(
         columns=["game_id", "game_date", "stat", "player_id", "player", "wallclock", "value", "scored", "description"],
-        filters=[("game_id", "in", game_ids)],
+        game_ids=game_ids,
+        game_dates=game_dates_key,
     )
     if df.empty:
         return df
@@ -572,14 +510,14 @@ def load_pbp_stat_events_for_games(game_ids_key, mtime=None):
     return df
 
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=86400, max_entries=64)
 def load_pbp_slate_bounds_for_dates(game_dates_key, mtime=None):
     game_dates = _normalize_pbp_game_dates(game_dates_key)
     if not game_dates:
         return pd.DataFrame(columns=["game_id", "game_date", "wallclock"])
     df = _pbp_archive_read(
         columns=["game_id", "game_date", "wallclock"],
-        filters=[("game_date", "in", game_dates)],
+        game_dates=game_dates,
     )
     if df.empty:
         return df
@@ -594,7 +532,7 @@ def load_pbp_slate_bounds_for_dates(game_dates_key, mtime=None):
 
 @st.cache_data(ttl=3600)
 def load_sbc_player_matchup_stats_archive():
-    df = _read_local_parquet("sbc_player_matchup_stats.parquet")
+    df = DATA_REPOSITORY.read("matchup_stats")
     if df.empty:
         return df
     for col in ["start_date", "end_date"]:
@@ -609,7 +547,7 @@ def load_sbc_player_matchup_stats_archive():
 
 @st.cache_data(ttl=86400)
 def load_fantrax_players_snapshot():
-    df = _read_local_parquet("fantrax_players_snapshot.parquet")
+    df = DATA_REPOSITORY.read("fantrax_players")
     if df.empty:
         df = get_fantrax_players()
     return ensure_columns(df, ["name", "fantraxId"]).dropna(subset=["name", "fantraxId"])
@@ -1201,7 +1139,8 @@ def matchup_pbp_events(rows, team_a, team_b):
     mapping["espn_player_id"] = mapping["espn_player_id"].astype(str)
     mapping = mapping[mapping["sbc_team"].isin([team_a, team_b])].copy()
     game_ids = tuple(sorted(mapping["nba_game_id"].dropna().astype(str).unique()))
-    events = load_pbp_stat_events_for_games(game_ids, pbp_archive_mtime())
+    game_dates = tuple(sorted(rows.get("game_date", pd.Series(dtype=str)).dropna().astype(str).unique()))
+    events = load_pbp_stat_events_for_games(game_ids, game_dates, pbp_archive_mtime())
     if events.empty:
         return pd.DataFrame()
     merged = events.merge(
@@ -2122,8 +2061,13 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
 
 
 def matchup_starter_shots(rows, team_a, team_b):
-    shots = load_nba_shots_archive()
-    if shots.empty or rows.empty:
+    if rows.empty:
+        return pd.DataFrame()
+    game_ids = tuple(sorted(rows.get("nba_game_id", pd.Series(dtype=str)).dropna().astype(str).unique()))
+    game_dates = tuple(sorted(rows.get("game_date", pd.Series(dtype=str)).dropna().astype(str).unique()))
+    shots_mtime = DATA_REPOSITORY.archive_mtime("data_snapshots/shots/nba_shots_20????.parquet")
+    shots = load_nba_shots_for_games(game_ids, game_dates, shots_mtime)
+    if shots.empty:
         return pd.DataFrame()
     mapping = rows[["nba_game_id", "espn_player_id", "sbc_team", "display_player"]].dropna().drop_duplicates().copy()
     mapping["game_id"] = mapping["nba_game_id"].astype(str)

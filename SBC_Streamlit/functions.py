@@ -15,29 +15,24 @@ import json
 import altair as alt
 import unicodedata
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
+from sbc_backend import BackendSettings, get_repository
+from sbc_backend.network import CachedHttpClient
 
 APP_DIR = Path(__file__).resolve().parent
-SNAPSHOT_DIR = APP_DIR / "data_snapshots"
+BACKEND_SETTINGS = BackendSettings.from_env(APP_DIR)
+DATA_REPOSITORY = get_repository(APP_DIR)
+SNAPSHOT_DIR = BACKEND_SETTINGS.snapshot_root
+SNAPSHOT_HTTP = CachedHttpClient(timeout_seconds=BACKEND_SETTINGS.http_timeout_seconds)
 
 
 def read_csv_snapshot(name: str, url: str, ttl_seconds: int = 86400, **kwargs) -> pd.DataFrame:
-    SNAPSHOT_DIR.mkdir(exist_ok=True)
-    cache_path = SNAPSHOT_DIR / f"{name}.parquet"
-    if cache_path.exists():
-        age = pd.Timestamp.now().timestamp() - cache_path.stat().st_mtime
-        if age <= ttl_seconds:
-            return pd.read_parquet(cache_path)
-    try:
-        table = pd.read_csv(url, **kwargs)
-        try:
-            table.to_parquet(cache_path, index=False)
-        except Exception:
-            pass
-        return table
-    except Exception:
-        if cache_path.exists():
-            return pd.read_parquet(cache_path)
-        raise
+    return SNAPSHOT_HTTP.get_csv_snapshot(
+        url,
+        cache_path=SNAPSHOT_DIR / f"{name}.parquet",
+        ttl_seconds=ttl_seconds,
+        row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+        **kwargs,
+    )
 
 
 def safe_team_info(team, field, default=""):
@@ -116,13 +111,11 @@ def get_period_calendar() -> pd.DataFrame:
 
 @st.cache_data(ttl=86400)
 def get_all_time_team_stats() -> pd.DataFrame:
-    df = pd.read_parquet(APP_DIR / "all_team_stats_history.parquet")
-    return df
+    return DATA_REPOSITORY.read("team_stats", required=True)
 
 @st.cache_data(ttl=86400)
 def get_all_time_rosters() -> pd.DataFrame:
-    df = pd.read_parquet(APP_DIR / "all_time_rosters_history.parquet")
-    return df
+    return DATA_REPOSITORY.read("rosters", required=True)
 
 @st.cache_data(ttl=86400)
 def get_fantrax_roster(year, period) -> pd.DataFrame:
@@ -179,8 +172,7 @@ def get_fantrax_players() -> pd.DataFrame:
 
 @st.cache_data(ttl=86400)
 def get_standings() -> pd.DataFrame:
-    df = pd.read_parquet(APP_DIR / "all_time_standings.parquet")
-    return df
+    return DATA_REPOSITORY.read("standings", required=True)
 
 @st.cache_data()
 def get_fantrax_matchups(year) -> pd.DataFrame:
@@ -223,8 +215,7 @@ def get_team_award_history() -> pd.DataFrame:
 
 @st.cache_data()
 def get_all_time_schedule() -> pd.DataFrame:
-    df = pd.read_parquet(APP_DIR / "all_time_scores.parquet")
-    return df
+    return DATA_REPOSITORY.read("schedule", required=True)
 
 def current_matchup_period() -> float:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"

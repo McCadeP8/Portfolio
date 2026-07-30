@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+.runtime
+.streamlit_cache
+.codex
+.agents
+.codex_artifacts
+__pycache__
+*.pyc
+*.log
+data_snapshots/nba_boxscore_cache
+data_snapshots/pbp/checkpoints_*

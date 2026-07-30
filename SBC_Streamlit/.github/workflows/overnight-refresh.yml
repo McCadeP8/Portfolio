@@ -1,0 +1,98 @@
+name: Overnight data refresh
+
+on:
+  schedule:
+    - cron: "20 9 * * *"
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: Days of ESPN data to recheck
+        required: false
+        default: "3"
+
+concurrency:
+  group: sbc-overnight-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SBC_LIVE_MODE: shadow
+      SBC_RUNTIME_ROOT: .runtime
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SBC_DATA_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SBC_DATA_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.SBC_DATA_REGION }}
+      SBC_DATA_BUCKET: ${{ secrets.SBC_DATA_BUCKET }}
+      SBC_DATA_PREFIX: ${{ secrets.SBC_DATA_PREFIX }}
+      SBC_DATA_ENDPOINT: ${{ secrets.SBC_DATA_ENDPOINT }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .runtime/espn
+            .runtime/pbp
+          key: sbc-source-cache-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            sbc-source-cache-${{ runner.os }}-
+
+      - name: Install app and publishing dependencies
+        run: pip install -r requirements.txt awscli
+
+      - name: Hydrate latest data from S3-compatible storage
+        if: ${{ env.SBC_DATA_BUCKET != '' }}
+        shell: bash
+        run: |
+          endpoint=()
+          if [[ -n "$SBC_DATA_ENDPOINT" ]]; then endpoint=(--endpoint-url "$SBC_DATA_ENDPOINT"); fi
+          source="s3://${SBC_DATA_BUCKET}/${SBC_DATA_PREFIX}"
+          aws "${endpoint[@]}" s3 sync "$source" . \
+            --exclude "*" \
+            --include "*.parquet" \
+            --include "data_snapshots/shots/*.completed_games.txt" \
+            --include "data_snapshots/_metadata/*.json" \
+            --no-progress
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Refresh and validate data
+        run: python -m sbc_backend.jobs.overnight --strict --lookback-days "${{ inputs.lookback_days || '3' }}"
+
+      - name: Publish to S3-compatible storage
+        if: ${{ env.SBC_DATA_BUCKET != '' }}
+        shell: bash
+        run: |
+          endpoint=()
+          if [[ -n "$SBC_DATA_ENDPOINT" ]]; then endpoint=(--endpoint-url "$SBC_DATA_ENDPOINT"); fi
+          destination="s3://${SBC_DATA_BUCKET}/${SBC_DATA_PREFIX}"
+          aws "${endpoint[@]}" s3 sync . "$destination" \
+            --exclude "*" \
+            --include "*.parquet" \
+            --include "data_snapshots/shots/*.completed_games.txt" \
+            --include "data_snapshots/_metadata/*.json" \
+            --no-progress
+
+      - name: Preserve refresh report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-refresh-${{ github.run_id }}
+          path: |
+            data_snapshots/_runs/latest.json
+            data_snapshots/_metadata/*.json
+          retention-days: 30
+          if-no-files-found: warn

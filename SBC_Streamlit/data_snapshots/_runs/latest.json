@@ -1,0 +1,23 @@
+{
+  "finished_at": "2026-07-30T16:42:30.566758+00:00",
+  "live_mode": "off",
+  "results": [
+    {
+      "details": {
+        "bytes": 144529470,
+        "datasets": 19,
+        "rows": 7258726,
+        "warnings": 0
+      },
+      "duration_seconds": 0.516,
+      "finished_at": "2026-07-30T16:42:30.565755+00:00",
+      "name": "validate",
+      "started_at": "2026-07-30T16:42:30.049099+00:00",
+      "status": "ok"
+    }
+  ],
+  "schema_version": 1,
+  "started_at": "2026-07-30T16:42:30.048102+00:00",
+  "status": "ok",
+  "target_date": "2026-07-30"
+}

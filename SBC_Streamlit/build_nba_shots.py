@@ -14,6 +14,9 @@ import time
 import pandas as pd
 import requests
 
+from sbc_backend.config import BackendSettings
+from sbc_backend.storage import atomic_write_parquet, atomic_write_text
+
 
 SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
 SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary"
@@ -24,6 +27,7 @@ SHOT_COLUMNS = [
     "nba_team_id", "home_away", "x", "y", "made", "points_attempted",
     "period", "clock", "description",
 ]
+BACKEND_SETTINGS = BackendSettings.from_env(Path(__file__).resolve().parent)
 
 
 def fetch_json(url: str, **params) -> dict:
@@ -98,8 +102,11 @@ def save_checkpoint(rows: list[dict], output_path: Path) -> None:
     new = new.drop_duplicates(["game_id", "shot_id"]).sort_values(
         ["game_date", "game_id", "sequence_number"]
     )
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    new.to_parquet(output_path, index=False)
+    atomic_write_parquet(
+        new,
+        output_path,
+        row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+    )
 
 
 def completed_path(output_path: Path) -> Path:
@@ -115,8 +122,7 @@ def load_completed(output_path: Path) -> set[str]:
 
 def save_completed(output_path: Path, game_ids: set[str]) -> None:
     path = completed_path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(sorted(game_ids)) + "\n", encoding="utf-8")
+    atomic_write_text("\n".join(sorted(game_ids)) + "\n", path)
 
 
 def build_from_game_index(game_index: Path, output_dir: Path, checkpoint_every: int) -> None:
@@ -175,8 +181,11 @@ def main() -> None:
             rows.extend(shot_rows(game_id, game_date, summary))
 
     output = pd.DataFrame(rows).drop_duplicates(["game_id", "shot_id"])
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    output.to_parquet(args.output, index=False)
+    atomic_write_parquet(
+        output,
+        args.output,
+        row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+    )
     print(f"Saved {len(output):,} shots from {output['game_id'].nunique():,} games to {args.output}")
 
 
