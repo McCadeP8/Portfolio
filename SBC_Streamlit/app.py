@@ -12151,7 +12151,10 @@ st.markdown(
     div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) > div:has(> div[data-testid="stVerticalBlock"]) > div[data-testid="stVerticalBlock"] {{
         min-height: 100%;
         background: #ffffff !important;
-        padding-bottom: 1rem;
+    }}
+
+    div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-box-dialog-hero) .sbc-box-player-grid {{
+        padding-bottom: 1.5rem;
     }}
 
     div[data-testid="stDialog"] div[role="dialog"] h1,
