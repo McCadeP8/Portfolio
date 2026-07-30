@@ -17772,43 +17772,7 @@ if main_page == "Overview":
       select.onchange=render;document.getElementById('prev').onclick=()=>track.scrollBy({{left:-528,behavior:'smooth'}});document.getElementById('next').onclick=()=>track.scrollBy({{left:528,behavior:'smooth'}});document.getElementById('score-close').onclick=closeBox;render();resize(120);
     </script>
     """
-
-    def reset_front_score_page():
-        st.session_state["_sbc_front_score_start"] = 0
-
-    score_window_label = st.session_state.get("_sbc_front_score_window", matchup_windows[1]["label"])
-    score_window_index = next((i for i, window in enumerate(matchup_windows) if window["label"] == score_window_label), 1)
-    active_score_window = matchup_windows[score_window_index]
-    visible_score_count = 5
-    max_score_start = max(0, len(active_score_window["games"]) - visible_score_count)
-    score_start = min(int(st.session_state.get("_sbc_front_score_start", 0)), max_score_start)
-    st.session_state["_sbc_front_score_start"] = score_start
-
-    render_html("""
-    <style>
-      .sbc-native-score-card{display:block;height:106px;padding:9px 11px;background:#fff;border:1px solid #d5dce3;border-radius:8px;text-decoration:none!important;color:#17212b!important;box-shadow:0 2px 7px rgba(20,32,45,.05)}
-      .sbc-native-score-card:hover{background:#f6f8fa;box-shadow:inset 0 -3px #e32231;text-decoration:none!important;color:#17212b!important}.sbc-native-score-meta{display:flex;gap:5px;align-items:center;white-space:nowrap;margin-bottom:5px;font-size:.52rem;font-weight:950;letter-spacing:.04em;color:#d91f2b}.sbc-native-score-meta i{font-style:normal;padding:2px 4px;border-radius:3px;background:#7b2cbf;color:#fff;font-size:.45rem}.sbc-native-score-meta i.playoffs{background:#d48a00}.sbc-native-score-team{display:grid;grid-template-columns:21px 1fr auto;gap:6px;align-items:center;height:29px}.sbc-native-score-team img{width:20px;height:20px;object-fit:contain}.sbc-native-score-team b{font-size:.68rem}.sbc-native-score-team strong{font-size:.8rem;font-variant-numeric:tabular-nums}
-      div[data-testid="stHorizontalBlock"]:has(.sbc-native-score-card){gap:.42rem;align-items:stretch;margin-bottom:.8rem}div[data-testid="stHorizontalBlock"]:has(.sbc-native-score-card) div[data-testid="stButton"] button{height:106px;font-size:1.45rem;padding:0}
-    </style>
-    """)
-    score_cols = st.columns([1.35, .24, 1, 1, 1, 1, 1, .24], vertical_alignment="bottom")
-    with score_cols[0]:
-        st.selectbox("Matchup Window", [window["label"] for window in matchup_windows], index=score_window_index, key="_sbc_front_score_window", on_change=reset_front_score_page)
-    with score_cols[1]:
-        if st.button("‹", key="front_scores_previous", use_container_width=True, disabled=score_start <= 0):
-            st.session_state["_sbc_front_score_start"] = max(0, score_start - visible_score_count)
-            st.rerun()
-    visible_games = active_score_window["games"][score_start:score_start + visible_score_count]
-    for column, game in zip(score_cols[2:7], visible_games):
-        badge = '<i>IST</i>' if game["type"] == "In-Season Tournament" else ('<i class="playoffs">PLAYOFFS</i>' if game["type"] == "Playoffs" else "")
-        score_a = "0–0" if game["as"] is None else f'{game["as"]:.1f}'
-        score_b = "0–0" if game["bs"] is None else f'{game["bs"]:.1f}'
-        with column:
-            render_html(f'''<a class="sbc-native-score-card" href="?sbc_game={escape(game['key'], quote=True)}" target="_self"><div class="sbc-native-score-meta">{escape(game['status'])}{badge}</div><div class="sbc-native-score-team"><img src="{escape(game['a']['logo'], quote=True)}"><b>{escape(game['a']['abbr'])}</b><strong>{score_a}</strong></div><div class="sbc-native-score-team"><img src="{escape(game['b']['logo'], quote=True)}"><b>{escape(game['b']['abbr'])}</b><strong>{score_b}</strong></div></a>''')
-    with score_cols[7]:
-        if st.button("›", key="front_scores_next", use_container_width=True, disabled=score_start >= max_score_start):
-            st.session_state["_sbc_front_score_start"] = min(max_score_start, score_start + visible_score_count)
-            st.rerun()
+    components.html(scoreboard_component_html, height=120, scrolling=False)
 
     front_table = standings[(standings["Year"] == front_year) & (standings["Period"] == front_period)].copy()
     if front_table.empty:
