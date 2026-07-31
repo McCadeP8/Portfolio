@@ -923,8 +923,10 @@ def render_player_boxscore_team(team_rows, team_name, aggregate):
         rows_html.append(f"""
             <tr>
                 <td class="sbc-box-player-cell">
-                    <img src="{espn_headshot_url(row.get('espn_player_id'))}" alt="{escape(str(row.get('display_player', '')), quote=True)} headshot">
-                    <span><strong>{escape(str(row.get('display_player', '')))}</strong>{game_meta}</span>
+                    <span class="sbc-box-player-cell-inner">
+                        <img src="{espn_headshot_url(row.get('espn_player_id'))}" alt="{escape(str(row.get('display_player', '')), quote=True)} headshot">
+                        <span><strong>{escape(str(row.get('display_player', '')))}</strong>{game_meta}</span>
+                    </span>
                 </td>
                 {stat_cells}
             </tr>
@@ -2215,10 +2217,9 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri, roa
         <style>
         .sbc-game-detail-section {{ margin:18px 0 28px; }}
         .sbc-game-detail-heading {{ margin:0 0 14px; color:#475569; font-size:1.25rem; font-weight:950; letter-spacing:.08em; line-height:1.15; text-transform:uppercase; }}
-        .sbc-game-jerseys {{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:28px; padding:10px 24px 16px; border-radius:20px; background:linear-gradient(180deg,#f8fafc,#fff); border:1px solid #e2e8f0; }}
-        .sbc-game-jersey {{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:450px; }}
-        .sbc-game-jersey img {{ width:min(100%,410px); height:450px; object-fit:contain; filter:drop-shadow(0 18px 18px rgba(15,23,42,.14)); }}
-        .sbc-game-uniform-label {{ margin-top:-34px; padding:7px 12px; border-radius:999px; color:#334155; background:#fff; border:1px solid #dbe3ec; font-size:.68rem; font-weight:950; letter-spacing:.1em; text-transform:uppercase; box-shadow:0 7px 18px rgba(15,23,42,.08); }}
+        .sbc-game-jerseys {{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:18px; padding:4px 18px 10px; border-radius:20px; background:linear-gradient(180deg,#f8fafc,#fff); border:1px solid #e2e8f0; }}
+        .sbc-game-jersey {{ display:flex; align-items:center; justify-content:center; min-height:480px; }}
+        .sbc-game-jersey img {{ width:min(100%,460px); height:480px; object-fit:contain; filter:drop-shadow(0 18px 18px rgba(15,23,42,.14)); }}
         .sbc-game-clash-note {{ margin:10px 0 0; color:#64748b; font-size:.68rem; font-weight:800; text-align:center; }}
         .sbc-lineup-board {{ overflow-x:auto; border-radius:18px; border:1px solid #cbd5e1; box-shadow:0 12px 28px rgba(15,23,42,.12); }}
         .sbc-lineup-row {{ display:grid; grid-template-columns:190px repeat(5,minmax(125px,1fr)); min-width:880px; min-height:210px; color:#fff; background:linear-gradient(125deg,var(--lineup-primary),var(--lineup-secondary)); border-bottom:4px solid rgba(255,255,255,.8); }}
@@ -2237,18 +2238,32 @@ def render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri, roa
         .sbc-lineup-name small,.sbc-lineup-name strong {{ display:block; }}
         .sbc-lineup-name small {{ font-size:.62rem; font-weight:700; }}
         .sbc-lineup-name strong {{ margin-top:2px; font-size:.92rem; font-weight:950; }}
-        @media(max-width:700px) {{ .sbc-game-jerseys {{ gap:8px; padding:6px; }} .sbc-game-jersey {{ min-height:300px; }} .sbc-game-jersey img {{ height:320px; }} }}
+        @media(max-width:700px) {{
+            .sbc-lineup-board {{ overflow-x:hidden; }}
+            .sbc-lineup-row {{ grid-template-columns:minmax(0,1fr); min-width:0; min-height:0; border-bottom-width:8px; }}
+            .sbc-lineup-team {{ display:grid; grid-template-columns:3.75rem minmax(0,1fr); grid-template-rows:auto auto; column-gap:.7rem; min-height:5rem; padding:.65rem .75rem; text-align:left; }}
+            .sbc-lineup-team img {{ grid-row:1 / 3; width:3.65rem; height:3.65rem; }}
+            .sbc-lineup-team strong {{ align-self:end; margin:0; font-size:1rem; }}
+            .sbc-lineup-team span {{ align-self:start; margin-top:.2rem; }}
+            .sbc-lineup-player {{ display:grid; grid-template-columns:2.85rem 4.8rem minmax(0,1fr); min-height:5.35rem; border-top:1px solid rgba(255,255,255,.45); border-left:0; }}
+            .sbc-lineup-position {{ position:static; grid-column:1; grid-row:1; width:auto; height:auto; border-radius:0; box-shadow:none; }}
+            .sbc-lineup-photo {{ grid-column:2; grid-row:1; min-height:0; height:5.35rem; }}
+            .sbc-lineup-name {{ grid-column:3; grid-row:1; display:flex; flex-direction:column; justify-content:center; padding:.65rem .8rem; }}
+            .sbc-lineup-name small {{ font-size:.68rem; }}
+            .sbc-lineup-name strong {{ font-size:1rem; }}
+            .sbc-game-jerseys {{ grid-template-columns:1fr; gap:0; padding:0 4px; }}
+            .sbc-game-jersey {{ min-height:420px; }}
+            .sbc-game-jersey img {{ width:100%; height:420px; }}
+        }}
         </style>
         <section class="sbc-game-detail-section">
             <div class="sbc-game-detail-heading">Game Uniforms</div>
             <div class="sbc-game-jerseys">
                 <div class="sbc-game-jersey" style="--jersey-team:{escape(str(team_info.get(team_a, {}).get('bg', '#111827')), quote=True)};">
                     <img src="{road_jersey_uri}" alt="{escape(live_team_full_name(team_a), quote=True)} {escape(road_edition, quote=True)} jersey">
-                    <span class="sbc-game-uniform-label">Road &middot; {escape(road_edition)}</span>
                 </div>
                 <div class="sbc-game-jersey" style="--jersey-team:{escape(str(team_info.get(team_b, {}).get('bg', '#334155')), quote=True)};">
                     <img src="{home_jersey_uri}" alt="{escape(live_team_full_name(team_b), quote=True)} {escape(home_edition, quote=True)} jersey">
-                    <span class="sbc-game-uniform-label">Home &middot; {escape(home_edition)}</span>
                 </div>
             </div>
             {'<div class="sbc-game-clash-note">Road uniform adjusted automatically for stronger on-court contrast.</div>' if clash_adjusted else ''}
@@ -3387,7 +3402,6 @@ MAIN_NAV_LABELS = {
 TEAM_NAV_LABELS = {
     "Cap": "💰 Cap",
     "Picks": "🎯 Picks",
-    "Live": "📡 Live",
     "Schedule": "🗓️ Schedule",
     "History": "📚 History",
 }
@@ -3428,10 +3442,13 @@ def nav_label(labels):
 requested_main_page = st.session_state.get("sbc_main_page", "Overview")
 need_landing = requested_main_page == "Overview"
 requested_team_page = st.session_state.get("sbc_team_page", "Cap")
+if requested_team_page not in ["Cap", "Picks", "Schedule", "History"]:
+    requested_team_page = "Cap"
+    st.session_state["sbc_team_page"] = requested_team_page
 requested_league_page = st.session_state.get("sbc_league_page", "Overview")
 requested_history_page = st.session_state.get("sbc_history_page", "Overview")
 
-need_team_data = requested_main_page == "Team Hub" and requested_team_page in ["Cap", "Picks", "Live", "Schedule"]
+need_team_data = requested_main_page == "Team Hub" and requested_team_page in ["Cap", "Picks", "Schedule"]
 need_trade_data = requested_main_page == "Trade Machine"
 need_fa_data = requested_main_page == "Free Agency"
 need_checks_data = requested_main_page == "Data Checks"
@@ -3454,11 +3471,11 @@ need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks")
 need_ft = need_checks_data
 need_standings = need_landing or need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft or need_team_history
 need_dh = need_history_draft
-need_all_time_team_stats = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "History"]) or need_history_stats or need_history_awards
-need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
+need_all_time_team_stats = need_team_history or need_history_stats or need_history_awards
+need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page == "Schedule") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_all_time_rosters = need_landing or need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
-need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Live", "Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding")
-need_current_matchup = (requested_main_page == "Team Hub" and requested_team_page == "Live") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
+need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding")
+need_current_matchup = need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_history_awards
 
 df = load_required_data("Cap sheet data", get_data) if need_df else pd.DataFrame()
@@ -4082,8 +4099,11 @@ def render_cap_table(data, columns=None, image_columns=None, money_columns=None,
             elif col in image_columns and (not is_blank_value(value) or col != "Team_logo"):
                 image_value = DRAFT_SILHOUETTE if col != "Team_logo" and is_blank_value(value) else value
                 url = escape(str(image_value), quote=True)
-                image_class = "sbc-team-logo-img" if col == "Team_logo" else "sbc-table-img"
-                value_html = f'<img class="{image_class}" src="{url}" alt="" referrerpolicy="no-referrer">'
+                if col == "Team_logo":
+                    value_html = f'<img class="sbc-team-logo-img" src="{url}" alt="" referrerpolicy="no-referrer">'
+                else:
+                    fallback_url = escape(DRAFT_SILHOUETTE, quote=True)
+                    value_html = f'<span class="sbc-table-img" role="img" aria-label="Player headshot" style="background-image:url(&quot;{url}&quot;),url(&quot;{fallback_url}&quot;);"></span>'
                 cell_classes.extend(["sbc-image-cell", "sbc-image-col"])
             else:
                 display = "—" if value == "" else value
@@ -10949,12 +10969,13 @@ st.markdown(
     .sbc-table-img {{
         width: 3.2rem;
         height: 3.2rem;
-        object-fit: cover;
-        object-position: center 18%;
         border-radius: 50%;
         display: block;
         margin: 0 auto;
         background: #eef2f6;
+        background-position: center 18%, center;
+        background-repeat: no-repeat;
+        background-size: cover, cover;
         border: 2px solid #ffffff;
         box-shadow: 0 0 0 1px rgba(23, 32, 42, 0.14), 0 4px 10px rgba(18, 25, 38, 0.12);
     }}
@@ -12534,8 +12555,16 @@ st.markdown(
     .sbc-box-player-table td:first-child {{
         position: sticky;
         left: 0;
-        z-index: 1;
         background: #ffffff;
+        box-shadow: 7px 0 12px -12px rgba(15, 23, 42, 0.72);
+    }}
+
+    .sbc-box-player-table th:first-child {{
+        z-index: 3;
+    }}
+
+    .sbc-box-player-table td:first-child {{
+        z-index: 2;
     }}
 
     .sbc-box-player-table tr.sbc-box-game-date-row td {{
@@ -12551,11 +12580,15 @@ st.markdown(
     }}
 
     .sbc-box-player-cell {{
+        min-width: 12rem;
+    }}
+
+    .sbc-box-player-cell-inner {{
         display: grid;
         grid-template-columns: 2.35rem minmax(8rem, 1fr);
         gap: 0.5rem;
         align-items: center;
-        min-width: 12rem;
+        min-width: 0;
     }}
 
     .sbc-box-player-cell img {{
@@ -12750,9 +12783,12 @@ st.markdown(
         }}
 
         .sbc-box-player-cell {{
+            min-width: 8.8rem;
+        }}
+
+        .sbc-box-player-cell-inner {{
             grid-template-columns: 1.9rem minmax(6.2rem, 1fr);
             gap: 0.38rem;
-            min-width: 8.8rem;
         }}
 
         .sbc-box-player-cell img {{
@@ -16531,6 +16567,53 @@ st.markdown(
             white-space: nowrap;
         }}
 
+        .sbc-schedule-card {{
+            grid-template-columns: minmax(0, 1fr) 4.8rem;
+            grid-template-areas:
+                "period score"
+                "opponent score";
+            gap: 0.32rem 0.55rem;
+            min-height: 4.9rem;
+            padding: 0.5rem 0.58rem 0.5rem 0.5rem;
+        }}
+
+        .sbc-schedule-period {{
+            grid-area: period;
+        }}
+
+        .sbc-schedule-period span {{
+            width: max-content;
+            min-width: 0;
+            height: 1.72rem;
+            padding: 0 0.55rem;
+            font-size: 0.68rem;
+        }}
+
+        .sbc-schedule-opponent {{
+            grid-area: opponent;
+            gap: 0.48rem;
+        }}
+
+        .sbc-schedule-logo {{
+            width: 1.85rem;
+            height: 1.85rem;
+            flex-basis: 1.85rem;
+        }}
+
+        .sbc-schedule-opponent strong {{
+            font-size: 0.84rem;
+        }}
+
+        .sbc-schedule-score {{
+            grid-area: score;
+            align-self: center;
+            text-align: right;
+        }}
+
+        .sbc-schedule-score strong {{
+            font-size: 0.9rem;
+        }}
+
         .sbc-draft-grid {{
             grid-template-columns: 1fr;
         }}
@@ -16676,7 +16759,7 @@ if main_page == "Team Hub":
 
     selected_team_page = st.radio(
         "Team Hub View",
-        ["Cap", "Picks", "Live", "Schedule", "History"],
+        ["Cap", "Picks", "Schedule", "History"],
         format_func=nav_label(TEAM_NAV_LABELS),
         horizontal=True,
         key="sbc_team_page",
@@ -17088,129 +17171,6 @@ if main_page == "Team Hub" and selected_team_page == "Picks":
         st.header("Touched Draft Picks")
         st.dataframe(touched_team_picks, width = "stretch", height = "content", row_height = 50, hide_index=True, placeholder="—", column_config={"OGTeam": st.column_config.ImageColumn(label="Slot", width="small"), "CurrentTeam": st.column_config.ImageColumn(label="Owner", width="small")})
 
-
-if main_page == "Team Hub" and selected_team_page == "Live":
-    live_rosters = all_time_rosters.copy() if all_time_rosters is not None else pd.DataFrame()
-    if live_rosters.empty:
-        live_rosters = load_optional_data("All-time rosters", get_all_time_rosters)
-    live_rosters = ensure_columns(live_rosters, ["id", "position", "status", "team_name", "period", "year"])
-
-    render_html(f"""
-        <div class="sbc-draft-hero sbc-team-branded">
-            <div class="sbc-draft-hero-inner">
-                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
-                <div>
-                    <div class="sbc-draft-eyebrow">Live Matchup Center</div>
-                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Live</div>
-                    <div class="sbc-team-motto-badge">{motto_html}</div>
-                    <div class="sbc-draft-subcopy">Period scoreboards, matchup category battles, and the team trend line for the selected season.</div>
-                </div>
-            </div>
-        </div>
-        """)
-
-    render_html("""
-        <div class="sbc-live-controls">
-            <div class="sbc-live-control-title">Matchup Window</div>
-            <div class="sbc-live-control-copy">Choose the season and matchup period to refresh the scoreboards and trend chart.</div>
-        </div>
-        """)
-
-    control1, control2 = st.columns([1, 1])
-    with control1:
-        year_options = list(range(2021, current_year+1))
-        SelectedYear = st.selectbox("Year", options=year_options, index=year_options.index(current_year))
-    with control2:
-        period_options = schedule_period_options(all_time_schedule, SelectedYear)
-        SelectedPeriod = st.selectbox("Period", options=period_options, index=current_period_index(period_options), format_func=period_select_label(SelectedYear))
-    RegOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Regular Season")
-    PIOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Play-In")
-    PlayOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "Playoffs")
-    ISTOpponents = get_opponents(all_time_schedule, SelectedTeam, SelectedYear, SelectedPeriod, "In-Season Tournament")
-    matchup_sections = (
-        [("Regular Season", opponent) for opponent in RegOpponents]
-        + [("In-Season Tournament", opponent) for opponent in ISTOpponents]
-        + [("Play-In", opponent) for opponent in PIOpponents]
-        + [("Playoffs", opponent) for opponent in PlayOpponents])
-    matchup_count = len(matchup_sections)
-
-    with st.spinner("Updating live center..."):
-        live_stats_df = get_matchup_stats(SelectedYear, SelectedPeriod)
-
-    live_schedule_source = all_time_schedule.copy()
-    live_schedule_source["_live_year"] = pd.to_numeric(live_schedule_source["Year"], errors="coerce")
-    live_schedule_source["_live_period"] = pd.to_numeric(live_schedule_source["Period"], errors="coerce")
-    live_year_value = int(SelectedYear)
-    live_period_value = int(SelectedPeriod)
-    live_schedule_rows = live_schedule_source[
-        (live_schedule_source["_live_year"] == live_year_value)
-        & (live_schedule_source["_live_period"] == live_period_value)
-        & ((live_schedule_source["TeamA"] == SelectedTeam) | (live_schedule_source["TeamB"] == SelectedTeam))
-    ].copy()
-    live_player_aggregate = False
-    if live_schedule_rows.shape[0] > 0:
-        render_html('<div class="sbc-section-label">Player Box Score</div>')
-        live_player_aggregate = render_selected_team_player_boxscore(
-            live_schedule_rows,
-            SelectedTeam,
-            live_rosters,
-            key_prefix=f"live_players_{SelectedYear}_{SelectedPeriod}") or False
-
-    render_html('<div class="sbc-section-label">Matchup Scoreboards</div>')
-    if matchup_count == 0:
-        selected_payload = live_row_payload(live_stats_df, SelectedTeam)
-        render_live_stat_board(
-            f"{SelectedTeam} {period_date_label(SelectedYear, SelectedPeriod, f'P{SelectedPeriod}')} Stat Profile",
-            "No scheduled matchup",
-            [selected_payload] if selected_payload else [],
-            SelectedTeam,
-            SelectedTeam)
-    else:
-        for idx, (matchup_type, opponent) in enumerate(matchup_sections):
-            selected_payload = live_row_payload(live_stats_df, SelectedTeam)
-            opponent_payload = live_row_payload(live_stats_df, opponent)
-            matchup_rows = [payload for payload in [selected_payload, opponent_payload] if payload]
-            matchup_home = SelectedTeam
-            schedule_match = live_schedule_source[
-                (live_schedule_source["_live_year"] == live_year_value)
-                & (live_schedule_source["_live_period"] == live_period_value)
-                & (live_schedule_source["Type"] == matchup_type)
-                & (
-                    ((live_schedule_source["TeamA"] == SelectedTeam) & (live_schedule_source["TeamB"] == opponent))
-                    | ((live_schedule_source["TeamA"] == opponent) & (live_schedule_source["TeamB"] == SelectedTeam))
-                )
-            ]
-            if schedule_match.shape[0] > 0:
-                matchup_home = schedule_match.iloc[0]["TeamB"]
-            if schedule_match.shape[0] > 0:
-                matchup_payload = schedule_match.iloc[0].to_dict()
-                render_matchup_boxscore(matchup_payload, live_rosters, key_prefix=f"live_{idx}", show_players=False)
-                render_team_player_boxscore_for_matchup(matchup_payload, opponent, live_rosters, aggregate=live_player_aggregate)
-            else:
-                render_live_stat_board(
-                    f"{SelectedTeam} vs {opponent}",
-                    f"{matchup_type} - {period_date_label(SelectedYear, SelectedPeriod, f'P{SelectedPeriod}')}",
-                    matchup_rows,
-                    SelectedTeam,
-                    matchup_home)
-
-    render_html('<div class="sbc-section-label">Season Trend</div>')
-    SelectedCategory = st.selectbox("Trend Category", options=list(stat_to_scipId.keys()), index=list(stat_to_scipId.keys()).index("PTS"))
-    render_html(f"""
-        <div class="sbc-chart-head">
-            <div>
-                <div class="sbc-chart-title">{escape(str(SelectedCategory))} by Matchup Period</div>
-                <div class="sbc-chart-copy">{team_name_html}, this period's opponents, and the league median. Larger dots mark the selected period.</div>
-            </div>
-            <div class="sbc-live-badge">{SelectedYear}</div>
-        </div>
-        """)
-    chart_opponents = [opponent for _, opponent in matchup_sections]
-    season_line_chart_data = build_live_line_chart(all_time_team_stats, SelectedTeam, SelectedCategory, SelectedYear, SelectedPeriod, chart_opponents, bg_color, text_color2)
-    if season_line_chart_data is None:
-        render_html('<div class="sbc-empty-state">No season trend data is available for this selection.</div>')
-    else:
-        st.altair_chart(season_line_chart_data, use_container_width=True)
 
 if main_page == "Team Hub" and selected_team_page == "Schedule":
     schedule_years = sorted(all_time_schedule["Year"].dropna().astype(int).unique().tolist())
