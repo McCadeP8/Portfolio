@@ -3536,7 +3536,7 @@ def current_period_index(options):
 
 
 MAIN_NAV_LABELS = {
-    "Overview": "🏠 Overview",
+    "Overview": "📰 Overview",
     "Team Hub": "🏠 Team Hub",
     "League Hub": "🏟️ League Hub",
     "Trade Machine": "🔁 Trade Machine",
@@ -3549,6 +3549,7 @@ TEAM_NAV_LABELS = {
     "Cap": "💰 Cap",
     "Picks": "🎯 Picks",
     "Schedule": "🗓️ Schedule",
+    "Trade Machine": "🔁 Trade Machine",
     "History": "📚 History",
 }
 
@@ -3564,11 +3565,11 @@ LEAGUE_NAV_LABELS = {
 HISTORY_NAV_LABELS = {
     "Overview": "🌐 Overview",
     "Scoreboard": "🏀 Scoreboard",
-    "Playoff Bracket": "🏆 Playoff Bracket",
-    "In-Season Tournament": "🏅 In-Season Tournament",
+    "Playoff Bracket": "🏆 Playoffs",
+    "In-Season Tournament": "🏅 SBC Cup",
     "Player Stats": "📈 Player Stats",
     "Awards": "⭐ Awards",
-    "Draft History": "🎓 Draft History",
+    "Draft History": "🎓 Drafts",
 }
 HISTORY_NAV_LABELS["All-Time Stats"] = "📊 All-Time Stats"
 
@@ -3585,17 +3586,36 @@ def nav_label(labels):
     return lambda value: labels.get(value, value)
 
 
+SHOW_FREE_AGENCY = False
+MAIN_NAV_OPTIONS = ["Overview", "Team Hub", "League Hub"]
+if SHOW_FREE_AGENCY:
+    MAIN_NAV_OPTIONS.append("Free Agency")
+MAIN_NAV_OPTIONS.extend(["About", "Data Checks"])
+TEAM_NAV_OPTIONS = ["Cap", "Picks", "Schedule", "Trade Machine", "History"]
+
 requested_main_page = st.session_state.get("sbc_main_page", "Overview")
-need_landing = requested_main_page == "Overview"
 requested_team_page = st.session_state.get("sbc_team_page", "Cap")
-if requested_team_page not in ["Cap", "Picks", "Schedule", "History"]:
+
+# Migrate sessions that still point at the former top-level Trade Machine tab.
+if requested_main_page == "Trade Machine":
+    requested_main_page = "Team Hub"
+    requested_team_page = "Trade Machine"
+    st.session_state["sbc_main_page"] = requested_main_page
+    st.session_state["sbc_team_page"] = requested_team_page
+elif requested_main_page not in MAIN_NAV_OPTIONS:
+    requested_main_page = "Overview"
+    st.session_state["sbc_main_page"] = requested_main_page
+
+if requested_team_page not in TEAM_NAV_OPTIONS:
     requested_team_page = "Cap"
     st.session_state["sbc_team_page"] = requested_team_page
+
+need_landing = requested_main_page == "Overview"
 requested_league_page = st.session_state.get("sbc_league_page", "Overview")
 requested_history_page = st.session_state.get("sbc_history_page", "Overview")
 
 need_team_data = requested_main_page == "Team Hub" and requested_team_page in ["Cap", "Picks", "Schedule"]
-need_trade_data = requested_main_page == "Trade Machine"
+need_trade_data = requested_main_page == "Team Hub" and requested_team_page == "Trade Machine"
 need_fa_data = requested_main_page == "Free Agency"
 need_checks_data = requested_main_page == "Data Checks"
 need_league_overview = requested_main_page == "League Hub" and requested_league_page == "Overview"
@@ -16484,6 +16504,47 @@ st.markdown(
         fill: #ffffff !important;
     }}
 
+    /* Keep the full League History menu on one compact row. */
+    div[data-testid="stRadio"]:has([role="radiogroup"][aria-label="League History View"]) {{
+        width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, {LEAGUE_PRIMARY} 30%, transparent) transparent;
+    }}
+
+    div[data-testid="stRadio"] [role="radiogroup"][aria-label="League History View"] {{
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 0.24rem;
+        width: max-content;
+        min-width: 100%;
+    }}
+
+    div[data-testid="stRadio"] [role="radiogroup"][aria-label="League History View"] > label {{
+        flex: 0 0 auto;
+        width: auto !important;
+        min-width: max-content;
+        min-height: 2.18rem;
+        padding: 0.12rem 0.52rem;
+        white-space: nowrap;
+    }}
+
+    div[data-testid="stRadio"] [role="radiogroup"][aria-label="League History View"] > label > div:first-child,
+    div[data-testid="stRadio"] [role="radiogroup"][aria-label="League History View"] input {{
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+    }}
+
+    div[data-testid="stRadio"] [role="radiogroup"][aria-label="League History View"] p {{
+        font-size: 0.74rem !important;
+        white-space: nowrap;
+    }}
+
     .stButton > button[kind="primary"],
     .stButton > button[kind="primary"] *,
     [data-testid="stButton"] > button[kind="primary"],
@@ -16852,7 +16913,7 @@ if selected_team_changed and SelectedTeam == "Manchester":
     st.snow()
 main_page = st.radio(
     "SBC Office",
-    ["Overview", "Team Hub", "League Hub", "Trade Machine", "Free Agency", "About", "Data Checks"],
+    MAIN_NAV_OPTIONS,
     index=0,
     format_func=nav_label(MAIN_NAV_LABELS),
     key="sbc_main_page",
@@ -16961,7 +17022,7 @@ if main_page == "Team Hub":
 
     selected_team_page = st.radio(
         "Team Hub View",
-        ["Cap", "Picks", "Schedule", "History"],
+        TEAM_NAV_OPTIONS,
         format_func=nav_label(TEAM_NAV_LABELS),
         horizontal=True,
         key="sbc_team_page",
@@ -18705,15 +18766,8 @@ if main_page == "League Hub" and selected_league_page == "Overview":
         st.metric(label = "IST Runner Up", value = 15, help = "Awarded to the SBCFBL Cup Runner-up. Prize is a flat $15.", border = True, format = "dollar")
 
     '''
-if main_page == "Trade Machine":
-    if "_sbc_trade_team" not in st.session_state:
-        st.session_state["_sbc_trade_team"] = SelectedTeam if SelectedTeam in Teams else "Vegas"
-    TradeTeam = st.selectbox(
-        "Trade Machine Team",
-        options=Teams,
-        index=Teams.index(st.session_state.get("_sbc_trade_team", "Vegas")) if st.session_state.get("_sbc_trade_team", "Vegas") in Teams else Teams.index("Vegas"),
-        key="_sbc_trade_team",
-    )
+if main_page == "Team Hub" and selected_team_page == "Trade Machine":
+    TradeTeam = SelectedTeam
     trade_visuals = team_visuals(TradeTeam)
     render_trade_hero(TradeTeam)
 
