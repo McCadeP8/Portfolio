@@ -72,6 +72,27 @@ def get_pictures() -> pd.DataFrame:
     df = df.drop(columns=["Picture"], errors="ignore")
     return df
 
+@st.cache_data(ttl=300)
+def get_articles() -> pd.DataFrame:
+    refresh_key = int(pd.Timestamp.now().timestamp() // 300)
+    csv_url = (
+        "https://docs.google.com/spreadsheets/d/"
+        "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/"
+        f"export?format=csv&gid=1547958995&refresh={refresh_key}"
+    )
+    df = read_csv_snapshot(
+        "articles",
+        csv_url,
+        ttl_seconds=300,
+        dtype=str,
+        keep_default_na=False,
+    )
+    for column in ["Date", "Author", "Headline", "Body"]:
+        if column not in df.columns:
+            df[column] = ""
+    df = df[["Date", "Author", "Headline", "Body"]].copy()
+    return df[df["Headline"].astype(str).str.strip().ne("")].reset_index(drop=True)
+
 @st.cache_data(ttl=60)
 def get_exceptions() -> pd.DataFrame:
     refresh_key = int(pd.Timestamp.now().timestamp() // 60)

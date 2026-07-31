@@ -18,11 +18,11 @@ import matplotlib.pyplot as plt
 from matplotlib.ft2font import FT2Font
 import requests
 from datetime import datetime, date, time
-from html import escape
+from html import escape, unescape
 from pathlib import Path
 from textwrap import dedent
 from zoneinfo import ZoneInfo
-from functions import read_csv_snapshot, get_data, get_pictures, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar
+from functions import read_csv_snapshot, get_data, get_pictures, get_articles, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 from court_engine import CourtConfig, draw_branded_court
@@ -94,6 +94,130 @@ def render_html(markup):
     markup = dedent(str(markup)).strip()
     markup = "\n".join(line.strip() for line in markup.splitlines() if line.strip())
     st.markdown(markup, unsafe_allow_html=True)
+
+
+ARTICLE_DEFAULT_YEAR = 2026
+ARTICLE_PRESENTATIONS = {
+    "Report: Vegas Front Office Disappointed in LeBron’s Decision to Join Philadelphia": {
+        "kicker": "Front Office Report",
+        "teams": ["Vegas"],
+        "players": [("LeBron James", "1966")],
+        "badges": ["Two leagues", "One superstar", "Vegas perspective"],
+        "deck": "A real-world decision created an unusual parallel storyline for a Vegas organization that already has LeBron James in the SBC.",
+    },
+    "Free Agency’s Middle Acts: New Backcourts, Veteran Glue and a Wild Finish": {
+        "kicker": "Free Agency",
+        "teams": ["Honolulu", "Boise", "Columbus"],
+        "players": [("Peyton Watson", "4576087")],
+        "badges": ["Depth moves", "Veteran value", "Roster fit"],
+        "deck": "The superstar rush cooled, but smart teams kept building—one defender, connector and development bet at a time.",
+    },
+    "Young Stars Stay Put as San Diego, Anaheim and Honolulu Shape the Next Wave": {
+        "kicker": "Free Agency",
+        "teams": ["San Diego", "Anaheim", "Honolulu"],
+        "players": [
+            ("Dyson Daniels", "4869342"),
+            ("Walker Kessler", "4433136"),
+            ("Shaedon Sharpe", "4914336"),
+        ],
+        "badges": ["Young cores", "Restricted market", "Long-term bets"],
+        "deck": "San Diego, Anaheim, Vancouver and Honolulu made their priorities clear by investing in the players who can define their next era.",
+    },
+    "Fireworks and Franchise Moves: Providence Holds Chet as Nashville Reloads": {
+        "kicker": "July 4 Free Agency",
+        "teams": ["Providence", "Nashville", "Buffalo"],
+        "players": [
+            ("Chet Holmgren", "4433255"),
+            ("Jalen Williams", "4593803"),
+            ("De'Aaron Fox", "4066259"),
+        ],
+        "badges": ["Cornerstones kept", "New backcourts", "Holiday moves"],
+        "deck": "Providence protected its unicorn, Nashville added control and Buffalo found a new gear on a busy holiday around the SBC.",
+    },
+    "Day 1 Free Agency Grades: Manchester Steals the Show with SGA and Bam": {
+        "kicker": "Free Agency Grades",
+        "teams": ["Manchester", "El Paso", "Buffalo"],
+        "players": [
+            ("Shai Gilgeous-Alexander", "4278073"),
+            ("Bam Adebayo", "4066261"),
+            ("Giannis Antetokounmpo", "3032977"),
+        ],
+        "badges": ["SGA + Bam", "Giannis to El Paso", "Day 1 grades"],
+        "deck": "Manchester paired a franchise guard with an elite two-way center—and changed the championship conversation in a single night.",
+    },
+    "2026 First-Round Draft Grades: Tulsa Owns the Night as Manchester Lands the Prize": {
+        "kicker": "2026 Draft Grades",
+        "teams": ["Tulsa", "Manchester", "El Paso"],
+        "players": [],
+        "badges": ["30 selections", "Round one", "Pick-by-pick grades"],
+        "deck": "Manchester found the draft’s biggest prize, El Paso landed a frightening frontcourt partner and Tulsa turned volume into a defining night.",
+    },
+}
+
+ARTICLE_PLACEHOLDERS = [
+    {
+        "headline": "The deadline decisions every front office has to get right",
+        "deck": "Cap flexibility, roster balance and the moves that will shape the next transaction window.",
+        "body": "<p>This story is being prepared by the SBC League Desk.</p><p>It will be replaced automatically when the next completed article is added to the Articles sheet.</p>",
+    },
+    {
+        "headline": "Anonymous GM poll: the SBC’s toughest matchup",
+        "deck": "League decision-makers weigh in on the teams and styles nobody wants to see.",
+        "body": "<p>This story is being prepared by the SBC League Desk.</p><p>It will be replaced automatically when the next completed article is added to the Articles sheet.</p>",
+    },
+    {
+        "headline": "Five players changing the shape of the title race",
+        "deck": "The stars, breakouts and role players creating separation across the league.",
+        "body": "<p>This story is being prepared by the SBC League Desk.</p><p>It will be replaced automatically when the next completed article is added to the Articles sheet.</p>",
+    },
+]
+
+
+def front_article_slug(headline):
+    normalized = unicodedata.normalize("NFKD", str(headline or "")).encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
+    return slug[:90] or "league-story"
+
+
+def front_article_body_html(value):
+    allowed_tags = {"p", "strong", "b", "em", "i", "br", "h2", "h3", "ul", "ol", "li", "blockquote"}
+
+    def clean_tag(match):
+        raw_tag = match.group(0)
+        tag_match = re.match(r"<\s*(/?)\s*([a-zA-Z0-9]+)", raw_tag)
+        if not tag_match:
+            return ""
+        closing, tag_name = tag_match.group(1), tag_match.group(2).lower()
+        if tag_name not in allowed_tags:
+            return ""
+        if tag_name == "br":
+            return "<br>"
+        return f"</{tag_name}>" if closing else f"<{tag_name}>"
+
+    return re.sub(r"<[^>]*>", clean_tag, str(value or ""))
+
+
+def front_article_plain_text(value):
+    return " ".join(unescape(re.sub(r"<[^>]+>", " ", str(value or ""))).split())
+
+
+def front_article_date(value):
+    date_text = str(value or "").strip()
+    if date_text and not re.search(r"\b\d{4}\b", date_text):
+        date_text = f"{date_text} {ARTICLE_DEFAULT_YEAR}"
+    return pd.to_datetime(date_text, errors="coerce")
+
+
+def front_article_date_label(value):
+    parsed = front_article_date(value)
+    if pd.isna(parsed):
+        return str(value or "Coming soon")
+    return parsed.strftime("%B %d, %Y").replace(" 0", " ")
+
+
+def front_article_read_time(body):
+    word_count = len(front_article_plain_text(body).split())
+    return max(2, math.ceil(word_count / 220))
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -916,7 +1040,10 @@ def render_player_boxscore_team(team_rows, team_name, aggregate):
             game_date = pd.to_datetime(row.get("Date"), errors="coerce")
             date_text = game_date.strftime("%b %d").replace(" 0", " ") if pd.notna(game_date) else ""
             if date_text != last_date_text:
-                rows_html.append(f'<tr class="sbc-box-game-date-row"><td colspan="{len(stats) + 1}">{escape(date_text)}</td></tr>')
+                rows_html.append(
+                    f'<tr class="sbc-box-game-date-row"><td colspan="{len(stats) + 1}">'
+                    f'<span class="sbc-box-game-date-label">{escape(date_text)}</span></td></tr>'
+                )
                 last_date_text = date_text
             game_meta = f"<em>{escape(matchup_label_for_row(row))}</em>"
         stat_cells = "".join(stat_cell_html(row, stat, show_gp=aggregate) for stat in stats)
@@ -2419,6 +2546,25 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     round_label = str(matchup_row.get("Round", matchup_row.get("Type", "")))
     type_label = str(matchup_row.get("Type", ""))
     title_label = boxscore_title_for_round(round_label, type_label)
+    status_label = str(matchup_row.get("_display_status", "Final") or "Final").strip()
+    status_lower = status_label.lower()
+    status_percent_match = re.search(r"(\d+(?:\.\d+)?)\s*%", status_label)
+    if "final" in status_lower:
+        status_state = "final"
+        status_progress = 100.0
+    elif "progress" in status_lower or "live" in status_lower or status_percent_match:
+        status_state = "live"
+        status_progress = float(status_percent_match.group(1)) if status_percent_match else 50.0
+        status_progress = max(0.0, min(100.0, status_progress))
+    else:
+        status_state = "future"
+        status_progress = 0.0
+    status_a11y_attrs = ""
+    if status_state == "live":
+        status_a11y_attrs = (
+            ' role="progressbar" aria-valuemin="0" aria-valuemax="100"'
+            f' aria-valuenow="{status_progress:g}"'
+        )
     a_winner = score_numeric(score_a) >= score_numeric(score_b)
     b_winner = score_numeric(score_b) > score_numeric(score_a)
     try:
@@ -2450,8 +2596,8 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
                     </div>
                     <b class="{'sbc-box-dialog-score-win' if a_winner else ''}">{escape(format_score_value(score_a))}</b>
                 </div>
-                <div class="sbc-box-dialog-score">
-                    <i>{escape(str(matchup_row.get('_display_status', 'Final')))}</i>
+                <div class="sbc-box-dialog-score sbc-box-dialog-score-{status_state}" style="--box-progress:{status_progress:g}%;"{status_a11y_attrs}>
+                    <i>{escape(status_label)}</i>
                 </div>
                 <div class="sbc-box-dialog-team sbc-box-dialog-team-home" style="--box-team:{escape(str(color_b), quote=True)};--box-team-secondary:{escape(str(secondary_b), quote=True)};--box-team-font:{escape(str(font_b), quote=True)};">
                     <b class="{'sbc-box-dialog-score-win' if b_winner else ''}">{escape(format_score_value(score_b))}</b>
@@ -3464,6 +3610,7 @@ need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
 
 need_df = need_landing or need_team_data or need_team_history or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
+need_articles = need_landing
 need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft or (need_history and requested_history_page == "Player Stats")
 need_exceptions = need_landing or need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
 need_base_cap = need_landing or need_team_data or need_trade_data or need_checks_data or need_league_overview
@@ -3479,6 +3626,7 @@ need_current_matchup = need_league_scoreboard or (need_history and requested_his
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_history_awards
 
 df = load_required_data("Cap sheet data", get_data) if need_df else pd.DataFrame()
+articles = load_optional_data("Articles", get_articles) if need_articles else pd.DataFrame()
 pics = load_required_data("Player pictures", get_pictures) if need_pics else pd.DataFrame()
 exceptions = load_required_data("Exceptions", get_exceptions) if need_exceptions else pd.DataFrame()
 base_cap = load_required_data("Base cap", get_base_cap) if need_base_cap else pd.DataFrame()
@@ -12313,6 +12461,9 @@ st.markdown(
     }}
 
     .sbc-box-dialog-score {{
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -12325,13 +12476,55 @@ st.markdown(
         text-align: center;
     }}
 
+    .sbc-box-dialog-score::before {{
+        position: absolute;
+        z-index: 0;
+        inset: 0 auto 0 0;
+        width: 0;
+        content: "";
+    }}
+
     .sbc-box-dialog-score i {{
+        position: relative;
+        z-index: 1;
         color: var(--sbc-muted);
         font-size: 0.72rem;
         font-style: normal;
         font-weight: 950;
         letter-spacing: 0.08em;
         text-transform: uppercase;
+    }}
+
+    .sbc-box-dialog-score-future {{
+        background: #ffffff;
+    }}
+
+    .sbc-box-dialog-score-final {{
+        border-color: #111827;
+        background: #111827;
+        box-shadow: 0 7px 16px rgba(15, 23, 42, 0.20);
+    }}
+
+    .sbc-box-dialog-score-final i {{
+        color: #ffffff;
+    }}
+
+    .sbc-box-dialog-score-live {{
+        background: #ffffff;
+    }}
+
+    .sbc-box-dialog-score-live::before {{
+        width: var(--box-progress, 0%);
+        border-right: 2px solid rgba(15, 23, 42, 0.20);
+        background: linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--box-a) 42%, #ffffff),
+            color-mix(in srgb, var(--box-b) 42%, #ffffff)
+        );
+    }}
+
+    .sbc-box-dialog-score-live i {{
+        color: #111827;
     }}
 
     .sbc-box-panel {{
@@ -12577,6 +12770,15 @@ st.markdown(
         letter-spacing: 0.07em;
         padding: 0.38rem 0.6rem;
         text-transform: uppercase;
+    }}
+
+    .sbc-box-game-date-label {{
+        position: sticky;
+        left: 0.6rem;
+        z-index: 4;
+        display: inline-flex;
+        align-items: center;
+        min-height: 1rem;
     }}
 
     .sbc-box-player-cell {{
@@ -17994,19 +18196,145 @@ if main_page == "Overview":
         conference_html.append(f'<div class="sbc-v2-conf"><h4>{conference} Conference</h4>{"".join(rows)}</div>')
 
     story_teams = [front_team_v2(t) for t in front_table["Team"].astype(str).head(15).tolist()] if not front_table.empty else [front_team_v2(t) for t in Teams[:15]]
-    headline_texts = [
-        f"{leader['nick']} seize the league's best record as the calendar turns", "Six contenders, four spots: the playoff race has officially arrived", "The deadline decisions every front office has to get right", "Anonymous GM poll: the SBC's toughest matchup", "Five players changing the shape of the title race", "Why the middle of the table refuses to separate", "The bold trade idea that could swing each conference", "Rookie report: which newcomers are earning real minutes?", "Injury returns that could reset the power rankings", "The case for patience—and the teams that cannot afford it", "Inside the numbers behind the league's fastest risers", "Weekend watch guide: the matchups that actually matter"
-    ][:8]
-    headlines_html = "".join(f'<a class="sbc-v2-headline" href="?sbc_article={i}" target="_self"><div><b>{escape(text)}</b><em>{["34m", "1h", "2h", "3h", "5h", "Yesterday"][i % 6]} · SBC League Desk</em></div></a>' for i, text in enumerate(headline_texts))
+    article_records = []
+    used_article_slugs = set()
+    if isinstance(articles, pd.DataFrame) and not articles.empty:
+        for article_position, (_, row) in enumerate(articles.iterrows()):
+            headline = str(row.get("Headline", "")).strip()
+            if not headline:
+                continue
+            presentation = ARTICLE_PRESENTATIONS.get(headline, {})
+            body_html = front_article_body_html(row.get("Body", ""))
+            body_plain = front_article_plain_text(body_html)
+            configured_teams = [team for team in presentation.get("teams", []) if team in team_info]
+            if not configured_teams:
+                headline_lower = headline.lower()
+                configured_teams = [
+                    team for team in team_info
+                    if re.search(rf"\b{re.escape(str(team).lower())}\b", headline_lower)
+                ][:3]
+            team_assets = [front_team_v2(team) for team in configured_teams]
+            primary_team = team_assets[0] if team_assets else leader
+            secondary_color = team_assets[1]["color"] if len(team_assets) > 1 else primary_team["color"]
+            parsed_date = front_article_date(row.get("Date", ""))
+            slug_base = front_article_slug(headline)
+            slug = slug_base
+            slug_suffix = 2
+            while slug in used_article_slugs:
+                slug = f"{slug_base}-{slug_suffix}"
+                slug_suffix += 1
+            used_article_slugs.add(slug)
+            fallback_deck = body_plain[:230].rsplit(" ", 1)[0] + "…" if len(body_plain) > 230 else body_plain
+            players = [
+                {"name": str(name), "id": str(player_id), "image": espn_headshot_url(player_id)}
+                for name, player_id in presentation.get("players", [])
+            ]
+            article_records.append({
+                "slug": slug,
+                "headline": headline,
+                "author": str(row.get("Author", "") or "SBC Staff").strip(),
+                "date_label": front_article_date_label(row.get("Date", "")),
+                "sort_value": int(parsed_date.value) if pd.notna(parsed_date) else -article_position,
+                "read_time": front_article_read_time(body_html),
+                "body": body_html,
+                "deck": str(presentation.get("deck", fallback_deck)),
+                "kicker": str(presentation.get("kicker", "SBC League Report")),
+                "badges": [str(value) for value in presentation.get("badges", [])],
+                "players": players,
+                "teams": team_assets,
+                "primary": primary_team,
+                "secondary_color": secondary_color,
+                "placeholder": False,
+            })
+    article_records.sort(key=lambda story: story["sort_value"], reverse=True)
+
+    placeholder_records = []
+    placeholder_teams = story_teams or [leader]
+    for placeholder_index, placeholder in enumerate(ARTICLE_PLACEHOLDERS):
+        placeholder_team = placeholder_teams[placeholder_index % len(placeholder_teams)]
+        placeholder_records.append({
+            "slug": f"coming-soon-{front_article_slug(placeholder['headline'])}",
+            "headline": placeholder["headline"],
+            "author": "SBC League Desk",
+            "date_label": "Coming soon",
+            "sort_value": -1000 - placeholder_index,
+            "read_time": 2,
+            "body": front_article_body_html(placeholder["body"]),
+            "deck": placeholder["deck"],
+            "kicker": "Coming Soon",
+            "badges": ["Editorial placeholder"],
+            "players": [],
+            "teams": [placeholder_team],
+            "primary": placeholder_team,
+            "secondary_color": "#39495a",
+            "placeholder": True,
+        })
+
+    if article_records:
+        hero_story = article_records[0]
+        headline_stories = (article_records[1:] + placeholder_records)[:8]
+    else:
+        hero_story = placeholder_records[0]
+        headline_stories = placeholder_records[1:][:8]
+    visible_placeholder_count = sum(story["placeholder"] for story in headline_stories)
+
+    def front_story_card_art(story):
+        if story["players"]:
+            return story["players"][0]["image"], f"{story['players'][0]['name']} headshot"
+        return story["primary"]["logo"], f"{story['primary']['name']} logo"
+
+    headline_cards = []
+    for story in headline_stories:
+        card_art, card_alt = front_story_card_art(story)
+        placeholder_class = " sbc-v2-headline-placeholder" if story["placeholder"] else ""
+        meta = "Coming Soon · SBC League Desk" if story["placeholder"] else f"{story['date_label']} · {story['author']} · {story['read_time']} min"
+        headline_cards.append(f"""
+            <a class="sbc-v2-headline{placeholder_class}" href="?sbc_article={escape(story['slug'], quote=True)}" target="_self">
+                <img src="{escape(card_art, quote=True)}" alt="{escape(card_alt, quote=True)}">
+                <div><b>{escape(story['headline'])}</b><em>{escape(meta)}</em></div>
+            </a>
+        """)
+    headlines_html = "".join(headline_cards)
+
+    hero_art_html = "".join(
+        f'<img class="sbc-v2-hero-player" src="{escape(player["image"], quote=True)}" alt="{escape(player["name"], quote=True)} headshot">'
+        for player in hero_story["players"][:3]
+    )
+    if not hero_art_html:
+        hero_art_html = "".join(
+            f'<img class="sbc-v2-hero-team-art" src="{escape(team["logo"], quote=True)}" alt="{escape(team["name"], quote=True)} logo">'
+            for team in hero_story["teams"][:3]
+        )
     transaction_actions = ["acquire veteran scoring in a two-team deal", "sign a free agent to a two-year contract", "exercise a team option", "waive a reserve guard", "match a restricted offer sheet"]
     transactions_html = "".join(f'<div class="sbc-v2-transaction"><img src="{escape(team["logo"], quote=True)}"><div><b>{escape(team["name"])} {transaction_actions[i % len(transaction_actions)]}</b><span>Transaction processed · Jan {14-i}</span></div></div>' for i, team in enumerate(story_teams[:6]))
 
     render_html("""
     <style>
-      div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body){display:flex!important;flex-direction:column!important;width:min(1100px,calc(100vw - 32px))!important;max-width:min(1100px,calc(100vw - 32px))!important;max-height:calc(100vh - 32px)!important;max-height:calc(100dvh - 32px)!important;overflow:hidden!important}
+      div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body){display:flex!important;flex-direction:column!important;width:min(1180px,calc(100vw - 32px))!important;max-width:min(1180px,calc(100vw - 32px))!important;max-height:calc(100vh - 32px)!important;max-height:calc(100dvh - 32px)!important;overflow:hidden!important}
       div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body)>div:has(>div[data-testid="stVerticalBlock"]){flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable;background:#fff!important}
-      .sbc-article-body{max-width:900px;margin:0 auto;padding:.5rem 1.2rem 2rem}.sbc-article-body .dek{font-size:1.18rem;line-height:1.55;color:#526170;border-bottom:1px solid #dfe5ea;padding-bottom:1.2rem}.sbc-article-body p{font-size:1rem;line-height:1.75;color:#263442}.sbc-article-body .byline{font-size:.75rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#d92332;margin:1rem 0}
-      @media(max-width:640px){div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body){width:calc(100vw - .75rem)!important;max-width:calc(100vw - .75rem)!important;height:calc(100vh - 56px)!important;height:calc(100dvh - 56px)!important;max-height:calc(100vh - 56px)!important;max-height:calc(100dvh - 56px)!important;border-radius:12px!important}div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body)>div:has(>div[data-testid="stVerticalBlock"]){padding:.4rem .55rem 0!important;scrollbar-gutter:auto}.sbc-article-body{padding:.2rem .15rem 1.8rem}.sbc-article-body h1{font-size:1.9rem!important;line-height:1.08!important}.sbc-article-body .byline{font-size:.66rem;line-height:1.35;margin:.7rem 0}.sbc-article-body .dek{font-size:1.05rem;line-height:1.55;padding-bottom:1rem}.sbc-article-body p{font-size:.96rem;line-height:1.7}}
+      .sbc-article-body{width:100%;max-width:1100px;margin:0 auto;padding:.35rem .8rem 2.5rem;color:#17212b}
+      .sbc-article-hero{position:relative;isolation:isolate;overflow:hidden;min-height:410px;border-radius:18px;background:linear-gradient(118deg,var(--article-primary) 0%,color-mix(in srgb,var(--article-primary) 78%,#07111d) 48%,var(--article-secondary) 145%);box-shadow:0 20px 46px rgba(9,22,35,.18)}
+      .sbc-article-wordmark{position:absolute;z-index:-1;right:0;top:-12%;width:58%;height:122%;object-fit:contain;opacity:.12;filter:grayscale(1) brightness(2.5)}
+      .sbc-article-hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:1.2rem;align-items:end;min-height:410px;padding:2rem 2.15rem}
+      .sbc-article-kicker{display:inline-flex;width:max-content;padding:.36rem .62rem;border-radius:5px;background:#e22635;color:#fff;font-size:.66rem;font-weight:950;letter-spacing:.13em;text-transform:uppercase}
+      .sbc-article-byline{margin:.8rem 0 0;color:rgba(255,255,255,.72);font-size:.69rem;font-weight:850;letter-spacing:.075em;text-transform:uppercase}
+      .sbc-article-hero h1{max-width:760px;margin:.7rem 0 .8rem;color:#fff;font-family:'Bungee','Arial Black',sans-serif;font-size:clamp(2.25rem,4.6vw,4.55rem);line-height:1;letter-spacing:-.045em;text-wrap:balance;text-shadow:0 4px 20px rgba(0,0,0,.28)}
+      .sbc-article-dek{max-width:720px;margin:0;color:#eef4f8;font-size:1.08rem;font-weight:680;line-height:1.52}
+      div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body) .sbc-article-hero h1{color:#fff!important}
+      div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body) .sbc-article-hero .sbc-article-dek{color:#eef4f8!important}
+      .sbc-article-badges{display:flex;flex-wrap:wrap;gap:.42rem;margin-top:1.1rem}.sbc-article-badges span{padding:.34rem .54rem;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(255,255,255,.1);color:#fff;font-size:.62rem;font-weight:900;letter-spacing:.055em;text-transform:uppercase;backdrop-filter:blur(8px)}
+      .sbc-article-media{position:relative;display:flex;align-items:flex-end;justify-content:center;min-height:280px}
+      .sbc-article-player{width:min(205px,44%);height:270px;object-fit:contain;object-position:center bottom;margin:0 -1.35rem;filter:drop-shadow(0 17px 19px rgba(0,0,0,.48))}
+      .sbc-article-player:first-child{z-index:2}.sbc-article-player:nth-child(2){z-index:3}.sbc-article-player:nth-child(3){z-index:1}
+      .sbc-article-team-art{width:min(190px,42%);height:190px;object-fit:contain;margin:0 -.7rem;filter:drop-shadow(0 15px 18px rgba(0,0,0,.42))}
+      .sbc-article-team-strip{position:absolute;right:1.25rem;bottom:1.05rem;z-index:5;display:flex;align-items:center;gap:.35rem;padding:.4rem .5rem;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(5,13,24,.52);backdrop-filter:blur(10px)}
+      .sbc-article-team-strip img{width:30px;height:30px;object-fit:contain}
+      .sbc-article-copy{max-width:820px;margin:0 auto;padding:2rem .9rem 0}.sbc-article-copy p{margin:0 0 1.2rem;color:#263442;font-family:Georgia,'Times New Roman',serif;font-size:1.06rem;line-height:1.82}.sbc-article-copy>p:first-child{color:#152333;font-size:1.22rem;line-height:1.68}.sbc-article-copy strong{color:#101d2b;font-family:Inter,Arial,sans-serif;font-size:.93em;line-height:1.45}
+      .sbc-article-copy p:has(>strong:first-child){padding:1rem 1.05rem;border:1px solid #e0e6eb;border-left:4px solid var(--article-primary);border-radius:0 10px 10px 0;background:linear-gradient(90deg,color-mix(in srgb,var(--article-primary) 7%,#fff),#fff);box-shadow:0 6px 18px rgba(16,29,43,.045)}
+      .sbc-article-copy h2,.sbc-article-copy h3{font-family:'Bungee','Arial Black',sans-serif;line-height:1.1}.sbc-article-copy blockquote{margin:1.4rem 0;padding:1rem 1.2rem;border-left:4px solid #e22635;background:#f7f9fb;color:#354555;font:italic 1.1rem/1.65 Georgia,serif}
+      .sbc-article-end{display:flex;align-items:center;justify-content:space-between;gap:1rem;max-width:820px;margin:1.5rem auto 0;padding:1.1rem .9rem 0;border-top:1px solid #dfe5ea;color:#697786;font-size:.7rem;font-weight:850;letter-spacing:.06em;text-transform:uppercase}.sbc-article-end img{width:42px;height:42px;object-fit:contain}
+      @media(max-width:760px){.sbc-article-hero-inner{grid-template-columns:1fr;align-items:start;min-height:570px;padding:1.25rem 1.15rem 1rem}.sbc-article-hero h1{font-size:clamp(2rem,9vw,3rem)}.sbc-article-dek{font-size:.98rem}.sbc-article-media{position:absolute;right:0;bottom:0;left:0;z-index:-1;min-height:235px;opacity:.68}.sbc-article-player{height:235px}.sbc-article-team-strip{right:.85rem;bottom:.75rem}}
+      @media(max-width:640px){div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body){width:calc(100vw - .75rem)!important;max-width:calc(100vw - .75rem)!important;height:calc(100vh - 56px)!important;height:calc(100dvh - 56px)!important;max-height:calc(100vh - 56px)!important;max-height:calc(100dvh - 56px)!important;border-radius:12px!important}div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body)>div:has(>div[data-testid="stVerticalBlock"]){padding:.4rem .45rem 0!important;scrollbar-gutter:auto}.sbc-article-body{padding:.05rem 0 1.8rem}.sbc-article-hero{min-height:560px;border-radius:12px}.sbc-article-hero-inner{min-height:560px}.sbc-article-kicker{font-size:.59rem}.sbc-article-byline{font-size:.61rem;line-height:1.4}.sbc-article-badges span{font-size:.55rem}.sbc-article-copy{padding:1.25rem .55rem 0}.sbc-article-copy p{font-size:1rem;line-height:1.75}.sbc-article-copy>p:first-child{font-size:1.1rem}.sbc-article-copy p:has(>strong:first-child){padding:.85rem .8rem}.sbc-article-end{margin-top:1rem;padding:.9rem .55rem 0}}
     </style>
     """)
 
@@ -18029,29 +18357,70 @@ if main_page == "Overview":
 
     article_query = str(st.query_params.get("sbc_article", ""))
     if article_query:
-        article_index = -1 if article_query == "big" else int(article_query) if article_query.isdigit() else 0
-        article_title = f"{leader['nick']} own the moment" if article_index == -1 else headline_texts[min(article_index, len(headline_texts) - 1)]
+        article_lookup = {story["slug"]: story for story in article_records + placeholder_records}
+        selected_article = hero_story if article_query == "big" else article_lookup.get(article_query)
+        if selected_article is not None:
+            article_players_html = "".join(
+                f'<img class="sbc-article-player" src="{escape(player["image"], quote=True)}" alt="{escape(player["name"], quote=True)} headshot">'
+                for player in selected_article["players"][:3]
+            )
+            if not article_players_html:
+                article_players_html = "".join(
+                    f'<img class="sbc-article-team-art" src="{escape(team["logo"], quote=True)}" alt="{escape(team["name"], quote=True)} logo">'
+                    for team in selected_article["teams"][:3]
+                )
+            article_team_strip_html = "".join(
+                f'<img src="{escape(team["logo"], quote=True)}" alt="{escape(team["name"], quote=True)} logo" title="{escape(team["name"], quote=True)}">'
+                for team in selected_article["teams"][:3]
+            )
+            article_badges_html = "".join(
+                f"<span>{escape(badge)}</span>" for badge in selected_article["badges"]
+            )
 
-        @st.dialog("SBC League Desk", width="large")
-        def render_front_article(title):
-            render_html(f"""
-            <article class="sbc-article-body"><div class="byline">SBC League Desk · January 14, 2025</div><h1>{escape(title)}</h1><p class="dek">The season has reached the point where every result changes the conversation. Here is what matters, what comes next, and why the league is paying attention.</p><p>This is placeholder article copy for the landing-page prototype. A real story can eventually pull from a commissioner-written post, league announcement, recap, or automated matchup summary.</p><p>The central question is no longer whether the race will tighten, but which teams are built to survive it. Front offices have spent months balancing immediate production against long-term flexibility, and the January schedule is exposing every choice.</p><p>Several executives around the league pointed to depth as the deciding factor. Stars still drive the biggest nights, but the teams gaining ground are getting useful performances from the entire roster.</p><p>There is plenty of basketball left. For now, the table provides the clearest answer—and the next matchup window offers everyone a chance to rewrite it.</p></article>
-            """)
+            @st.dialog("SBC League Desk", width="large")
+            def render_front_article(story):
+                placeholder_note = " · Preview" if story["placeholder"] else ""
+                render_html(f"""
+                <article class="sbc-article-body" style="--article-primary:{escape(story['primary']['color'], quote=True)};--article-secondary:{escape(story['secondary_color'], quote=True)};">
+                    <header class="sbc-article-hero">
+                        <img class="sbc-article-wordmark" src="{escape(story['primary']['wordmark'], quote=True)}" alt="">
+                        <div class="sbc-article-hero-inner">
+                            <div class="sbc-article-hero-copy">
+                                <div class="sbc-article-kicker">{escape(story['kicker'])}</div>
+                                <div class="sbc-article-byline">{escape(story['author'])} · {escape(story['date_label'])} · {story['read_time']} min read{placeholder_note}</div>
+                                <h1>{escape(story['headline'])}</h1>
+                                <p class="sbc-article-dek">{escape(story['deck'])}</p>
+                                <div class="sbc-article-badges">{article_badges_html}</div>
+                            </div>
+                            <div class="sbc-article-media">{article_players_html}</div>
+                        </div>
+                        <div class="sbc-article-team-strip">{article_team_strip_html}</div>
+                    </header>
+                    <main class="sbc-article-copy">{story['body']}</main>
+                    <footer class="sbc-article-end">
+                        <span>SBC League Desk · End of story</span>
+                        <img src="{escape(story['primary']['logo'], quote=True)}" alt="{escape(story['primary']['name'], quote=True)} logo">
+                    </footer>
+                </article>
+                """)
 
-        render_front_article(article_title)
+            render_front_article(selected_article)
 
     render_html(f"""
     <style>
       .sbc-front-v2{{color:#17212b}} .sbc-v2-grid{{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(420px,1fr);gap:15px;align-items:stretch}}
       .sbc-v2-left,.sbc-v2-right{{display:flex;flex-direction:column;gap:15px;height:100%}} .sbc-v2-panel{{background:#fff;border:1px solid #dce2e8;border-radius:14px;padding:16px;box-shadow:0 3px 12px rgba(22,34,46,.06)}} .sbc-v2-news,.sbc-v2-transactions{{flex:1}}
-      .sbc-v2-hero{{min-height:410px;border-radius:16px;overflow:hidden;position:relative;padding:28px;display:flex;align-items:flex-end;background:linear-gradient(90deg,rgba(4,17,29,.96) 0%,rgba(4,17,29,.72) 48%,rgba(4,17,29,.20) 100%),url('{escape(leader['wordmark'], quote=True)}') center/cover no-repeat;box-shadow:0 12px 34px rgba(8,24,39,.2);text-decoration:none!important;color:#fff!important}}
+      .sbc-v2-hero{{min-height:455px;border-radius:16px;overflow:hidden;isolation:isolate;position:relative;padding:28px;display:flex;align-items:flex-end;background:linear-gradient(105deg,color-mix(in srgb,var(--hero-primary) 84%,#06111e) 0%,color-mix(in srgb,var(--hero-primary) 72%,#06111e) 52%,var(--hero-secondary) 145%);box-shadow:0 12px 34px rgba(8,24,39,.2);text-decoration:none!important;color:#fff!important}}
       .sbc-v2-hero:hover,.sbc-v2-hero:visited,.sbc-v2-hero:active{{text-decoration:none!important;color:#fff!important}}
-      .sbc-v2-hero-art{{position:absolute;width:300px;height:300px;right:24px;top:55px;object-fit:contain;opacity:.88;filter:drop-shadow(0 18px 25px rgba(0,0,0,.42));z-index:0}}
+      .sbc-v2-hero-wordmark{{position:absolute;z-index:-1;right:-6%;top:-8%;width:62%;height:118%;object-fit:contain;opacity:.12;filter:grayscale(1) brightness(2.7)}}
+      .sbc-v2-hero-art{{position:absolute;z-index:0;right:1.5rem;bottom:0;display:flex;align-items:flex-end;justify-content:center;width:43%;height:88%;opacity:.93}}
+      .sbc-v2-hero-player{{width:min(220px,62%);height:100%;margin:0 -3.25rem;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 18px 24px rgba(0,0,0,.48))}}.sbc-v2-hero-player:first-child{{z-index:2}}.sbc-v2-hero-player:nth-child(2){{z-index:1}}.sbc-v2-hero-player:nth-child(3){{z-index:0}}
+      .sbc-v2-hero-team-art{{width:min(180px,45%);height:58%;margin:0 -.75rem;object-fit:contain;filter:drop-shadow(0 18px 24px rgba(0,0,0,.48))}}
       .sbc-v2-story-tag{{position:absolute;top:22px;left:24px;z-index:3;display:inline-flex;padding:5px 9px;background:#e32231;color:#fff;border-radius:5px;font-size:.65rem;letter-spacing:.13em;font-weight:950;text-transform:uppercase}}
-      .sbc-v2-copy{{position:relative;z-index:1;color:#fff;max-width:680px;text-shadow:0 2px 12px rgba(0,0,0,.35)}}
-      .sbc-v2-copy h1{{font-family:'Bungee','Arial Black',sans-serif;font-size:clamp(2rem,4.4vw,4rem);line-height:.98;letter-spacing:-.035em;margin:13px 0 12px}} .sbc-v2-copy p{{font-size:1rem;line-height:1.45;font-weight:720;max-width:610px;margin:0;color:#eaf0f5}}
+      .sbc-v2-copy{{position:relative;z-index:1;color:#fff;max-width:720px;text-shadow:0 2px 12px rgba(0,0,0,.35)}}
+      .sbc-v2-copy small{{display:block;color:rgba(255,255,255,.72);font-size:.67rem;font-weight:850;letter-spacing:.07em;text-transform:uppercase}}.sbc-v2-copy h1{{font-family:'Bungee','Arial Black',sans-serif;font-size:clamp(2rem,3.7vw,3.55rem);line-height:1;letter-spacing:-.035em;margin:10px 0 12px;text-wrap:balance}} .sbc-v2-copy p{{font-size:1rem;line-height:1.48;font-weight:720;max-width:650px;margin:0;color:#eaf0f5}}
       .sbc-v2-head{{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #17212b;padding-bottom:9px;margin-bottom:5px}} .sbc-v2-head b{{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}} .sbc-v2-head span{{font-size:.65rem;color:#e32231;font-weight:900}}
-      .sbc-v2-headline{{display:block;padding:14px 0;border-bottom:1px solid #e4e8ec;text-decoration:none!important;color:#17212b!important}} .sbc-v2-headline:hover,.sbc-v2-headline:visited,.sbc-v2-headline:active{{text-decoration:none!important;color:#17212b!important}} .sbc-v2-headline:hover b{{color:#d92332}} .sbc-v2-headline:last-child{{border:0}} .sbc-v2-headline b{{display:block;font-size:.91rem;line-height:1.28;text-decoration:none!important}} .sbc-v2-headline em{{display:block;font-style:normal;color:#7b8690;font-size:.67rem;margin-top:4px;text-decoration:none!important}}
+      .sbc-v2-headline{{display:grid;grid-template-columns:58px minmax(0,1fr);gap:.75rem;align-items:center;min-height:78px;padding:10px 0;border-bottom:1px solid #e4e8ec;text-decoration:none!important;color:#17212b!important}} .sbc-v2-headline:hover,.sbc-v2-headline:visited,.sbc-v2-headline:active{{text-decoration:none!important;color:#17212b!important}} .sbc-v2-headline:hover b{{color:#d92332}} .sbc-v2-headline:last-child{{border:0}} .sbc-v2-headline>img{{width:58px;height:58px;border-radius:9px;background:linear-gradient(145deg,#eef2f5,#dfe5ea);object-fit:contain;object-position:center bottom}}.sbc-v2-headline b{{display:block;font-size:.91rem;line-height:1.28;text-decoration:none!important}} .sbc-v2-headline em{{display:block;font-style:normal;color:#7b8690;font-size:.64rem;line-height:1.3;margin-top:4px;text-decoration:none!important}}.sbc-v2-headline-placeholder{{opacity:.62}}.sbc-v2-headline-placeholder>img{{filter:grayscale(1)}}.sbc-v2-headline-placeholder b{{font-style:italic}}
       .sbc-v2-standings{{display:grid;grid-template-columns:1fr 1fr;gap:18px}} .sbc-v2-conf h4{{margin:4px 0 7px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}}
       .sbc-v2-standing{{display:grid;grid-template-columns:16px 23px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:29px;border-bottom:1px solid #edf0f2;font-size:.64rem}} .sbc-v2-standing img{{width:21px;height:21px;object-fit:contain}} .sbc-v2-standing>span{{color:#8b959f}} .sbc-v2-standing b{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}} .sbc-v2-standing em{{font-style:normal;font-weight:900}}
       .sbc-cut{{height:19px;display:flex;align-items:center;position:relative}} .sbc-cut:before{{content:'';height:2px;position:absolute;left:0;right:0}} .sbc-cut span{{position:relative;background:#fff;padding-right:6px;font-size:.52rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}} .sbc-cut-playoff:before{{background:#159447}} .sbc-cut-playoff span{{color:#11763a}} .sbc-cut-playin:before{{background:#e49a17}} .sbc-cut-playin span{{color:#a56a00}}
@@ -18060,13 +18429,16 @@ if main_page == "Overview":
       @media(max-width:620px){{
         .sbc-v2-grid,.sbc-v2-left,.sbc-v2-right{{gap:12px}}
         .sbc-v2-panel{{padding:13px;border-radius:12px}}
-        .sbc-v2-hero{{min-height:420px;padding:20px;align-items:flex-end;background:linear-gradient(180deg,rgba(4,17,29,.48) 0%,rgba(4,17,29,.56) 43%,rgba(4,17,29,.98) 100%),url('{escape(leader['wordmark'], quote=True)}') center/cover no-repeat}}
-        .sbc-v2-hero-art{{width:220px;height:220px;top:58px;right:auto;left:50%;transform:translateX(-50%);opacity:.62}}
+        .sbc-v2-hero{{min-height:555px;padding:20px;align-items:flex-end;background:linear-gradient(180deg,color-mix(in srgb,var(--hero-primary) 68%,#07111d) 0%,color-mix(in srgb,var(--hero-primary) 72%,#07111d) 49%,#07111d 100%)}}
+        .sbc-v2-hero-wordmark{{right:-12%;top:-4%;width:115%;height:75%;opacity:.1}}
+        .sbc-v2-hero-art{{right:0;bottom:0;left:0;width:100%;height:62%;opacity:.59}}
+        .sbc-v2-hero-player{{width:min(190px,60%);margin:0 -2.8rem}}
+        .sbc-v2-hero-team-art{{width:min(150px,45%);height:55%}}
         .sbc-v2-story-tag{{top:18px;left:20px}}
         .sbc-v2-copy{{max-width:none}}
-        .sbc-v2-copy h1{{font-size:clamp(1.85rem,9vw,2.35rem);line-height:1.02;margin:11px 0 10px}}
+        .sbc-v2-copy small{{font-size:.6rem}}.sbc-v2-copy h1{{font-size:clamp(1.82rem,8.6vw,2.5rem);line-height:1.03;margin:9px 0 10px}}
         .sbc-v2-copy p{{font-size:.9rem;line-height:1.42}}
-        .sbc-v2-headline{{min-height:3.6rem;padding:12px 0}}
+        .sbc-v2-headline{{grid-template-columns:54px minmax(0,1fr);min-height:4.4rem;padding:9px 0}}.sbc-v2-headline>img{{width:54px;height:54px}}
         .sbc-v2-headline b{{font-size:.88rem;line-height:1.32}}
         .sbc-v2-right .sbc-v2-transactions{{order:1}}
         .sbc-v2-right .sbc-v2-standings-panel{{order:2}}
@@ -18078,7 +18450,7 @@ if main_page == "Overview":
       }}
     </style>
     <div class="sbc-front-v2"><div class="sbc-v2-grid">
-      <div class="sbc-v2-left"><a class="sbc-v2-hero" href="?sbc_article=big" target="_self"><span class="sbc-v2-story-tag">The Big Story</span><img class="sbc-v2-hero-art" src="{escape(leader['logo'], quote=True)}" alt="{escape(leader['name'], quote=True)} logo"><div class="sbc-v2-copy"><h1>{escape(leader['nick'])} own the moment.</h1><p>{escape(leader['name'])} sits atop the January 14 table at {leader_record}. The contenders are lining up behind them—and every matchup now carries postseason weight.</p></div></a><section class="sbc-v2-panel sbc-v2-news"><div class="sbc-v2-head"><b>Top Headlines</b><span>Latest</span></div>{headlines_html}</section></div>
+      <div class="sbc-v2-left"><a class="sbc-v2-hero" href="?sbc_article={escape(hero_story['slug'], quote=True)}" target="_self" style="--hero-primary:{escape(hero_story['primary']['color'], quote=True)};--hero-secondary:{escape(hero_story['secondary_color'], quote=True)};"><span class="sbc-v2-story-tag">Latest Story</span><img class="sbc-v2-hero-wordmark" src="{escape(hero_story['primary']['wordmark'], quote=True)}" alt=""><div class="sbc-v2-hero-art">{hero_art_html}</div><div class="sbc-v2-copy"><small>{escape(hero_story['date_label'])} · {escape(hero_story['author'])} · {hero_story['read_time']} min read</small><h1>{escape(hero_story['headline'])}</h1><p>{escape(hero_story['deck'])}</p></div></a><section class="sbc-v2-panel sbc-v2-news"><div class="sbc-v2-head"><b>Top Headlines</b><span>{len(article_records)} published · {visible_placeholder_count} upcoming</span></div>{headlines_html}</section></div>
       <div class="sbc-v2-right"><section class="sbc-v2-panel sbc-v2-standings-panel"><div class="sbc-v2-head"><b>Standings</b><span>Jan 14, 2025</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
     </div></div>
     """)
