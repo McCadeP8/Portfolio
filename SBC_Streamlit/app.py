@@ -18158,6 +18158,14 @@ if main_page == "Overview":
         matchup_dialog_row["_display_status"] = "Final" if query_period < front_period else (f"In Progress · {58 + (query_index % 6) * 6}%" if query_period == front_period else "Upcoming")
         return matchup_dialog_row
 
+    front_dialog_opened = False
+
+    def clear_front_dialog_query(*query_names):
+        """Consume one-shot front-page dialog routes before opening a modal."""
+        for query_name in query_names:
+            if query_name in st.query_params:
+                del st.query_params[query_name]
+
     scorebar_selection = front_scoreboard_component(
         windows=matchup_windows,
         initial_index=1,
@@ -18173,6 +18181,8 @@ if main_page == "Overview":
             except (TypeError, ValueError, IndexError):
                 selected_matchup_row = None
             if selected_matchup_row is not None:
+                clear_front_dialog_query("sbc_game", "sbc_article")
+                front_dialog_opened = True
                 render_matchup_boxscore_dialog(selected_matchup_row, all_time_rosters)
 
     front_table = standings[(standings["Year"] == front_year) & (standings["Period"] == front_period)].copy()
@@ -18339,7 +18349,8 @@ if main_page == "Overview":
     """)
 
     game_query = str(st.query_params.get("sbc_game", ""))
-    if game_query:
+    if game_query and not front_dialog_opened:
+        clear_front_dialog_query("sbc_game")
         try:
             query_period, query_index = [int(value) for value in game_query.split("-", 1)]
             query_rows = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == query_period)]
@@ -18350,16 +18361,22 @@ if main_page == "Overview":
                 elif query_period == front_period and query_index == 2:
                     matchup_dialog_row["Type"] = "Playoffs"
                 matchup_dialog_row["_display_status"] = "Final" if query_period < front_period else (f"In Progress · {58 + (query_index % 6) * 6}%" if query_period == front_period else "Upcoming")
+                clear_front_dialog_query("sbc_article")
+                front_dialog_opened = True
                 render_matchup_boxscore_dialog(matchup_dialog_row, all_time_rosters)
         except (TypeError, ValueError, IndexError):
-            if "sbc_game" in st.query_params:
-                del st.query_params["sbc_game"]
+            pass
+    elif front_dialog_opened:
+        clear_front_dialog_query("sbc_game", "sbc_article")
 
     article_query = str(st.query_params.get("sbc_article", ""))
-    if article_query:
+    if article_query and not front_dialog_opened:
+        clear_front_dialog_query("sbc_article")
         article_lookup = {story["slug"]: story for story in article_records + placeholder_records}
         selected_article = hero_story if article_query == "big" else article_lookup.get(article_query)
         if selected_article is not None:
+            clear_front_dialog_query("sbc_game")
+            front_dialog_opened = True
             article_players_html = "".join(
                 f'<img class="sbc-article-player" src="{escape(player["image"], quote=True)}" alt="{escape(player["name"], quote=True)} headshot">'
                 for player in selected_article["players"][:3]
