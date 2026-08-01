@@ -3567,6 +3567,7 @@ LEAGUE_NAV_LABELS = {
 HISTORY_NAV_LABELS = {
     "Overview": "🌐 Overview",
     "Scoreboard": "🏀 Scoreboard",
+    "Standings": "📊 Standings",
     "Playoff Bracket": "🏆 Playoffs",
     "In-Season Tournament": "🏅 SBC Cup",
     "Player Stats": "📈 Player Stats",
@@ -3640,7 +3641,7 @@ need_history_awards = (need_history and requested_history_page in ["Awards", "Ov
 need_award_count = need_history and requested_history_page == "Awards" and requested_awards_page == "Award Count"
 need_award_detail_assets = need_history_awards and not need_award_count
 need_history_draft = need_history and requested_history_page == "Draft History"
-need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
+need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Standings", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
 
 need_df = need_landing or need_team_data or need_team_history or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
 need_articles = need_landing
@@ -3652,7 +3653,7 @@ need_ft = need_checks_data
 need_standings = need_landing or need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft or need_team_history
 need_dh = need_history_draft
 need_all_time_team_stats = need_team_history or need_history_stats or need_award_detail_assets
-need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page == "Schedule") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
+need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_all_time_rosters = need_landing or need_award_detail_assets or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
 need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding" and not need_award_count)
 need_current_matchup = need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
@@ -17254,7 +17255,7 @@ if main_page == "League Hub":
     if selected_league_page == "History":
         selected_history_page = st.radio(
             "League History View",
-            ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats", "Awards", "Draft History", "Branding"],
+            ["Overview", "Scoreboard", "Standings", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats", "Awards", "Draft History", "Branding"],
             format_func=nav_label(HISTORY_NAV_LABELS),
             horizontal=True,
             key="sbc_history_page",
@@ -17657,13 +17658,7 @@ if main_page == "Team Hub" and selected_team_page == "Picks":
 
 
 if main_page == "Team Hub" and selected_team_page == "Schedule":
-    schedule_years = sorted(all_time_schedule["Year"].dropna().astype(int).unique().tolist())
-    if not schedule_years:
-        schedule_years = [current_year]
-    default_schedule_year = current_year if current_year in schedule_years else schedule_years[-1]
-    if "_sbc_schedule_year" not in st.session_state or st.session_state["_sbc_schedule_year"] not in schedule_years:
-        st.session_state["_sbc_schedule_year"] = default_schedule_year
-    SelectedScheduleYear = st.session_state["_sbc_schedule_year"]
+    SelectedScheduleYear = 2027
     schedule_raw = all_time_schedule[
         (all_time_schedule["Year"] == SelectedScheduleYear)
         & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
@@ -17685,14 +17680,9 @@ if main_page == "Team Hub" and selected_team_page == "Schedule":
     render_html("""
         <div class="sbc-live-controls">
             <div class="sbc-live-control-title">Schedule Window</div>
-            <div class="sbc-live-control-copy">Choose the season to refresh the schedule table, travel totals, and map.</div>
+            <div class="sbc-live-control-copy">The live Team Hub schedule is locked to the 2026-27 season. Historical schedules are available under Team Hub → History.</div>
         </div>
         """)
-    SelectedScheduleYear = st.selectbox("Schedule Year", options=schedule_years, key="_sbc_schedule_year")
-    schedule_raw = all_time_schedule[
-        (all_time_schedule["Year"] == SelectedScheduleYear)
-        & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
-    ].copy()
     render_html('<div class="sbc-section-label">Schedule</div>')
     render_schedule_table(schedule_raw, SelectedTeam, rosters_df=all_time_rosters, show_boxscores=True)
     total_miles, num_flights = calculate_team_travel_summary(SelectedTeam, SelectedScheduleYear, all_time_schedule)
@@ -17714,13 +17704,50 @@ if main_page == "Team Hub" and selected_team_page == "History":
         </style>
     """)
     team_history_view = st.radio(
-        "Team history section", ["Franchise History", "Branding"],
-        format_func=lambda value: {"Franchise History": "🏛️ Franchise History", "Branding": "🎨 Branding"}.get(value, value),
+        "Team history section", ["Franchise History", "Schedule", "Branding"],
+        format_func=lambda value: {"Franchise History": "🏛️ Franchise History", "Schedule": "🗓️ Schedule", "Branding": "🎨 Branding"}.get(value, value),
         horizontal=True,
         index=0, key="team_history_section", label_visibility="collapsed",
     )
     if team_history_view == "Branding":
         render_team_branding(SelectedTeam)
+
+if main_page == "Team Hub" and selected_team_page == "History" and team_history_view == "Schedule":
+    schedule_years = [year for year in range(2021, 2028) if year in set(pd.to_numeric(all_time_schedule["Year"], errors="coerce").dropna().astype(int))]
+    if not schedule_years:
+        schedule_years = list(range(2021, 2028))
+    history_schedule_year = st.selectbox(
+        "Schedule Year",
+        options=schedule_years,
+        index=schedule_years.index(current_year) if current_year in schedule_years else len(schedule_years) - 1,
+        key="team_history_schedule_year",
+    )
+    history_schedule = all_time_schedule[
+        (all_time_schedule["Year"] == history_schedule_year)
+        & ((all_time_schedule["TeamA"] == SelectedTeam) | (all_time_schedule["TeamB"] == SelectedTeam))
+    ].copy()
+    history_schedule_record = schedule_regular_record(history_schedule, SelectedTeam)
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-team-branded">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{team_logo_html}" alt="{team_name_html} logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{history_schedule_year} Schedule Archive / Regular Season {escape(history_schedule_record)}</div>
+                    <div class="sbc-draft-heading">{team_name_html} {nickname_html} Schedule</div>
+                    <div class="sbc-team-motto-badge">{motto_html}</div>
+                    <div class="sbc-draft-subcopy">Browse every saved team schedule from 2021 through 2027.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    render_schedule_table(history_schedule, SelectedTeam, rosters_df=all_time_rosters, show_boxscores=True)
+    history_miles, history_flights = calculate_team_travel_summary(SelectedTeam, history_schedule_year, all_time_schedule)
+    history_col1, history_col2 = st.columns(2)
+    with history_col1:
+        st.metric("Total Miles", f"{int(history_miles):,} mi", border=True)
+    with history_col2:
+        st.metric("Total Flights", history_flights, border=True)
+    render_team_travel_map(history_schedule, SelectedTeam, history_schedule_year)
 
 if main_page == "Team Hub" and selected_team_page == "History" and team_history_view == "Franchise History":
     matchup_archive = load_sbc_player_matchup_stats_archive()
@@ -17844,6 +17871,36 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
             history_scores = get_weekly_scores_df(HistoryScoreYear, HistoryScorePeriod, all_time_schedule, history_live_stats, standings)
     render_html('<div class="sbc-section-label">Historical Scores</div>')
     render_scoreboard_cards(history_scores)
+
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Standings":
+    history_standings_periods = sorted(
+        pd.to_numeric(
+            standings[(standings["Year"] == LeagueHistoryYear) & (standings["Period"] != 99)]["Period"],
+            errors="coerce",
+        ).dropna().astype(int).unique().tolist()
+    ) or [1]
+    HistoryStandingsPeriod = st.selectbox(
+        "Standings Period",
+        options=history_standings_periods,
+        index=len(history_standings_periods) - 1 if LeagueHistoryYear < current_year else 0,
+        key="league_history_standings_period",
+        format_func=period_select_label(LeagueHistoryYear),
+    )
+    history_standings_view = st.radio(
+        "Standings View",
+        ["Conference", "In-Season Tournament"],
+        horizontal=True,
+        key="league_history_standings_view",
+    )
+    render_html(f'<div class="sbc-section-label">{LeagueHistoryYear} Standings Archive</div>')
+    if history_standings_view == "Conference":
+        history_west, history_east = st.columns(2)
+        with history_west:
+            render_conference_standings(standings, LeagueHistoryYear, HistoryStandingsPeriod, "West")
+        with history_east:
+            render_conference_standings(standings, LeagueHistoryYear, HistoryStandingsPeriod, "East")
+    else:
+        render_ist_standings(standings, LeagueHistoryYear, HistoryStandingsPeriod)
 
 if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Playoff Bracket":
     render_html(f"""
@@ -18112,16 +18169,29 @@ if main_page == "League Hub" and selected_league_page == "Standings":
             </div>
         </div>
         """)
-    StandingsYear = st.selectbox("Standings Year", options=list(range(2021, current_year+1)), index=list(range(2021, current_year+1)).index(current_year))
-    standings_period_options = schedule_period_options(all_time_schedule, StandingsYear)
-    StandingsPeriod = st.selectbox("Standings Period", options=standings_period_options, index=current_period_index(standings_period_options), format_func=period_select_label(StandingsYear))
-    render_html('<div class="sbc-section-label">Standings Snapshot</div>')
-    west_col, east_col = st.columns(2)
-    with west_col:
-        render_conference_standings(standings, StandingsYear, StandingsPeriod, "West")
-    with east_col:
-        render_conference_standings(standings, StandingsYear, StandingsPeriod, "East")
-    render_ist_standings(standings, StandingsYear, StandingsPeriod)
+    StandingsYear = 2027
+    standings_period_options = sorted(
+        pd.to_numeric(
+            standings[(standings["Year"] == StandingsYear) & (standings["Period"] != 99)]["Period"],
+            errors="coerce",
+        ).dropna().astype(int).unique().tolist()
+    ) or [1]
+    StandingsPeriod = st.selectbox("Standings Period", options=standings_period_options, index=0, format_func=period_select_label(StandingsYear))
+    standings_view = st.radio(
+        "Standings View",
+        ["Conference", "In-Season Tournament"],
+        horizontal=True,
+        key="league_current_standings_view",
+    )
+    render_html('<div class="sbc-section-label">2026-27 Standings Snapshot</div>')
+    if standings_view == "Conference":
+        west_col, east_col = st.columns(2)
+        with west_col:
+            render_conference_standings(standings, StandingsYear, StandingsPeriod, "West")
+        with east_col:
+            render_conference_standings(standings, StandingsYear, StandingsPeriod, "East")
+    else:
+        render_ist_standings(standings, StandingsYear, StandingsPeriod)
 
 if main_page == "League Hub" and selected_league_page == "Players":
 
