@@ -18649,7 +18649,9 @@ if main_page == "Overview":
                 primary_team = {
                     "name": "SBCFBL",
                     "nick": "League",
+                    "abbr": "SBC",
                     "logo": LEAGUE_LOGO,
+                    "wordmark": LEAGUE_LOGO,
                     "color": "#d92332",
                     "secondary": "#17212b",
                 }
