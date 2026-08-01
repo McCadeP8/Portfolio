@@ -5,6 +5,10 @@ on:
     - cron: "20 9 * * *"
   workflow_dispatch:
     inputs:
+      sbc_year:
+        description: Season-ending SBC year (2027 = 2026-27)
+        required: false
+        default: "2027"
       lookback_days:
         description: Days of ESPN data to recheck
         required: false
@@ -22,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
+      SBC_CURRENT_SBC_YEAR: ${{ inputs.sbc_year || '2027' }}
       SBC_LIVE_MODE: shadow
       SBC_RUNTIME_ROOT: .runtime
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

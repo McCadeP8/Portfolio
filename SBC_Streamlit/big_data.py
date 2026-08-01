@@ -6,7 +6,7 @@ import os
 import numpy as np  # noqa: F401
 from datetime import datetime
 from pathlib import Path
-from data import current_year, team_info
+from data import league_ids, team_info
 from functions import (
     current_matchup_period,
     get_award_history,
@@ -30,6 +30,7 @@ from sbc_backend.storage import atomic_write_parquet
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 APP_DIR = Path(__file__).resolve().parent
 BACKEND_SETTINGS = BackendSettings.from_env(APP_DIR)
+current_year = BACKEND_SETTINGS.current_sbc_year
 
 
 def dataset_path(filename: str) -> Path:
@@ -101,38 +102,67 @@ def get_all_team_stats_history() -> pd.DataFrame:
     if today > april_15:
         notify("Turn back on Roster Count")
 
+def _merge_roster_snapshots(history: pd.DataFrame, fresh: pd.DataFrame, year: int, refreshed_periods: set[int]) -> pd.DataFrame:
+    """Replace only successfully refreshed periods, preserving every other snapshot."""
+    existing = history.copy()
+    existing_year = pd.to_numeric(existing.get("Year"), errors="coerce")
+    existing_period = pd.to_numeric(existing.get("period"), errors="coerce")
+    replace_mask = existing_year.eq(year) & existing_period.isin(refreshed_periods)
+    combined = pd.concat([existing.loc[~replace_mask], fresh], ignore_index=True, sort=False)
+    dedupe_key = [column for column in ("Year", "period", "team_name", "id") if column in combined.columns]
+    if dedupe_key:
+        combined = combined.drop_duplicates(dedupe_key, keep="last")
+    sort_key = [column for column in ("Year", "period", "team_name", "id") if column in combined.columns]
+    if sort_key:
+        combined = combined.sort_values(sort_key, kind="stable", na_position="last").reset_index(drop=True)
+    return combined
+
+
 def get_all_time_rosters_history() -> pd.DataFrame:
     history = pd.read_parquet(dataset_path("all_time_rosters_history.parquet"))
+    roster_year = BACKEND_SETTINGS.current_sbc_year
+    if roster_year not in league_ids:
+        notify(f"Skipped get_all_time_rosters_history: no Fantrax league ID configured for {roster_year}")
+        return history
     csv_url = ("https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429")
     df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=0)
-    df = df[df["Year"] == current_year]
-    df = (df[["games", "Year"]].drop_duplicates().reset_index(drop=True))
+    df["Year"] = pd.to_numeric(df.get("Year"), errors="coerce")
+    df["games"] = pd.to_numeric(df.get("games"), errors="coerce")
+    df = df[df["Year"].eq(roster_year) & df["games"].notna()].copy()
+    df["games"] = df["games"].astype(int)
+    df = df[["games", "Year"]].drop_duplicates().sort_values("games").reset_index(drop=True)
     if df.empty:
-        notify(f"Skipped get_all_time_rosters_history: no {current_year} roster periods found in the schedule sheet")
+        notify(f"Skipped get_all_time_rosters_history: no {roster_year} roster periods found in the schedule sheet")
         return history
 
     all_rosters = []
-    for i, row in df.iterrows():
-        year = row["Year"]
-        games = row["games"]
+    refreshed_periods: set[int] = set()
+    for row in df.itertuples(index=False):
+        year = int(row.Year)
+        games = int(row.games)
         df2 = get_fantrax_roster(year, games)
         if df2 is None or df2.empty:
             notify(f"Skipped roster snapshot for {year} period {games}: Fantrax returned no roster data")
             continue
         df2["Year"] = year
+        df2["period"] = games
+        df2["Created"] = pd.Timestamp.now(tz="UTC").tz_localize(None)
         cols = ["id", "position", "status", "team_name", "period", "Year"]
-        df2 = df2[[c for c in cols if c in df2.columns]]
+        df2 = df2[[c for c in [*cols, "Created"] if c in df2.columns]]
         all_rosters.append(df2)
+        refreshed_periods.add(games)
     if not all_rosters:
-        notify(f"Skipped get_all_time_rosters_history: no Fantrax roster data was available for {current_year}")
+        notify(f"Skipped get_all_time_rosters_history: no Fantrax roster data was available for {roster_year}")
         return history
 
-    df_old = history[history["Year"] != current_year]
-    final_df = pd.concat(all_rosters, ignore_index=True)
-    final_df = pd.concat([df_old, final_df], ignore_index=True)
-    final_df["Created"] = pd.Timestamp.now()
+    fresh = pd.concat(all_rosters, ignore_index=True)
+    final_df = _merge_roster_snapshots(history, fresh, roster_year, refreshed_periods)
     atomic_write_parquet(final_df, dataset_path("all_time_rosters_history.parquet"), row_group_size=BACKEND_SETTINGS.parquet_row_group_size)
-    notify("Completed run of get_all_time_rosters_history")
+    notify(
+        f"Completed get_all_time_rosters_history for {roster_year}: "
+        f"{len(refreshed_periods)}/{len(df)} periods refreshed, {len(fresh)} current rows fetched"
+    )
+    return final_df
 
 def get_all_time_scores() -> pd.DataFrame:
     df = pd.read_parquet(dataset_path("all_time_scores.parquet"))

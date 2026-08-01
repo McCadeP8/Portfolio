@@ -29,6 +29,7 @@ from court_engine import CourtConfig, draw_branded_court
 from jersey_engine import JerseyConfig, draw_uniform, figure_bytes as jersey_figure_bytes
 from jersey_rotation import select_game_uniforms
 from sbc_backend import BackendSettings, get_repository
+from sbc_backend.awards import build_award_count_tables
 
 
 if not hasattr(st, "_sbc_native_metric"):
@@ -3575,6 +3576,11 @@ HISTORY_NAV_LABELS["All-Time Stats"] = "📊 All-Time Stats"
 
 HISTORY_NAV_LABELS["Branding"] = "\U0001f3a8 Branding"
 
+AWARDS_NAV_LABELS = {
+    "Award Count": "🏅 Award Count",
+    "Season Awards": "🗓️ Season Awards",
+}
+
 FREE_AGENCY_NAV_LABELS = {
     "League View": "🌐 League View",
     "My Bids": "🙋 My Bids",
@@ -3613,6 +3619,10 @@ if requested_team_page not in TEAM_NAV_OPTIONS:
 need_landing = requested_main_page == "Overview"
 requested_league_page = st.session_state.get("sbc_league_page", "Overview")
 requested_history_page = st.session_state.get("sbc_history_page", "Overview")
+requested_awards_page = st.session_state.get("sbc_awards_page", "Award Count")
+if requested_awards_page not in AWARDS_NAV_LABELS:
+    requested_awards_page = "Award Count"
+    st.session_state["sbc_awards_page"] = requested_awards_page
 
 need_team_data = requested_main_page == "Team Hub" and requested_team_page in ["Cap", "Picks", "Schedule"]
 need_trade_data = requested_main_page == "Team Hub" and requested_team_page == "Trade Machine"
@@ -3626,6 +3636,8 @@ need_league_scoreboard = requested_main_page == "League Hub" and requested_leagu
 need_history = requested_main_page == "League Hub" and requested_league_page == "History"
 need_team_history = requested_main_page == "Team Hub" and requested_team_page == "History"
 need_history_awards = (need_history and requested_history_page in ["Awards", "Overview", "Player Stats"]) or need_team_history
+need_award_count = need_history and requested_history_page == "Awards" and requested_awards_page == "Award Count"
+need_award_detail_assets = need_history_awards and not need_award_count
 need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
 
@@ -3638,12 +3650,12 @@ need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks")
 need_ft = need_checks_data
 need_standings = need_landing or need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft or need_team_history
 need_dh = need_history_draft
-need_all_time_team_stats = need_team_history or need_history_stats or need_history_awards
+need_all_time_team_stats = need_team_history or need_history_stats or need_award_detail_assets
 need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page == "Schedule") or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
-need_all_time_rosters = need_landing or need_history_awards or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
-need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding")
+need_all_time_rosters = need_landing or need_award_detail_assets or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
+need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding" and not need_award_count)
 need_current_matchup = need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
-need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_history_awards
+need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_award_detail_assets
 
 df = load_required_data("Cap sheet data", get_data) if need_df else pd.DataFrame()
 articles = load_optional_data("Articles", get_articles) if need_articles else pd.DataFrame()
@@ -3652,7 +3664,7 @@ exceptions = load_required_data("Exceptions", get_exceptions) if need_exceptions
 base_cap = load_required_data("Base cap", get_base_cap) if need_base_cap else pd.DataFrame()
 dp = load_required_data("Draft picks", get_draft_picks) if need_dp else pd.DataFrame()
 ft_roster = load_optional_data("Fantrax rosters", lambda: get_fantrax_roster(current_year, period)) if need_ft else pd.DataFrame()
-ft_players = load_optional_data("Fantrax players", get_fantrax_players) if need_ft or need_history_awards else pd.DataFrame()
+ft_players = load_optional_data("Fantrax players", get_fantrax_players) if need_ft or need_award_detail_assets else pd.DataFrame()
 standings = load_optional_data("Standings", get_standings) if need_standings else pd.DataFrame()
 dh = load_optional_data("Draft history", get_draft_history) if need_dh else pd.DataFrame()
 all_time_team_stats = load_optional_data("All-time team stats", get_all_time_team_stats) if need_all_time_team_stats else pd.DataFrame()
@@ -16394,6 +16406,181 @@ st.markdown(
         padding: 0.75rem;
     }}
 
+    .sbc-award-count-hero .sbc-draft-hero-inner {{
+        grid-template-columns: 6.2rem minmax(0, 1fr) auto;
+    }}
+
+    .sbc-award-count-hero-stat {{
+        display: grid;
+        justify-items: center;
+        min-width: 8.5rem;
+        padding: 0.8rem 1rem;
+        border: 1px solid rgba(255,255,255,0.28);
+        border-radius: 14px;
+        background: rgba(255,255,255,0.12);
+        color: #ffffff;
+        text-align: center;
+    }}
+
+    .sbc-award-count-hero-stat strong {{
+        font-size: 2rem;
+        font-weight: 950;
+        line-height: 1;
+    }}
+
+    .sbc-award-count-hero-stat span {{
+        margin-top: 0.35rem;
+        font-size: 0.62rem;
+        font-weight: 900;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+    }}
+
+    .sbc-award-count-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+        align-items: start;
+    }}
+
+    .sbc-award-count-card {{
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, {LEAGUE_PRIMARY} 22%, #dce3ea);
+        border-top: 4px solid {LEAGUE_PRIMARY};
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 12px 30px rgba(18,25,38,0.075);
+    }}
+
+    .sbc-award-count-card > header {{
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 0.7rem;
+        min-height: 4.25rem;
+        padding: 0.78rem 0.85rem;
+        border-bottom: 1px solid rgba(23,32,42,0.08);
+        background: linear-gradient(115deg, color-mix(in srgb, {LEAGUE_PRIMARY} 13%, #ffffff), color-mix(in srgb, {LEAGUE_SECONDARY} 9%, #ffffff));
+    }}
+
+    .sbc-award-count-card > header span {{
+        display: block;
+        color: var(--sbc-ink);
+        font-size: 1rem;
+        font-weight: 950;
+        line-height: 1.08;
+    }}
+
+    .sbc-award-count-card > header em {{
+        display: block;
+        margin-top: 0.24rem;
+        color: var(--sbc-muted);
+        font-size: 0.68rem;
+        font-style: normal;
+        font-weight: 760;
+        line-height: 1.25;
+    }}
+
+    .sbc-award-count-card > header i {{
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: {LEAGUE_PRIMARY};
+        color: #ffffff;
+        font-size: 0.6rem;
+        font-style: normal;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        padding: 0.28rem 0.48rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+
+    .sbc-award-count-table-wrap {{ overflow-x: auto; }}
+    .sbc-award-count-table {{ width: 100%; min-width: 25rem; border-collapse: collapse; }}
+    .sbc-award-count-table th {{
+        border-bottom: 1px solid rgba(23,32,42,0.1);
+        background: #f6f8fb;
+        color: #506071;
+        font-size: 0.63rem;
+        font-weight: 950;
+        letter-spacing: 0.07em;
+        padding: 0.48rem 0.52rem;
+        text-align: center;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }}
+    .sbc-award-count-table th:nth-child(1) {{ width: 2.7rem; }}
+    .sbc-award-count-table th:nth-child(2) {{ min-width: 10.5rem; text-align: left; }}
+    .sbc-award-count-table td {{
+        height: 3.25rem;
+        border-bottom: 1px solid rgba(23,32,42,0.065);
+        color: var(--sbc-ink);
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.38rem 0.52rem;
+        text-align: center;
+        vertical-align: middle;
+    }}
+    .sbc-award-count-table tr:last-child td {{ border-bottom: none; }}
+    .sbc-award-count-table td b {{ font-size: 0.9rem; font-variant-numeric: tabular-nums; }}
+    .sbc-award-count-rank {{ color: #6b7785 !important; font-size: 0.82rem !important; font-weight: 950 !important; font-variant-numeric: tabular-nums; }}
+    .sbc-award-count-rank-1 {{ color: #a87900 !important; }}
+    .sbc-award-count-rank-2 {{ color: #64748b !important; }}
+    .sbc-award-count-rank-3 {{ color: #a85d2f !important; }}
+    .sbc-award-count-entity {{
+        display: grid;
+        grid-template-columns: 2.3rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+        text-align: left;
+    }}
+    .sbc-award-count-entity img,
+    .sbc-award-count-entity > span {{
+        display: grid;
+        place-items: center;
+        width: 2.3rem;
+        height: 2.3rem;
+        border-radius: 999px;
+        background: #e8edf3;
+        color: {LEAGUE_PRIMARY};
+        font-size: 0.82rem;
+        font-weight: 950;
+        object-fit: contain;
+    }}
+    .sbc-award-count-entity img {{ object-fit: cover; object-position: center 18%; }}
+    .sbc-award-count-team-grid .sbc-award-count-entity img {{ object-fit: contain; }}
+    .sbc-award-count-entity strong {{
+        overflow: hidden;
+        color: var(--sbc-ink);
+        font-size: 0.76rem;
+        font-weight: 950;
+        line-height: 1.12;
+        text-overflow: ellipsis;
+    }}
+    .sbc-award-count-more {{ border-top: 1px solid rgba(23,32,42,0.08); background: #fbfcfd; }}
+    .sbc-award-count-more summary {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        cursor: pointer;
+        color: {LEAGUE_PRIMARY};
+        font-size: 0.7rem;
+        font-weight: 950;
+        padding: 0.68rem 0.8rem;
+        text-transform: uppercase;
+    }}
+    .sbc-award-count-more summary span {{ color: var(--sbc-muted); font-size: 0.6rem; letter-spacing: 0.06em; }}
+    .sbc-award-count-table-more {{ border-top: 1px solid rgba(23,32,42,0.06); }}
+    .sbc-award-count-empty {{ color: var(--sbc-muted); font-size: 0.82rem; font-weight: 800; padding: 1rem; }}
+
+    @media (max-width: 850px) {{
+        .sbc-award-count-grid {{ grid-template-columns: 1fr; }}
+        .sbc-award-count-hero .sbc-draft-hero-inner {{ grid-template-columns: 4.4rem minmax(0, 1fr); }}
+        .sbc-award-count-hero-stat {{ grid-column: 1 / -1; justify-self: stretch; min-width: 0; }}
+    }}
+
     .sbc-draft-detail {{
         color: var(--sbc-muted) !important;
         font-size: 0.74rem !important;
@@ -16927,6 +17114,7 @@ st.markdown(
 selected_team_page = None
 selected_league_page = None
 selected_history_page = None
+selected_awards_page = None
 selected_free_agency_page = None
 LeagueHistoryYear = current_year
 if main_page == "Free Agency":
@@ -17048,7 +17236,16 @@ if main_page == "League Hub":
             key="sbc_history_page",
             label_visibility="collapsed",
         )
-        if selected_history_page != "Branding":
+        if selected_history_page == "Awards":
+            selected_awards_page = st.radio(
+                "Awards View",
+                list(AWARDS_NAV_LABELS),
+                format_func=nav_label(AWARDS_NAV_LABELS),
+                horizontal=True,
+                key="sbc_awards_page",
+                label_visibility="collapsed",
+            )
+        if selected_history_page != "Branding" and not (selected_history_page == "Awards" and selected_awards_page == "Award Count"):
             league_history_year_options = schedule_year_options_for_history()
             default_league_history_year = current_year if current_year in league_history_year_options else league_history_year_options[-1]
             LeagueHistoryYear = st.selectbox(
@@ -19340,6 +19537,110 @@ def render_awards_section(title, subtitle, columns):
     return st.columns(columns)
 
 
+def award_count_picture_lookup():
+    if pics is None or pics.empty or not {"Player", "Picture_Online"}.issubset(pics.columns):
+        return {}
+    return {
+        player_name_match_key(row.get("Player", "")): row.get("Picture_Online", "")
+        for _, row in pics.iterrows()
+        if not is_blank_value(row.get("Player", "")) and not is_blank_value(row.get("Picture_Online", ""))
+    }
+
+
+def award_count_entity_html(name, entity_type, picture_lookup):
+    if entity_type == "Team":
+        team_key = resolve_team_key(name)
+        info = team_info.get(team_key, {})
+        display_name = live_team_full_name(team_key) if team_key in team_info else clean_pick_display(name)
+        image_url = info.get("logo", "")
+        image_html = f'<img src="{escape(str(image_url), quote=True)}" alt="{escape(str(display_name), quote=True)} logo">' if image_url else ""
+    else:
+        display_name = clean_pick_display(name)
+        image_url = picture_lookup.get(player_name_match_key(name), "")
+        image_html = f'<img src="{escape(str(image_url), quote=True)}" alt="{escape(str(display_name), quote=True)} headshot">' if image_url else ""
+    fallback = "" if image_html else f'<span>{escape(str(display_name)[:1].upper())}</span>'
+    return f'<div class="sbc-award-count-entity">{image_html}{fallback}<strong>{escape(str(display_name))}</strong></div>'
+
+
+def award_count_rows_html(table, entity_type, picture_lookup):
+    count_columns = [column for column in table.columns if column not in ["Rank", entity_type]]
+    rows = []
+    for _, row in table.iterrows():
+        rank = int(row.get("Rank", 0))
+        rank_class = f" sbc-award-count-rank-{rank}" if rank <= 3 else ""
+        values = "".join(f'<td><b>{int(row.get(column, 0))}</b></td>' for column in count_columns)
+        rows.append(
+            f'<tr><td class="sbc-award-count-rank{rank_class}">{rank}</td>'
+            f'<td>{award_count_entity_html(row.get(entity_type, ""), entity_type, picture_lookup)}</td>{values}</tr>'
+        )
+    return "".join(rows)
+
+
+def award_count_card_html(item, entity_type, picture_lookup, top_n=5):
+    table = item["table"]
+    if table is None or table.empty:
+        body = '<div class="sbc-award-count-empty">No recorded winners yet.</div>'
+        columns_html = ""
+    else:
+        count_columns = [column for column in table.columns if column not in ["Rank", entity_type]]
+        columns_html = "".join(f"<th>{escape(str(column))}</th>" for column in count_columns)
+        top_rows = award_count_rows_html(table.head(top_n), entity_type, picture_lookup)
+        body = f'''
+            <div class="sbc-award-count-table-wrap">
+                <table class="sbc-award-count-table">
+                    <thead><tr><th>#</th><th>{escape(entity_type)}</th>{columns_html}</tr></thead>
+                    <tbody>{top_rows}</tbody>
+                </table>
+            </div>
+        '''
+        if len(table) > top_n:
+            remaining_rows = award_count_rows_html(table.iloc[top_n:], entity_type, picture_lookup)
+            body += f'''
+                <details class="sbc-award-count-more">
+                    <summary>Show full leaderboard <span>{len(table)} {"players" if entity_type == "Player" else "teams"}</span></summary>
+                    <div class="sbc-award-count-table-wrap">
+                        <table class="sbc-award-count-table sbc-award-count-table-more">
+                            <thead><tr><th>#</th><th>{escape(entity_type)}</th>{columns_html}</tr></thead>
+                            <tbody>{remaining_rows}</tbody>
+                        </table>
+                    </div>
+                </details>
+            '''
+    return f'''
+        <section class="sbc-award-count-card">
+            <header><div><span>{escape(str(item["title"]))}</span><em>{escape(str(item["subtitle"]))}</em></div><i>Top {min(top_n, len(table)) if table is not None else 0}</i></header>
+            {body}
+        </section>
+    '''
+
+
+def render_award_count_overview():
+    player_tables, team_tables = build_award_count_tables(award_history, team_award_history)
+    picture_lookup = award_count_picture_lookup()
+    player_cards = "".join(award_count_card_html(item, "Player", picture_lookup) for item in player_tables)
+    team_cards = "".join(award_count_card_html(item, "Team", picture_lookup) for item in team_tables)
+    unique_players = len({player_name_match_key(value) for value in award_history.get("Winner", pd.Series(dtype=str)).dropna() if str(value).strip().lower() != "not awarded"})
+    seasons = pd.to_numeric(award_history.get("Year", pd.Series(dtype=float)), errors="coerce").dropna().astype(int)
+    season_span = f"{seasons.min()}–{seasons.max()}" if not seasons.empty else "Archive"
+    render_html(f'''
+        <div class="sbc-draft-hero sbc-league-hero sbc-award-count-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">{escape(season_span)} All-Time Record Book</div>
+                    <div class="sbc-draft-heading">Awards Leaderboards</div>
+                    <div class="sbc-draft-subcopy">The most decorated players and franchises in SBCFBL history, ranked across every major award family.</div>
+                </div>
+                <div class="sbc-award-count-hero-stat"><strong>{unique_players}</strong><span>Honored Players</span></div>
+            </div>
+        </div>
+        <div class="sbc-awards-section-head"><span>Player Awards</span><em>Top five shown by default. Open any leaderboard for the complete historical ranking.</em></div>
+        <div class="sbc-award-count-grid">{player_cards}</div>
+        <div class="sbc-awards-section-head"><span>Franchise Honors</span><em>Division, conference, Finals, and SBC Cup winners across the full archive.</em></div>
+        <div class="sbc-award-count-grid sbc-award-count-team-grid">{team_cards}</div>
+    ''')
+
+
 def render_about_feature(title, body, stat=None, accent="blue"):
     stat_html = f'<div class="sbc-about-stat">{escape(str(stat))}</div>' if stat else ""
     render_html(f"""
@@ -19381,7 +19682,11 @@ def render_check_card(title, description, check_df):
             st.dataframe(check_df, width="stretch", hide_index=True)
 
 
-if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Awards":
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Awards" and selected_awards_page == "Award Count":
+    render_award_count_overview()
+
+
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Awards" and selected_awards_page == "Season Awards":
     AwardYears = LeagueHistoryYear
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
