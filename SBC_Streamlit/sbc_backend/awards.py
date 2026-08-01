@@ -124,22 +124,35 @@ def _leaderboard(table: pd.DataFrame, columns: dict[str, set[str] | str], entity
         .rename(entity_label)
     )
     pieces = []
+    leaderboard_awards = set()
     for column, rule in columns.items():
         award_names = _award_names_for_rule(all_awards, rule)
+        leaderboard_awards.update(award_names)
         counts = table[table["Award"].isin(award_names)].groupby("_winner_key").size().rename(column)
         pieces.append(counts)
-    result = pd.concat([display_names, *pieces], axis=1).fillna(0).reset_index(drop=True)
+    result = pd.concat([display_names, *pieces], axis=1).fillna(0)
     count_columns = list(columns)
     for column in count_columns:
         result[column] = pd.to_numeric(result[column], errors="coerce").fillna(0).astype(int)
     if len(count_columns) > 1:
         result["Total"] = result[count_columns].sum(axis=1)
-        sort_columns = ["Total", *count_columns, entity_label]
-        ascending = [False] * (len(count_columns) + 1) + [True]
+        primary_count = "Total"
     else:
-        sort_columns = [count_columns[0], entity_label]
-        ascending = [False, True]
-    result = result[result[count_columns].sum(axis=1) > 0].sort_values(sort_columns, ascending=ascending).reset_index(drop=True)
+        primary_count = count_columns[0]
+    if "Year" in table.columns:
+        relevant_rows = table[table["Award"].isin(leaderboard_awards)].copy()
+        relevant_rows["_award_year"] = pd.to_numeric(relevant_rows["Year"], errors="coerce")
+        latest_wins = relevant_rows.groupby("_winner_key")["_award_year"].max()
+        result["_latest_win"] = result.index.to_series().map(latest_wins)
+    else:
+        result["_latest_win"] = float("-inf")
+    result["_latest_win"] = pd.to_numeric(result["_latest_win"], errors="coerce").fillna(float("-inf"))
+    result = (
+        result[result[count_columns].sum(axis=1) > 0]
+        .sort_values([primary_count, "_latest_win", entity_label], ascending=[False, False, True])
+        .drop(columns=["_latest_win"])
+        .reset_index(drop=True)
+    )
     result.insert(0, "Rank", range(1, len(result) + 1))
     return result
 

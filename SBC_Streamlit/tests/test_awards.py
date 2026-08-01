@@ -58,6 +58,22 @@ class AwardCountTests(unittest.TestCase):
         self.assertEqual(int(by_title["Cup MVP"].iloc[0]["Awards"]), 1)
         self.assertEqual(by_title["All-Rookie"]["Team"].tolist(), ["1st", "2nd"])
 
+    def test_count_ties_are_broken_by_most_recent_relevant_win(self):
+        players = pd.DataFrame(
+            [
+                {"Year": 2022, "Award": "MVP", "Winner": "Alpha Player"},
+                {"Year": 2025, "Award": "MVP", "Winner": "Zulu Player"},
+                {"Year": 2023, "Award": "All-SBC 1st Team", "Winner": "Alpha Player"},
+                {"Year": 2026, "Award": "All-SBC 2nd Team", "Winner": "Zulu Player"},
+            ]
+        )
+
+        player_tables, _ = build_award_count_tables(players, pd.DataFrame())
+        by_title = {item["title"]: item["table"] for item in player_tables}
+
+        self.assertEqual(by_title["MVP"]["Player"].tolist(), ["Zulu Player", "Alpha Player"])
+        self.assertEqual(by_title["All-SBC"]["Player"].tolist(), ["Zulu Player", "Alpha Player"])
+
 
 if __name__ == "__main__":
     unittest.main()

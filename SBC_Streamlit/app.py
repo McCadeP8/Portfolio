@@ -22,7 +22,7 @@ from html import escape, unescape
 from pathlib import Path
 from textwrap import dedent
 from zoneinfo import ZoneInfo
-from functions import read_csv_snapshot, get_data, get_pictures, get_articles, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar
+from functions import read_csv_snapshot, get_data, get_pictures, get_articles, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar, zero_future_matchup_scores
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 from court_engine import CourtConfig, draw_branded_court
@@ -30,6 +30,7 @@ from jersey_engine import JerseyConfig, draw_uniform, figure_bytes as jersey_fig
 from jersey_rotation import select_game_uniforms
 from sbc_backend import BackendSettings, get_repository
 from sbc_backend.awards import build_award_count_tables
+from sbc_backend.player_stats import prepare_matchup_archive_rows
 
 
 if not hasattr(st, "_sbc_native_metric"):
@@ -3705,6 +3706,7 @@ all_time_rosters = ensure_columns(all_time_rosters, ["Year", "period", "id", "te
 award_history = ensure_columns(award_history, ["Award", "Year", "Winner"])
 team_award_history = ensure_columns(team_award_history, ["Award", "Year", "Winner"])
 period_calendar = ensure_columns(period_calendar, ["Day", "Year", "Date", "Period", "Season"])
+all_time_schedule = zero_future_matchup_scores(all_time_schedule, period_calendar)
 
 Teams = sorted(team_info.keys())
 
@@ -9560,9 +9562,7 @@ def active_franchise_record_chasers(matchup_archive, cap_df):
     sum_stats = [stat for stat in BOX_SCORE_SUM_STATS if stat in matchup_archive.columns]
     if not sum_stats:
         return pd.DataFrame()
-    rows = valid_matchup_archive_rows(matchup_archive)
-    rows = dedupe_matchup_archive_for_totals(rows)
-    rows = rows[rows["sbc_matchup_type"].astype(str) == "Regular Season"].copy()
+    rows = prepare_matchup_archive_rows(matchup_archive, matchup_type="Regular Season")
     if rows.empty:
         return pd.DataFrame()
     rows["_player_key"] = rows["fantrax_name"].apply(player_name_match_key)
@@ -16649,6 +16649,30 @@ st.markdown(
         .sbc-award-count-hero-stat {{ grid-column: 1 / -1; justify-self: stretch; min-width: 0; }}
     }}
 
+    @media (max-width: 560px) {{
+        .sbc-award-count-card > header {{ min-height: 0; padding: 0.68rem 0.7rem; }}
+        .sbc-award-count-card > header em {{ font-size: 0.64rem; }}
+        .sbc-award-count-card > header i {{ font-size: 0.54rem; padding: 0.24rem 0.38rem; }}
+        .sbc-award-count-table {{ min-width: 0; table-layout: fixed; }}
+        .sbc-award-count-table th {{
+            overflow-wrap: anywhere;
+            padding: 0.4rem 0.16rem;
+            font-size: 0.52rem;
+            letter-spacing: 0;
+            line-height: 1.05;
+            white-space: normal;
+        }}
+        .sbc-award-count-table th:nth-child(1) {{ width: 1.7rem; }}
+        .sbc-award-count-table th:nth-child(2) {{ width: 42%; min-width: 0; }}
+        .sbc-award-count-table td {{ height: 2.8rem; padding: 0.3rem 0.16rem; font-size: 0.7rem; }}
+        .sbc-award-count-table td b {{ font-size: 0.8rem; }}
+        .sbc-award-count-rank {{ font-size: 0.72rem !important; }}
+        .sbc-award-count-entity {{ grid-template-columns: 2.15rem minmax(0, 1fr); gap: 0.38rem; }}
+        .sbc-award-count-entity img,
+        .sbc-award-count-entity > span {{ width: 2.15rem; height: 2.15rem; border-width: 2px; }}
+        .sbc-award-count-entity strong {{ font-size: 0.69rem; overflow-wrap: anywhere; }}
+    }}
+
     .sbc-draft-detail {{
         color: var(--sbc-muted) !important;
         font-size: 0.74rem !important;
@@ -17142,6 +17166,38 @@ st.markdown(
 
         .sbc-draft-subcopy {{
             font-size: 0.86rem;
+        }}
+
+        .sbc-standings-table th,
+        .sbc-standings-table td {{
+            padding-left: 0.22rem;
+            padding-right: 0.22rem;
+            font-size: 0.68rem;
+        }}
+
+        .sbc-standings-table th {{
+            letter-spacing: 0.02em;
+        }}
+
+        .sbc-standings-table th:nth-child(1),
+        .sbc-ist-standings-table th:nth-child(1) {{
+            width: 2.2rem;
+        }}
+
+        .sbc-standings-table th:nth-child(2),
+        .sbc-ist-standings-table th:nth-child(2) {{
+            width: 8.5rem;
+        }}
+
+        .sbc-ist-standings-table th:nth-child(3),
+        .sbc-ist-standings-table th:nth-child(4) {{
+            width: 3.2rem;
+        }}
+
+        .sbc-standings-team img {{
+            width: 1.65rem;
+            height: 1.65rem;
+            flex-basis: 1.65rem;
         }}
     }}
 

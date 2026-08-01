@@ -239,6 +239,43 @@ def get_team_award_history() -> pd.DataFrame:
 def get_all_time_schedule() -> pd.DataFrame:
     return DATA_REPOSITORY.read("schedule", required=True)
 
+
+def future_matchup_periods(period_calendar: pd.DataFrame, as_of=None) -> set[tuple[int, int]]:
+    """Return schedule periods whose first calendar date is still in the future."""
+    required = {"Year", "Period", "Date"}
+    if period_calendar is None or period_calendar.empty or not required.issubset(period_calendar.columns):
+        return set()
+    calendar = period_calendar[["Year", "Period", "Date"]].copy()
+    calendar["Year"] = pd.to_numeric(calendar["Year"], errors="coerce")
+    calendar["Period"] = pd.to_numeric(calendar["Period"], errors="coerce")
+    calendar["Date"] = pd.to_datetime(calendar["Date"], errors="coerce")
+    calendar = calendar.dropna(subset=["Year", "Period", "Date"])
+    if calendar.empty:
+        return set()
+    cutoff = pd.Timestamp.now(tz="America/New_York") if as_of is None else pd.Timestamp(as_of)
+    if cutoff.tzinfo is not None:
+        cutoff = cutoff.tz_convert("America/New_York").tz_localize(None)
+    cutoff = cutoff.normalize()
+    starts = calendar.groupby(["Year", "Period"], as_index=False)["Date"].min()
+    future = starts[starts["Date"].dt.normalize() > cutoff]
+    return {(int(row.Year), int(row.Period)) for row in future.itertuples(index=False)}
+
+
+def zero_future_matchup_scores(schedule: pd.DataFrame, period_calendar: pd.DataFrame, as_of=None) -> pd.DataFrame:
+    """Keep every not-yet-started matchup at 0-0, even if stored scores are stale."""
+    if schedule is None or schedule.empty or not {"Year", "Period"}.issubset(schedule.columns):
+        return schedule.copy() if isinstance(schedule, pd.DataFrame) else pd.DataFrame()
+    future_periods = future_matchup_periods(period_calendar, as_of=as_of)
+    if not future_periods:
+        return schedule.copy()
+    work = schedule.copy()
+    keys = list(zip(pd.to_numeric(work["Year"], errors="coerce"), pd.to_numeric(work["Period"], errors="coerce")))
+    future_mask = pd.Series([key in future_periods for key in keys], index=work.index)
+    for column in ["TeamAScore", "TeamBScore"]:
+        if column in work.columns:
+            work.loc[future_mask, column] = 0
+    return work
+
 def current_matchup_period() -> float:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"
     df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=3600)
@@ -1876,6 +1913,9 @@ def get_matchup_score(team_a: str, team_b: str, df: pd.DataFrame):
     weights = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
     if any(stat not in matchup.columns for stat in weights):
         return None, None
+    activity = matchup[list(weights)].apply(pd.to_numeric, errors="coerce").fillna(0).abs().to_numpy().sum()
+    if activity == 0:
+        return 0, 0
     team_a_score = 0
     team_b_score = 0
     for stat, weight in weights.items():

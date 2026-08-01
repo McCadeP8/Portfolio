@@ -21,8 +21,10 @@ from functions import (
     get_period_calendar,
     get_pictures,
     get_team_award_history,
+    future_matchup_periods,
     read_csv_snapshot,
     send_discord_message,
+    zero_future_matchup_scores,
 )
 from sbc_backend import BackendSettings
 from sbc_backend.storage import atomic_write_parquet
@@ -193,9 +195,20 @@ def get_all_time_scores() -> pd.DataFrame:
         notify(f"Skipped get_all_time_scores: no {current_year} games found in all_time_scores.parquet")
         return pd.concat([df_old, df], ignore_index=True)
 
+    try:
+        period_calendar = get_period_calendar()
+    except Exception as exc:
+        notify(f"Could not apply future score guard: {type(exc).__name__}: {exc}")
+        period_calendar = pd.DataFrame()
+    future_periods = future_matchup_periods(period_calendar)
+    df = zero_future_matchup_scores(df, period_calendar)
+
     for (year, period), group in df.groupby(["Year", "Period"]):
         year = int(year)
         period = int(period)
+        if (year, period) in future_periods:
+            notify(f"Kept future scores at 0-0 for {year} period {period}")
+            continue
         stats_df = get_matchup_stats(year, period)
         if stats_df is None or stats_df.empty:
             notify(f"Skipped score update for {year} period {period}: Fantrax returned no team stats")
@@ -207,6 +220,9 @@ def get_all_time_scores() -> pd.DataFrame:
                 team_a_score, team_b_score = get_matchup_score(team_a, team_b, stats_df)
             except ValueError as exc:
                 notify(f"Skipped score update for {team_a} vs {team_b}, {year} period {period}: {exc}")
+                continue
+            if team_a_score is None or team_b_score is None:
+                notify(f"Skipped score update for {team_a} vs {team_b}, {year} period {period}: incomplete team stats")
                 continue
             df.at[idx, "TeamAScore"] = team_a_score
             df.at[idx, "TeamBScore"] = team_b_score
