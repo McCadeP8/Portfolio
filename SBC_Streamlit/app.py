@@ -901,7 +901,7 @@ def stat_number(value, pct=False, signed=False):
 def shot_attempts(row, made_col, attempt_col):
     attempts = float(row.get(attempt_col, 0) or 0)
     if attempts <= 0:
-        return ""
+        return "0 / 0"
     return f"{stat_number(row.get(made_col, 0))} / {stat_number(attempts)}"
 
 
@@ -2568,8 +2568,8 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
             ' role="progressbar" aria-valuemin="0" aria-valuemax="100"'
             f' aria-valuenow="{status_progress:g}"'
         )
-    a_winner = score_numeric(score_a) >= score_numeric(score_b)
-    b_winner = score_numeric(score_b) > score_numeric(score_a)
+    a_winner = status_state != "future" and score_numeric(score_a) > score_numeric(score_b)
+    b_winner = status_state != "future" and score_numeric(score_b) > score_numeric(score_a)
     try:
         road_edition, home_edition, clash_adjusted = select_game_uniforms(
             matchup_row, team_a, team_b,
@@ -17871,7 +17871,8 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
             ).dropna()
             # If the calendar is temporarily unavailable, keep the scheduled 0-0
             # scores instead of treating an undated matchup as already started.
-            matchup_started = not matchup_dates.empty and pd.Timestamp(today) >= matchup_dates.min().normalize()
+            scoreboard_today = pd.Timestamp.now().normalize()
+            matchup_started = not matchup_dates.empty and scoreboard_today >= matchup_dates.min().normalize()
             live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2) if matchup_started else pd.DataFrame()
             live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
 
@@ -19717,10 +19718,15 @@ def award_count_rows_html(table, entity_type, picture_lookup):
     for _, row in table.iterrows():
         rank = int(row.get("Rank", 0))
         rank_class = f" sbc-award-count-rank-{rank}" if rank <= 3 else ""
-        values = "".join(f'<td><b>{int(row.get(column, 0))}</b></td>' for column in count_columns)
+        values = []
+        for column in count_columns:
+            value = row.get(column, "")
+            numeric_value = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+            display_value = str(value) if pd.isna(numeric_value) else str(int(numeric_value))
+            values.append(f'<td><b>{escape(display_value)}</b></td>')
         rows.append(
             f'<tr><td class="sbc-award-count-rank{rank_class}">{rank}</td>'
-            f'<td>{award_count_entity_html(row.get(entity_type, ""), entity_type, picture_lookup)}</td>{values}</tr>'
+            f'<td>{award_count_entity_html(row.get(entity_type, ""), entity_type, picture_lookup)}</td>{"".join(values)}</tr>'
         )
     return "".join(rows)
 
