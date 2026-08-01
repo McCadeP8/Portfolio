@@ -9981,8 +9981,13 @@ def render_scoreboard_cards(scores_df):
                 </article>
                 """)
                 button_key = f"boxscore_{row.get('Game_ID', '')}_{row.get('Year', '')}_{row.get('Period', '')}_{team_a}_{team_b}"
-                if st.button("Box Score", key=button_key, use_container_width=True, type="primary", help="Open matchup box score"):
-                    render_matchup_boxscore_dialog(row.to_dict(), all_time_rosters)
+                is_preview = str(row.get("_display_status", "")).strip().lower() in {"preview", "future", "upcoming"}
+                button_label = "Game Preview" if is_preview else "Box Score"
+                if st.button(button_label, key=button_key, use_container_width=True, type="primary", help="Open matchup preview" if is_preview else "Open matchup box score"):
+                    dialog_row = row.to_dict()
+                    if is_preview:
+                        dialog_row["_display_status"] = "Preview"
+                    render_matchup_boxscore_dialog(dialog_row, all_time_rosters)
 
 
 def render_conference_standings(standings_df, selected_year, selected_period, conference):
@@ -17888,6 +17893,8 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
             matchup_started = not matchup_dates.empty and scoreboard_today >= matchup_dates.min().normalize()
             live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2) if matchup_started else pd.DataFrame()
             live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
+            if not live_stats_total_scores.empty and not matchup_started:
+                live_stats_total_scores["_display_status"] = "Preview"
 
     render_html('<div class="sbc-section-label">All Scores</div>')
     render_scoreboard_cards(live_stats_total_scores)
