@@ -99,6 +99,14 @@ def render_html(markup):
 
 ARTICLE_DEFAULT_YEAR = 2026
 ARTICLE_PRESENTATIONS = {
+    "SBCFBL 2026-27 Schedule Released: Banner Nights, Holiday Heavyweights and Reunion Games": {
+        "kicker": "2026-27 Schedule Release",
+        "display_headline": "SBCFBL 2026-27 Schedule Release",
+        "league_brand": True,
+        "players": [],
+        "badges": ["Banner nights", "Christmas showcase", "Reunion games"],
+        "deck": "The new season opens with a championship banner, then brings back former stars, Finals rematches and a loaded Christmas slate.",
+    },
     "Report: Vegas Front Office Disappointed in LeBron’s Decision to Join Philadelphia": {
         "kicker": "Front Office Report",
         "teams": ["Vegas"],
@@ -18626,6 +18634,7 @@ if main_page == "Overview":
             if not headline:
                 continue
             presentation = ARTICLE_PRESENTATIONS.get(headline, {})
+            display_headline = str(presentation.get("display_headline", headline)).strip()
             body_html = front_article_body_html(row.get("Body", ""))
             body_plain = front_article_plain_text(body_html)
             configured_teams = [team for team in presentation.get("teams", []) if team in team_info]
@@ -18636,10 +18645,20 @@ if main_page == "Overview":
                     if re.search(rf"\b{re.escape(str(team).lower())}\b", headline_lower)
                 ][:3]
             team_assets = [front_team_v2(team) for team in configured_teams]
-            primary_team = team_assets[0] if team_assets else leader
-            secondary_color = team_assets[1]["color"] if len(team_assets) > 1 else primary_team["color"]
+            if presentation.get("league_brand"):
+                primary_team = {
+                    "name": "SBCFBL",
+                    "nick": "League",
+                    "logo": LEAGUE_LOGO,
+                    "color": "#d92332",
+                    "secondary": "#17212b",
+                }
+                secondary_color = "#17212b"
+            else:
+                primary_team = team_assets[0] if team_assets else leader
+                secondary_color = team_assets[1]["color"] if len(team_assets) > 1 else primary_team["color"]
             parsed_date = front_article_date(row.get("Date", ""))
-            slug_base = front_article_slug(headline)
+            slug_base = front_article_slug(display_headline)
             slug = slug_base
             slug_suffix = 2
             while slug in used_article_slugs:
@@ -18653,7 +18672,7 @@ if main_page == "Overview":
             ]
             article_records.append({
                 "slug": slug,
-                "headline": headline,
+                "headline": display_headline,
                 "author": str(row.get("Author", "") or "SBC Staff").strip(),
                 "date_label": front_article_date_label(row.get("Date", "")),
                 "sort_value": int(parsed_date.value) if pd.notna(parsed_date) else -article_position,
