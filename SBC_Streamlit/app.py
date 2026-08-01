@@ -891,7 +891,7 @@ def boxscore_stat_label(stat):
     return {"2PT%": "2P%", "3PT%": "3P%", "ST": "STL", "TO": "TOV"}.get(stat, stat)
 
 
-def stat_number(value, pct=False, signed=False):
+def stat_number(value, pct=False, signed=False, grouped=False):
     try:
         number = float(value)
     except (TypeError, ValueError):
@@ -899,9 +899,9 @@ def stat_number(value, pct=False, signed=False):
     if pct:
         return f"{number * 100:.1f}%"
     if abs(number - round(number)) < 0.05:
-        text = f"{int(round(number))}"
+        text = f"{int(round(number)):,}" if grouped else f"{int(round(number))}"
     else:
-        text = f"{number:.1f}"
+        text = f"{number:,.1f}" if grouped else f"{number:.1f}"
     if signed and number >= 0:
         return f"+{text}"
     return text
@@ -9431,6 +9431,8 @@ def render_history_overview_table(data, columns):
                 cells.append(f"<td>{render_draft_team_wordmark(value, include_nickname=True)}</td>")
             elif col in ["Championships", "Finals Appearances", "SBC Cup Wins", "Division Championships"]:
                 cells.append(f'<td class="sbc-history-years-cell">{escape(str(value))}</td>')
+            elif col in ["PF", "PA", "Diff"]:
+                cells.append(f"<td>{escape(stat_number(value, grouped=True))}</td>")
             else:
                 cells.append(f"<td>{escape(str(value))}</td>")
         rows.append(f"<tr>{''.join(cells)}</tr>")
@@ -9487,8 +9489,8 @@ def render_history_h2h_matrix(matrix):
         logo = team_logo_for_name(team)
         cells = [
             f'<th class="sbc-h2h-row-head" title="{escape(live_team_full_name(team), quote=True)}">'
-            f'<img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">'
-            f'<span>{escape(team_abbrev_for_name(team))}</span></th>'
+            f'<span class="sbc-h2h-team"><img src="{escape(str(logo), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo" referrerpolicy="no-referrer">'
+            f'<strong>{escape(team_abbrev_for_name(team))}</strong></span></th>'
         ]
         for opp in teams:
             value = str(row.get(opp, "-"))
@@ -9538,7 +9540,8 @@ def render_history_all_time_stats_table(data):
         for col in stat_columns:
             value = row.get(col, "")
             rank = rank_maps.get(col, {}).get(idx, "")
-            cells.append(f'<td><span>{escape(str(value))}</span><em>#{escape(str(rank))}</em></td>')
+            display_value = str(value) if col in ["TS%", "2PT%", "3PT%", "FT%"] else stat_number(value, grouped=True)
+            cells.append(f'<td><span>{escape(display_value)}</span><em>#{escape(str(rank))}</em></td>')
         rows.append(f"<tr>{''.join(cells)}</tr>")
     render_html(f"""
         <div class="sbc-history-table-wrap sbc-history-stats-wrap">
@@ -9694,10 +9697,10 @@ def render_franchise_record_chasers(chasers):
         team = resolve_team_key(row.get("Team", ""))
         stat = str(row.get("Stat", ""))
         is_pct = stat in ["TS%", "2PT%", "3PT%", "FT%"]
-        gap_text = f"{float(row.get('Gap', 0) or 0) * 100:.1f} pct pts" if is_pct else stat_number(row.get("Gap", 0), signed=(stat == "+/-"))
+        gap_text = f"{float(row.get('Gap', 0) or 0) * 100:.1f} pct pts" if is_pct else stat_number(row.get("Gap", 0), signed=(stat == "+/-"), grouped=True)
         leader_marker = " ⭐" if bool(row.get("LeaderActive", False)) else ""
         leader_name = clean_pick_display(row.get("Leader", ""))
-        leader_value_text = stat_number(row.get("LeaderValue", 0), pct=is_pct, signed=(stat == "+/-"))
+        leader_value_text = stat_number(row.get("LeaderValue", 0), pct=is_pct, signed=(stat == "+/-"), grouped=not is_pct)
         leader_image = espn_headshot_url(row.get("LeaderEspnId", "")) if not is_blank_value(row.get("LeaderEspnId", "")) else DRAFT_SILHOUETTE
         leader_html = f"""
             <span class="sbc-history-player-cell">
@@ -9710,7 +9713,7 @@ def render_franchise_record_chasers(chasers):
             if is_league_row else history_team_mark_html(team)
         )
         row_color = LEAGUE_PRIMARY if is_league_row else team_color_for_name(team)
-        current_text = stat_number(row.get("Current", 0), pct=is_pct, signed=(stat == "+/-"))
+        current_text = stat_number(row.get("Current", 0), pct=is_pct, signed=(stat == "+/-"), grouped=not is_pct)
         progress = float(row.get("Progress", 0) or 0)
         progress_text = f"{progress * 100:.1f}%"
         body.append(f"""
@@ -13898,6 +13901,7 @@ st.markdown(
         z-index: 5;
         width: 4.15rem;
         min-width: 4.15rem;
+        box-sizing: border-box;
         background: #111827;
         color: #ffffff;
         font-size: 0.62rem;
@@ -13927,30 +13931,35 @@ st.markdown(
         position: sticky;
         left: 0;
         z-index: 3;
-        display: grid;
-        grid-template-columns: 1.35rem 1fr;
-        align-items: center;
-        gap: 0.22rem;
         width: 4.15rem;
         min-width: 4.15rem;
+        box-sizing: border-box;
         background: #ffffff;
         padding: 0.26rem 0.3rem;
         text-align: left;
     }}
 
-    .sbc-h2h-row-head img {{
+    .sbc-h2h-team {{
+        display: grid;
+        grid-template-columns: 1.22rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.22rem;
+        width: 100%;
+        min-width: 0;
+    }}
+
+    .sbc-h2h-team img {{
         width: 1.22rem;
         height: 1.22rem;
         object-fit: contain;
     }}
 
-    .sbc-h2h-row-head span {{
+    .sbc-h2h-team strong {{
         overflow: hidden;
         color: var(--sbc-ink);
         font-size: 0.58rem;
         font-weight: 950;
         line-height: 1;
-        text-overflow: ellipsis;
         white-space: nowrap;
     }}
 
