@@ -56,8 +56,7 @@ class AwardCountTests(unittest.TestCase):
         by_title = {item["title"]: item["table"] for item in player_tables}
         self.assertEqual(int(by_title["Cup Winner"].iloc[0]["Wins"]), 1)
         self.assertEqual(int(by_title["Cup MVP"].iloc[0]["Awards"]), 1)
-        self.assertEqual(int(by_title["All-Rookie"].iloc[0]["1st"]), 1)
-        self.assertEqual(int(by_title["All-Rookie"].iloc[1]["2nd"]), 1)
+        self.assertEqual(by_title["All-Rookie"]["Team"].tolist(), ["1st", "2nd"])
 
 
 if __name__ == "__main__":

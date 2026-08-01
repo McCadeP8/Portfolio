@@ -86,6 +86,11 @@ def select_game_uniforms(
     config_loader: Callable[[str, str], Any],
 ) -> tuple[str, str, bool]:
     """Return road edition, home edition, and whether clash protection intervened."""
+    assigned_road = str(matchup.get("RoadJersey", "") or "").strip()
+    assigned_home = str(matchup.get("HomeJersey", "") or "").strip()
+    if assigned_road and assigned_home:
+        adjusted = str(matchup.get("JerseyClashAdjusted", "")).strip().lower() in {"1", "true", "yes"}
+        return assigned_road, assigned_home, adjusted
     road_edition = planned_edition(matchup, road_team, "road")
     home_edition = planned_edition(matchup, home_team, "home")
     home_config = config_loader(home_team, home_edition)

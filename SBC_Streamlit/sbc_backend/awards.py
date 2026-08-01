@@ -144,12 +144,35 @@ def _leaderboard(table: pd.DataFrame, columns: dict[str, set[str] | str], entity
     return result
 
 
+def _all_rookie_table(table: pd.DataFrame) -> pd.DataFrame:
+    """List selections, with the reigning first team occupying the five-card preview."""
+    awards = {
+        "All-Rookie 1st Team": "1st",
+        "All-Rookie 2nd Team": "2nd",
+    }
+    work = table[table["Award"].isin(awards)].copy()
+    if work.empty:
+        return pd.DataFrame(columns=["Rank", "Player", "Team"])
+    work["Team"] = work["Award"].map(awards)
+    work["_year"] = pd.to_numeric(work.get("Year"), errors="coerce").fillna(0).astype(int)
+    work["_team_order"] = work["Team"].map({"1st": 0, "2nd": 1})
+    work = work.sort_values(["_year", "_team_order", "Winner"], ascending=[False, True, True])
+    work = work.drop_duplicates("_winner_key", keep="first").reset_index(drop=True)
+    result = work[["Winner", "Team"]].rename(columns={"Winner": "Player"})
+    result.insert(0, "Rank", range(1, len(result) + 1))
+    return result
+
+
 def build_award_count_tables(player_awards: pd.DataFrame, team_awards: pd.DataFrame) -> tuple[list[dict], list[dict]]:
     """Return ordered player and franchise award leaderboard definitions."""
     player_rows = _valid_award_rows(player_awards)
     team_rows = _valid_award_rows(team_awards)
     player_tables = [
-        {"title": title, "subtitle": subtitle, "table": _leaderboard(player_rows, columns, "Player")}
+        {
+            "title": title,
+            "subtitle": subtitle,
+            "table": _all_rookie_table(player_rows) if title == "All-Rookie" else _leaderboard(player_rows, columns, "Player"),
+        }
         for title, subtitle, columns in PLAYER_AWARD_SPECS
     ]
     team_tables = [

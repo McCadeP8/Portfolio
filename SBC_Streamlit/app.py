@@ -2328,7 +2328,7 @@ def render_matchup_shot_court(rows, team_a, team_b):
             ax.scatter(missed["court_y"], -missed["court_x"], s=34, marker="x", color=colors["missed"], linewidth=1.45, alpha=.92, zorder=30)
     render_interactive_shot_figure(figure, ax, shots, team_b)
     if shots.empty:
-        st.caption("No starter shot coordinates are available for this matchup in the current October 2024 sample.")
+        st.caption("Pregame court — no shot attempts yet.")
 
 
 def render_matchup_visuals(rows, team_a, team_b):
@@ -2419,7 +2419,7 @@ def pregame_starting_five(rows, matchup_row, rosters_df, team_name):
     roster["fantraxId"] = roster["fantraxId"].astype(str)
     bridge = build_fantrax_to_espn_bridge()
     roster = roster.merge(bridge[["fantraxId", "fantrax_name", "espn_player_id"]], on="fantraxId", how="left")
-    row_identity = rows[["fantraxId", "display_player", "espn_player_id"]].drop_duplicates("fantraxId").copy()
+    row_identity = rows.reindex(columns=["fantraxId", "display_player", "espn_player_id"]).drop_duplicates("fantraxId").copy()
     row_identity["fantraxId"] = row_identity["fantraxId"].astype(str)
     roster = roster.merge(row_identity, on="fantraxId", how="left", suffixes=("", "_game"))
     roster["display_player"] = roster["fantrax_name"].fillna(roster.get("display_player")).fillna(roster["fantraxId"])
@@ -2561,6 +2561,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     else:
         status_state = "future"
         status_progress = 0.0
+        title_label = "Game Preview"
     status_a11y_attrs = ""
     if status_state == "live":
         status_a11y_attrs = (
@@ -2614,14 +2615,26 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     """)
 
     rows = matchup_boxscore_rows(matchup_row, rosters_df)
-    if rows.empty:
+    if rows.empty and status_state != "future":
         render_html('<div class="sbc-empty-state">No player-game box score rows matched this matchup yet. Check the Fantrax-to-ESPN mapping file for unmapped active players.</div>')
         return
 
-    team_totals = team_boxscore_totals(rows)
+    if status_state == "future":
+        team_totals = pd.DataFrame([
+            {"sbc_team": team_a, **{stat: 0 for stat in BOX_SCORE_STATS}},
+            {"sbc_team": team_b, **{stat: 0 for stat in BOX_SCORE_STATS}},
+        ])
+    else:
+        team_totals = team_boxscore_totals(rows)
     category_table, _, _ = matchup_category_results(team_totals, team_a, team_b)
 
     render_category_votes_box(category_table, team_totals, team_a, team_b)
+
+    if status_state == "future":
+        render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b)
+        render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri, road_edition, home_edition, clash_adjusted)
+        render_matchup_visuals(rows, team_a, team_b)
+        return
 
     if not show_players:
         return
@@ -8039,7 +8052,8 @@ def render_schedule_table(schedule_df, selected_team, rosters_df=None, show_boxs
         opponent_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
         result = schedule_result(team_score, opponent_score, is_home)
         result_class = {"W": "win", "L": "loss"}.get(result, "tbd")
-        score_text = "TBD" if result == "TBD" else f"{float(team_score):g}-{float(opponent_score):g}"
+        score_text = "" if result == "TBD" else f"{float(team_score):g}-{float(opponent_score):g}"
+        result_text = "" if result == "TBD" else result
         type_text = clean_pick_display(row.get("Type", ""))
         if type_text != current_type:
             current_type = type_text
@@ -8054,13 +8068,16 @@ def render_schedule_table(schedule_df, selected_team, rosters_df=None, show_boxs
                     <em>{escape(live_team_full_name(opponent))}</em>
                 </div>
             </div>
-            <div class="sbc-schedule-score"><strong>{escape(score_text)}</strong><em>{escape(result)}</em></div>
+            <div class="sbc-schedule-score"><strong>{escape(score_text)}</strong><em>{escape(result_text)}</em></div>
         </article>
         """))
-        if show_boxscores and rosters_df is not None and result != "TBD":
+        if show_boxscores and rosters_df is not None:
             button_key = f"team_schedule_boxscore_{row.get('Game_ID', '')}_{row.get('Year', '')}_{row.get('Period', '')}_{row.get('TeamA', '')}_{row.get('TeamB', '')}"
-            if st.button("Box Score", key=button_key, use_container_width=True, type="primary"):
-                render_matchup_boxscore_dialog(row.to_dict(), rosters_df)
+            button_label = "Game Preview" if result == "TBD" else "Box Score"
+            if st.button(button_label, key=button_key, use_container_width=True, type="primary"):
+                dialog_row = row.to_dict()
+                dialog_row["_display_status"] = "Upcoming" if result == "TBD" else "Final"
+                render_matchup_boxscore_dialog(dialog_row, rosters_df)
     render_html('</div>')
 
 
@@ -18508,9 +18525,9 @@ if main_page == "Overview":
 
     matchup_windows = []
     window_specs = [
-        (front_year - 1, 42, f"{front_year - 2}-{str(front_year - 1)[-2:]} Championship", "Championship", "FINAL"),
-        (front_year, 1, f"{front_year - 1}-{str(front_year)[-2:]} Opening Week", period_date_label(front_year, 1, "Opening Week"), "UPCOMING"),
-        (front_year, 2, f"{front_year - 1}-{str(front_year)[-2:]} Matchup 2", period_date_label(front_year, 2, "Matchup 2"), "UPCOMING"),
+        (front_year - 1, 42, period_date_label(front_year - 1, 42, "Championship"), period_date_label(front_year - 1, 42, "Championship"), "FINAL"),
+        (front_year, 1, period_date_label(front_year, 1, "Opening Week"), period_date_label(front_year, 1, "Opening Week"), "UPCOMING"),
+        (front_year, 2, period_date_label(front_year, 2, "Matchup 2"), period_date_label(front_year, 2, "Matchup 2"), "UPCOMING"),
     ]
     for matchup_year, matchup_period, label, date_label, status in window_specs:
         window_games = front_scores[(front_scores["Year"] == matchup_year) & (front_scores["Period"] == matchup_period)]
@@ -18559,13 +18576,6 @@ if main_page == "Overview":
                 front_dialog_opened = True
                 render_matchup_boxscore_dialog(selected_matchup_row, all_time_rosters)
 
-    front_standings_view = st.radio(
-        "Overview Standings View",
-        ["Conference", "In-Season Tournament"],
-        horizontal=True,
-        key="overview_standings_view",
-    )
-
     front_table = standings[(standings["Year"] == front_year) & (standings["Period"] == front_period)].copy()
     if front_table.empty:
         available_year = int(standings["Year"].max()) if not standings.empty else current_year - 1
@@ -18577,7 +18587,7 @@ if main_page == "Overview":
     leader_record = escape(str(front_table.iloc[0].get("Record", "—"))) if not front_table.empty else "—"
 
     conference_html = []
-    if front_standings_view == "Conference":
+    if True:
         for conference in ["West", "East"]:
             conf = front_table[front_table["Team"].map(lambda t: team_info.get(str(t), {}).get("conf")) == conference].head(15)
             rows = []
@@ -18586,21 +18596,20 @@ if main_page == "Overview":
                 marker = '<div class="sbc-cut sbc-cut-playoff"><span>Top 6 · playoff line</span></div>' if seed == 7 else ('<div class="sbc-cut sbc-cut-playin"><span>Top 10 · play-in line</span></div>' if seed == 11 else '')
                 rows.append(marker + f'<div class="sbc-v2-standing"><span>{seed}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["name"] + " " + team["nick"])}</b><em>{escape(str(row.get("Record", "—")))}</em></div>')
             conference_html.append(f'<div class="sbc-v2-conf"><h4>{conference} Conference</h4>{"".join(rows)}</div>')
-    else:
-        front_ist_groups = ist_group_tables(front_year, front_period)
-        for conference in ["West", "East"]:
-            rows = []
-            rank = 0
-            for group_name in [f"{conference} A", f"{conference} B", f"{conference} C"]:
-                group = front_ist_groups.get(group_name, pd.DataFrame())
-                if group.empty:
-                    continue
-                rows.append(f'<div class="sbc-cut sbc-cut-playoff"><span>{escape(group_name)}</span></div>')
-                for _, row in group.iterrows():
-                    rank += 1
-                    team = front_team_v2(row["Team"])
-                    rows.append(f'<div class="sbc-v2-standing"><span>{rank}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["name"] + " " + team["nick"])}</b><em>{escape(str(row.get("Record", "0-0")))}</em></div>')
-            conference_html.append(f'<div class="sbc-v2-conf"><h4>{conference} SBC Cup</h4>{"".join(rows)}</div>')
+    ist_html = []
+    front_ist_groups = ist_group_tables(front_year, front_period)
+    for conference in ["West", "East"]:
+        rows = []
+        for group_name in [f"{conference} A", f"{conference} B", f"{conference} C"]:
+            group = front_ist_groups.get(group_name, pd.DataFrame())
+            if group.empty:
+                continue
+            rows.append(f'<div class="sbc-cut sbc-cut-playoff"><span>{escape(group_name)}</span></div>')
+            for rank, (_, row) in enumerate(group.iterrows(), 1):
+                team = front_team_v2(row["Team"])
+                rows.append(f'<div class="sbc-v2-standing"><span>{rank}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["name"] + " " + team["nick"])}</b><em>{escape(str(row.get("Record", "0-0")))}</em></div>')
+        conference_label = "Western Conference" if conference == "West" else "Eastern Conference"
+        ist_html.append(f'<div class="sbc-v2-conf"><h4>{conference_label}</h4>{"".join(rows)}</div>')
 
     story_teams = [front_team_v2(t) for t in front_table["Team"].astype(str).head(15).tolist()] if not front_table.empty else [front_team_v2(t) for t in Teams[:15]]
     article_records = []
@@ -18830,6 +18839,7 @@ if main_page == "Overview":
       .sbc-v2-copy{{position:relative;z-index:1;color:#fff;max-width:720px;text-shadow:0 2px 12px rgba(0,0,0,.35)}}
       .sbc-v2-copy small{{display:block;color:rgba(255,255,255,.72);font-size:.67rem;font-weight:850;letter-spacing:.07em;text-transform:uppercase}}.sbc-v2-copy h1{{font-family:'Bungee','Arial Black',sans-serif;font-size:clamp(2rem,3.7vw,3.55rem);line-height:1;letter-spacing:-.035em;margin:10px 0 12px;text-wrap:balance}} .sbc-v2-copy p{{font-size:1rem;line-height:1.48;font-weight:720;max-width:650px;margin:0;color:#eaf0f5}}
       .sbc-v2-head{{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #17212b;padding-bottom:9px;margin-bottom:5px}} .sbc-v2-head b{{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}} .sbc-v2-head span{{font-size:.65rem;color:#e32231;font-weight:900}}
+      .sbc-v2-standings-panel>input{{position:absolute;opacity:0;pointer-events:none}} .sbc-v2-standings-toggle{{display:inline-flex!important;gap:2px;padding:2px;border:1px solid #d7dde3;border-radius:999px;background:#eef1f4;color:#53606c!important;cursor:pointer}} .sbc-v2-standings-toggle span{{padding:5px 9px;border-radius:999px;font-size:.58rem;font-weight:950;letter-spacing:.045em;text-transform:uppercase}} #sbc-stand-toggle:not(:checked)~.sbc-v2-head .sbc-toggle-conference,#sbc-stand-toggle:checked~.sbc-v2-head .sbc-toggle-ist{{background:#17212b;color:#fff}} #sbc-stand-toggle:not(:checked)~.sbc-v2-standings-ist,#sbc-stand-toggle:checked~.sbc-v2-standings-conference{{display:none}}
       .sbc-v2-headline{{display:grid;grid-template-columns:58px minmax(0,1fr);gap:.75rem;align-items:center;min-height:78px;padding:10px 0;border-bottom:1px solid #e4e8ec;text-decoration:none!important;color:#17212b!important}} .sbc-v2-headline:hover,.sbc-v2-headline:visited,.sbc-v2-headline:active{{text-decoration:none!important;color:#17212b!important}} .sbc-v2-headline:hover b{{color:#d92332}} .sbc-v2-headline:last-child{{border:0}} .sbc-v2-headline>img{{width:58px;height:58px;border-radius:9px;background:linear-gradient(145deg,#eef2f5,#dfe5ea);object-fit:contain;object-position:center bottom}}.sbc-v2-headline b{{display:block;font-size:.91rem;line-height:1.28;text-decoration:none!important}} .sbc-v2-headline em{{display:block;font-style:normal;color:#7b8690;font-size:.64rem;line-height:1.3;margin-top:4px;text-decoration:none!important}}.sbc-v2-headline-placeholder{{opacity:.62}}.sbc-v2-headline-placeholder>img{{filter:grayscale(1)}}.sbc-v2-headline-placeholder b{{font-style:italic}}
       .sbc-v2-standings{{display:grid;grid-template-columns:1fr 1fr;gap:18px}} .sbc-v2-conf h4{{margin:4px 0 7px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}}
       .sbc-v2-standing{{display:grid;grid-template-columns:16px 23px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:29px;border-bottom:1px solid #edf0f2;font-size:.64rem}} .sbc-v2-standing img{{width:21px;height:21px;object-fit:contain}} .sbc-v2-standing>span{{color:#8b959f}} .sbc-v2-standing b{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}} .sbc-v2-standing em{{font-style:normal;font-weight:900}}
@@ -18861,7 +18871,7 @@ if main_page == "Overview":
     </style>
     <div class="sbc-front-v2"><div class="sbc-v2-grid">
       <div class="sbc-v2-left"><a class="sbc-v2-hero" href="?sbc_article={escape(hero_story['slug'], quote=True)}" target="_self" style="--hero-primary:{escape(hero_story['primary']['color'], quote=True)};--hero-secondary:{escape(hero_story['secondary_color'], quote=True)};"><span class="sbc-v2-story-tag">Latest Story</span><img class="sbc-v2-hero-wordmark" src="{escape(hero_story['primary']['wordmark'], quote=True)}" alt=""><div class="sbc-v2-hero-art">{hero_art_html}</div><div class="sbc-v2-copy"><small>{escape(hero_story['date_label'])} · {escape(hero_story['author'])} · {hero_story['read_time']} min read</small><h1>{escape(hero_story['headline'])}</h1><p>{escape(hero_story['deck'])}</p></div></a><section class="sbc-v2-panel sbc-v2-news"><div class="sbc-v2-head"><b>Top Headlines</b><span>{len(article_records)} published · {visible_placeholder_count} upcoming</span></div>{headlines_html}</section></div>
-      <div class="sbc-v2-right"><section class="sbc-v2-panel sbc-v2-standings-panel"><div class="sbc-v2-head"><b>{escape(front_standings_view)} Standings</b><span>{front_year - 1}-{str(front_year)[-2:]} Opening Week</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
+      <div class="sbc-v2-right"><section class="sbc-v2-panel sbc-v2-standings-panel"><input id="sbc-stand-toggle" type="checkbox"><div class="sbc-v2-head"><b>Standings</b><label class="sbc-v2-standings-toggle" for="sbc-stand-toggle"><span class="sbc-toggle-conference">Conference</span><span class="sbc-toggle-ist">IST</span></label></div><div class="sbc-v2-standings sbc-v2-standings-conference">{''.join(conference_html)}</div><div class="sbc-v2-standings sbc-v2-standings-ist">{''.join(ist_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
     </div></div>
     """)
 
@@ -19001,6 +19011,8 @@ if False and main_page == "Overview":
             ("Runner-Up", unit_payout(df, exceptions, base_cap) * 4, "Finals runner-up base-pool payout."),
             ("Conference Finalist", unit_payout(df, exceptions, base_cap) * 2, "Paid to each conference runner-up."),
             ("Conference Semifinalist", unit_payout(df, exceptions, base_cap), "Paid to each semifinal loser."),
+            ("IST Winner", 75, "SBCFBL Cup champion payout."),
+            ("IST Runner-Up", 15, "SBCFBL Cup runner-up payout."),
             ("Charity Champion", tax_payout_champ(df, exceptions, base_cap), "Champion-directed charity payout."),
             ("Tax Payback", tax_payout_split(df, exceptions, base_cap), "Split among non-tax organizations."),
         ])
@@ -19041,6 +19053,8 @@ if main_page == "League Hub" and selected_league_page == "Overview":
         ("Runner-Up", unit_payout(df, exceptions, base_cap) * 4, "Finals runner-up base-pool payout."),
         ("Conference Finalist", unit_payout(df, exceptions, base_cap) * 2, "Paid to each conference runner-up."),
         ("Conference Semifinalist", unit_payout(df, exceptions, base_cap), "Paid to each semifinal loser."),
+        ("IST Winner", 75, "SBCFBL Cup champion payout."),
+        ("IST Runner-Up", 15, "SBCFBL Cup runner-up payout."),
         ("Charity Champion", tax_payout_champ(df, exceptions, base_cap), "Champion-directed charity payout."),
         ("Tax Payback", tax_payout_split(df, exceptions, base_cap), "Split among non-tax organizations."),
     ])

@@ -119,10 +119,11 @@ def get_draft_picks() -> pd.DataFrame:
     df = df[df['Year'].between(current_year, current_year + 6)]
     return df
 
-@st.cache_data(ttl=86400)
+@st.cache_data(ttl=60)
 def get_period_calendar() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=698621872"
-    df = read_csv_snapshot("period_calendar", csv_url)
+    refresh_key = int(pd.Timestamp.now().timestamp() // 60)
+    csv_url = f"https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=698621872&refresh={refresh_key}"
+    df = read_csv_snapshot("period_calendar", csv_url, ttl_seconds=0)
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     for col in ["Day", "Year", "Period"]:
