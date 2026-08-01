@@ -18652,10 +18652,10 @@ if main_page == "Overview":
                     "abbr": "SBC",
                     "logo": LEAGUE_LOGO,
                     "wordmark": LEAGUE_LOGO,
-                    "color": "#d92332",
-                    "secondary": "#17212b",
+                    "color": LEAGUE_PRIMARY,
+                    "secondary": LEAGUE_SECONDARY,
                 }
-                secondary_color = "#17212b"
+                secondary_color = LEAGUE_SECONDARY
             else:
                 primary_team = team_assets[0] if team_assets else leader
                 secondary_color = team_assets[1]["color"] if len(team_assets) > 1 else primary_team["color"]
