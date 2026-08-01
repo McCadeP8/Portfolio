@@ -17851,8 +17851,13 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
     """)
     SelectedYear2 = current_year
     period_options2 = schedule_period_options(all_time_schedule, SelectedYear2)
-    SelectedPeriod2 = min(max(int(current_matchup), period_options2[0]), period_options2[-1])
-    render_html(f'<div class="sbc-live-controls"><div class="sbc-live-control-title">Current Matchup</div><div class="sbc-live-control-copy">{escape(period_date_label(SelectedYear2, SelectedPeriod2, f"P{SelectedPeriod2}"))}</div></div>')
+    SelectedPeriod2 = st.selectbox(
+        "Select Matchup Period",
+        options=period_options2,
+        index=current_period_index(period_options2),
+        key="league_scoreboard_period",
+        format_func=period_select_label(SelectedYear2),
+    )
 
     scoreboard_schedule = all_time_schedule[
         (all_time_schedule["Year"] == SelectedYear2)
