@@ -244,7 +244,10 @@ def current_matchup_period() -> float:
     df["Date"] = pd.to_datetime(df["Date"]).dt.date
     df2 = df[(df["Date"] == today) & (df["Year"] == current_year)]
     if len(df2) == 0:
-        return int(df["Period"].iloc[-1])
+        current_season = df[df["Year"] == current_year]
+        if current_season.empty:
+            return 1
+        return int(current_season["Period"].iloc[-1])
     if len(df2) == 1:
         return int(df2["Period"].iloc[0])
     return int(df2["Period"].iloc[-1])

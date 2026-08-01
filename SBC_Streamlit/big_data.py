@@ -4,7 +4,7 @@
 import pandas as pd
 import os
 import numpy as np  # noqa: F401
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from data import league_ids, team_info
 from functions import (
@@ -31,6 +31,10 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 APP_DIR = Path(__file__).resolve().parent
 BACKEND_SETTINGS = BackendSettings.from_env(APP_DIR)
 current_year = BACKEND_SETTINGS.current_sbc_year
+
+ROSTER_SEASON_WINDOWS = {
+    2027: (date(2026, 10, 20), date(2027, 4, 11)),
+}
 
 
 def dataset_path(filename: str) -> Path:
@@ -118,19 +122,36 @@ def _merge_roster_snapshots(history: pd.DataFrame, fresh: pd.DataFrame, year: in
     return combined
 
 
+def _configured_roster_periods(year: int) -> pd.DataFrame:
+    """Build Fantrax's one-based daily periods for seasons configured before the schedule exists."""
+    window = ROSTER_SEASON_WINDOWS.get(year)
+    if window is None:
+        return pd.DataFrame(columns=["games", "Year", "Date"])
+    start, end = window
+    if end < start:
+        raise ValueError(f"Roster season window ends before it starts for {year}")
+    dates = [start + timedelta(days=offset) for offset in range((end - start).days + 1)]
+    return pd.DataFrame({"games": range(1, len(dates) + 1), "Year": year, "Date": dates})
+
+
 def get_all_time_rosters_history() -> pd.DataFrame:
     history = pd.read_parquet(dataset_path("all_time_rosters_history.parquet"))
     roster_year = BACKEND_SETTINGS.current_sbc_year
     if roster_year not in league_ids:
         notify(f"Skipped get_all_time_rosters_history: no Fantrax league ID configured for {roster_year}")
         return history
-    csv_url = ("https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429")
-    df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=0)
-    df["Year"] = pd.to_numeric(df.get("Year"), errors="coerce")
-    df["games"] = pd.to_numeric(df.get("games"), errors="coerce")
-    df = df[df["Year"].eq(roster_year) & df["games"].notna()].copy()
-    df["games"] = df["games"].astype(int)
-    df = df[["games", "Year"]].drop_duplicates().sort_values("games").reset_index(drop=True)
+    df = _configured_roster_periods(roster_year)
+    if not df.empty:
+        start, end = ROSTER_SEASON_WINDOWS[roster_year]
+        notify(f"Using configured {roster_year} roster window: {start} through {end} ({len(df)} daily periods)")
+    else:
+        csv_url = ("https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429")
+        df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=0)
+        df["Year"] = pd.to_numeric(df.get("Year"), errors="coerce")
+        df["games"] = pd.to_numeric(df.get("games"), errors="coerce")
+        df = df[df["Year"].eq(roster_year) & df["games"].notna()].copy()
+        df["games"] = df["games"].astype(int)
+        df = df[["games", "Year"]].drop_duplicates().sort_values("games").reset_index(drop=True)
     if df.empty:
         notify(f"Skipped get_all_time_rosters_history: no {roster_year} roster periods found in the schedule sheet")
         return history
@@ -215,8 +236,16 @@ def get_all_time_standings() -> pd.DataFrame:
         notify(f"Skipped get_all_time_standings: missing {current_year} scores or standings seed rows")
         return pd.concat([df_old, df2], ignore_index=True)
 
-    df["Winner"] = df["TeamA"].where(df["TeamAScore"] > df["TeamBScore"], df["TeamB"])
-    df["Loser"] = df["TeamA"].where(df["TeamBScore"] >= df["TeamAScore"], df["TeamB"])
+    # A 0-0 row is an unplayed schedule placeholder, not a TeamB win.
+    played = (pd.to_numeric(df["TeamAScore"], errors="coerce") > 0) | (pd.to_numeric(df["TeamBScore"], errors="coerce") > 0)
+    df["Winner"] = None
+    df["Loser"] = None
+    df.loc[played, "Winner"] = df.loc[played, "TeamA"].where(
+        df.loc[played, "TeamAScore"] > df.loc[played, "TeamBScore"], df.loc[played, "TeamB"]
+    )
+    df.loc[played, "Loser"] = df.loc[played, "TeamA"].where(
+        df.loc[played, "TeamBScore"] >= df.loc[played, "TeamAScore"], df.loc[played, "TeamB"]
+    )
     total_wins = df[df['Type'] == 'Regular Season'].groupby(['Year', 'Period', 'Winner']).size().reset_index(name='Total')
     total_losses = df[df['Type'] == 'Regular Season'].groupby(['Year', 'Period', 'Loser']).size().reset_index(name='Total')
     total_wins['CumWins'] = total_wins.groupby(['Year', 'Winner'])['Total'].cumsum()

@@ -297,6 +297,7 @@ TEAM_ABBREVIATIONS = {
 
 LEAGUE_LOGO = "https://pbs.twimg.com/media/HLq5ARaaQAA4KwY?format=png&name=small"
 LEAGUE_PRIMARY = "#09438E"
+POSTSEASON_PLACEHOLDER_LOGO = "https://pbs.twimg.com/media/HGxbwo2aEAA_HeG?format=jpg&name=large"
 LEAGUE_SECONDARY = "#009C3D"
 LEAGUE_FONT = "Bungee"
 DRAFT_SILHOUETTE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='48' fill='%23111827'/%3E%3Ccircle cx='48' cy='35' r='17' fill='%23f8fafc'/%3E%3Cpath d='M18 83c4-20 17-31 30-31s26 11 30 31' fill='%23f8fafc'/%3E%3C/svg%3E"
@@ -7986,6 +7987,8 @@ def build_live_line_chart(data, selected_team, selected_category, selected_year,
 def schedule_result(team_score, opponent_score, selected_is_home):
     if is_blank_value(team_score) or is_blank_value(opponent_score):
         return "TBD"
+    if float(team_score) == 0 and float(opponent_score) == 0:
+        return "TBD"
     if float(team_score) > float(opponent_score):
         return "W"
     if float(team_score) < float(opponent_score):
@@ -10111,6 +10114,9 @@ def history_game_winner(row):
 
 
 def history_team_seed(team, seed_lookup):
+    placeholder_match = re.fullmatch(r"#([^\s]+)\s+Seed", str(team).strip(), flags=re.IGNORECASE)
+    if placeholder_match:
+        return placeholder_match.group(1).upper()
     seed = seed_lookup.get(str(team), "")
     if is_blank_value(seed):
         return "-"
@@ -10139,10 +10145,11 @@ def bracket_team_label(team, mode="abbr"):
 def render_history_bracket_team(team, winner, seed_lookup, label_mode="abbr", score="", show_score=False):
     team = clean_pick_display(team)
     info = team_info.get(team, {})
-    logo = info.get("logo", "")
-    color = info.get("bg", LEAGUE_PRIMARY)
-    secondary = info.get("bg2", LEAGUE_SECONDARY)
-    seed_color = LEAGUE_SECONDARY if info.get("conf") == "West" else LEAGUE_PRIMARY
+    placeholder = bool(re.fullmatch(r"#(?:[^\s]+)\s+Seed", str(team), flags=re.IGNORECASE)) or str(team).upper() in {"TBD", "WILD CARD"}
+    logo = POSTSEASON_PLACEHOLDER_LOGO if placeholder else info.get("logo", "")
+    color = "#000000" if placeholder else info.get("bg", LEAGUE_PRIMARY)
+    secondary = "#ffffff" if placeholder else info.get("bg2", LEAGUE_SECONDARY)
+    seed_color = "#000000" if placeholder else (LEAGUE_SECONDARY if info.get("conf") == "West" else LEAGUE_PRIMARY)
     is_winner = team == winner
     return f"""
         <div class="sbc-bracket-team {'sbc-bracket-team-winner' if is_winner else ''}" style="--bracket-team-color:{escape(str(color), quote=True)};--bracket-team-secondary:{escape(str(secondary), quote=True)};--bracket-seed-color:{escape(str(seed_color), quote=True)};">
@@ -10222,6 +10229,23 @@ def bracket_game_conference(row):
     return "Finals"
 
 
+def assign_placeholder_bracket_conferences(bracket):
+    """Split unresolved bracket rows into West/East lanes by entered row order."""
+    bracket = bracket.copy()
+    bracket["_conference"] = bracket.apply(bracket_game_conference, axis=1)
+    bracket["_source_order"] = range(bracket.shape[0])
+    for (_, round_name), group in bracket.groupby(["Type", "Round"], sort=False, dropna=False):
+        unresolved = group[group["_conference"] == "Finals"].sort_values("_source_order")
+        round_text = str(round_name).lower()
+        is_league_final = ("championship" in round_text) or ("sbcfbl finals" in round_text)
+        if unresolved.empty or is_league_final:
+            continue
+        midpoint = math.ceil(unresolved.shape[0] / 2)
+        bracket.loc[unresolved.index[:midpoint], "_conference"] = "West"
+        bracket.loc[unresolved.index[midpoint:], "_conference"] = "East"
+    return bracket
+
+
 def bracket_seed_number(team, seed_lookup):
     raw = seed_lookup.get(str(team), "")
     if str(raw).upper() == "WC":
@@ -10283,8 +10307,8 @@ def render_bracket_empty(label="TBD"):
     return f"""
         <article class="sbc-bracket-matchup sbc-bracket-matchup-empty">
             <div class="sbc-bracket-matchup-inner">
-                <div class="sbc-bracket-team" style="--bracket-team-color:#94a3b8;--bracket-team-secondary:#cbd5e1;--bracket-seed-color:#64748b;"><span class="sbc-bracket-seed">-</span><strong>{escape(label)}</strong></div>
-                <div class="sbc-bracket-team" style="--bracket-team-color:#94a3b8;--bracket-team-secondary:#cbd5e1;--bracket-seed-color:#64748b;"><span class="sbc-bracket-seed">-</span><strong>{escape(label)}</strong></div>
+                <div class="sbc-bracket-team" style="--bracket-team-color:#000000;--bracket-team-secondary:#ffffff;--bracket-seed-color:#000000;"><span class="sbc-bracket-seed">-</span><img src="{escape(POSTSEASON_PLACEHOLDER_LOGO, quote=True)}" alt="Postseason placeholder logo"><strong>{escape(label)}</strong><b class="sbc-bracket-score">0</b></div>
+                <div class="sbc-bracket-team" style="--bracket-team-color:#000000;--bracket-team-secondary:#ffffff;--bracket-seed-color:#000000;"><span class="sbc-bracket-seed">-</span><img src="{escape(POSTSEASON_PLACEHOLDER_LOGO, quote=True)}" alt="Postseason placeholder logo"><strong>{escape(label)}</strong><b class="sbc-bracket-score">0</b></div>
             </div>
         </article>
     """
@@ -10348,7 +10372,7 @@ def render_playoff_bracket(games, title, empty_text, seed_lookup=None):
     seed_lookup = seed_lookup or {}
     bracket = games.copy()
     bracket["_bucket"] = bracket.apply(playoff_round_bucket, axis=1)
-    bracket["_conference"] = bracket.apply(bracket_game_conference, axis=1)
+    bracket = assign_placeholder_bracket_conferences(bracket)
     bracket["_game_sort"] = pd.to_numeric(bracket.get("Game_ID", pd.Series(range(bracket.shape[0]))), errors="coerce").fillna(0)
     champion_game = bracket[bracket["_bucket"] == "finals"].sort_values(["Period", "_game_sort"], na_position="last").tail(1)
     champion = history_game_winner(champion_game.iloc[0]) if not champion_game.empty else ""
@@ -10565,7 +10589,7 @@ def render_ist_bracket(games, title, empty_text, seed_lookup=None):
         return
     seed_lookup = seed_lookup or {}
     bracket = games.copy()
-    bracket["_conference"] = bracket.apply(bracket_game_conference, axis=1)
+    bracket = assign_placeholder_bracket_conferences(bracket)
     bracket["_round_sort"] = bracket["Round"].apply(history_round_rank)
     bracket["_game_sort"] = pd.to_numeric(bracket.get("Game_ID", pd.Series(range(bracket.shape[0]))), errors="coerce").fillna(0)
     bracket["_conf_sort"] = bracket["_conference"].map({"West": 0, "East": 1, "Finals": 2}).fillna(3)
@@ -18376,8 +18400,9 @@ if main_page == "League Hub" and selected_league_page == "Draft Picks":
 
     '''
 if main_page == "Overview":
-    # Editorial preview date requested for the landing-page prototype.
-    front_year, front_period = 2025, 8
+    # Open on the upcoming season without inventing dates that depend on the
+    # NBA schedule release.
+    front_year, front_period = current_year, 1
     front_scores = all_time_schedule.copy()
     front_scores["_a"] = pd.to_numeric(front_scores["TeamAScore"], errors="coerce")
     front_scores["_b"] = pd.to_numeric(front_scores["TeamBScore"], errors="coerce")
@@ -18388,32 +18413,29 @@ if main_page == "Overview":
         return {"name": name, "nick": str(info.get("nickname", name)), "abbr": TEAM_ABBREVIATIONS.get(name, name[:3].upper()), "logo": str(info.get("logo", LEAGUE_LOGO)), "wordmark": str(info.get("wordmark", info.get("logo", LEAGUE_LOGO))), "color": str(info.get("bg", LEAGUE_PRIMARY))}
 
     matchup_windows = []
-    for label, date_label, matchup_period in [("Jan 9–Jan 12", "Jan 9–12", 7), ("Jan 13–Jan 15", "Jan 13–15", 8), ("Jan 16–Jan 20", "Jan 16–20", 9)]:
-        window_games = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == matchup_period)]
+    window_specs = [
+        (front_year - 1, 42, f"{front_year - 2}-{str(front_year - 1)[-2:]} Championship", "Championship", "FINAL"),
+        (front_year, 1, f"{front_year - 1}-{str(front_year)[-2:]} Opening Week", "Dates TBD", "UPCOMING"),
+        (front_year, 2, f"{front_year - 1}-{str(front_year)[-2:]} Matchup 2", "Dates TBD", "UPCOMING"),
+    ]
+    for matchup_year, matchup_period, label, date_label, status in window_specs:
+        window_games = front_scores[(front_scores["Year"] == matchup_year) & (front_scores["Period"] == matchup_period)]
         games = []
         for game_index, (_, game) in enumerate(window_games.iterrows()):
             a, b = front_team_v2(game.get("TeamA", "TBD")), front_team_v2(game.get("TeamB", "TBD"))
             av, bv = game.get("_a"), game.get("_b")
             display_type = str(game.get("Type", "Regular Season"))
-            if matchup_period == front_period and game_index == 1:
-                display_type = "In-Season Tournament"
-            if matchup_period == front_period and game_index == 2:
-                display_type = "Playoffs"
-            status = "FINAL" if matchup_period < front_period else (f"IN PROGRESS · {58 + (game_index % 6) * 6}%" if matchup_period == front_period else "UPCOMING")
-            games.append({"key": f"{matchup_period}-{game_index}", "a": a, "b": b, "as": None if pd.isna(av) else round(float(av), 1), "bs": None if pd.isna(bv) else round(float(bv), 1), "type": display_type, "round": str(game.get("Round", "")), "status": status, "id": str(game.get("Game_ID", ""))})
+            show_scores = status == "FINAL"
+            games.append({"key": f"{matchup_year}-{matchup_period}-{game_index}", "a": a, "b": b, "as": round(float(av), 1) if show_scores and pd.notna(av) else None, "bs": round(float(bv), 1) if show_scores and pd.notna(bv) else None, "type": display_type, "round": str(game.get("Round", "")), "status": status, "id": str(game.get("Game_ID", ""))})
         matchup_windows.append({"label": label, "date": date_label, "period": matchup_period, "games": games})
 
     def front_dialog_matchup(game_key):
-        query_period, query_index = [int(value) for value in str(game_key).split("-", 1)]
-        query_rows = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == query_period)]
+        query_year, query_period, query_index = [int(value) for value in str(game_key).split("-", 2)]
+        query_rows = front_scores[(front_scores["Year"] == query_year) & (front_scores["Period"] == query_period)]
         if not 0 <= query_index < query_rows.shape[0]:
             return None
         matchup_dialog_row = query_rows.iloc[query_index].to_dict()
-        if query_period == front_period and query_index == 1:
-            matchup_dialog_row["Type"] = "In-Season Tournament"
-        elif query_period == front_period and query_index == 2:
-            matchup_dialog_row["Type"] = "Playoffs"
-        matchup_dialog_row["_display_status"] = "Final" if query_period < front_period else (f"In Progress · {58 + (query_index % 6) * 6}%" if query_period == front_period else "Upcoming")
+        matchup_dialog_row["_display_status"] = "Final" if query_year < front_year else "Upcoming"
         return matchup_dialog_row
 
     front_dialog_opened = False
@@ -18610,15 +18632,11 @@ if main_page == "Overview":
     if game_query and not front_dialog_opened:
         clear_front_dialog_query("sbc_game")
         try:
-            query_period, query_index = [int(value) for value in game_query.split("-", 1)]
-            query_rows = front_scores[(front_scores["Year"] == front_year) & (front_scores["Period"] == query_period)]
+            query_year, query_period, query_index = [int(value) for value in game_query.split("-", 2)]
+            query_rows = front_scores[(front_scores["Year"] == query_year) & (front_scores["Period"] == query_period)]
             if 0 <= query_index < query_rows.shape[0]:
                 matchup_dialog_row = query_rows.iloc[query_index].to_dict()
-                if query_period == front_period and query_index == 1:
-                    matchup_dialog_row["Type"] = "In-Season Tournament"
-                elif query_period == front_period and query_index == 2:
-                    matchup_dialog_row["Type"] = "Playoffs"
-                matchup_dialog_row["_display_status"] = "Final" if query_period < front_period else (f"In Progress · {58 + (query_index % 6) * 6}%" if query_period == front_period else "Upcoming")
+                matchup_dialog_row["_display_status"] = "Final" if query_year < front_year else "Upcoming"
                 clear_front_dialog_query("sbc_article")
                 front_dialog_opened = True
                 render_matchup_boxscore_dialog(matchup_dialog_row, all_time_rosters)
@@ -18726,7 +18744,7 @@ if main_page == "Overview":
     </style>
     <div class="sbc-front-v2"><div class="sbc-v2-grid">
       <div class="sbc-v2-left"><a class="sbc-v2-hero" href="?sbc_article={escape(hero_story['slug'], quote=True)}" target="_self" style="--hero-primary:{escape(hero_story['primary']['color'], quote=True)};--hero-secondary:{escape(hero_story['secondary_color'], quote=True)};"><span class="sbc-v2-story-tag">Latest Story</span><img class="sbc-v2-hero-wordmark" src="{escape(hero_story['primary']['wordmark'], quote=True)}" alt=""><div class="sbc-v2-hero-art">{hero_art_html}</div><div class="sbc-v2-copy"><small>{escape(hero_story['date_label'])} · {escape(hero_story['author'])} · {hero_story['read_time']} min read</small><h1>{escape(hero_story['headline'])}</h1><p>{escape(hero_story['deck'])}</p></div></a><section class="sbc-v2-panel sbc-v2-news"><div class="sbc-v2-head"><b>Top Headlines</b><span>{len(article_records)} published · {visible_placeholder_count} upcoming</span></div>{headlines_html}</section></div>
-      <div class="sbc-v2-right"><section class="sbc-v2-panel sbc-v2-standings-panel"><div class="sbc-v2-head"><b>Standings</b><span>Jan 14, 2025</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
+      <div class="sbc-v2-right"><section class="sbc-v2-panel sbc-v2-standings-panel"><div class="sbc-v2-head"><b>Standings</b><span>{front_year - 1}-{str(front_year)[-2:]} Opening Week</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
     </div></div>
     """)
 

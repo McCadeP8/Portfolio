@@ -4,10 +4,19 @@ import unittest
 
 import pandas as pd
 
-from big_data import _merge_roster_snapshots
+from big_data import _configured_roster_periods, _merge_roster_snapshots
 
 
 class RosterRefreshTests(unittest.TestCase):
+    def test_2027_calendar_covers_every_day_inclusively(self):
+        periods = _configured_roster_periods(2027)
+
+        self.assertEqual(len(periods), 174)
+        self.assertEqual(periods.iloc[0]["games"], 1)
+        self.assertEqual(periods.iloc[-1]["games"], 174)
+        self.assertEqual(str(periods.iloc[0]["Date"]), "2026-10-20")
+        self.assertEqual(str(periods.iloc[-1]["Date"]), "2027-04-11")
+
     def test_refresh_replaces_successful_period_and_preserves_everything_else(self):
         history = pd.DataFrame(
             [
