@@ -9858,8 +9858,6 @@ def ist_group_tables(selected_year, selected_period):
     if not groups:
         return {}
     played_games = team_game_rows(ist_group_games(selected_year), selected_year, selected_period)
-    if played_games.empty:
-        return {}
     grouped = {}
     for group_name, teams in groups.items():
         group_games = played_games[
@@ -10293,13 +10291,13 @@ def playoff_round_bucket(row):
     round_name = str(row.get("Round", "")).lower()
     if type_name == "Play-In":
         return "playin"
-    if bracket_game_conference(row) == "Finals":
+    if "sbcfbl finals" in round_name or "championship" in round_name:
         return "finals"
     if "quarter" in round_name or "first" in round_name:
         return "first"
     if "semi" in round_name:
         return "semi"
-    if "final" in round_name or "champ" in round_name:
+    if "conference final" in round_name:
         return "conf_final"
     return "first"
 
@@ -10561,15 +10559,28 @@ def ist_bracket_seed_lookup(selected_year, selected_period):
     return lookup
 
 
+def ist_seed_token(team, seed_lookup):
+    text = str(team).strip()
+    if text.lower() == "wild card":
+        return "WC"
+    match = re.fullmatch(r"#([^\s]+)\s+Seed", text, flags=re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    return str(seed_lookup.get(text, ""))
+
+
 def ist_game_sort_key(row, seed_lookup):
-    conference_sort = {"West": 0, "East": 1, "Finals": 2}.get(bracket_game_conference(row), 3)
-    seeds = {str(seed_lookup.get(str(row.get("TeamA", "")), "")), str(seed_lookup.get(str(row.get("TeamB", "")), ""))}
+    conference = str(row.get("_conference", bracket_game_conference(row)))
+    conference_sort = {"West": 0, "East": 1, "Finals": 2}.get(conference, 3)
+    seeds = {ist_seed_token(row.get("TeamA", ""), seed_lookup), ist_seed_token(row.get("TeamB", ""), seed_lookup)}
     if {"1", "WC"}.issubset(seeds):
         matchup_sort = 0
     elif {"2", "3"}.issubset(seeds):
         matchup_sort = 1
     else:
         matchup_sort = 2
+    if conference == "East" and matchup_sort in {0, 1}:
+        matchup_sort = 1 - matchup_sort
     return conference_sort, matchup_sort
 
 
@@ -16554,7 +16565,7 @@ st.markdown(
     .sbc-award-count-rank-3 {{ color: #a85d2f !important; }}
     .sbc-award-count-entity {{
         display: grid;
-        grid-template-columns: 2.3rem minmax(0, 1fr);
+        grid-template-columns: 3rem minmax(0, 1fr);
         align-items: center;
         gap: 0.5rem;
         min-width: 0;
@@ -16564,14 +16575,16 @@ st.markdown(
     .sbc-award-count-entity > span {{
         display: grid;
         place-items: center;
-        width: 2.3rem;
-        height: 2.3rem;
+        width: 3rem;
+        height: 3rem;
         border-radius: 999px;
         background: #e8edf3;
         color: {LEAGUE_PRIMARY};
         font-size: 0.82rem;
         font-weight: 950;
         object-fit: contain;
+        border: 3px solid #ffffff;
+        box-shadow: 0 0 0 2px color-mix(in srgb, {LEAGUE_PRIMARY} 24%, #d8e0e8), 0 5px 12px rgba(15, 23, 42, 0.14);
     }}
     .sbc-award-count-entity img {{ object-fit: cover; object-position: center 18%; }}
     .sbc-award-count-team-grid .sbc-award-count-entity img {{ object-fit: contain; }}
@@ -17818,10 +17831,11 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
                 </div>
             </div>
         </div>
-        """)
+    """)
     SelectedYear2 = current_year
     period_options2 = schedule_period_options(all_time_schedule, SelectedYear2)
-    SelectedPeriod2 = st.selectbox("Select Period", options=period_options2, index=current_period_index(period_options2), key="league_current_scoreboard_period", format_func=period_select_label(SelectedYear2))
+    SelectedPeriod2 = min(max(int(current_matchup), period_options2[0]), period_options2[-1])
+    render_html(f'<div class="sbc-live-controls"><div class="sbc-live-control-title">Current Matchup</div><div class="sbc-live-control-copy">{escape(period_date_label(SelectedYear2, SelectedPeriod2, f"P{SelectedPeriod2}"))}</div></div>')
 
     scoreboard_schedule = all_time_schedule[
         (all_time_schedule["Year"] == SelectedYear2)
@@ -17831,7 +17845,17 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
         live_stats_total_scores = pd.DataFrame()
     else:
         with st.spinner("Updating matchups..."):
-            live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2)
+            matchup_dates = pd.to_datetime(
+                period_calendar[
+                    (pd.to_numeric(period_calendar["Year"], errors="coerce") == SelectedYear2)
+                    & (pd.to_numeric(period_calendar["Period"], errors="coerce") == SelectedPeriod2)
+                ]["Date"],
+                errors="coerce",
+            ).dropna()
+            # If the calendar is temporarily unavailable, keep the scheduled 0-0
+            # scores instead of treating an undated matchup as already started.
+            matchup_started = not matchup_dates.empty and pd.Timestamp(today) >= matchup_dates.min().normalize()
+            live_stats_df2 = get_matchup_stats(SelectedYear2, SelectedPeriod2) if matchup_started else pd.DataFrame()
             live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
 
     render_html('<div class="sbc-section-label">All Scores</div>')
@@ -18485,8 +18509,8 @@ if main_page == "Overview":
     matchup_windows = []
     window_specs = [
         (front_year - 1, 42, f"{front_year - 2}-{str(front_year - 1)[-2:]} Championship", "Championship", "FINAL"),
-        (front_year, 1, f"{front_year - 1}-{str(front_year)[-2:]} Opening Week", "Dates TBD", "UPCOMING"),
-        (front_year, 2, f"{front_year - 1}-{str(front_year)[-2:]} Matchup 2", "Dates TBD", "UPCOMING"),
+        (front_year, 1, f"{front_year - 1}-{str(front_year)[-2:]} Opening Week", period_date_label(front_year, 1, "Opening Week"), "UPCOMING"),
+        (front_year, 2, f"{front_year - 1}-{str(front_year)[-2:]} Matchup 2", period_date_label(front_year, 2, "Matchup 2"), "UPCOMING"),
     ]
     for matchup_year, matchup_period, label, date_label, status in window_specs:
         window_games = front_scores[(front_scores["Year"] == matchup_year) & (front_scores["Period"] == matchup_period)]
@@ -18535,6 +18559,13 @@ if main_page == "Overview":
                 front_dialog_opened = True
                 render_matchup_boxscore_dialog(selected_matchup_row, all_time_rosters)
 
+    front_standings_view = st.radio(
+        "Overview Standings View",
+        ["Conference", "In-Season Tournament"],
+        horizontal=True,
+        key="overview_standings_view",
+    )
+
     front_table = standings[(standings["Year"] == front_year) & (standings["Period"] == front_period)].copy()
     if front_table.empty:
         available_year = int(standings["Year"].max()) if not standings.empty else current_year - 1
@@ -18546,14 +18577,30 @@ if main_page == "Overview":
     leader_record = escape(str(front_table.iloc[0].get("Record", "—"))) if not front_table.empty else "—"
 
     conference_html = []
-    for conference in ["West", "East"]:
-        conf = front_table[front_table["Team"].map(lambda t: team_info.get(str(t), {}).get("conf")) == conference].head(15)
-        rows = []
-        for seed, (_, row) in enumerate(conf.iterrows(), 1):
-            team = front_team_v2(row["Team"])
-            marker = '<div class="sbc-cut sbc-cut-playoff"><span>Top 6 · playoff line</span></div>' if seed == 7 else ('<div class="sbc-cut sbc-cut-playin"><span>Top 10 · play-in line</span></div>' if seed == 11 else '')
-            rows.append(marker + f'<div class="sbc-v2-standing"><span>{seed}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["name"] + " " + team["nick"])}</b><em>{escape(str(row.get("Record", "—")))}</em></div>')
-        conference_html.append(f'<div class="sbc-v2-conf"><h4>{conference} Conference</h4>{"".join(rows)}</div>')
+    if front_standings_view == "Conference":
+        for conference in ["West", "East"]:
+            conf = front_table[front_table["Team"].map(lambda t: team_info.get(str(t), {}).get("conf")) == conference].head(15)
+            rows = []
+            for seed, (_, row) in enumerate(conf.iterrows(), 1):
+                team = front_team_v2(row["Team"])
+                marker = '<div class="sbc-cut sbc-cut-playoff"><span>Top 6 · playoff line</span></div>' if seed == 7 else ('<div class="sbc-cut sbc-cut-playin"><span>Top 10 · play-in line</span></div>' if seed == 11 else '')
+                rows.append(marker + f'<div class="sbc-v2-standing"><span>{seed}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["name"] + " " + team["nick"])}</b><em>{escape(str(row.get("Record", "—")))}</em></div>')
+            conference_html.append(f'<div class="sbc-v2-conf"><h4>{conference} Conference</h4>{"".join(rows)}</div>')
+    else:
+        front_ist_groups = ist_group_tables(front_year, front_period)
+        for conference in ["West", "East"]:
+            rows = []
+            rank = 0
+            for group_name in [f"{conference} A", f"{conference} B", f"{conference} C"]:
+                group = front_ist_groups.get(group_name, pd.DataFrame())
+                if group.empty:
+                    continue
+                rows.append(f'<div class="sbc-cut sbc-cut-playoff"><span>{escape(group_name)}</span></div>')
+                for _, row in group.iterrows():
+                    rank += 1
+                    team = front_team_v2(row["Team"])
+                    rows.append(f'<div class="sbc-v2-standing"><span>{rank}</span><img src="{escape(team["logo"], quote=True)}"><b>{escape(team["name"] + " " + team["nick"])}</b><em>{escape(str(row.get("Record", "0-0")))}</em></div>')
+            conference_html.append(f'<div class="sbc-v2-conf"><h4>{conference} SBC Cup</h4>{"".join(rows)}</div>')
 
     story_teams = [front_team_v2(t) for t in front_table["Team"].astype(str).head(15).tolist()] if not front_table.empty else [front_team_v2(t) for t in Teams[:15]]
     article_records = []
@@ -18814,7 +18861,7 @@ if main_page == "Overview":
     </style>
     <div class="sbc-front-v2"><div class="sbc-v2-grid">
       <div class="sbc-v2-left"><a class="sbc-v2-hero" href="?sbc_article={escape(hero_story['slug'], quote=True)}" target="_self" style="--hero-primary:{escape(hero_story['primary']['color'], quote=True)};--hero-secondary:{escape(hero_story['secondary_color'], quote=True)};"><span class="sbc-v2-story-tag">Latest Story</span><img class="sbc-v2-hero-wordmark" src="{escape(hero_story['primary']['wordmark'], quote=True)}" alt=""><div class="sbc-v2-hero-art">{hero_art_html}</div><div class="sbc-v2-copy"><small>{escape(hero_story['date_label'])} · {escape(hero_story['author'])} · {hero_story['read_time']} min read</small><h1>{escape(hero_story['headline'])}</h1><p>{escape(hero_story['deck'])}</p></div></a><section class="sbc-v2-panel sbc-v2-news"><div class="sbc-v2-head"><b>Top Headlines</b><span>{len(article_records)} published · {visible_placeholder_count} upcoming</span></div>{headlines_html}</section></div>
-      <div class="sbc-v2-right"><section class="sbc-v2-panel sbc-v2-standings-panel"><div class="sbc-v2-head"><b>Standings</b><span>{front_year - 1}-{str(front_year)[-2:]} Opening Week</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
+      <div class="sbc-v2-right"><section class="sbc-v2-panel sbc-v2-standings-panel"><div class="sbc-v2-head"><b>{escape(front_standings_view)} Standings</b><span>{front_year - 1}-{str(front_year)[-2:]} Opening Week</span></div><div class="sbc-v2-standings">{''.join(conference_html)}</div></section><section class="sbc-v2-panel sbc-v2-transactions"><div class="sbc-v2-head"><b>Transactions</b><span>League Wire</span></div>{transactions_html}</section></div>
     </div></div>
     """)
 

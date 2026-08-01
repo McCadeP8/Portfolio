@@ -42,6 +42,23 @@ class AwardCountTests(unittest.TestCase):
         self.assertEqual(team_by_title["Finals Winner"].shape[0], 1)
         self.assertEqual(team_by_title["Conference Winner"].shape[0], 2)
 
+    def test_cup_wins_are_deduplicated_and_cup_mvp_is_separate(self):
+        players = pd.DataFrame(
+            [
+                {"Year": 2026, "Award": "Cup Winner", "Winner": "Julius Randle"},
+                {"Year": 2026, "Award": "Cup Winner", "Winner": "Julius Randle"},
+                {"Year": 2026, "Award": "Cup MVP", "Winner": "Julius Randle"},
+                {"Year": 2026, "Award": "All-Rookie 1st Team", "Winner": "Rookie A"},
+                {"Year": 2026, "Award": "All-Rookie 2nd Team", "Winner": "Rookie B"},
+            ]
+        )
+        player_tables, _ = build_award_count_tables(players, pd.DataFrame())
+        by_title = {item["title"]: item["table"] for item in player_tables}
+        self.assertEqual(int(by_title["Cup Winner"].iloc[0]["Wins"]), 1)
+        self.assertEqual(int(by_title["Cup MVP"].iloc[0]["Awards"]), 1)
+        self.assertEqual(int(by_title["All-Rookie"].iloc[0]["1st"]), 1)
+        self.assertEqual(int(by_title["All-Rookie"].iloc[1]["2nd"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

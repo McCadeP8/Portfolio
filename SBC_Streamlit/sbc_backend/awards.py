@@ -17,6 +17,7 @@ PLAYER_AWARD_SPECS = [
         {"East": {"ECF MVP"}, "West": {"WCF MVP"}, "Finals": {"Finals MVP"}},
     ),
     ("Cup Winner", "SBC Cup-winning roster appearances.", {"Wins": {"Cup Winner"}}),
+    ("Cup MVP", "SBC Cup Most Valuable Player awards.", {"Awards": {"Cup MVP"}}),
     ("DPOY", "Defensive Player of the Year awards.", {"Awards": {"DPOY"}}),
     (
         "All-SBC",
@@ -31,6 +32,11 @@ PLAYER_AWARD_SPECS = [
         "All-Defense",
         "All-Defense selections by team.",
         {"1st": {"All-Defense 1st Team"}, "2nd": {"All-Defense 2nd Team"}},
+    ),
+    (
+        "All-Rookie",
+        "All-Rookie selections by team.",
+        {"1st": {"All-Rookie 1st Team"}, "2nd": {"All-Rookie 2nd Team"}},
     ),
     ("All-Star", "East and West All-Star selections combined.", {"Selections": {"East All-Star", "West All-Star"}}),
     ("ASG MVP", "All-Star Game MVP awards.", {"Awards": {"ASG MVP"}}),
@@ -92,7 +98,13 @@ def _valid_award_rows(table: pd.DataFrame) -> pd.DataFrame:
     invalid = {"", "-", "not awarded", "none", "nan", "n/a"}
     work = work[~work["Winner"].str.casefold().isin(invalid)].copy()
     work["_winner_key"] = work["Winner"].map(_winner_key)
-    return work[work["_winner_key"] != ""].copy()
+    work = work[work["_winner_key"] != ""].copy()
+    # One player can appear twice in a source column, but a player can only
+    # earn the same award once in a season. Cup MVP remains a separate award.
+    dedupe_columns = ["Award", "_winner_key"]
+    if "Year" in work.columns:
+        dedupe_columns.append("Year")
+    return work.drop_duplicates(dedupe_columns).copy()
 
 
 def _award_names_for_rule(all_awards: set[str], rule: set[str] | str) -> set[str]:

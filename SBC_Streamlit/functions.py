@@ -242,12 +242,15 @@ def current_matchup_period() -> float:
     csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"
     df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=3600)
     df["Date"] = pd.to_datetime(df["Date"]).dt.date
-    df2 = df[(df["Date"] == today) & (df["Year"] == current_year)]
+    current_season = df[df["Year"] == current_year].sort_values("Date")
+    df2 = current_season[current_season["Date"] == today]
     if len(df2) == 0:
-        current_season = df[df["Year"] == current_year]
         if current_season.empty:
             return 1
-        return int(current_season["Period"].iloc[-1])
+        elapsed = current_season[current_season["Date"] <= today]
+        if elapsed.empty:
+            return int(current_season["Period"].iloc[0])
+        return int(elapsed["Period"].iloc[-1])
     if len(df2) == 1:
         return int(df2["Period"].iloc[0])
     return int(df2["Period"].iloc[-1])
