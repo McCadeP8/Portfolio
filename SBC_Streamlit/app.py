@@ -4085,7 +4085,9 @@ def render_league_branding_gallery():
         .sbc-branding-team small,.sbc-branding-team strong,.sbc-branding-team em { display:block; }
         .sbc-branding-team small { margin-bottom:5px; color:#64748b; font-size:.55rem; font-weight:950; letter-spacing:.11em; text-transform:uppercase; }
         .sbc-branding-team strong { color:var(--row-primary); font-family:var(--row-font),sans-serif; font-size:clamp(1rem,1.55vw,1.55rem); line-height:1.02; }
-        .sbc-branding-team em { width:fit-content; margin-top:7px; padding:4px 8px; border-radius:999px; color:var(--row-motto-text); background:var(--row-primary); font-family:var(--row-font),sans-serif; font-size:.68rem; font-style:normal; font-weight:950; letter-spacing:.025em; box-shadow:0 3px 8px color-mix(in srgb,var(--row-primary) 22%,transparent); }
+        .sbc-branding-pills { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:7px; }
+        .sbc-branding-team em { width:fit-content; margin:0; padding:4px 8px; border-radius:999px; color:var(--row-motto-text); background:var(--row-primary); font-family:var(--row-font),sans-serif; font-size:.68rem; font-style:normal; font-weight:950; letter-spacing:.025em; box-shadow:0 3px 8px color-mix(in srgb,var(--row-primary) 22%,transparent); }
+        .sbc-branding-hex { display:inline-flex; align-items:center; padding:4px 7px; border:1px solid rgba(15,23,42,.12); border-radius:999px; color:var(--hex-text); background:var(--hex-bg); font-family:"Poppins",sans-serif; font-size:.55rem; font-weight:950; letter-spacing:.045em; line-height:1; box-shadow:0 3px 8px rgba(15,23,42,.09); }
         .sbc-branding-team i { display:block; margin-top:3px; color:#94a3b8; font-size:.5rem; font-style:normal; font-weight:850; }
         .sbc-branding-asset { display:flex; align-items:center; justify-content:center; height:154px; overflow:hidden; border:1px solid #e2e8f0; border-radius:11px; background:#f5f7fb; }
         .sbc-branding-asset img { display:block; width:100%; height:100%; object-fit:contain; }
@@ -4108,9 +4110,12 @@ def render_league_branding_gallery():
         for team in sorted(team_info):
             info = team_info[team]
             primary = str(info.get("bg", "#111827"))
+            secondary = str(info.get("bg2", "#334155"))
             font_name = TEAM_FONTS.get(team, "Poppins")
             motto = str(info.get("motto", ""))
             motto_text = branding_contrast_color(primary)
+            primary_text = branding_contrast_color(primary)
+            secondary_text = branding_contrast_color(secondary)
             uniform_images = {
                 edition: branding_thumbnail_uri(league_branding_uniform_thumbnail(team, edition, jersey_mtime))
                 for edition in ("Association", "Icon", "Statement")
@@ -4120,7 +4125,7 @@ def render_league_branding_gallery():
                 <section class="sbc-branding-row" style="--row-primary:{escape(primary, quote=True)};--row-motto-text:{escape(motto_text, quote=True)};--row-font:'{escape(font_name, quote=True)}'">
                     <div class="sbc-branding-team">
                         <img loading="lazy" src="{escape(str(info.get('logo', '')), quote=True)}" alt="{escape(live_team_full_name(team), quote=True)} logo">
-                        <div><small>{escape(str(info.get('conf', '')))} / {escape(str(info.get('div', '')))}</small><strong>{escape(live_team_full_name(team))}</strong><em>{escape(motto)}</em><i>{escape(font_name)}</i></div>
+                        <div><small>{escape(str(info.get('conf', '')))} / {escape(str(info.get('div', '')))}</small><strong>{escape(live_team_full_name(team))}</strong><div class="sbc-branding-pills"><em>{escape(motto)}</em><span class="sbc-branding-hex" style="--hex-bg:{escape(primary, quote=True)};--hex-text:{escape(primary_text, quote=True)}">{escape(primary.upper())}</span><span class="sbc-branding-hex" style="--hex-bg:{escape(secondary, quote=True)};--hex-text:{escape(secondary_text, quote=True)}">{escape(secondary.upper())}</span></div><i>{escape(font_name)}</i></div>
                     </div>
                     <div class="sbc-branding-asset"><img loading="lazy" src="{uniform_images['Association']}" alt="{escape(team, quote=True)} Association jersey front"></div>
                     <div class="sbc-branding-asset"><img loading="lazy" src="{uniform_images['Icon']}" alt="{escape(team, quote=True)} Icon jersey front"></div>
@@ -8570,6 +8575,9 @@ def history_completed_games(schedule_df, competition_types=None):
     games["TeamAScoreNum"] = games["TeamAScore"].map(score_numeric)
     games["TeamBScoreNum"] = games["TeamBScore"].map(score_numeric)
     games = games[(games["TeamAScoreNum"] > 0) | (games["TeamBScoreNum"] > 0)].copy()
+    # Future schedule placeholders can carry equal scores. A tie is not a
+    # completed SBC result and must never fall through as a TeamA/home win.
+    games = games[games["TeamAScoreNum"] != games["TeamBScoreNum"]].copy()
     games["Winner"] = games.apply(lambda row: row["TeamA"] if row["TeamAScoreNum"] >= row["TeamBScoreNum"] else row["TeamB"], axis=1)
     games["Loser"] = games.apply(lambda row: row["TeamB"] if row["Winner"] == row["TeamA"] else row["TeamA"], axis=1)
     return games
@@ -8693,26 +8701,53 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
     final["_pct"] = final["_wins"] / (final["_wins"] + final["_losses"]).replace(0, pd.NA)
     final["_pct"] = final["_pct"].fillna(0)
     awards = franchise_awards_for_team(team, team_awards_df)
+    regular_games_all = history_completed_games(schedule_df, ["Regular Season"])
     games = history_completed_games(schedule_df, ["Play-In", "Playoffs"])
     ist_games_all = history_completed_games(schedule_df, ["In-Season Tournament"])
     rows = []
     for year in sorted(final.loc[final["Team"].astype(str) == team, "_year"].astype(int).unique()):
         team_row = final[(final["_year"] == year) & (final["Team"].astype(str) == team)].iloc[0]
+        is_current_season = year == current_year
+        regular_games = regular_games_all[
+            (pd.to_numeric(regular_games_all["Year"], errors="coerce") == year)
+            & ((regular_games_all["TeamA"].astype(str) == team) | (regular_games_all["TeamB"].astype(str) == team))
+        ].copy() if not regular_games_all.empty else pd.DataFrame()
+        if is_current_season:
+            season_wins = int((regular_games.get("Winner", pd.Series(dtype=str)).astype(str) == team).sum())
+            season_losses = int((regular_games.get("Loser", pd.Series(dtype=str)).astype(str) == team).sum())
+            conference_wins = conference_losses = division_wins = division_losses = 0
+            for _, regular_game in regular_games.iterrows():
+                opponent = str(regular_game["TeamB"] if str(regular_game["TeamA"]) == team else regular_game["TeamA"])
+                won = str(regular_game.get("Winner", "")) == team
+                if team_info.get(opponent, {}).get("conf") == team_info.get(team, {}).get("conf"):
+                    conference_wins += int(won)
+                    conference_losses += int(not won)
+                if team_info.get(opponent, {}).get("div") == team_info.get(team, {}).get("div"):
+                    division_wins += int(won)
+                    division_losses += int(not won)
+            record_text = f"{season_wins}-{season_losses}"
+            conference_record_text = f"{conference_wins}-{conference_losses}"
+            division_record_text = f"{division_wins}-{division_losses}"
+        else:
+            season_wins, season_losses = int(team_row["_wins"]), int(team_row["_losses"])
+            record_text = str(team_row.get("Record", "—"))
+            conference_record_text = str(team_row.get("ConfRecord", "—"))
+            division_record_text = str(team_row.get("DivRecord", "—"))
         division = str(team_info.get(team, {}).get("div", ""))
         division_teams = [name for name, info in team_info.items() if str(info.get("div", "")) == division]
         division_table = final[(final["_year"] == year) & final["Team"].astype(str).isin(division_teams)].copy()
         division_table = division_table.sort_values(["_pct", "_wins", "_losses", "Team"], ascending=[False, False, True, True]).reset_index(drop=True)
         division_match = division_table.index[division_table["Team"].astype(str) == team].tolist()
-        division_finish = ordinal_text(division_match[0] + 1) if division_match else "—"
+        division_finish = "—" if is_current_season and regular_games.empty else (ordinal_text(division_match[0] + 1) if division_match else "—")
         conference = str(team_info.get(team, {}).get("conf", ""))
         conference_teams = [name for name, info in team_info.items() if str(info.get("conf", "")) == conference]
         conference_table = final[(final["_year"] == year) & final["Team"].astype(str).isin(conference_teams)].copy()
         conference_table = conference_table.sort_values(["_pct", "_wins", "_losses", "Team"], ascending=[False, False, True, True]).reset_index(drop=True)
         conference_match = conference_table.index[conference_table["Team"].astype(str) == team].tolist()
-        conference_finish = ordinal_text(conference_match[0] + 1) if conference_match else "—"
+        conference_finish = "—" if is_current_season and regular_games.empty else (ordinal_text(conference_match[0] + 1) if conference_match else "—")
         league_table = final[final["_year"] == year].sort_values(["_pct", "_wins", "_losses", "Team"], ascending=[False, False, True, True]).reset_index(drop=True)
         league_match = league_table.index[league_table["Team"].astype(str) == team].tolist()
-        league_finish = ordinal_text(league_match[0] + 1) if league_match else "—"
+        league_finish = "—" if is_current_season and regular_games.empty else (ordinal_text(league_match[0] + 1) if league_match else "—")
 
         year_awards = awards[pd.to_numeric(awards["_year"], errors="coerce") == year]
         award_names = set(year_awards["Award"].astype(str))
@@ -8735,7 +8770,9 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
             & ((games["TeamA"].astype(str) == team) | (games["TeamB"].astype(str) == team))
         ].copy() if not games.empty else pd.DataFrame()
         playoff_games = team_games[team_games["Type"].astype(str) == "Playoffs"].copy() if not team_games.empty else pd.DataFrame()
-        if playoff_games.empty:
+        if is_current_season and playoff_games.empty:
+            outcome = ""
+        elif playoff_games.empty:
             play_in = team_games[team_games["Type"].astype(str) == "Play-In"].copy() if not team_games.empty else pd.DataFrame()
             if play_in.empty:
                 outcome = "Missed Playoffs"
@@ -8771,9 +8808,11 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
                 ist_wins += 1
             else:
                 ist_losses += 1
-        ist_record = f"{ist_wins}-{ist_losses}" if not season_ist.empty else "—"
+        ist_record = f"{ist_wins}-{ist_losses}" if not season_ist.empty else ("0-0" if is_current_season else "—")
         knockout = season_ist[~season_ist["Round"].astype(str).eq("Group Stage")].copy() if not season_ist.empty else pd.DataFrame()
-        if knockout.empty:
+        if is_current_season and knockout.empty:
+            ist_result = ""
+        elif knockout.empty:
             ist_result = "Missed Knockout"
         else:
             round_order = {"IST Quarterfinals": 1, "IST Semifinals": 2, "IST Championship": 3}
@@ -8795,18 +8834,18 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
         rows.append({
             "Year": year,
             "Season": season_label_from_year(year),
-            "Record": str(team_row.get("Record", "—")),
-            "Conference Record": str(team_row.get("ConfRecord", "—")),
-            "Division Record": str(team_row.get("DivRecord", "—")),
+            "Record": record_text,
+            "Conference Record": conference_record_text,
+            "Division Record": division_record_text,
             "League Finish": league_finish,
-            "Conference Finish": f"{conference_finish} {conference}",
-            "Division Finish": f"{division_finish} {division}",
+            "Conference Finish": "" if is_current_season and regular_games.empty else f"{conference_finish} {conference}",
+            "Division Finish": "" if is_current_season and regular_games.empty else f"{division_finish} {division}",
             "Season Result": outcome,
             "IST Record": ist_record,
             "IST Result": ist_result,
             "Honors": " · ".join(honors) if honors else "—",
-            "Wins": int(team_row["_wins"]),
-            "Losses": int(team_row["_losses"]),
+            "Wins": season_wins,
+            "Losses": season_losses,
             "Playoffs": not playoff_games.empty,
         })
     return pd.DataFrame(rows).sort_values("Year", ascending=False).reset_index(drop=True)
@@ -9223,8 +9262,8 @@ def render_franchise_history_dashboard(team, standings_df, schedule_df, team_sta
         .sbc-franchise-table-wrap {{ border:1px solid color-mix(in srgb,var(--franchise-primary) 26%,#d9e0e8); border-radius:10px; box-shadow:0 12px 30px rgba(15,23,42,.08); }}
         .sbc-franchise-ledger-table {{ min-width:1280px; }}
         .sbc-franchise-production-table {{ width:100%; min-width:0; table-layout:fixed; text-align:center; }}
-        .sbc-franchise-ledger-table th {{ color:#fff; background:linear-gradient(120deg,var(--franchise-primary),var(--franchise-secondary)); border-right:1px solid rgba(255,255,255,.16); }}
-        .sbc-franchise-production-table th {{ padding:.42rem .24rem; color:#172033; background:linear-gradient(135deg,color-mix(in srgb,var(--franchise-primary) 16%,#fff),color-mix(in srgb,var(--franchise-secondary) 10%,#fff)); font-size:.58rem; letter-spacing:.025em; text-align:center; }}
+        .sbc-franchise-ledger-table th {{ color:#172033; background:#fff; border-right:1px solid #e5eaf0; border-bottom:2px solid rgba(17,24,39,.14); }}
+        .sbc-franchise-production-table th {{ padding:.42rem .24rem; color:#172033; background:#fff; border-bottom:2px solid rgba(17,24,39,.12); font-size:.64rem; letter-spacing:.025em; text-align:center; }}
         .sbc-franchise-ledger-table tbody tr:nth-child(even) td,.sbc-franchise-production-table tbody tr:nth-child(even) td {{ background:color-mix(in srgb,var(--franchise-secondary) 6%,#fff); }}
         .sbc-franchise-ledger-table tbody tr:hover td,.sbc-franchise-production-table tbody tr:hover td {{ background:color-mix(in srgb,var(--franchise-secondary) 13%,#fff); }}
         .sbc-franchise-season-cell {{ color:var(--franchise-primary) !important; font-size:.88rem !important; font-weight:950 !important; }}
@@ -9232,8 +9271,8 @@ def render_franchise_history_dashboard(team, standings_df, schedule_df, team_sta
         .sbc-franchise-result-cell {{ min-width:245px; max-width:340px; line-height:1.35; white-space:normal !important; }}
         .sbc-franchise-production-table td {{ min-width:0; padding:.32rem .18rem; text-align:center; }}
         .sbc-franchise-production-table th:first-child,.sbc-franchise-production-table td:first-child {{ width:5.4rem; text-align:left; }}
-        .sbc-franchise-production-table td span {{ display:block; color:#111827; font-size:.67rem; font-weight:950; line-height:1; }}
-        .sbc-franchise-production-table td em {{ display:block; margin-top:.12rem; padding:0; color:#64748b; background:transparent; font-size:.5rem; font-style:normal; font-weight:900; line-height:1; white-space:nowrap; }}
+        .sbc-franchise-production-table td span {{ display:block; color:#111827; font-size:.74rem; font-weight:950; line-height:1.05; }}
+        .sbc-franchise-production-table td em {{ display:block; margin-top:.14rem; padding:0; color:#64748b; background:transparent; font-size:.56rem; font-style:normal; font-weight:900; line-height:1; white-space:nowrap; }}
         @media(max-width:1050px) {{ .sbc-franchise-metrics {{ grid-template-columns:repeat(3,1fr); }} .sbc-franchise-rank-grid {{ grid-template-columns:repeat(4,1fr); }} }}
         @media(max-width:700px) {{ .sbc-franchise-season-grid {{ grid-template-columns:1fr; }} .sbc-franchise-metrics {{ grid-template-columns:repeat(2,1fr); }} .sbc-franchise-rank-grid {{ grid-template-columns:repeat(2,1fr); }} }}
         </style>
@@ -17380,7 +17419,8 @@ if main_page == "League Hub":
             )
         if selected_history_page != "Branding" and not (selected_history_page == "Awards" and selected_awards_page == "Award Count"):
             league_history_year_options = schedule_year_options_for_history()
-            default_league_history_year = current_year if current_year in league_history_year_options else league_history_year_options[-1]
+            previous_history_year = current_year - 1
+            default_league_history_year = previous_history_year if previous_history_year in league_history_year_options else league_history_year_options[-1]
             LeagueHistoryYear = st.selectbox(
                 "History Year",
                 options=league_history_year_options,
@@ -18228,6 +18268,14 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
 
 if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "All-Time Stats":
     matchup_archive = load_sbc_player_matchup_stats_archive()
+    render_html("""
+        <style>
+        .sbc-matchup-high-table th { font-size:.78rem; }
+        .sbc-matchup-high-table td { font-size:.88rem; }
+        .sbc-matchup-high-table .sbc-history-player-cell strong { font-size:.88rem; }
+        .sbc-matchup-high-table td em { font-size:.73rem; }
+        </style>
+    """)
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
             <div class="sbc-draft-hero-inner">
