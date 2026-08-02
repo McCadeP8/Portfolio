@@ -8810,7 +8810,9 @@ def franchise_season_ledger(team, standings_df, schedule_df, team_awards_df):
                 ist_losses += 1
         ist_record = f"{ist_wins}-{ist_losses}" if not season_ist.empty else ("0-0" if is_current_season else "—")
         knockout = season_ist[~season_ist["Round"].astype(str).eq("Group Stage")].copy() if not season_ist.empty else pd.DataFrame()
-        if is_current_season and knockout.empty:
+        if season_ist.empty:
+            ist_result = "" if is_current_season else "—"
+        elif is_current_season and knockout.empty:
             ist_result = ""
         elif knockout.empty:
             ist_result = "Missed Knockout"
