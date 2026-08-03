@@ -217,19 +217,29 @@ def get_draft_history() -> pd.DataFrame:
     df = read_csv_snapshot("draft_history", csv_url)
     return df
 
-@st.cache_data()
+@st.cache_data(ttl=300)
 def get_award_history() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=1698988928"
-    df = read_csv_snapshot("award_history", csv_url)
+    refresh_key = int(pd.Timestamp.now().timestamp() // 300)
+    csv_url = (
+        "https://docs.google.com/spreadsheets/d/"
+        "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/"
+        f"export?format=csv&gid=1698988928&refresh={refresh_key}"
+    )
+    df = read_csv_snapshot("award_history", csv_url, ttl_seconds=0)
     df = df.melt(id_vars=["Award"], var_name="Year", value_name="Winner")
     df = df[df["Year"].str.isnumeric()] 
     df["Year"] = df["Year"].astype(int)    
     return df
 
-@st.cache_data()
+@st.cache_data(ttl=300)
 def get_team_award_history() -> pd.DataFrame:
-    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=451021615"
-    df = read_csv_snapshot("team_award_history", csv_url)
+    refresh_key = int(pd.Timestamp.now().timestamp() // 300)
+    csv_url = (
+        "https://docs.google.com/spreadsheets/d/"
+        "1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/"
+        f"export?format=csv&gid=451021615&refresh={refresh_key}"
+    )
+    df = read_csv_snapshot("team_award_history", csv_url, ttl_seconds=0)
     df = df.melt(id_vars=["Award"], var_name="Year", value_name="Winner")  
     df = df[df["Year"].str.isnumeric()] 
     df["Year"] = df["Year"].astype(int)    
