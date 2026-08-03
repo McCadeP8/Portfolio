@@ -14,6 +14,7 @@ import requests
 import json
 import altair as alt
 import unicodedata
+import re
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
 from sbc_backend import BackendSettings, get_repository
 from sbc_backend.network import CachedHttpClient
@@ -195,7 +196,8 @@ def get_fantrax_players() -> pd.DataFrame:
 
 FANTRAX_TRANSACTION_COLUMNS = [
     "Year", "View", "Transaction ID", "Type", "Player ID", "Player", "Positions",
-    "NBA Team", "Headshot", "Team", "From", "To", "Date", "Date Sort", "Period", "Result",
+    "NBA Team", "Headshot", "Asset Type", "Asset Team", "Team", "From", "To", "Date",
+    "Date Sort", "Period", "Result",
 ]
 
 
@@ -220,6 +222,19 @@ def _parse_fantrax_transaction_rows(rows: list[dict], year: int, view: str) -> p
                 metadata[key] = cells[key]
 
         scorer = row.get("scorer") or {}
+        draft_pick = row.get("draftPickDisplayParts") or {}
+        round_text = re.sub(r"<[^>]+>", "", str(draft_pick.get("roundInfo", ""))).strip()
+        year_text = re.sub(r"<[^>]+>", "", str(draft_pick.get("year", ""))).strip()
+        draft_year_match = re.search(r"\b(20\d{2})\b", year_text)
+        draft_round_match = re.search(r"\bRound\s+(\d+)\b", round_text, flags=re.IGNORECASE)
+        draft_team_match = re.search(r"\(([^)]+)\)", round_text)
+        is_draft_pick = bool(draft_pick)
+        draft_year = draft_year_match.group(1) if draft_year_match else ""
+        draft_round = draft_round_match.group(1) if draft_round_match else ""
+        draft_team = draft_team_match.group(1).strip() if draft_team_match else ""
+        draft_pick_name = " ".join(
+            part for part in [draft_year, f"Round {draft_round}" if draft_round else "", "Draft Pick"] if part
+        )
         raw_date = str(cells.get("date") or metadata.get("date") or "")
         parsed_date = pd.to_datetime(raw_date, errors="coerce")
         parsed.append({
@@ -228,10 +243,12 @@ def _parse_fantrax_transaction_rows(rows: list[dict], year: int, view: str) -> p
             "Transaction ID": transaction_id,
             "Type": "Trade" if view == "TRADE" else str(row.get("transactionType") or row.get("transactionCode") or "Claim/Drop").title(),
             "Player ID": str(scorer.get("scorerId", "")),
-            "Player": str(scorer.get("name", "Unknown asset")),
+            "Player": draft_pick_name if is_draft_pick else str(scorer.get("name") or "Unknown asset"),
             "Positions": str(scorer.get("posShortNames", "")),
             "NBA Team": str(scorer.get("teamShortName", "")),
             "Headshot": str(scorer.get("headshotUrl", "")),
+            "Asset Type": "Draft Pick" if is_draft_pick else "Player",
+            "Asset Team": draft_team,
             "Team": str(cells.get("team") or metadata.get("team") or ""),
             "From": str(cells.get("from") or metadata.get("from") or ""),
             "To": str(cells.get("to") or metadata.get("to") or ""),

@@ -10201,11 +10201,21 @@ def transaction_player_html(row, show_route=False):
     positions = escape(str(row.get("Positions", "")))
     nba_team = escape(str(row.get("NBA Team", "")))
     headshot = str(row.get("Headshot", ""))
+    asset_type = str(row.get("Asset Type", "Player"))
+    asset_team = str(row.get("Asset Team", "")).strip()
+    if asset_type == "Draft Pick" and asset_team:
+        team_key = resolve_team_key(asset_team)
+        team_logo = team_logo_for_name(team_key)
+        if team_logo:
+            headshot = team_logo
     image_html = (
-        f'<img src="{escape(headshot, quote=True)}" alt="{player}">'
+        f'<img class="{'sbc-tx-pick-logo' if asset_type == 'Draft Pick' else ''}" src="{escape(headshot, quote=True)}" alt="{player}">'
         if headshot else f'<span class="sbc-tx-avatar-fallback">{player[:1]}</span>'
     )
-    meta = " · ".join(value for value in [positions, nba_team] if value and value != "(N/A)")
+    meta_values = [positions, nba_team]
+    if asset_type == "Draft Pick" and asset_team:
+        meta_values = [f"Originally {asset_team}"]
+    meta = " · ".join(value for value in meta_values if value and value != "(N/A)")
     route_html = ""
     if show_route:
         route_html = (
@@ -10302,6 +10312,7 @@ def render_transactions_page(transactions_df, selected_year, history=False):
         .sbc-tx-badge-trade { background:#eaf2ff; color:#245da8; }
         .sbc-tx-player { display:grid; grid-template-columns:2.9rem minmax(0,1fr); gap:.72rem; align-items:center; min-width:0; }
         .sbc-tx-player>img,.sbc-tx-avatar-fallback { width:2.9rem; height:2.9rem; border-radius:50%; object-fit:cover; background:#edf1f5; }
+        .sbc-tx-player>img.sbc-tx-pick-logo { object-fit:contain; padding:.18rem; background:#f8fafc; border:1px solid #e2e8f0; }
         .sbc-tx-avatar-fallback { display:flex; align-items:center; justify-content:center; color:#607080; font-weight:950; }
         .sbc-tx-player-copy { min-width:0; }
         .sbc-tx-player-copy strong { display:block; color:#17212b; font-size:.9rem; }
