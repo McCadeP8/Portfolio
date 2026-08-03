@@ -22,7 +22,7 @@ from html import escape, unescape
 from pathlib import Path
 from textwrap import dedent
 from zoneinfo import ZoneInfo
-from functions import read_csv_snapshot, get_data, get_pictures, get_articles, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, get_fantrax_transactions, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar, zero_future_matchup_scores
+from functions import read_csv_snapshot, get_data, get_player_salary_history, get_pictures, get_articles, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, get_fantrax_transactions, get_original_team_rosters, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar, zero_future_matchup_scores
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 from court_engine import CourtConfig, draw_branded_court
@@ -3545,12 +3545,15 @@ def render_all_time_player_aggregate_table(rows, empty_text, limit=50, show_team
     """)
 
 
-def render_player_stats_table(rows, empty_text):
+def render_player_stats_table(rows, empty_text, salary_lookup=None):
     if rows.empty:
         render_html(f'<div class="sbc-empty-state">{escape(empty_text)}</div>')
         return
     stats = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     header = "".join(f"<th>{escape(boxscore_stat_label(stat))}</th>" for stat in stats)
+    show_salary = isinstance(salary_lookup, dict)
+    salary_header = "<th>Salary</th>" if show_salary else ""
+    team_counts = rows[rows["sbc_team"].astype(str).ne("TOT")].groupby("sbc_year")["sbc_team"].nunique().to_dict()
     body = []
     for _, row in rows.iterrows():
         cells = "".join(stat_cell_html(row, stat) for stat in stats)
@@ -3566,18 +3569,54 @@ def render_player_stats_table(rows, empty_text):
                 f'--profile-team-secondary:{escape(str(visuals["secondary"]), quote=True)};--profile-team-font:{escape(str(visuals["font"]), quote=True)};">'
                 f'{logo_html}<strong>{escape(live_team_full_name(team_key) if team_key in team_info else team_value)}</strong></span>'
             )
+        salary_cell = ""
+        if show_salary:
+            salary_year = pd.to_numeric(row.get("sbc_year"), errors="coerce")
+            show_year_salary = pd.notna(salary_year) and (
+                team_value == "TOT" or int(team_counts.get(int(salary_year), 0)) <= 1
+            )
+            salary_amount = salary_lookup.get(int(salary_year)) if pd.notna(salary_year) and show_year_salary else None
+            salary_text = format_money(salary_amount) if salary_amount is not None and pd.notna(salary_amount) else "—"
+            salary_cell = f'<td class="sbc-player-profile-salary"><strong>{escape(salary_text)}</strong></td>'
         body.append(f"""
             <tr>
                 <td class="sbc-player-profile-season {'sbc-player-profile-season-total' if team_value == 'TOT' else ''}"><strong>{escape(str(row.get('Season', '')))}</strong>{'<em>Total</em>' if team_value == 'TOT' else ''}</td>
                 <td class="sbc-player-profile-team">{team_html}</td>
+                {salary_cell}
                 {cells}
             </tr>
         """)
     render_html(f"""
         <div class="sbc-box-table-scroll">
             <table class="sbc-player-profile-table">
-                <thead><tr><th>Season</th><th>Team</th>{header}</tr></thead>
+                <thead><tr><th>Season</th><th>Team</th>{salary_header}{header}</tr></thead>
                 <tbody>{''.join(body)}</tbody>
+            </table>
+        </div>
+    """)
+
+
+def render_player_salary_history(salary_rows):
+    render_html(
+        '<div class="sbc-awards-section-head"><span>Salary History</span>'
+        '<em>Paid SBCFBL salary by season. Duplicate contracts are combined within each year.</em></div>'
+    )
+    if salary_rows is None or salary_rows.empty:
+        render_html('<div class="sbc-empty-state">No qualifying paid salary history is available for this player.</div>')
+        return
+    rows = salary_rows.sort_values("Year").copy()
+    body = "".join(
+        f'<tr><td><strong>{escape(season_label_from_year(int(row["Year"])))}</strong></td>'
+        f'<td><strong>{escape(format_money(row["Amount"]))}</strong></td></tr>'
+        for _, row in rows.iterrows()
+    )
+    total = pd.to_numeric(rows["Amount"], errors="coerce").fillna(0).sum()
+    render_html(f"""
+        <div class="sbc-box-table-scroll">
+            <table class="sbc-history-overview-table sbc-player-salary-table">
+                <thead><tr><th>Season</th><th>Salary</th></tr></thead>
+                <tbody>{body}</tbody>
+                <tfoot><tr><td><strong>Career Earnings</strong></td><td><strong>{escape(format_money(total))}</strong></td></tr></tfoot>
             </table>
         </div>
     """)
@@ -3633,6 +3672,7 @@ HISTORY_NAV_LABELS = {
 HISTORY_NAV_LABELS["All-Time Stats"] = "📊 All-Time Stats"
 
 HISTORY_NAV_LABELS["Branding"] = "\U0001f3a8 Branding"
+HISTORY_NAV_LABELS["Original Teams"] = "\U0001f3db\ufe0f Original Teams"
 
 AWARDS_NAV_LABELS = {
     "Award Count": "🏅 Award Count",
@@ -3698,10 +3738,11 @@ need_award_count = need_history and requested_history_page == "Awards" and reque
 need_award_detail_assets = need_history_awards and not need_award_count
 need_history_draft = need_history and requested_history_page == "Draft History"
 need_history_stats = need_history and requested_history_page in ["Overview", "Scoreboard", "Standings", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats"]
+need_player_salaries = need_history and requested_history_page == "Player Stats"
 
 need_df = need_landing or need_team_data or need_team_history or need_trade_data or need_fa_data or need_checks_data or need_league_overview or need_league_players or need_history_draft or (need_history and requested_history_page in ["Overview", "Player Stats"])
 need_articles = need_landing
-need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft or (need_history and requested_history_page == "Player Stats")
+need_pics = need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_players or need_history_awards or need_history_draft or requested_league_page == "Transactions" or (need_history and requested_history_page in ["Player Stats", "Transactions", "Original Teams"])
 need_exceptions = need_landing or need_team_data or need_trade_data or need_fa_data or need_checks_data or need_league_overview
 need_base_cap = need_landing or need_team_data or need_trade_data or need_checks_data or need_league_overview
 need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks") or need_trade_data or need_checks_data or need_league_picks
@@ -3711,13 +3752,18 @@ need_dh = need_history_draft
 need_all_time_team_stats = need_team_history or need_history_stats or need_award_detail_assets
 need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_all_time_rosters = need_landing or need_award_detail_assets or need_boxscore_data or (need_history and requested_history_page == "Player Stats")
-need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page != "Branding" and not need_award_count)
+need_all_time_schedule = need_landing or (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or need_league_standings or (need_history and requested_history_page not in ["Branding", "Original Teams"] and not need_award_count)
 need_current_matchup = need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
 need_period_calendar = need_all_time_schedule or need_all_time_team_stats or need_standings or need_current_matchup or need_award_detail_assets
 
 df = load_required_data("Cap sheet data", get_data) if need_df else pd.DataFrame()
 articles = load_optional_data("Articles", get_articles) if need_articles else pd.DataFrame()
 pics = load_required_data("Player pictures", get_pictures) if need_pics else pd.DataFrame()
+PLAYER_PICTURE_LOOKUP = {
+    normalize_boxscore_player_key(row.get("Player", "")): str(row.get("Picture_Online", ""))
+    for _, row in pics.iterrows()
+    if str(row.get("Player", "")).strip() and str(row.get("Picture_Online", "")).strip()
+}
 exceptions = load_required_data("Exceptions", get_exceptions) if need_exceptions else pd.DataFrame()
 base_cap = load_required_data("Base cap", get_base_cap) if need_base_cap else pd.DataFrame()
 dp = load_required_data("Draft picks", get_draft_picks) if need_dp else pd.DataFrame()
@@ -3732,6 +3778,7 @@ current_matchup = load_optional_data("Current matchup period", current_matchup_p
 period_calendar = load_optional_data("Period calendar", get_period_calendar) if need_period_calendar else pd.DataFrame()
 award_history = load_optional_data("Award history", get_award_history) if need_history_awards else pd.DataFrame()
 team_award_history = load_optional_data("Team award history", get_team_award_history) if need_history_awards else pd.DataFrame()
+player_salary_history = load_optional_data("Player salary history", get_player_salary_history) if need_player_salaries else pd.DataFrame()
 
 # Capture the moment the datasets selected for this page have finished loading.
 # This runs again whenever Streamlit reloads the page's data for a new render.
@@ -3743,6 +3790,7 @@ ft_players = ensure_columns(ft_players, ["name", "fantraxId"])
 all_time_rosters = ensure_columns(all_time_rosters, ["Year", "period", "id", "team_name"])
 award_history = ensure_columns(award_history, ["Award", "Year", "Winner"])
 team_award_history = ensure_columns(team_award_history, ["Award", "Year", "Winner"])
+player_salary_history = ensure_columns(player_salary_history, ["Year", "Player", "Player Key", "Amount"])
 period_calendar = ensure_columns(period_calendar, ["Day", "Year", "Date", "Period", "Season"])
 all_time_schedule = zero_future_matchup_scores(all_time_schedule, period_calendar)
 
@@ -10184,6 +10232,8 @@ def transaction_date_label(value):
     parsed = pd.to_datetime(value, errors="coerce")
     if pd.isna(parsed):
         return str(value or "Date unavailable")
+    if not re.search(r"\d{1,2}:\d{2}|\b(?:AM|PM)\b", str(value), flags=re.IGNORECASE):
+        return f"{parsed.strftime('%b')} {parsed.day}, {parsed.year}"
     hour = parsed.hour % 12 or 12
     return f"{parsed.strftime('%b')} {parsed.day}, {parsed.year} · {hour}:{parsed.minute:02d}{parsed.strftime('%p').lower()} ET"
 
@@ -10197,24 +10247,32 @@ def transaction_team_values(transactions_df):
 
 
 def transaction_player_html(row, show_route=False):
-    player = escape(str(row.get("Player", "Unknown asset")))
+    raw_player = str(row.get("Player", "Unknown asset"))
+    player = escape(raw_player)
     positions = escape(str(row.get("Positions", "")))
     nba_team = escape(str(row.get("NBA Team", "")))
     headshot = str(row.get("Headshot", ""))
     asset_type = str(row.get("Asset Type", "Player"))
     asset_team = str(row.get("Asset Team", "")).strip()
+    asset_notes = str(row.get("Notes", "")).strip()
     if asset_type == "Draft Pick" and asset_team:
         team_key = resolve_team_key(asset_team)
         team_logo = team_logo_for_name(team_key)
         if team_logo:
             headshot = team_logo
+    elif not headshot:
+        headshot = PLAYER_PICTURE_LOOKUP.get(normalize_boxscore_player_key(raw_player), "")
     image_html = (
         f'<img class="{'sbc-tx-pick-logo' if asset_type == 'Draft Pick' else ''}" src="{escape(headshot, quote=True)}" alt="{player}">'
         if headshot else f'<span class="sbc-tx-avatar-fallback">{player[:1]}</span>'
     )
     meta_values = [positions, nba_team]
     if asset_type == "Draft Pick" and asset_team:
-        meta_values = [f"Originally {asset_team}"]
+        meta_values = [f"Originally {escape(asset_team)}"]
+        if asset_notes:
+            meta_values.append(escape(asset_notes))
+    elif asset_notes and asset_notes != "Offseason signing":
+        meta_values.append(escape(asset_notes))
     meta = " · ".join(value for value in meta_values if value and value != "(N/A)")
     route_html = ""
     if show_route:
@@ -10228,12 +10286,90 @@ def transaction_player_html(row, show_route=False):
     )
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def load_all_transaction_history():
+    frames = []
+    for transaction_year in range(2021, 2028):
+        try:
+            frame = get_fantrax_transactions(transaction_year)
+        except Exception:
+            continue
+        if frame is not None and not frame.empty:
+            frames.append(frame.copy())
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True).sort_values(
+        ["Date Sort", "Transaction ID"], ascending=[False, True], na_position="last"
+    ).reset_index(drop=True)
+
+
+def render_player_transaction_history(transactions_df, player_name, player_id=""):
+    render_html(
+        '<div class="sbc-awards-section-head"><span>Transactions</span>'
+        '<em>Claims, drops, signings, and trades recorded across the player\'s SBCFBL career.</em></div>'
+    )
+    if transactions_df is None or transactions_df.empty:
+        render_html('<div class="sbc-empty-state">No transaction history is available for this player.</div>')
+        return
+
+    history = transactions_df.copy()
+    name_key = normalize_boxscore_player_key(player_name)
+    name_mask = history["Player"].map(normalize_boxscore_player_key).eq(name_key)
+    id_mask = history["Player ID"].astype(str).eq(str(player_id)) if str(player_id).strip() else False
+    player_rows = history[name_mask | id_mask].copy()
+    if player_rows.empty:
+        render_html('<div class="sbc-empty-state">No recorded transactions for this player.</div>')
+        return
+
+    player_rows = player_rows.drop_duplicates("Transaction ID", keep="first")
+    entries = []
+    for _, row in player_rows.iterrows():
+        activity = str(row.get("Type", "Transaction") or "Transaction").strip()
+        activity_key = activity.lower()
+        team = str(row.get("Team", "") or "").strip()
+        from_team = str(row.get("From", "") or "").strip()
+        to_team = str(row.get("To", "") or "").strip()
+        raw_date = row.get("Date Sort", row.get("Date", ""))
+        parsed_date = pd.to_datetime(raw_date, errors="coerce")
+        date_label = (
+            f"{parsed_date.strftime('%b')} {parsed_date.day}, {parsed_date.year}"
+            if pd.notna(parsed_date) else str(row.get("Date", "Date unavailable"))
+        )
+        if activity_key == "trade":
+            sentence = f"Traded to {to_team or team or 'another team'} on {date_label}"
+            entry_class = "sbc-player-tx-trade"
+        elif activity_key == "drop":
+            sentence = f"Dropped by {team or from_team or 'team'} on {date_label}"
+            entry_class = "sbc-player-tx-drop"
+        elif activity_key == "claim":
+            sentence = f"Claimed by {team or to_team or 'team'} on {date_label}"
+            entry_class = "sbc-player-tx-add"
+        else:
+            sentence = f"Signed by {team or to_team or 'team'} on {date_label}"
+            entry_class = "sbc-player-tx-add"
+        entries.append(
+            f'<div class="sbc-player-tx-entry {entry_class}"><span></span><strong>{escape(sentence)}</strong></div>'
+        )
+    render_html(f"""
+        <style>
+        .sbc-player-tx-list {{ display:flex; flex-direction:column; margin:.25rem 0 .9rem; border:1px solid #e1e6eb; border-radius:11px; overflow:hidden; background:#fff; }}
+        .sbc-player-tx-entry {{ display:flex; align-items:center; gap:.6rem; padding:.62rem .78rem; border-bottom:1px solid #edf0f3; }}
+        .sbc-player-tx-entry:last-child {{ border-bottom:0; }}
+        .sbc-player-tx-entry>span {{ width:.48rem; height:.48rem; flex:0 0 .48rem; border-radius:50%; background:#25a55b; }}
+        .sbc-player-tx-entry.sbc-player-tx-drop>span {{ background:#d83a48; }}
+        .sbc-player-tx-entry.sbc-player-tx-trade>span {{ background:#3977c3; }}
+        .sbc-player-tx-entry strong {{ color:#334155; font-size:.76rem; line-height:1.35; }}
+        </style>
+        <div class="sbc-player-tx-list">{"".join(entries)}</div>
+    """)
+
+
 def render_transactions_page(transactions_df, selected_year, history=False):
     season_label = f"{selected_year - 1}-{str(selected_year)[-2:]}"
     page_label = "Transaction Archive" if history else "League Transactions"
     page_note = (
-        "Executed claims, drops, and trades pulled automatically from the selected Fantrax season."
-        if history else "The live 2026-27 wire, pulled automatically from Fantrax and limited to executed claims, drops, and trades."
+        "Executed claims, drops, trades, and offseason signings combined from Fantrax and the league archive."
+        if history else "The live 2026-27 wire, combining executed Fantrax activity with the league's offseason signing archive."
     )
     render_html(f"""
         <div class="sbc-draft-hero sbc-league-hero">
@@ -10249,19 +10385,21 @@ def render_transactions_page(transactions_df, selected_year, history=False):
     """)
 
     if transactions_df is None or transactions_df.empty:
-        render_html('<div class="sbc-empty-state">No executed claim, drop, or trade transactions are available from Fantrax for this season yet.</div>')
+        render_html('<div class="sbc-empty-state">No executed claim, drop, trade, or offseason signing transactions are available for this season yet.</div>')
         return
 
     transactions_df = transactions_df.copy()
     transaction_kind = st.radio(
         "Transaction type",
         ["Claim/Drop", "Trade"],
+        format_func=lambda value: "Claims / Drops / Signings" if value == "Claim/Drop" else value,
         horizontal=True,
         key=f"sbc_transactions_kind_{selected_year}_{'history' if history else 'current'}",
     )
     kind_df = transactions_df[transactions_df["View"] == transaction_kind].copy()
     team_options = ["All Teams"] + transaction_team_values(kind_df)
-    control_a, control_b = st.columns([1.15, 0.85])
+    activity_options = ["All Activity"] + kind_df["Type"].dropna().astype(str).drop_duplicates().tolist()
+    control_a, control_b, control_c = st.columns([1.05, 0.9, 0.75])
     with control_a:
         selected_team = st.selectbox(
             "Team",
@@ -10269,6 +10407,12 @@ def render_transactions_page(transactions_df, selected_year, history=False):
             key=f"sbc_transactions_team_{selected_year}_{transaction_kind}_{'history' if history else 'current'}",
         )
     with control_b:
+        selected_activity = st.selectbox(
+            "Activity",
+            activity_options,
+            key=f"sbc_transactions_activity_{selected_year}_{transaction_kind}_{'history' if history else 'current'}",
+        )
+    with control_c:
         display_limit = st.selectbox(
             "Transactions shown",
             [50, 100, 250, "All"],
@@ -10281,6 +10425,8 @@ def render_transactions_page(transactions_df, selected_year, history=False):
         for column in ["Team", "From", "To"]:
             team_mask |= kind_df[column].astype(str).eq(selected_team)
         kind_df = kind_df[team_mask]
+    if selected_activity != "All Activity":
+        kind_df = kind_df[kind_df["Type"].astype(str).eq(selected_activity)]
 
     transaction_ids = kind_df["Transaction ID"].drop_duplicates().tolist()
     total_count = len(transaction_ids)
@@ -10292,7 +10438,7 @@ def render_transactions_page(transactions_df, selected_year, history=False):
     trade_count = transactions_df.loc[transactions_df["View"] == "Trade", "Transaction ID"].nunique()
     metric_cols = st.columns(3)
     with metric_cols[0]:
-        st.metric("Claims / Drops", claim_count, border=True)
+        st.metric("Claims / Drops / Signings", claim_count, border=True)
     with metric_cols[1]:
         st.metric("Trades", trade_count, border=True)
     with metric_cols[2]:
@@ -10350,6 +10496,93 @@ def render_transactions_page(transactions_df, selected_year, history=False):
         render_html(f'<div class="sbc-tx-list">{"".join(cards)}</div>')
     else:
         render_html('<div class="sbc-empty-state">No transactions match the selected filters.</div>')
+
+
+def render_original_teams_page(original_rosters):
+    render_html(f"""
+        <div class="sbc-draft-hero sbc-league-hero">
+            <div class="sbc-draft-hero-inner">
+                <img class="sbc-draft-logo" src="{league_logo_html}" alt="SBC Fantasy Basketball League logo">
+                <div>
+                    <div class="sbc-draft-eyebrow">2020 Founding Auction</div>
+                    <div class="sbc-draft-heading">Original Teams</div>
+                    <div class="sbc-draft-subcopy">The 13 players who formed each SBCFBL franchise, with their Year 1 auction salaries.</div>
+                </div>
+            </div>
+        </div>
+    """)
+    if original_rosters is None or original_rosters.empty:
+        render_html('<div class="sbc-empty-state">The original-team auction data is not available.</div>')
+        return
+
+    team_options = sorted(original_rosters["Team"].dropna().astype(str).unique().tolist())
+    selected_team = st.selectbox(
+        "Original franchise",
+        team_options,
+        format_func=lambda team: live_team_full_name(resolve_team_key(team)),
+        key="sbc_original_team_selector",
+    )
+    roster = original_rosters[original_rosters["Team"].astype(str).eq(selected_team)].copy()
+    roster["Amount"] = pd.to_numeric(roster["Amount"], errors="coerce").fillna(0)
+    roster = roster.sort_values(["Amount", "Player"], ascending=[False, True])
+    team_key = resolve_team_key(selected_team)
+    visuals = team_visuals(team_key)
+    full_team_name = live_team_full_name(team_key)
+    payroll = roster["Amount"].sum()
+    average_salary = roster["Amount"].mean() if not roster.empty else 0
+    high_bid = roster["Amount"].max() if not roster.empty else 0
+
+    render_html(f"""
+        <section class="sbc-original-team-head" style="--original-primary:{escape(str(visuals['primary']), quote=True)};--original-secondary:{escape(str(visuals['secondary']), quote=True)};">
+            <img src="{escape(str(visuals['logo']), quote=True)}" alt="{escape(full_team_name, quote=True)} logo" referrerpolicy="no-referrer">
+            <div><small>Founding roster</small><strong>{escape(full_team_name)}</strong><span>Built during the November–December 2020 slow auction.</span></div>
+        </section>
+        <style>
+        .sbc-original-team-head {{ display:flex; align-items:center; gap:1rem; margin:.8rem 0 1rem; padding:1rem 1.1rem; border-radius:17px; color:#fff; background:linear-gradient(120deg,var(--original-primary),var(--original-secondary)); box-shadow:0 8px 22px rgba(15,23,42,.13); }}
+        .sbc-original-team-head img {{ width:4.3rem; height:4.3rem; object-fit:contain; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }}
+        .sbc-original-team-head small,.sbc-original-team-head strong,.sbc-original-team-head span {{ display:block; }}
+        .sbc-original-team-head small {{ font-size:.66rem; font-weight:900; letter-spacing:.09em; text-transform:uppercase; opacity:.86; }}
+        .sbc-original-team-head strong {{ margin-top:.08rem; font-size:1.35rem; }}
+        .sbc-original-team-head span {{ margin-top:.2rem; font-size:.75rem; font-weight:650; opacity:.9; }}
+        .sbc-original-grid {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.7rem; margin-top:.9rem; }}
+        .sbc-original-player {{ display:grid; grid-template-columns:3.1rem minmax(0,1fr) auto; align-items:center; gap:.72rem; padding:.72rem .8rem; border:1px solid #dce3ea; border-radius:14px; background:#fff; box-shadow:0 3px 10px rgba(15,23,42,.05); }}
+        .sbc-original-player img,.sbc-original-avatar {{ width:3.1rem; height:3.1rem; border-radius:50%; object-fit:cover; background:#edf1f5; }}
+        .sbc-original-avatar {{ display:flex; align-items:center; justify-content:center; color:#607080; font-weight:950; }}
+        .sbc-original-player strong {{ display:block; color:#17212b; font-size:.88rem; }}
+        .sbc-original-player small {{ display:block; margin-top:.13rem; color:#76828e; font-size:.66rem; font-weight:750; }}
+        .sbc-original-salary {{ color:var(--original-primary); font-size:.86rem; font-weight:950; white-space:nowrap; }}
+        @media(max-width:700px) {{ .sbc-original-grid {{ grid-template-columns:1fr; }} .sbc-original-player {{ grid-template-columns:2.8rem minmax(0,1fr) auto; }} }}
+        </style>
+    """)
+
+    metrics = st.columns(4)
+    with metrics[0]:
+        st.metric("Original Players", len(roster), border=True)
+    with metrics[1]:
+        st.metric("Year 1 Payroll", f"${payroll:,.0f}", border=True)
+    with metrics[2]:
+        st.metric("Average Salary", f"${average_salary:,.0f}", border=True)
+    with metrics[3]:
+        st.metric("Highest Bid", f"${high_bid:,.0f}", border=True)
+
+    player_cards = []
+    for _, player_row in roster.iterrows():
+        player_name = str(player_row.get("Player", ""))
+        picture = PLAYER_PICTURE_LOOKUP.get(normalize_boxscore_player_key(player_name), "")
+        image = (
+            f'<img src="{escape(picture, quote=True)}" alt="{escape(player_name, quote=True)}">'
+            if picture else f'<span class="sbc-original-avatar">{escape(player_name[:1])}</span>'
+        )
+        signed_date = pd.to_datetime(player_row.get("Date"), errors="coerce")
+        signed_label = (
+            f"Signed {signed_date.strftime('%b')} {signed_date.day}, {signed_date.year}"
+            if pd.notna(signed_date) else "Founding auction"
+        )
+        player_cards.append(
+            f'<article class="sbc-original-player">{image}<div><strong>{escape(player_name)}</strong>'
+            f'<small>{escape(signed_label)}</small></div><span class="sbc-original-salary">${float(player_row["Amount"]):,.0f}</span></article>'
+        )
+    render_html(f'<div class="sbc-original-grid">{"".join(player_cards)}</div>')
 
 
 def schedule_year_options_for_history():
@@ -17614,7 +17847,7 @@ if main_page == "League Hub":
     if selected_league_page == "History":
         selected_history_page = st.radio(
             "League History View",
-            ["Overview", "Scoreboard", "Standings", "Transactions", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats", "Awards", "Draft History", "Branding"],
+            ["Overview", "Scoreboard", "Standings", "Transactions", "Playoff Bracket", "In-Season Tournament", "Player Stats", "All-Time Stats", "Awards", "Draft History", "Original Teams", "Branding"],
             format_func=nav_label(HISTORY_NAV_LABELS),
             horizontal=True,
             key="sbc_history_page",
@@ -17629,7 +17862,7 @@ if main_page == "League Hub":
                 key="sbc_awards_page",
                 label_visibility="collapsed",
             )
-        if selected_history_page != "Branding" and not (selected_history_page == "Awards" and selected_awards_page == "Award Count"):
+        if selected_history_page not in ["Branding", "Original Teams"] and not (selected_history_page == "Awards" and selected_awards_page == "Award Count"):
             if selected_history_page == "Transactions":
                 league_history_year_options = list(range(2021, 2028))
                 default_league_history_year = 2027
@@ -18378,6 +18611,16 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         current_salary = contract.get("salary", "")
         active_roster = bool(contract.get("active_roster"))
         salary_text = contract.get("summary") or (format_money(current_salary) if not is_blank_value(current_salary) else "No active contract listed")
+        selected_salary_rows = player_salary_history[
+            player_salary_history["Player"].apply(player_name_match_key).eq(player_name_match_key(selected_player_name))
+        ].copy() if not player_salary_history.empty else pd.DataFrame(columns=player_salary_history.columns)
+        selected_salary_rows["Year"] = pd.to_numeric(selected_salary_rows.get("Year"), errors="coerce")
+        selected_salary_rows["Amount"] = pd.to_numeric(selected_salary_rows.get("Amount"), errors="coerce")
+        selected_salary_rows = selected_salary_rows.dropna(subset=["Year", "Amount"])
+        selected_salary_rows["Year"] = selected_salary_rows["Year"].astype(int)
+        salary_lookup = selected_salary_rows.groupby("Year")["Amount"].sum().to_dict()
+        career_earnings = float(selected_salary_rows["Amount"].sum()) if not selected_salary_rows.empty else 0
+        career_earnings_text = f"Career earnings: {format_money(career_earnings)}" if career_earnings > 0 else "Career earnings: —"
         team_key = contract.get("team_key", "")
         awards_table = player_awards_table_for_name(selected_player_name, award_history)
         player_rows = selected_player_matchup_rows(selected_player_id, all_time_rosters, all_time_schedule)
@@ -18431,6 +18674,7 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
                     <div class="sbc-player-profile-meta">
                         <span>{escape(team_text)}</span>
                         <span>{escape(salary_text)}</span>
+                        <span>{escape(career_earnings_text)}</span>
                         <span>{escape(season_text)}</span>
                     </div>
                 </div>
@@ -18466,7 +18710,21 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         }[basis_key]
         render_html(f'<div class="sbc-awards-section-head"><span>{escape(title)}</span><em>{escape(basis_note)} Only NBA games on dates this player was ACTIVE in an SBCFBL matchup.</em></div>')
         season_rows = aggregate_player_season_rows(section_rows, basis=basis_key)
-        render_player_stats_table(season_rows, empty_text)
+        render_player_stats_table(
+            season_rows,
+            empty_text,
+            salary_lookup=salary_lookup if stat_mode == "Regular Season" else None,
+        )
+        render_player_salary_history(selected_salary_rows)
+        player_transaction_history = load_optional_data(
+            "Player transaction history",
+            load_all_transaction_history,
+        )
+        render_player_transaction_history(
+            player_transaction_history,
+            selected_player_name,
+            selected_player_id,
+        )
         render_html('<div class="sbc-awards-section-head"><span>Matchup Leaders</span><em>Best single SBCFBL matchup performance by category.</em></div>')
         render_player_matchup_highs(section_rows, "No matchup highs are available for this player and stat type.")
         render_html(f'<div class="sbc-awards-section-head"><span>Shared Game Records</span><em>{escape(stat_mode)} only. Both players must have been started and appeared in at least one NBA game during the matchup.</em></div>')
@@ -18554,6 +18812,12 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
     )
     PAGE_DATA_LOADED_AT = datetime.now(DATA_TIMEZONE)
     render_transactions_page(history_transactions, LeagueHistoryYear, history=True)
+
+
+if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Original Teams":
+    original_team_rosters = load_optional_data("Original team rosters", get_original_team_rosters)
+    PAGE_DATA_LOADED_AT = datetime.now(DATA_TIMEZONE)
+    render_original_teams_page(original_team_rosters)
 
 
 if main_page == "League Hub" and selected_league_page == "Transactions":

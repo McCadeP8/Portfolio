@@ -16,6 +16,7 @@ data_snapshots/pbp/checkpoints_*/
 
 # Local Codex-generated artifact workspaces and dependency junctions.
 .codex_artifacts/
+.codex_tmp/
 .runtime/
 .env
 *.log

@@ -73,6 +73,52 @@ def get_pictures() -> pd.DataFrame:
     df = df.drop(columns=["Picture"], errors="ignore")
     return df
 
+
+PAID_SALARY_TYPES = {"Dead", "Guaranteed", "Non-Guaranteed"}
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def get_player_salary_history() -> pd.DataFrame:
+    """Return one paid-salary row per player and SBCFBL season through the current year."""
+    columns = ["Year", "Player", "Player Key", "Amount"]
+    frames = []
+    historical_path = APP_DIR / "historical_player_salaries.csv"
+    if historical_path.exists():
+        historical = pd.read_csv(historical_path)
+        if {"Year", "Player", "Amount"}.issubset(historical.columns):
+            historical = historical.copy()
+            historical["Player Key"] = historical["Player"].map(normalize_player_key)
+            historical["Amount"] = pd.to_numeric(historical["Amount"], errors="coerce")
+            frames.append(historical[columns])
+
+    cap = get_data().copy()
+    if not cap.empty and "Player" in cap.columns:
+        for salary_year in range(2023, int(current_year) + 1):
+            salary_col = f"Y{salary_year}"
+            type_col = f"Type{salary_year}"
+            if salary_col not in cap.columns or type_col not in cap.columns:
+                continue
+            paid = cap[cap[type_col].isin(PAID_SALARY_TYPES)].copy()
+            if paid.empty:
+                continue
+            paid["Player"] = paid["Player"].replace(cap_sheets_to_fantrax_name_fix).astype(str).str.strip()
+            paid["Player Key"] = paid["Player"].map(normalize_player_key)
+            paid["Amount"] = pd.to_numeric(paid[salary_col], errors="coerce")
+            paid["Year"] = salary_year
+            frames.append(paid[columns])
+
+    if not frames:
+        return pd.DataFrame(columns=columns)
+    combined = pd.concat(frames, ignore_index=True).dropna(subset=["Player Key", "Amount"])
+    combined = combined[combined["Player Key"].astype(str).str.strip().ne("")]
+    return (
+        combined.groupby(["Year", "Player Key"], as_index=False)
+        .agg(Player=("Player", "first"), Amount=("Amount", "sum"))
+        [["Year", "Player", "Player Key", "Amount"]]
+        .sort_values(["Player Key", "Year"])
+        .reset_index(drop=True)
+    )
+
 @st.cache_data(ttl=300)
 def get_articles() -> pd.DataFrame:
     refresh_key = int(pd.Timestamp.now().timestamp() // 300)
@@ -197,8 +243,187 @@ def get_fantrax_players() -> pd.DataFrame:
 FANTRAX_TRANSACTION_COLUMNS = [
     "Year", "View", "Transaction ID", "Type", "Player ID", "Player", "Positions",
     "NBA Team", "Headshot", "Asset Type", "Asset Team", "Team", "From", "To", "Date",
-    "Date Sort", "Period", "Result",
+    "Date Sort", "Period", "Result", "Notes",
 ]
+
+
+DRAFT_PICK_TRANSACTION_CUTOFF = pd.Timestamp("2023-06-01")
+DRAFT_PICK_TEAM_ALIASES = {
+    "austing": "Austin",
+    "baltimiore": "Baltimore",
+    "des moine": "Des Moines",
+    "el pasp": "El Paso",
+    "el pasol": "El Paso",
+    "jakcsonville": "Jacksonville",
+    "mancheseter": "Manchester",
+    "san deigo": "San Diego",
+    "tampa": "Tampa Bay",
+}
+
+
+def _draft_pick_team_key(value) -> str:
+    """Translate sheet cities, historical full names, and known typos to a team_info key."""
+    text = " ".join(str(value or "").strip().split())
+    text = re.split(r"\s*[:;]\s*", text, maxsplit=1)[0].strip()
+    lowered = text.lower()
+    for trailing in [" unprotected", " as well"]:
+        if lowered.endswith(trailing):
+            text = text[:-len(trailing)].strip()
+            lowered = text.lower()
+    alias = DRAFT_PICK_TEAM_ALIASES.get(lowered)
+    if alias:
+        return alias
+    if lowered == "san diego wave" or lowered == "san diego seals":
+        return "San Diego"
+    for city, info in team_info.items():
+        nickname = str(info.get("nickname", "")).strip()
+        full_name = f"{city} {nickname}".strip()
+        if lowered in {city.lower(), nickname.lower(), full_name.lower()}:
+            return city
+        if lowered.startswith(f"{city.lower()} "):
+            return city
+    return text
+
+
+def _draft_pick_team_name(value, season_year: int) -> str:
+    city = _draft_pick_team_key(value)
+    if city not in team_info:
+        return str(value or "").strip()
+    if city == "San Diego" and int(season_year) <= 2025:
+        return "San Diego Wave"
+    return f"{city} {team_info[city].get('nickname', '')}".strip()
+
+
+def _draft_pick_note_target(note: str) -> str:
+    direct_match = re.search(r"^(?:to|conveyed to)\s+([^;,]+)", note, flags=re.IGNORECASE)
+    if direct_match:
+        return _draft_pick_team_key(direct_match.group(1))
+    swap_match = re.search(r"\bPick Swap\s+(?:with|to)\s+([^;,]+)", note, flags=re.IGNORECASE)
+    if swap_match:
+        swap_team = re.sub(r"'s\s+Pick\b", "", swap_match.group(1), flags=re.IGNORECASE)
+        if "/" in swap_team:
+            return ""
+        return _draft_pick_team_key(swap_team)
+    beneficiary_match = re.search(r"\b([A-Za-z .]+?)\s+gets first choice\b", note, flags=re.IGNORECASE)
+    if beneficiary_match:
+        return _draft_pick_team_key(beneficiary_match.group(1))
+    return ""
+
+
+def _draft_pick_season_year(value: pd.Timestamp) -> int:
+    return int(value.year + 1 if value.month >= 6 else value.year)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _get_all_draft_pick_notes() -> pd.DataFrame:
+    refresh_key = int(pd.Timestamp.now().timestamp() // 300)
+    csv_url = (
+        "https://docs.google.com/spreadsheets/d/"
+        "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/"
+        f"export?format=csv&gid=1612129799&refresh={refresh_key}"
+    )
+    return read_csv_snapshot("draft_pick_transaction_notes", csv_url, ttl_seconds=300, dtype=str).fillna("")
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_offseason_signing_history() -> pd.DataFrame:
+    """Load the original auction and infer the year of each later offseason block."""
+    refresh_key = int(pd.Timestamp.now().timestamp() // 300)
+    csv_url = (
+        "https://docs.google.com/spreadsheets/d/"
+        "11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/"
+        f"export?format=csv&gid=1352017576&refresh={refresh_key}"
+    )
+    raw = read_csv_snapshot("offseason_signing_history", csv_url, ttl_seconds=300, dtype=str).fillna("")
+    required = ["Player", "Day", "High Bid", "Team"]
+    if raw.empty or not set(required).issubset(raw.columns):
+        return pd.DataFrame(columns=[
+            "Offseason Year", "Season Year", "Player", "Day", "Date", "Team", "Amount", "Original Team",
+        ])
+
+    rows = []
+    offseason_year = None
+    previous_month_day = None
+    for _, source in raw.iterrows():
+        player = str(source.get("Player", "")).strip()
+        day = str(source.get("Day", "")).strip()
+        team = _draft_pick_team_key(source.get("Team", ""))
+        amount_text = str(source.get("High Bid", "")).strip()
+        if not player or not day or not team:
+            continue
+
+        partial_date = pd.to_datetime(day, format="%b %d", errors="coerce")
+        if pd.isna(partial_date):
+            continue
+        month_day = (int(partial_date.month), int(partial_date.day))
+        if amount_text:
+            offseason_year = 2020
+        else:
+            if offseason_year is None or offseason_year == 2020:
+                offseason_year = 2021
+            elif previous_month_day is not None and month_day < previous_month_day:
+                offseason_year += 1
+            previous_month_day = month_day
+
+        amount = pd.to_numeric(re.sub(r"[^0-9.-]", "", amount_text), errors="coerce")
+        full_date = pd.Timestamp(year=int(offseason_year), month=month_day[0], day=month_day[1])
+        rows.append({
+            "Offseason Year": int(offseason_year),
+            "Season Year": int(offseason_year) + 1,
+            "Player": player,
+            "Day": day,
+            "Date": full_date,
+            "Team": team,
+            "Amount": amount,
+            "Original Team": bool(amount_text),
+        })
+    return pd.DataFrame(rows)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_original_team_rosters() -> pd.DataFrame:
+    history = get_offseason_signing_history()
+    if history.empty:
+        return history
+    return history[history["Original Team"]].copy().reset_index(drop=True)
+
+
+def _offseason_transactions_for_year(year: int) -> pd.DataFrame:
+    history = get_offseason_signing_history()
+    if history.empty:
+        return pd.DataFrame(columns=FANTRAX_TRANSACTION_COLUMNS)
+    signings = history[history["Season Year"].eq(int(year))].copy()
+    if signings.empty:
+        return pd.DataFrame(columns=FANTRAX_TRANSACTION_COLUMNS)
+
+    rows = []
+    for source_index, signing in signings.iterrows():
+        team_name = _draft_pick_team_name(signing["Team"], int(year))
+        amount = pd.to_numeric(signing.get("Amount"), errors="coerce")
+        original_team = bool(signing.get("Original Team", False))
+        notes = f"Year 1 salary: ${amount:,.0f}" if original_team and pd.notna(amount) else "Offseason signing"
+        rows.append({
+            "Year": int(year),
+            "View": "Claim/Drop",
+            "Transaction ID": f"offseason-signing-{int(year)}-{int(source_index)}",
+            "Type": "Original Signing" if original_team else "Signing",
+            "Player ID": f"offseason-{normalize_player_key(signing['Player']).replace(' ', '-')}",
+            "Player": str(signing["Player"]),
+            "Positions": "",
+            "NBA Team": "",
+            "Headshot": "",
+            "Asset Type": "Player",
+            "Asset Team": "",
+            "Team": team_name,
+            "From": "Free Agency",
+            "To": team_name,
+            "Date": pd.Timestamp(signing["Date"]).strftime("%b %d, %Y"),
+            "Date Sort": pd.Timestamp(signing["Date"]),
+            "Period": "Offseason",
+            "Result": "Executed",
+            "Notes": notes,
+        })
+    return pd.DataFrame(rows, columns=FANTRAX_TRANSACTION_COLUMNS)
 
 
 def _fantrax_cell_map(row: dict) -> dict:
@@ -256,6 +481,7 @@ def _parse_fantrax_transaction_rows(rows: list[dict], year: int, view: str) -> p
             "Date Sort": parsed_date,
             "Period": str(cells.get("week") or metadata.get("week") or ""),
             "Result": str((row.get("result") or {}).get("content") or row.get("resultCode") or ""),
+            "Notes": "",
         })
     return pd.DataFrame(parsed, columns=FANTRAX_TRANSACTION_COLUMNS)
 
@@ -288,6 +514,127 @@ def _fantrax_transaction_page(league_id: str, view: str, page_number: int, per_p
     return response_data["responses"][0]["data"]
 
 
+def _draft_pick_transactions_for_year(year: int, fantrax_trade_rows: pd.DataFrame) -> pd.DataFrame:
+    """Convert dated draft-pick Notes entries into trade assets and join them to Fantrax trade IDs."""
+    picks = _get_all_draft_pick_notes()
+    required_columns = {"Year", "Round", "OGTeam", "Notes"}
+    if picks.empty or not required_columns.issubset(picks.columns):
+        return pd.DataFrame(columns=FANTRAX_TRANSACTION_COLUMNS)
+
+    fantrax_groups = []
+    if fantrax_trade_rows is not None and not fantrax_trade_rows.empty:
+        for transaction_id, group in fantrax_trade_rows.groupby("Transaction ID", sort=False):
+            date_sort = pd.to_datetime(group["Date Sort"].iloc[0], errors="coerce")
+            if pd.isna(date_sort):
+                continue
+            team_keys = {
+                _draft_pick_team_key(team)
+                for column in ["From", "To"]
+                for team in group[column].dropna().astype(str)
+                if str(team).strip()
+            }
+            fantrax_groups.append({
+                "id": str(transaction_id),
+                "date": date_sort.normalize(),
+                "date_label": str(group["Date"].iloc[0]),
+                "date_sort": date_sort,
+                "period": str(group["Period"].iloc[0]),
+                "teams": team_keys,
+            })
+
+    parsed_rows = []
+    for row_number, pick in picks.reset_index(drop=True).iterrows():
+        draft_year = str(pick.get("Year", "")).strip()
+        draft_round = str(pick.get("Round", "")).strip()
+        original_team_key = _draft_pick_team_key(pick.get("OGTeam", ""))
+        current_owner_key = original_team_key
+        if not draft_year or not draft_round or not original_team_key:
+            continue
+
+        for note_number, raw_note in enumerate(re.split(r"[\r\n]+", str(pick.get("Notes", "")))):
+            note_line = raw_note.strip()
+            note_match = re.match(r"^(\d{1,2}/\d{1,2}/\d{4})(?:\s*;)?\s*(.*)$", note_line)
+            if not note_match:
+                continue
+            note_date = pd.to_datetime(note_match.group(1), errors="coerce")
+            note = note_match.group(2).strip(" ;,")
+            if pd.isna(note_date):
+                continue
+
+            owner_before_key = current_owner_key
+            target_key = _draft_pick_note_target(note)
+            is_direct_transfer = bool(re.match(r"^(?:to|conveyed to)\s+", note, flags=re.IGNORECASE))
+            other_side_match = re.search(r"\b(?:given|conveyed) to\s+([^;,.(]+)", note, flags=re.IGNORECASE)
+            if other_side_match and not target_key:
+                target_key = _draft_pick_team_key(other_side_match.group(1))
+                is_direct_transfer = True
+            if is_direct_transfer and target_key:
+                current_owner_key = target_key
+
+            if note_date < DRAFT_PICK_TRANSACTION_CUTOFF or "see this" in note.lower() or "see " in note.lower():
+                continue
+            season_year = _draft_pick_season_year(note_date)
+            if season_year != int(year):
+                continue
+
+            participant_keys = {key for key in [owner_before_key, target_key] if key}
+            matching_groups = [group for group in fantrax_groups if group["date"] == note_date.normalize()]
+            best_group = None
+            best_score = 0
+            for group in matching_groups:
+                overlap = len(participant_keys & group["teams"])
+                route_match = bool(owner_before_key and target_key and {owner_before_key, target_key}.issubset(group["teams"]))
+                score = overlap + (4 if route_match else 0)
+                if score > best_score:
+                    best_group = group
+                    best_score = score
+            if best_score < 2:
+                best_group = None
+
+            route_keys = sorted(participant_keys) or [original_team_key]
+            synthetic_id = f"draft-notes-{note_date.strftime('%Y%m%d')}-{'-'.join(route_keys).lower().replace(' ', '-')}"
+            transaction_id = best_group["id"] if best_group else synthetic_id
+            date_label = best_group["date_label"] if best_group else note_date.strftime("%b %d, %Y")
+            date_sort = best_group["date_sort"] if best_group else note_date
+            period = best_group["period"] if best_group else ""
+            from_team = _draft_pick_team_name(owner_before_key, season_year)
+            to_team = _draft_pick_team_name(target_key, season_year) if target_key else from_team
+            round_number_match = re.search(r"\d+", draft_round)
+            round_number = round_number_match.group(0) if round_number_match else draft_round
+            asset_name = f"{draft_year} Round {round_number} Draft Pick"
+
+            parsed_rows.append({
+                "Year": season_year,
+                "View": "Trade",
+                "Transaction ID": transaction_id,
+                "Type": "Trade",
+                "Player ID": f"pick-{draft_year}-{round_number}-{original_team_key.lower().replace(' ', '-')}",
+                "Player": asset_name,
+                "Positions": "",
+                "NBA Team": "",
+                "Headshot": "",
+                "Asset Type": "Draft Pick",
+                "Asset Team": _draft_pick_team_name(original_team_key, season_year),
+                "Team": "",
+                "From": from_team,
+                "To": to_team,
+                "Date": date_label,
+                "Date Sort": date_sort,
+                "Period": period,
+                "Result": "Executed",
+                "Notes": note,
+                "_source_row": row_number,
+                "_source_note": note_number,
+            })
+
+    if not parsed_rows:
+        return pd.DataFrame(columns=FANTRAX_TRANSACTION_COLUMNS)
+    parsed = pd.DataFrame(parsed_rows).drop_duplicates(
+        subset=["Year", "Player ID", "Date Sort", "Notes", "From", "To"], keep="first"
+    )
+    return parsed[FANTRAX_TRANSACTION_COLUMNS]
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def get_fantrax_transactions(year: int) -> pd.DataFrame:
     """Load executed Claim/Drop and Trade activity for one SBCFBL season."""
@@ -309,9 +656,47 @@ def get_fantrax_transactions(year: int) -> pd.DataFrame:
             page_number += 1
 
     transactions = [frame for frame in transaction_frames if not frame.empty]
-    if not transactions:
+    result = (
+        pd.concat(transactions, ignore_index=True)
+        if transactions else pd.DataFrame(columns=FANTRAX_TRANSACTION_COLUMNS)
+    )
+    offseason_transactions = _offseason_transactions_for_year(year)
+    if not offseason_transactions.empty:
+        signing_dates = {}
+        for _, signing in offseason_transactions.iterrows():
+            signing_key = (
+                normalize_player_key(signing["Player"]),
+                _draft_pick_team_key(signing["Team"]),
+            )
+            signing_dates.setdefault(signing_key, []).append(pd.Timestamp(signing["Date Sort"]).normalize())
+        if not result.empty:
+            duplicate_claim = []
+            for _, transaction in result.iterrows():
+                is_claim = (
+                    str(transaction.get("View", "")) == "Claim/Drop"
+                    and str(transaction.get("Type", "")).strip().lower() == "claim"
+                )
+                transaction_date = pd.to_datetime(transaction.get("Date Sort"), errors="coerce")
+                transaction_key = (
+                    normalize_player_key(transaction.get("Player", "")),
+                    _draft_pick_team_key(transaction.get("Team", "")),
+                )
+                close_to_source = False
+                if is_claim and pd.notna(transaction_date):
+                    close_to_source = any(
+                        abs((transaction_date.normalize() - source_date).days) <= 75
+                        for source_date in signing_dates.get(transaction_key, [])
+                    )
+                duplicate_claim.append(close_to_source)
+            result = result.loc[~pd.Series(duplicate_claim, index=result.index)].copy()
+        result = pd.concat([result, offseason_transactions], ignore_index=True)
+    pick_transactions = _draft_pick_transactions_for_year(
+        year, result[result["View"].eq("Trade")].copy() if not result.empty else result
+    )
+    if not pick_transactions.empty:
+        result = pd.concat([result, pick_transactions], ignore_index=True)
+    if result.empty:
         return pd.DataFrame(columns=FANTRAX_TRANSACTION_COLUMNS)
-    result = pd.concat(transactions, ignore_index=True)
     return result.sort_values(["Date Sort", "Transaction ID"], ascending=[False, True], na_position="last").reset_index(drop=True)
 
 @st.cache_data(ttl=86400)
@@ -503,6 +888,13 @@ def contract_salary_mask(df: pd.DataFrame) -> pd.Series:
     contract_types = ["Guaranteed", "Unguaranteed", "Non-Guaranteed", "Team"]
     return df[type_col].isin(contract_types)
 
+def taxable_salary_mask(df: pd.DataFrame) -> pd.Series:
+    type_col = "Type" + str(current_year)
+    if type_col not in df.columns:
+        return pd.Series(False, index=df.index)
+    taxable_types = ["Dead", "Guaranteed", "Unguaranteed", "Non-Guaranteed", "Team"]
+    return df[type_col].isin(taxable_types)
+
 def cap_space_exception_mask(exceptions_df: pd.DataFrame) -> pd.Series:
     exception_name = exceptions_df["Player"].astype(str)
     normalized_name = exception_name.str.lower().str.replace(r"[^a-z0-9]+", "", regex=True)
@@ -618,7 +1010,7 @@ def get_cap_total(df: pd.DataFrame, exceptions_df: pd.DataFrame, SelectedTeam: s
 
 def get_tax_total(df: pd.DataFrame, SelectedTeam: str) -> float:
     df = df[df['Team'] == SelectedTeam]
-    df = df[contract_salary_mask(df)]
+    df = df[taxable_salary_mask(df)]
     player_total = df["Y" + str(current_year)].sum()
     return player_total
 
