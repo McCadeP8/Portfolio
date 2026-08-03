@@ -192,6 +192,111 @@ def get_fantrax_players() -> pd.DataFrame:
         print(f"Failed to fetch data - Status code: {response.status_code}")
     return players_df
 
+
+FANTRAX_TRANSACTION_COLUMNS = [
+    "Year", "View", "Transaction ID", "Type", "Player ID", "Player", "Positions",
+    "NBA Team", "Headshot", "Team", "From", "To", "Date", "Date Sort", "Period", "Result",
+]
+
+
+def _fantrax_cell_map(row: dict) -> dict:
+    return {
+        str(cell.get("key", "")): cell.get("content", "")
+        for cell in row.get("cells", [])
+        if cell.get("key")
+    }
+
+
+def _parse_fantrax_transaction_rows(rows: list[dict], year: int, view: str) -> pd.DataFrame:
+    """Flatten Fantrax transaction rows while preserving grouped trade IDs."""
+    parsed = []
+    group_metadata = {}
+    for row in rows:
+        transaction_id = str(row.get("txSetId", ""))
+        cells = _fantrax_cell_map(row)
+        metadata = group_metadata.setdefault(transaction_id, {})
+        for key in ["team", "from", "to", "date", "week"]:
+            if cells.get(key) not in [None, ""]:
+                metadata[key] = cells[key]
+
+        scorer = row.get("scorer") or {}
+        raw_date = str(cells.get("date") or metadata.get("date") or "")
+        parsed_date = pd.to_datetime(raw_date, errors="coerce")
+        parsed.append({
+            "Year": int(year),
+            "View": "Trade" if view == "TRADE" else "Claim/Drop",
+            "Transaction ID": transaction_id,
+            "Type": "Trade" if view == "TRADE" else str(row.get("transactionType") or row.get("transactionCode") or "Claim/Drop").title(),
+            "Player ID": str(scorer.get("scorerId", "")),
+            "Player": str(scorer.get("name", "Unknown asset")),
+            "Positions": str(scorer.get("posShortNames", "")),
+            "NBA Team": str(scorer.get("teamShortName", "")),
+            "Headshot": str(scorer.get("headshotUrl", "")),
+            "Team": str(cells.get("team") or metadata.get("team") or ""),
+            "From": str(cells.get("from") or metadata.get("from") or ""),
+            "To": str(cells.get("to") or metadata.get("to") or ""),
+            "Date": raw_date,
+            "Date Sort": parsed_date,
+            "Period": str(cells.get("week") or metadata.get("week") or ""),
+            "Result": str((row.get("result") or {}).get("content") or row.get("resultCode") or ""),
+        })
+    return pd.DataFrame(parsed, columns=FANTRAX_TRANSACTION_COLUMNS)
+
+
+def _fantrax_transaction_page(league_id: str, view: str, page_number: int, per_page: int = 500) -> dict:
+    payload = {
+        "msgs": [{
+            "method": "getTransactionDetailsHistory",
+            "data": {
+                "leagueId": league_id,
+                "maxResultsPerPage": str(per_page),
+                "executedOnly": "true",
+                "includeDeleted": "false",
+                "view": view,
+                "pageNumber": str(page_number),
+            },
+        }],
+    }
+    response = requests.post(
+        "https://www.fantrax.com/fxpa/req",
+        params={"leagueId": league_id},
+        json=payload,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; SBCFBL/1.0)"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    response_data = response.json()
+    if response_data.get("pageError"):
+        raise RuntimeError(str(response_data["pageError"]))
+    return response_data["responses"][0]["data"]
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_fantrax_transactions(year: int) -> pd.DataFrame:
+    """Load executed Claim/Drop and Trade activity for one SBCFBL season."""
+    year = int(year)
+    league_id = league_ids.get(year)
+    if not league_id:
+        return pd.DataFrame(columns=FANTRAX_TRANSACTION_COLUMNS)
+
+    transaction_frames = []
+    for view in ["CLAIM_DROP", "TRADE"]:
+        page_number = 1
+        while True:
+            data = _fantrax_transaction_page(league_id, view, page_number)
+            transaction_frames.append(_parse_fantrax_transaction_rows(data.get("table", {}).get("rows", []), year, view))
+            pagination = data.get("paginatedResultSet", {})
+            total_pages = max(1, int(pagination.get("totalNumPages", 1) or 1))
+            if page_number >= total_pages:
+                break
+            page_number += 1
+
+    transactions = [frame for frame in transaction_frames if not frame.empty]
+    if not transactions:
+        return pd.DataFrame(columns=FANTRAX_TRANSACTION_COLUMNS)
+    result = pd.concat(transactions, ignore_index=True)
+    return result.sort_values(["Date Sort", "Transaction ID"], ascending=[False, True], na_position="last").reset_index(drop=True)
+
 @st.cache_data(ttl=86400)
 def get_standings() -> pd.DataFrame:
     return DATA_REPOSITORY.read("standings", required=True)
