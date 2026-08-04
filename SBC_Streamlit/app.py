@@ -10246,6 +10246,17 @@ def transaction_team_values(transactions_df):
     return sorted(teams)
 
 
+def transaction_note_label(value):
+    text = str(value or "").strip()
+    salary_match = re.search(r"(salary:\s*)\$?([0-9,]+)", text, flags=re.IGNORECASE)
+    if not salary_match:
+        return text
+    amount = pd.to_numeric(salary_match.group(2).replace(",", ""), errors="coerce")
+    if pd.notna(amount) and float(amount) < 1_000_000:
+        return f"{text[:salary_match.start()]}{salary_match.group(1)}minimum{text[salary_match.end():]}"
+    return text
+
+
 def transaction_player_html(row, show_route=False):
     raw_player = str(row.get("Player", "Unknown asset"))
     player = escape(raw_player)
@@ -10254,7 +10265,7 @@ def transaction_player_html(row, show_route=False):
     headshot = str(row.get("Headshot", ""))
     asset_type = str(row.get("Asset Type", "Player"))
     asset_team = str(row.get("Asset Team", "")).strip()
-    asset_notes = str(row.get("Notes", "")).strip()
+    asset_notes = transaction_note_label(row.get("Notes", ""))
     if asset_type == "Draft Pick" and asset_team:
         team_key = resolve_team_key(asset_team)
         team_logo = team_logo_for_name(team_key)
@@ -10283,6 +10294,155 @@ def transaction_player_html(row, show_route=False):
     return (
         f'<div class="sbc-tx-player">{image_html}<div class="sbc-tx-player-copy"><strong>{player}</strong>'
         f'<small>{meta}</small>{route_html}</div></div>'
+    )
+
+
+def transaction_display_group_keys(transactions_df, selected_year):
+    """Combine pre-2025 same-day trade legs when their team routes form one connected deal."""
+    keyed = transactions_df.copy()
+    keyed["_Display Transaction ID"] = keyed.apply(
+        lambda row: f"{row.get('View', '')}:{row.get('Transaction ID', '')}", axis=1
+    )
+    if int(selected_year) >= 2025:
+        return keyed
+
+    trades = keyed[keyed["View"].eq("Trade")].copy()
+    if trades.empty:
+        return keyed
+    trades["_Trade Day"] = pd.to_datetime(trades["Date Sort"], errors="coerce").dt.normalize()
+    transaction_meta = []
+    for transaction_id, group in trades.groupby("Transaction ID", sort=False):
+        participants = {
+            resolve_team_key(value)
+            for column in ["Team", "From", "To"]
+            for value in group[column].dropna().astype(str)
+            if str(value).strip() and resolve_team_key(value) in team_info
+        }
+        transaction_meta.append({
+            "id": str(transaction_id),
+            "day": group["_Trade Day"].iloc[0],
+            "teams": participants,
+        })
+
+    replacements = {}
+    meta_df = pd.DataFrame(transaction_meta)
+    for trade_day, day_groups in meta_df.groupby("day", dropna=False, sort=False):
+        records = day_groups.to_dict("records")
+        parents = list(range(len(records)))
+
+        def find(index):
+            while parents[index] != index:
+                parents[index] = parents[parents[index]]
+                index = parents[index]
+            return index
+
+        def union(left, right):
+            left_root, right_root = find(left), find(right)
+            if left_root != right_root:
+                parents[right_root] = left_root
+
+        for left in range(len(records)):
+            for right in range(left + 1, len(records)):
+                if records[left]["teams"] & records[right]["teams"]:
+                    union(left, right)
+        components = {}
+        for index, record in enumerate(records):
+            components.setdefault(find(index), []).append(record)
+        day_token = pd.Timestamp(trade_day).strftime("%Y%m%d") if pd.notna(trade_day) else "undated"
+        for component_number, component in enumerate(components.values(), start=1):
+            display_id = f"Trade:{day_token}:{component_number}"
+            for record in component:
+                replacements[record["id"]] = display_id
+
+    trade_mask = keyed["View"].eq("Trade")
+    keyed.loc[trade_mask, "_Display Transaction ID"] = (
+        keyed.loc[trade_mask, "Transaction ID"].astype(str).map(replacements)
+        .fillna(keyed.loc[trade_mask, "_Display Transaction ID"])
+    )
+    return keyed
+
+
+def transaction_team_header_html(team, compact=False):
+    team_key = resolve_team_key(team)
+    visuals = team_visuals(team_key)
+    full_name = live_team_full_name(team_key) if team_key in team_info else str(team or "Unknown team")
+    logo = str(visuals.get("logo", ""))
+    logo_html = (
+        f'<img src="{escape(logo, quote=True)}" alt="{escape(full_name, quote=True)} logo" referrerpolicy="no-referrer">'
+        if logo else ""
+    )
+    compact_class = " sbc-tx-team-brand-compact" if compact else ""
+    return (
+        f'<div class="sbc-tx-team-brand{compact_class}" '
+        f'style="--tx-primary:{escape(str(visuals["primary"]), quote=True)};'
+        f'--tx-secondary:{escape(str(visuals["secondary"]), quote=True)};'
+        f'--tx-text:{escape(str(visuals["text"]), quote=True)};">'
+        f'{logo_html}<strong>{escape(full_name)}</strong></div>'
+    )
+
+
+def transaction_claim_card_html(group, date_label, period_label):
+    first = group.iloc[0]
+    acting_team = str(first.get("Team", "") or first.get("To", "") or first.get("From", "")).strip()
+    team_key = resolve_team_key(acting_team)
+    visuals = team_visuals(team_key)
+    actions = []
+    for _, row in group.iterrows():
+        activity = str(row.get("Type", "Signing") or "Signing").strip().lower()
+        action_label = "Waiving" if activity == "drop" else "Signing"
+        actions.append(
+            f'<div class="sbc-tx-action-row"><span class="sbc-tx-action-label">{action_label}</span>'
+            f'{transaction_player_html(row)}</div>'
+        )
+    meta = f'{escape(date_label)}{f" &middot; {period_label}" if period_label else ""}'
+    return (
+        f'<article class="sbc-tx-card sbc-tx-action-card" '
+        f'style="--tx-primary:{escape(str(visuals["primary"]), quote=True)};'
+        f'--tx-secondary:{escape(str(visuals["secondary"]), quote=True)};">'
+        f'<header class="sbc-tx-card-head"><div>{transaction_team_header_html(acting_team)}</div><span>{meta}</span></header>'
+        f'<div class="sbc-tx-action-list">{"".join(actions)}</div></article>'
+    )
+
+
+def transaction_trade_card_html(group, date_label, period_label):
+    participants = []
+    for column in ["From", "To", "Team"]:
+        for value in group[column].dropna().astype(str):
+            team_key = resolve_team_key(value)
+            if team_key in team_info and team_key not in participants:
+                participants.append(team_key)
+    participants.sort()
+    team_columns = []
+    assigned_indices = set()
+    for team in participants:
+        acquired = group[group["To"].astype(str).map(resolve_team_key).eq(team)]
+        assigned_indices.update(acquired.index.tolist())
+        assets = "".join(
+            f'<div class="sbc-tx-trade-asset">{transaction_player_html(row)}</div>'
+            for _, row in acquired.iterrows()
+        ) or '<div class="sbc-tx-trade-empty">No incoming asset recorded</div>'
+        team_columns.append(
+            f'<section class="sbc-tx-trade-team">{transaction_team_header_html(team, compact=True)}'
+            f'<div class="sbc-tx-trade-label">Receives</div><div class="sbc-tx-trade-assets">{assets}</div></section>'
+        )
+    unassigned = group.loc[~group.index.isin(assigned_indices)]
+    if not unassigned.empty:
+        assets = "".join(
+            f'<div class="sbc-tx-trade-asset">{transaction_player_html(row, show_route=True)}</div>'
+            for _, row in unassigned.iterrows()
+        )
+        team_columns.append(
+            f'<section class="sbc-tx-trade-team sbc-tx-trade-unassigned"><div class="sbc-tx-trade-label">Additional assets</div>'
+            f'<div class="sbc-tx-trade-assets">{assets}</div></section>'
+        )
+    team_count = len(participants)
+    title = f"{team_count}-Team Trade" if team_count >= 2 else "Trade"
+    meta = f'{escape(date_label)}{f" &middot; {period_label}" if period_label else ""}'
+    return (
+        f'<article class="sbc-tx-card sbc-tx-trade-card"><header class="sbc-tx-trade-head">'
+        f'<strong>{escape(title)}</strong><span>{meta}</span></header>'
+        f'<div class="sbc-tx-trade-grid" style="--tx-team-count:{max(1, min(team_count, 4))};">'
+        f'{"".join(team_columns)}</div></article>'
     )
 
 
@@ -10388,74 +10548,61 @@ def render_transactions_page(transactions_df, selected_year, history=False):
         render_html('<div class="sbc-empty-state">No executed claim, drop, trade, or offseason signing transactions are available for this season yet.</div>')
         return
 
-    transactions_df = transactions_df.copy()
-    transaction_kind = st.radio(
-        "Transaction type",
-        ["Claim/Drop", "Trade"],
-        format_func=lambda value: "Claims / Drops / Signings" if value == "Claim/Drop" else value,
-        horizontal=True,
-        key=f"sbc_transactions_kind_{selected_year}_{'history' if history else 'current'}",
-    )
-    kind_df = transactions_df[transactions_df["View"] == transaction_kind].copy()
-    team_options = ["All Teams"] + transaction_team_values(kind_df)
-    activity_options = ["All Activity"] + kind_df["Type"].dropna().astype(str).drop_duplicates().tolist()
-    control_a, control_b, control_c = st.columns([1.05, 0.9, 0.75])
+    transactions_df = transaction_display_group_keys(transactions_df.copy(), selected_year)
+    team_options = ["All Teams"] + transaction_team_values(transactions_df)
+    control_a, control_b = st.columns([1.4, 1])
     with control_a:
         selected_team = st.selectbox(
             "Team",
             team_options,
-            key=f"sbc_transactions_team_{selected_year}_{transaction_kind}_{'history' if history else 'current'}",
-        )
-    with control_b:
-        selected_activity = st.selectbox(
-            "Activity",
-            activity_options,
-            key=f"sbc_transactions_activity_{selected_year}_{transaction_kind}_{'history' if history else 'current'}",
-        )
-    with control_c:
-        display_limit = st.selectbox(
-            "Transactions shown",
-            [50, 100, 250, "All"],
-            index=1,
-            key=f"sbc_transactions_limit_{selected_year}_{transaction_kind}_{'history' if history else 'current'}",
+            key=f"sbc_transactions_team_{selected_year}_{'history' if history else 'current'}",
         )
 
     if selected_team != "All Teams":
-        team_mask = pd.Series(False, index=kind_df.index)
+        selected_team_key = resolve_team_key(selected_team)
+        team_mask = pd.Series(False, index=transactions_df.index)
         for column in ["Team", "From", "To"]:
-            team_mask |= kind_df[column].astype(str).eq(selected_team)
-        kind_df = kind_df[team_mask]
-    if selected_activity != "All Activity":
-        kind_df = kind_df[kind_df["Type"].astype(str).eq(selected_activity)]
+            team_mask |= transactions_df[column].astype(str).map(resolve_team_key).eq(selected_team_key)
+        transactions_df = transactions_df[team_mask]
 
-    transaction_ids = kind_df["Transaction ID"].drop_duplicates().tolist()
+    transaction_ids = transactions_df["_Display Transaction ID"].drop_duplicates().tolist()
     total_count = len(transaction_ids)
-    if display_limit != "All":
-        transaction_ids = transaction_ids[:int(display_limit)]
-        kind_df = kind_df[kind_df["Transaction ID"].isin(transaction_ids)]
-
-    claim_count = transactions_df.loc[transactions_df["View"] == "Claim/Drop", "Transaction ID"].nunique()
-    trade_count = transactions_df.loc[transactions_df["View"] == "Trade", "Transaction ID"].nunique()
-    metric_cols = st.columns(3)
-    with metric_cols[0]:
-        st.metric("Claims / Drops / Signings", claim_count, border=True)
-    with metric_cols[1]:
-        st.metric("Trades", trade_count, border=True)
-    with metric_cols[2]:
-        st.metric("Matching Transactions", total_count, border=True)
+    page_size = 24
+    total_pages = max(1, math.ceil(total_count / page_size))
+    page_key = f"sbc_transactions_page_{selected_year}_{'history' if history else 'current'}_{resolve_team_key(selected_team)}"
+    current_page = min(max(1, int(st.session_state.get(page_key, 1))), total_pages)
+    with control_b:
+        page_left, page_middle, page_right = st.columns([1, 1.25, 1])
+        with page_left:
+            previous_page = st.button("Previous", disabled=current_page <= 1, key=f"{page_key}_previous", use_container_width=True)
+        with page_middle:
+            st.markdown(f'<div class="sbc-tx-page-count">Page {current_page} of {total_pages}</div>', unsafe_allow_html=True)
+        with page_right:
+            next_page = st.button("Next", disabled=current_page >= total_pages, key=f"{page_key}_next", use_container_width=True)
+    if previous_page:
+        current_page = max(1, current_page - 1)
+    if next_page:
+        current_page = min(total_pages, current_page + 1)
+    st.session_state[page_key] = current_page
+    start_index = (current_page - 1) * page_size
+    page_ids = transaction_ids[start_index:start_index + page_size]
+    page_df = transactions_df[transactions_df["_Display Transaction ID"].isin(page_ids)].copy()
 
     render_html("""
         <style>
-        .sbc-tx-list { display:flex; flex-direction:column; gap:.75rem; margin-top:.8rem; }
-        .sbc-tx-card { overflow:hidden; border:1px solid #dce3ea; border-radius:15px; background:#fff; box-shadow:0 4px 14px rgba(15,23,42,.06); }
-        .sbc-tx-card-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.72rem .9rem; background:#f5f7fa; border-bottom:1px solid #e2e8f0; }
-        .sbc-tx-card-head strong { color:#182433; font-size:.75rem; letter-spacing:.065em; text-transform:uppercase; }
-        .sbc-tx-card-head span { color:#64748b; font-size:.68rem; font-weight:800; }
-        .sbc-tx-assets { display:grid; gap:1px; background:#e7ebef; }
-        .sbc-tx-asset { display:grid; grid-template-columns:7.2rem minmax(0,1fr); align-items:center; gap:.85rem; padding:.75rem .9rem; background:#fff; }
-        .sbc-tx-badge { display:inline-flex; align-items:center; justify-content:center; width:max-content; min-width:5.5rem; padding:.32rem .55rem; border-radius:999px; background:#e9f8ef; color:#14743c; font-size:.64rem; font-weight:950; letter-spacing:.06em; text-transform:uppercase; }
-        .sbc-tx-badge-drop { background:#fff0f1; color:#bd2935; }
-        .sbc-tx-badge-trade { background:#eaf2ff; color:#245da8; }
+        .sbc-tx-page-count { display:flex; min-height:2.4rem; align-items:center; justify-content:center; color:#526173; font-size:.73rem; font-weight:850; }
+        .sbc-tx-list { display:flex; flex-direction:column; gap:.85rem; margin-top:.65rem; }
+        .sbc-tx-card { overflow:hidden; border:1px solid #d8e0e8; border-radius:16px; background:#fff; box-shadow:0 5px 16px rgba(15,23,42,.065); }
+        .sbc-tx-card-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.72rem .9rem; border-top:4px solid var(--tx-primary); background:linear-gradient(90deg,color-mix(in srgb,var(--tx-primary) 9%,white),white 56%); }
+        .sbc-tx-card-head>span,.sbc-tx-trade-head span { color:#64748b; font-size:.68rem; font-weight:800; white-space:nowrap; }
+        .sbc-tx-team-brand { display:flex; align-items:center; gap:.65rem; min-width:0; }
+        .sbc-tx-team-brand img { width:2.35rem; height:2.35rem; flex:0 0 2.35rem; object-fit:contain; filter:drop-shadow(0 2px 3px rgba(15,23,42,.16)); }
+        .sbc-tx-team-brand strong { overflow:hidden; color:#17212b; font-size:.86rem; text-overflow:ellipsis; white-space:nowrap; }
+        .sbc-tx-team-brand-compact { min-height:3rem; padding:.58rem .65rem; border-top:4px solid var(--tx-primary); background:linear-gradient(110deg,color-mix(in srgb,var(--tx-primary) 12%,white),color-mix(in srgb,var(--tx-secondary) 10%,white)); }
+        .sbc-tx-team-brand-compact img { width:2.15rem; height:2.15rem; flex-basis:2.15rem; }
+        .sbc-tx-action-list { display:grid; gap:1px; background:#e8edf2; }
+        .sbc-tx-action-row { display:grid; grid-template-columns:6rem minmax(0,1fr); align-items:center; gap:.75rem; padding:.7rem .9rem; background:#fff; }
+        .sbc-tx-action-label { display:inline-flex; align-items:center; justify-content:center; width:max-content; min-width:4.75rem; padding:.3rem .52rem; border:1px solid #d7dee6; border-radius:999px; background:#f6f8fa; color:#48576a; font-size:.62rem; font-weight:900; letter-spacing:.055em; text-transform:uppercase; }
         .sbc-tx-player { display:grid; grid-template-columns:2.9rem minmax(0,1fr); gap:.72rem; align-items:center; min-width:0; }
         .sbc-tx-player>img,.sbc-tx-avatar-fallback { width:2.9rem; height:2.9rem; border-radius:50%; object-fit:cover; background:#edf1f5; }
         .sbc-tx-player>img.sbc-tx-pick-logo { object-fit:contain; padding:.18rem; background:#f8fafc; border:1px solid #e2e8f0; }
@@ -10464,17 +10611,39 @@ def render_transactions_page(transactions_df, selected_year, history=False):
         .sbc-tx-player-copy strong { display:block; color:#17212b; font-size:.9rem; }
         .sbc-tx-player-copy small { display:block; margin-top:.12rem; color:#76828e; font-size:.67rem; font-weight:750; }
         .sbc-tx-route { display:flex; align-items:center; flex-wrap:wrap; gap:.42rem; margin-top:.34rem; color:#425466; font-size:.7rem; font-weight:850; }
-        .sbc-tx-route b { color:#d92332; }
-        @media(max-width:620px) { .sbc-tx-asset { grid-template-columns:1fr; gap:.5rem; } .sbc-tx-card-head { align-items:flex-start; flex-direction:column; gap:.2rem; } }
+        .sbc-tx-route b { color:#64748b; }
+        .sbc-tx-trade-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem .9rem; background:#182433; }
+        .sbc-tx-trade-head strong { color:#fff; font-size:.76rem; letter-spacing:.07em; text-transform:uppercase; }
+        .sbc-tx-trade-head span { color:#cbd5e1; }
+        .sbc-tx-trade-grid { display:grid; grid-template-columns:repeat(var(--tx-team-count),minmax(0,1fr)); gap:1px; background:#dfe5eb; }
+        .sbc-tx-trade-team { min-width:0; background:#fff; }
+        .sbc-tx-trade-label { padding:.42rem .65rem .28rem; color:#718096; font-size:.59rem; font-weight:950; letter-spacing:.08em; text-transform:uppercase; }
+        .sbc-tx-trade-assets { display:flex; flex-direction:column; }
+        .sbc-tx-trade-asset { padding:.62rem .65rem; border-top:1px solid #edf1f5; }
+        .sbc-tx-trade-asset .sbc-tx-player { grid-template-columns:2.35rem minmax(0,1fr); gap:.55rem; }
+        .sbc-tx-trade-asset .sbc-tx-player>img,.sbc-tx-trade-asset .sbc-tx-avatar-fallback { width:2.35rem; height:2.35rem; }
+        .sbc-tx-trade-empty { padding:.7rem .65rem; color:#94a3b8; font-size:.66rem; font-style:italic; }
+        .sbc-tx-trade-unassigned { grid-column:1/-1; }
+        @media(max-width:900px) { .sbc-tx-trade-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media(max-width:620px) { .sbc-tx-action-row { grid-template-columns:1fr; gap:.48rem; } .sbc-tx-card-head { align-items:flex-start; flex-direction:column; gap:.25rem; } .sbc-tx-trade-grid { grid-template-columns:1fr; } }
         </style>
     """)
 
     cards = []
-    for transaction_id, group in kind_df.groupby("Transaction ID", sort=False):
+    for transaction_id in page_ids:
+        group = page_df[page_df["_Display Transaction ID"].eq(transaction_id)]
+        if group.empty:
+            continue
         first = group.iloc[0]
         date_label = transaction_date_label(first.get("Date", ""))
         period_label = f"Period {escape(str(first.get('Period', '')))}" if str(first.get("Period", "")).strip() else ""
-        if transaction_kind == "Trade":
+        cards.append(
+            transaction_trade_card_html(group, date_label, period_label)
+            if group["View"].eq("Trade").all()
+            else transaction_claim_card_html(group, date_label, period_label)
+        )
+        continue
+        if group["View"].eq("Trade").all():
             assets = "".join(
                 f'<div class="sbc-tx-asset"><span class="sbc-tx-badge sbc-tx-badge-trade">Trade</span>{transaction_player_html(row, show_route=True)}</div>'
                 for _, row in group.iterrows()
@@ -10487,6 +10656,12 @@ def render_transactions_page(transactions_df, selected_year, history=False):
                 for _, row in group.iterrows()
             )
             title = " / ".join(group["Type"].dropna().astype(str).drop_duplicates().tolist()) or "Claim / Drop"
+        cards.append(
+            transaction_trade_card_html(group, date_label, period_label)
+            if group["View"].eq("Trade").all()
+            else transaction_claim_card_html(group, date_label, period_label)
+        )
+        continue
         cards.append(
             f'<article class="sbc-tx-card"><header class="sbc-tx-card-head"><strong>{escape(title)}</strong>'
             f'<span>{escape(date_label)}{f" · {period_label}" if period_label else ""}</span></header>'
@@ -10506,7 +10681,7 @@ def render_original_teams_page(original_rosters):
                 <div>
                     <div class="sbc-draft-eyebrow">2020 Founding Auction</div>
                     <div class="sbc-draft-heading">Original Teams</div>
-                    <div class="sbc-draft-subcopy">The 13 players who formed each SBCFBL franchise, with their Year 1 auction salaries.</div>
+                    <div class="sbc-draft-subcopy">Every founding roster, together in one compact 30-team view.</div>
                 </div>
             </div>
         </div>
@@ -10514,6 +10689,47 @@ def render_original_teams_page(original_rosters):
     if original_rosters is None or original_rosters.empty:
         render_html('<div class="sbc-empty-state">The original-team auction data is not available.</div>')
         return
+
+    founding_rosters = original_rosters.copy()
+    founding_rosters["_Team Key"] = founding_rosters["Team"].astype(str).map(resolve_team_key)
+    team_cards = []
+    for team_key in sorted(team_info):
+        roster = founding_rosters[founding_rosters["_Team Key"].eq(team_key)].copy()
+        roster = roster.sort_values("Player")
+        visuals = team_visuals(team_key)
+        full_team_name = live_team_full_name(team_key)
+        logo = str(visuals.get("logo", ""))
+        logo_html = (
+            f'<img src="{escape(logo, quote=True)}" alt="{escape(full_team_name, quote=True)} logo" referrerpolicy="no-referrer">'
+            if logo else ""
+        )
+        player_rows = "".join(
+            f'<li>{escape(str(player))}</li>'
+            for player in roster["Player"].dropna().astype(str).tolist()
+        )
+        team_cards.append(
+            f'<article class="sbc-original-card" style="--original-primary:{escape(str(visuals["primary"]), quote=True)};'
+            f'--original-secondary:{escape(str(visuals["secondary"]), quote=True)};">'
+            f'<header>{logo_html}<strong>{escape(full_team_name)}</strong></header>'
+            f'<ol>{player_rows}</ol></article>'
+        )
+    render_html(f"""
+        <style>
+        .sbc-original-all-grid {{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:.72rem; margin-top:.85rem; align-items:stretch; }}
+        .sbc-original-card {{ overflow:hidden; min-width:0; border:1px solid #dbe2e9; border-radius:13px; background:#fff; box-shadow:0 3px 11px rgba(15,23,42,.055); }}
+        .sbc-original-card header {{ display:flex; min-height:3.45rem; align-items:center; gap:.48rem; padding:.48rem .55rem; border-top:4px solid var(--original-primary); background:linear-gradient(115deg,color-mix(in srgb,var(--original-primary) 13%,white),color-mix(in srgb,var(--original-secondary) 9%,white)); }}
+        .sbc-original-card header img {{ width:2.15rem; height:2.15rem; flex:0 0 2.15rem; object-fit:contain; filter:drop-shadow(0 2px 3px rgba(15,23,42,.14)); }}
+        .sbc-original-card header strong {{ color:#17212b; font-size:.7rem; line-height:1.2; }}
+        .sbc-original-card ol {{ margin:0; padding:.32rem .48rem .45rem 1.7rem; }}
+        .sbc-original-card li {{ padding:.18rem .08rem; color:#425166; font-size:.61rem; font-weight:720; line-height:1.25; border-bottom:1px solid #eff2f5; }}
+        .sbc-original-card li:last-child {{ border-bottom:0; }}
+        @media(max-width:1100px) {{ .sbc-original-all-grid {{ grid-template-columns:repeat(3,minmax(0,1fr)); }} }}
+        @media(max-width:720px) {{ .sbc-original-all-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
+        @media(max-width:460px) {{ .sbc-original-all-grid {{ grid-template-columns:1fr; }} }}
+        </style>
+        <div class="sbc-original-all-grid">{"".join(team_cards)}</div>
+    """)
+    return
 
     team_options = sorted(original_rosters["Team"].dropna().astype(str).unique().tolist())
     selected_team = st.selectbox(
