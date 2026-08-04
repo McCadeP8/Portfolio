@@ -10362,6 +10362,63 @@ def transaction_display_group_keys(transactions_df, selected_year):
     return keyed
 
 
+def front_transaction_items_html(selected_year, limit=6):
+    """Render the newest transaction groups for the front-page League Wire."""
+    try:
+        transactions = get_fantrax_transactions(int(selected_year))
+    except Exception:
+        return '<div class="sbc-v2-transaction-empty">The league wire is temporarily unavailable.</div>'
+    if transactions is None or transactions.empty:
+        return '<div class="sbc-v2-transaction-empty">No transactions have been recorded yet.</div>'
+
+    transactions = transaction_display_group_keys(transactions.copy(), selected_year)
+    transactions["_Front Date"] = pd.to_datetime(transactions["Date Sort"], errors="coerce")
+    group_order = (
+        transactions.groupby("_Display Transaction ID", sort=False)["_Front Date"]
+        .max().sort_values(ascending=False).head(limit).index.tolist()
+    )
+    items = []
+    for display_id in group_order:
+        group = transactions[transactions["_Display Transaction ID"].eq(display_id)]
+        if group.empty:
+            continue
+        first = group.iloc[0]
+        team_keys = []
+        for column in ["Team", "From", "To"]:
+            for value in group[column].dropna().astype(str):
+                team_key = resolve_team_key(value)
+                if team_key in team_info and team_key not in team_keys:
+                    team_keys.append(team_key)
+        if group["View"].eq("Trade").all():
+            participant_label = ", ".join(team_keys[:3])
+            if len(team_keys) > 3:
+                participant_label += f" + {len(team_keys) - 3} more"
+            headline = f"{participant_label} complete a trade" if participant_label else "League trade completed"
+            assets = group["Player"].dropna().astype(str).drop_duplicates().tolist()
+            detail = ", ".join(assets[:2])
+            if len(assets) > 2:
+                detail += f" + {len(assets) - 2} more"
+        else:
+            acting_team = resolve_team_key(first.get("Team", ""))
+            if acting_team in team_info and acting_team not in team_keys:
+                team_keys.insert(0, acting_team)
+            activity = str(first.get("Type", "Claim")).strip().lower()
+            verb = "waives" if activity == "drop" else "signs"
+            headline = f"{live_team_full_name(acting_team)} {verb} {str(first.get('Player', 'a player'))}"
+            detail = "Waiving" if activity == "drop" else "Signing"
+        logos = "".join(
+            f'<img src="{escape(str(team_visuals(team_key).get("logo", "")), quote=True)}" '
+            f'alt="{escape(live_team_full_name(team_key), quote=True)} logo">'
+            for team_key in team_keys[:3]
+        )
+        date_label = transaction_date_label(first.get("Date", first.get("Date Sort", "")))
+        items.append(
+            f'<div class="sbc-v2-transaction"><div class="sbc-v2-transaction-logos">{logos}</div>'
+            f'<div><b>{escape(headline)}</b><span>{escape(detail)} &middot; {escape(date_label)}</span></div></div>'
+        )
+    return "".join(items)
+
+
 def transaction_team_header_html(team, compact=False):
     team_key = resolve_team_key(team)
     visuals = team_visuals(team_key)
@@ -10590,6 +10647,8 @@ def render_transactions_page(transactions_df, selected_year, history=False):
 
     render_html("""
         <style>
+        div[data-testid="stButton"]>button p { color:#fff !important; }
+        div[data-testid="stButton"]>button:disabled p { color:#fff !important; }
         .sbc-tx-page-count { display:flex; min-height:2.4rem; align-items:center; justify-content:center; color:#526173; font-size:.73rem; font-weight:850; }
         .sbc-tx-list { display:flex; flex-direction:column; gap:.85rem; margin-top:.65rem; }
         .sbc-tx-card { overflow:hidden; border:1px solid #d8e0e8; border-radius:16px; background:#fff; box-shadow:0 5px 16px rgba(15,23,42,.065); }
@@ -10692,10 +10751,11 @@ def render_original_teams_page(original_rosters):
 
     founding_rosters = original_rosters.copy()
     founding_rosters["_Team Key"] = founding_rosters["Team"].astype(str).map(resolve_team_key)
+    founding_rosters["Amount"] = pd.to_numeric(founding_rosters["Amount"], errors="coerce").fillna(0)
     team_cards = []
     for team_key in sorted(team_info):
         roster = founding_rosters[founding_rosters["_Team Key"].eq(team_key)].copy()
-        roster = roster.sort_values("Player")
+        roster = roster.sort_values(["Amount", "Player"], ascending=[False, True])
         visuals = team_visuals(team_key)
         full_team_name = live_team_full_name(team_key)
         logo = str(visuals.get("logo", ""))
@@ -10703,15 +10763,28 @@ def render_original_teams_page(original_rosters):
             f'<img src="{escape(logo, quote=True)}" alt="{escape(full_team_name, quote=True)} logo" referrerpolicy="no-referrer">'
             if logo else ""
         )
-        player_rows = "".join(
-            f'<li>{escape(str(player))}</li>'
-            for player in roster["Player"].dropna().astype(str).tolist()
-        )
+        player_rows = []
+        for _, player_row in roster.iterrows():
+            player_name = str(player_row.get("Player", ""))
+            picture = PLAYER_PICTURE_LOOKUP.get(normalize_boxscore_player_key(player_name), "")
+            picture_html = (
+                f'<img src="{escape(picture, quote=True)}" alt="{escape(player_name, quote=True)}">'
+                if picture else f'<span class="sbc-original-player-fallback">{escape(player_name[:1])}</span>'
+            )
+            salary = float(player_row.get("Amount", 0) or 0)
+            salary_label = (
+                f"${salary / 1_000_000:.1f}M" if salary >= 1_000_000
+                else (f"${salary / 1_000:.0f}K" if salary > 0 else "$0")
+            )
+            player_rows.append(
+                f'<div class="sbc-original-player-row">{picture_html}<strong>{escape(player_name)}</strong>'
+                f'<span title="{escape(format_money(salary), quote=True)}">{escape(salary_label)}</span></div>'
+            )
         team_cards.append(
             f'<article class="sbc-original-card" style="--original-primary:{escape(str(visuals["primary"]), quote=True)};'
             f'--original-secondary:{escape(str(visuals["secondary"]), quote=True)};">'
             f'<header>{logo_html}<strong>{escape(full_team_name)}</strong></header>'
-            f'<ol>{player_rows}</ol></article>'
+            f'<div class="sbc-original-roster">{"".join(player_rows)}</div></article>'
         )
     render_html(f"""
         <style>
@@ -10720,9 +10793,13 @@ def render_original_teams_page(original_rosters):
         .sbc-original-card header {{ display:flex; min-height:3.45rem; align-items:center; gap:.48rem; padding:.48rem .55rem; border-top:4px solid var(--original-primary); background:linear-gradient(115deg,color-mix(in srgb,var(--original-primary) 13%,white),color-mix(in srgb,var(--original-secondary) 9%,white)); }}
         .sbc-original-card header img {{ width:2.15rem; height:2.15rem; flex:0 0 2.15rem; object-fit:contain; filter:drop-shadow(0 2px 3px rgba(15,23,42,.14)); }}
         .sbc-original-card header strong {{ color:#17212b; font-size:.7rem; line-height:1.2; }}
-        .sbc-original-card ol {{ margin:0; padding:.32rem .48rem .45rem 1.7rem; }}
-        .sbc-original-card li {{ padding:.18rem .08rem; color:#425166; font-size:.61rem; font-weight:720; line-height:1.25; border-bottom:1px solid #eff2f5; }}
-        .sbc-original-card li:last-child {{ border-bottom:0; }}
+        .sbc-original-roster {{ padding:.28rem .4rem .42rem; }}
+        .sbc-original-player-row {{ display:grid; grid-template-columns:2rem minmax(0,1fr) auto; align-items:center; gap:.38rem; min-height:2.55rem; padding:.25rem .1rem; border-bottom:1px solid #edf1f4; }}
+        .sbc-original-player-row:last-child {{ border-bottom:0; }}
+        .sbc-original-player-row img,.sbc-original-player-fallback {{ width:2rem; height:2rem; border-radius:50%; object-fit:cover; object-position:center top; background:#edf1f5; }}
+        .sbc-original-player-fallback {{ display:flex; align-items:center; justify-content:center; color:#607080; font-size:.68rem; font-weight:950; }}
+        .sbc-original-player-row strong {{ overflow:hidden; color:#344254; font-size:.61rem; line-height:1.18; text-overflow:ellipsis; white-space:nowrap; }}
+        .sbc-original-player-row>span:last-child {{ color:var(--original-primary); font-size:.58rem; font-weight:950; white-space:nowrap; }}
         @media(max-width:1100px) {{ .sbc-original-all-grid {{ grid-template-columns:repeat(3,minmax(0,1fr)); }} }}
         @media(max-width:720px) {{ .sbc-original-all-grid {{ grid-template-columns:repeat(2,minmax(0,1fr)); }} }}
         @media(max-width:460px) {{ .sbc-original-all-grid {{ grid-template-columns:1fr; }} }}
@@ -19583,8 +19660,7 @@ if main_page == "Overview":
             f'<img class="sbc-v2-hero-team-art" src="{escape(team["logo"], quote=True)}" alt="{escape(team["name"], quote=True)} logo">'
             for team in hero_story["teams"][:3]
         )
-    transaction_actions = ["acquire veteran scoring in a two-team deal", "sign a free agent to a two-year contract", "exercise a team option", "waive a reserve guard", "match a restricted offer sheet"]
-    transactions_html = "".join(f'<div class="sbc-v2-transaction"><img src="{escape(team["logo"], quote=True)}"><div><b>{escape(team["name"])} {transaction_actions[i % len(transaction_actions)]}</b><span>Transaction processed · Jan {14-i}</span></div></div>' for i, team in enumerate(story_teams[:6]))
+    transactions_html = front_transaction_items_html(front_year, limit=6)
 
     render_html("""
     <style>
@@ -19707,7 +19783,7 @@ if main_page == "Overview":
       .sbc-v2-standings{{display:grid;grid-template-columns:1fr 1fr;gap:18px}} .sbc-v2-conf h4{{margin:4px 0 7px;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}}
       .sbc-v2-standing{{display:grid;grid-template-columns:16px 23px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:29px;border-bottom:1px solid #edf0f2;font-size:.64rem}} .sbc-v2-standing img{{width:21px;height:21px;object-fit:contain}} .sbc-v2-standing>span{{color:#8b959f}} .sbc-v2-standing b{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}} .sbc-v2-standing em{{font-style:normal;font-weight:900}}
       .sbc-cut{{height:19px;display:flex;align-items:center;position:relative}} .sbc-cut:before{{content:'';height:2px;position:absolute;left:0;right:0}} .sbc-cut span{{position:relative;background:#fff;padding-right:6px;font-size:.52rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em}} .sbc-cut-playoff:before{{background:#159447}} .sbc-cut-playoff span{{color:#11763a}} .sbc-cut-playin:before{{background:#e49a17}} .sbc-cut-playin span{{color:#a56a00}}
-      .sbc-v2-transaction{{display:grid;grid-template-columns:32px 1fr;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #e4e8ec}} .sbc-v2-transaction:last-child{{border:0}} .sbc-v2-transaction img{{width:29px;height:29px;object-fit:contain}} .sbc-v2-transaction b{{display:block;font-size:.76rem;line-height:1.2}} .sbc-v2-transaction span{{color:#7b8690;font-size:.63rem}}
+      .sbc-v2-transaction{{display:grid;grid-template-columns:42px 1fr;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #e4e8ec}} .sbc-v2-transaction:last-child{{border:0}} .sbc-v2-transaction-logos{{display:flex;align-items:center;justify-content:center;min-width:42px}} .sbc-v2-transaction-logos img{{width:29px;height:29px;margin-left:-10px;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(15,23,42,.15))}} .sbc-v2-transaction-logos img:first-child{{margin-left:0}} .sbc-v2-transaction b{{display:block;font-size:.76rem;line-height:1.25}} .sbc-v2-transaction span{{display:block;margin-top:2px;color:#7b8690;font-size:.61rem;line-height:1.25}} .sbc-v2-transaction-empty{{padding:1rem 0;color:#7b8690;font-size:.72rem}}
       @media(max-width:950px){{.sbc-v2-grid{{grid-template-columns:1fr}}}}
       @media(max-width:620px){{
         .sbc-v2-grid,.sbc-v2-left,.sbc-v2-right{{gap:12px}}
@@ -19727,8 +19803,8 @@ if main_page == "Overview":
         .sbc-v2-right .sbc-v2-standings-panel{{order:2}}
         .sbc-v2-standings{{grid-template-columns:1fr;gap:12px}}
         .sbc-v2-standing{{min-height:32px;font-size:.7rem}}
-        .sbc-v2-transaction{{grid-template-columns:36px 1fr;min-height:3.5rem}}
-        .sbc-v2-transaction img{{width:32px;height:32px}}
+        .sbc-v2-transaction{{grid-template-columns:44px 1fr;min-height:3.5rem}}
+        .sbc-v2-transaction-logos img{{width:32px;height:32px}}
         .sbc-v2-transaction b{{font-size:.8rem;line-height:1.25}}
       }}
     </style>
