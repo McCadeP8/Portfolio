@@ -23,6 +23,40 @@ from pathlib import Path
 from textwrap import dedent
 from zoneinfo import ZoneInfo
 from functions import read_csv_snapshot, get_data, get_player_salary_history, get_pictures, get_articles, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, get_fantrax_transactions, get_original_team_rosters, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar, zero_future_matchup_scores
+import importlib as _importlib
+import functions as _fantrax_functions
+
+_fantrax_renderer_names = [
+    "build_live_scoreboard_image",
+    "build_mobile_live_scoreboard_image",
+    "build_mobile_matchup_recap_image",
+    "build_mobile_standings_image",
+    "build_mobile_matchup_preview_image",
+    "build_record_leader_announcement_image",
+    "build_matchup_preview_image",
+    "build_matchup_recap_image",
+    "build_standings_bracket_image",
+    "matchup_period_progress",
+    "post_fantrax_webhook",
+]
+_functions_source_mtime = (Path(__file__).resolve().parent / "functions.py").stat().st_mtime_ns
+if (
+    any(not hasattr(_fantrax_functions, name) for name in _fantrax_renderer_names)
+    or getattr(_fantrax_functions, "_sbc_source_mtime", None) != _functions_source_mtime
+):
+    _fantrax_functions = _importlib.reload(_fantrax_functions)
+    _fantrax_functions._sbc_source_mtime = _functions_source_mtime
+build_live_scoreboard_image = _fantrax_functions.build_live_scoreboard_image
+build_mobile_live_scoreboard_image = _fantrax_functions.build_mobile_live_scoreboard_image
+build_mobile_matchup_recap_image = _fantrax_functions.build_mobile_matchup_recap_image
+build_mobile_standings_image = _fantrax_functions.build_mobile_standings_image
+build_mobile_matchup_preview_image = _fantrax_functions.build_mobile_matchup_preview_image
+build_record_leader_announcement_image = _fantrax_functions.build_record_leader_announcement_image
+build_matchup_preview_image = _fantrax_functions.build_matchup_preview_image
+build_matchup_recap_image = _fantrax_functions.build_matchup_recap_image
+build_standings_bracket_image = _fantrax_functions.build_standings_bracket_image
+matchup_period_progress = _fantrax_functions.matchup_period_progress
+post_fantrax_webhook = _fantrax_functions.post_fantrax_webhook
 # no_aggregation_check, salary_trade_check, tpe_check, bae_mle_check, player_agg_check, create_tpe_check, new_trade_rest_check, old_team_check, team_with_ranks
 from data import team_info, type_colors, current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, current_year, columns_order, year_offset, max_cash, max_minimum, period, stat_to_scipId
 from court_engine import CourtConfig, draw_branded_court
@@ -2287,6 +2321,55 @@ def matchup_jersey_data_uri(team, edition):
     encoded = base64.b64encode(jersey_figure_bytes(figure, "png", dpi=145, transparent=True)).decode("ascii")
     plt.close(figure)
     return f"data:image/png;base64,{encoded}"
+
+
+def matchup_recap_jersey_bytes(team, edition):
+    config, logo = saved_uniform_config(team, edition)
+    figure, _ = draw_uniform(config, logo=logo, view="front", dpi=120, background="none", show_view_label=False)
+    content = jersey_figure_bytes(figure, "png", dpi=150, transparent=True)
+    plt.close(figure)
+    return content
+
+
+def matchup_recap_court_bytes(rows, team_a, team_b, include_shots=True):
+    shots = matchup_starter_shots(rows, team_a, team_b) if include_shots else pd.DataFrame()
+    court_path = APP_DIR / "court_team_configs.csv"
+    court_table = load_branding_table(str(court_path), court_path.stat().st_mtime if court_path.exists() else 0)
+    home_row = court_table[court_table.get("team", pd.Series(dtype=str)).astype(str) == team_b]
+    if home_row.empty:
+        court_config = CourtConfig(team=team_b)
+        court_logo = team_info.get(team_b, {}).get("logo")
+    else:
+        court_values = home_row.iloc[0].to_dict()
+        court_config = apply_resolved_brand_font(CourtConfig.from_mapping(court_values), court_values.get("font_path", ""))
+        logo_team = str(court_values.get("center_logo_team") or team_b)
+        court_logo = team_info.get(logo_team, team_info.get(team_b, {})).get("logo")
+    figure, ax = draw_branded_court(
+        court_config,
+        logo=court_logo,
+        league_logo=LEAGUE_LOGO,
+        orientation="horizontal",
+        view="full",
+        figsize=(12.4, 6.7),
+        dpi=120,
+    )
+    if not shots.empty:
+        shot_colors = {
+            team_a: {"made": "#15803D", "missed": "#B91C1C"},
+            team_b: {"made": "#4ADE80", "missed": "#FB7185"},
+        }
+        for team in [team_a, team_b]:
+            team_shots = shots[shots["sbc_team"].astype(str) == str(team)]
+            colors = shot_colors[team]
+            made = team_shots[team_shots["made"].astype(bool)]
+            missed = team_shots[~team_shots["made"].astype(bool)]
+            ax.scatter(made["court_y"], -made["court_x"], s=36, marker="o", facecolor=colors["made"], edgecolor="#FFFFFF", linewidth=.75, alpha=.92, zorder=30)
+            ax.scatter(missed["court_y"], -missed["court_x"], s=43, marker="x", color="#FFFFFF", linewidth=2.5, alpha=.85, zorder=29.8)
+            ax.scatter(missed["court_y"], -missed["court_x"], s=34, marker="x", color=colors["missed"], linewidth=1.45, alpha=.92, zorder=30)
+    image_buffer = BytesIO()
+    figure.savefig(image_buffer, format="png", dpi=figure.dpi, bbox_inches="tight", pad_inches=.04)
+    plt.close(figure)
+    return image_buffer.getvalue()
 
 
 def render_interactive_shot_figure(figure, ax, shots, home_team):
@@ -8639,6 +8722,76 @@ def standings_snapshot(standings_df, selected_year, selected_period, conference)
     table["FullTeam"] = table["Team"].map(live_team_full_name)
     table["WinPct"] = (table["WinPctRaw"] * 100).round(1).astype(str) + "%"
     return table.reset_index(drop=True)
+
+
+def fantrax_standings_snapshot(standings_df, schedule_df, selected_year, selected_period, conference):
+    """Add recent form to the app's NBA-style conference standings snapshot."""
+    table = standings_snapshot(standings_df, selected_year, selected_period, conference)
+    if table.empty:
+        return table
+    regular_schedule = team_game_rows(schedule_df, selected_year, selected_period, ["Regular Season"])
+    completed = history_completed_games(regular_schedule, ["Regular Season"])
+    if not completed.empty:
+        sort_columns = [column for column in ["Period", "Game_ID"] if column in completed.columns]
+        completed = completed.sort_values(sort_columns) if sort_columns else completed
+
+    streaks, last_ten = {}, {}
+    for team in table["Team"].astype(str):
+        team_games = completed[(completed["TeamA"].astype(str) == team) | (completed["TeamB"].astype(str) == team)] if not completed.empty else pd.DataFrame()
+        outcomes = []
+        for _, game in team_games.iterrows():
+            outcomes.append("W" if str(game.get("Winner", "")) == team else "L")
+        recent = outcomes[-10:]
+        last_ten[team] = f"{recent.count('W')}-{recent.count('L')}" if recent else "0-0"
+        if outcomes:
+            last_result = outcomes[-1]
+            run = 0
+            for result in reversed(outcomes):
+                if result != last_result:
+                    break
+                run += 1
+            streaks[team] = f"{last_result}{run}"
+        else:
+            streaks[team] = "-"
+    table["Streak"] = table["Team"].astype(str).map(streaks).fillna("-")
+    table["Last10"] = table["Team"].astype(str).map(last_ten).fillna("0-0")
+    return table
+
+
+def matchup_preview_team_averages(team_stats_df, selected_year, selected_period, teams):
+    """Return per-matchup team averages from games completed before a preview period."""
+    categories = BOX_SCORE_CATEGORY_ORDER
+    empty = {str(team): {category: None for category in categories} for team in teams}
+    if team_stats_df is None or team_stats_df.empty or "Team" not in team_stats_df.columns:
+        return empty
+    stats = team_stats_df.copy()
+    year_values = pd.to_numeric(stats.get("Year"), errors="coerce")
+    period_values = pd.to_numeric(stats.get("Period"), errors="coerce")
+    stats = stats[(year_values == int(selected_year)) & (period_values < int(selected_period))].copy()
+    if stats.empty:
+        return empty
+    result = {}
+    percentage_stats = {"TS%", "2PT%", "3PT%", "FT%"}
+    total_columns = [column for column in BOX_SCORE_SUM_STATS if column in stats.columns]
+    for team in teams:
+        team_rows = stats[stats["Team"].astype(str) == str(team)].copy()
+        if team_rows.empty:
+            result[str(team)] = empty[str(team)]
+            continue
+        periods_played = max(1, int(pd.to_numeric(team_rows.get("Period"), errors="coerce").nunique()))
+        totals = pd.DataFrame([{column: pd.to_numeric(team_rows[column], errors="coerce").fillna(0).sum() for column in total_columns}])
+        totals = recalc_shooting_stats(totals).iloc[0]
+        averages = {}
+        for category in categories:
+            value = pd.to_numeric(pd.Series([totals.get(category)]), errors="coerce").iloc[0]
+            if pd.isna(value):
+                averages[category] = None
+            elif category in percentage_stats:
+                averages[category] = float(value)
+            else:
+                averages[category] = float(value) / periods_played
+        result[str(team)] = averages
+    return result
 
 
 def history_completed_games(schedule_df, competition_types=None):
@@ -18635,14 +18788,768 @@ if main_page == "Team Hub" and selected_team_page == "History":
         .st-key-team_history_section label:has(input:checked) { color:#fff !important; background:linear-gradient(110deg,var(--sbc-team-primary),var(--sbc-team-secondary)) !important; border-color:var(--sbc-team-primary) !important; box-shadow:0 9px 20px color-mix(in srgb,var(--sbc-team-primary) 22%,transparent) !important; }
         </style>
     """)
+    team_history_options = ["Franchise History", "Schedule", "Branding"]
+    if SelectedTeam == "Vegas":
+        team_history_options.append("Post to Fantrax")
     team_history_view = st.radio(
-        "Team history section", ["Franchise History", "Schedule", "Branding"],
-        format_func=lambda value: {"Franchise History": "🏛️ Franchise History", "Schedule": "🗓️ Schedule", "Branding": "🎨 Branding"}.get(value, value),
+        "Team history section", team_history_options,
+        format_func=lambda value: {"Franchise History": "🏛️ Franchise History", "Schedule": "🗓️ Schedule", "Branding": "🎨 Branding", "Post to Fantrax": "Post to Fantrax"}.get(value, value),
         horizontal=True,
         index=0, key="team_history_section", label_visibility="collapsed",
     )
     if team_history_view == "Branding":
         render_team_branding(SelectedTeam)
+
+    if team_history_view == "Post to Fantrax":
+        render_html("""
+            <div class="sbc-live-controls">
+                <div class="sbc-live-control-title">Overnight League Scoreboard</div>
+                <div class="sbc-live-control-copy">Build the overnight score report with every matchup's latest score and progress, then post it through the webhook.</div>
+            </div>
+        """)
+        fantrax_webhook_url = st.text_input(
+            "Webhook URL",
+            type="password",
+            placeholder="https://...",
+            key="vegas_fantrax_webhook_url",
+            help="The URL is masked and is not written to the app's files.",
+        )
+        scoreboard_year_options = sorted(
+            pd.to_numeric(all_time_schedule.get("Year"), errors="coerce").dropna().astype(int).unique().tolist()
+        )
+        if not scoreboard_year_options:
+            scoreboard_year_options = [current_year]
+        scoreboard_year_col, scoreboard_period_col = st.columns(2)
+        with scoreboard_year_col:
+            scoreboard_year = st.selectbox(
+                "Scoreboard Year",
+                options=scoreboard_year_options,
+                index=scoreboard_year_options.index(current_year) if current_year in scoreboard_year_options else len(scoreboard_year_options) - 1,
+                format_func=lambda year: f"{year} ({year - 1}-{str(year)[-2:]})",
+                key="fantrax_scoreboard_year",
+            )
+        scoreboard_period_options = schedule_period_options(all_time_schedule, scoreboard_year)
+        try:
+            default_scoreboard_period = int(current_matchup_period()) if scoreboard_year == current_year else scoreboard_period_options[0]
+        except (TypeError, ValueError, requests.RequestException):
+            default_scoreboard_period = scoreboard_period_options[0]
+        default_scoreboard_period = min(max(default_scoreboard_period, scoreboard_period_options[0]), scoreboard_period_options[-1])
+        if st.session_state.get("fantrax_scoreboard_period") not in scoreboard_period_options:
+            st.session_state["fantrax_scoreboard_period"] = default_scoreboard_period
+        with scoreboard_period_col:
+            scoreboard_period = st.selectbox(
+                "Matchup Period",
+                options=scoreboard_period_options,
+                format_func=period_select_label(scoreboard_year),
+                key="fantrax_scoreboard_period",
+            )
+        recap_matchups = all_time_schedule[
+            (pd.to_numeric(all_time_schedule["Year"], errors="coerce") == int(scoreboard_year))
+            & (pd.to_numeric(all_time_schedule["Period"], errors="coerce") == int(scoreboard_period))
+        ].copy()
+        recap_matchups = recap_matchups.sort_values(["Type", "TeamB", "TeamA"], na_position="last").reset_index(drop=True)
+        recap_matchup_index = None
+        if not recap_matchups.empty:
+            recap_matchup_options = list(range(len(recap_matchups)))
+            if st.session_state.get("fantrax_recap_matchup_index") not in recap_matchup_options:
+                st.session_state["fantrax_recap_matchup_index"] = recap_matchup_options[0]
+            recap_matchup_index = st.selectbox(
+                "Matchup Recap",
+                options=recap_matchup_options,
+                format_func=lambda index: (
+                    f"{live_team_full_name(str(recap_matchups.iloc[index].get('TeamA', '')))} at "
+                    f"{live_team_full_name(str(recap_matchups.iloc[index].get('TeamB', '')))}"
+                    f" • {recap_matchups.iloc[index].get('Type', 'Matchup')}"
+                ),
+                key="fantrax_recap_matchup_index",
+            )
+        preview_selection_mode = st.radio(
+            "Featured Preview Matchups",
+            options=["Automatic", "Choose manually"],
+            horizontal=True,
+            key="fantrax_preview_selection_mode",
+            help="Automatic ranks games by combined strength, record closeness, postseason position, and matchup type.",
+        )
+        preview_manual_indexes = []
+        if preview_selection_mode == "Choose manually" and len(recap_matchups) >= 2:
+            preview_options = list(range(len(recap_matchups)))
+            preview_label = lambda index: (
+                f"{live_team_full_name(str(recap_matchups.iloc[index].get('TeamA', '')))} at "
+                f"{live_team_full_name(str(recap_matchups.iloc[index].get('TeamB', '')))}"
+            )
+            preview_col_one, preview_col_two = st.columns(2)
+            with preview_col_one:
+                first_preview = st.selectbox("Featured Matchup 1", preview_options, format_func=preview_label, key="fantrax_preview_one")
+            second_options = [index for index in preview_options if index != first_preview]
+            with preview_col_two:
+                second_preview = st.selectbox("Featured Matchup 2", second_options, format_func=preview_label, key="fantrax_preview_two")
+            preview_manual_indexes = [first_preview, second_preview]
+        with st.expander("Record Leader Announcement", expanded=False):
+            record_team = st.selectbox(
+                "Franchise",
+                options=Teams,
+                index=Teams.index("Anaheim") if "Anaheim" in Teams else 0,
+                format_func=live_team_full_name,
+                key="fantrax_record_team",
+            )
+            record_stat = st.selectbox(
+                "Statistic",
+                options=FRANCHISE_CHASER_STATS,
+                index=FRANCHISE_CHASER_STATS.index("GP"),
+                key="fantrax_record_stat",
+            )
+            record_name_col_one, record_name_col_two = st.columns(2)
+            with record_name_col_one:
+                record_new_leader = st.text_input("New Leader", value="Jarrett Allen", key="fantrax_record_new_leader")
+            with record_name_col_two:
+                record_previous_leader = st.text_input("Previous Leader", value="Rudy Gobert", key="fantrax_record_previous_leader")
+            record_value_col_one, record_value_col_two = st.columns(2)
+            with record_value_col_one:
+                record_new_value = st.number_input("New Record", value=322.0, step=1.0, key="fantrax_record_new_value")
+            with record_value_col_two:
+                record_previous_value = st.number_input("Previous Record", value=321.0, step=1.0, key="fantrax_record_previous_value")
+            st.caption("For percentage records, enter the decimal value—for example, 0.625 for 62.5%.")
+            if st.button("Post Record Leader Announcement to Fantrax", type="secondary", key="post_fantrax_record_leader"):
+                if not fantrax_webhook_url.strip():
+                    st.error("Paste a webhook URL first.")
+                elif not record_new_leader.strip() or not record_previous_leader.strip():
+                    st.error("Enter both player names.")
+                else:
+                    try:
+                        with st.spinner("Building the record announcement..."):
+                            record_archive = load_sbc_player_matchup_stats_archive()
+
+                            def record_player_image(player_name):
+                                player_id = ""
+                                if record_archive is not None and not record_archive.empty and "fantrax_name" in record_archive.columns:
+                                    name_key = player_name_match_key(player_name)
+                                    matched = record_archive[
+                                        record_archive["fantrax_name"].apply(player_name_match_key) == name_key
+                                    ]
+                                    if not matched.empty and "espn_player_id" in matched.columns:
+                                        ids = matched["espn_player_id"].dropna().astype(str)
+                                        ids = ids[~ids.isin(["", "nan", "None"])]
+                                        if not ids.empty:
+                                            player_id = ids.mode().iloc[0] if not ids.mode().empty else ids.iloc[0]
+                                if not player_id:
+                                    default_ids = {"jarrett allen": "4066328", "rudy gobert": "3032976"}
+                                    player_id = default_ids.get(player_name_match_key(player_name), "")
+                                return espn_headshot_url(player_id) if player_id else PLAYER_PICTURE_LOOKUP.get(normalize_boxscore_player_key(player_name), "")
+
+                            record_announcement_image = build_record_leader_announcement_image(
+                                record_team,
+                                record_stat,
+                                record_new_leader.strip(),
+                                record_previous_leader.strip(),
+                                record_new_value,
+                                record_previous_value,
+                                new_leader_image=record_player_image(record_new_leader),
+                                previous_leader_image=record_player_image(record_previous_leader),
+                            )
+                            record_slug = re.sub(r"[^a-z0-9]+", "-", record_new_leader.lower()).strip("-")
+                        with st.spinner("Posting the record announcement to Fantrax..."):
+                            post_fantrax_webhook(
+                                fantrax_webhook_url,
+                                message="",
+                                image_bytes=record_announcement_image,
+                                image_filename=f"sbcfbl-record-{record_team.lower()}-{record_stat.lower()}-{record_slug}.png",
+                            )
+                    except (ValueError, RuntimeError, requests.RequestException) as exc:
+                        st.error(str(exc))
+                    else:
+                        st.success(f"Posted {record_new_leader}'s {record_stat} record announcement to Fantrax.")
+                        st.image(record_announcement_image, caption=f"{live_team_full_name(record_team)} all-time {record_stat} leader", use_container_width=True)
+        if st.button("Post Overnight Scores to Fantrax", type="primary", key="post_vegas_fantrax_test"):
+            if not fantrax_webhook_url.strip():
+                st.error("Paste a webhook URL first.")
+            else:
+                try:
+                    with st.spinner("Building the overnight scoreboard..."):
+                        selected_scoreboard_year = int(scoreboard_year)
+                        selected_scoreboard_period = int(scoreboard_period)
+                        live_matchup_stats = (
+                            get_matchup_stats(selected_scoreboard_year, selected_scoreboard_period)
+                            if selected_scoreboard_year == current_year
+                            else pd.DataFrame()
+                        )
+                        live_scores = get_weekly_scores_df(
+                            selected_scoreboard_year,
+                            selected_scoreboard_period,
+                            all_time_schedule,
+                            live_matchup_stats,
+                            standings,
+                        )
+                        live_progress = matchup_period_progress(
+                            period_calendar,
+                            selected_scoreboard_year,
+                            selected_scoreboard_period,
+                        )
+                        scoreboard_image = build_live_scoreboard_image(
+                            live_scores,
+                            live_progress,
+                            season_label=f"{selected_scoreboard_year - 1}-{str(selected_scoreboard_year)[-2:]}",
+                            period_label=f"Period {selected_scoreboard_period} • {period_date_label(selected_scoreboard_year, selected_scoreboard_period)}",
+                        )
+                    with st.spinner("Posting the scoreboard to Fantrax..."):
+                        post_fantrax_webhook(
+                            fantrax_webhook_url,
+                            message="",
+                            image_bytes=scoreboard_image,
+                            image_filename=f"sbcfbl-overnight-scores-{selected_scoreboard_year}-p{selected_scoreboard_period}.png",
+                        )
+                except (ValueError, RuntimeError, requests.RequestException) as exc:
+                    st.error(str(exc))
+                else:
+                    st.success(f"Posted {len(live_scores)} live matchups to Fantrax.")
+                    st.image(
+                        scoreboard_image,
+                        caption=f"SBCFBL overnight scores • {selected_scoreboard_year} period {selected_scoreboard_period}",
+                        use_container_width=True,
+                    )
+        if st.button("Post Mobile Overnight Scores to Fantrax", type="secondary", key="post_vegas_fantrax_mobile_scores"):
+            if not fantrax_webhook_url.strip():
+                st.error("Paste a webhook URL first.")
+            else:
+                try:
+                    with st.spinner("Building the mobile overnight scoreboard..."):
+                        selected_scoreboard_year = int(scoreboard_year)
+                        selected_scoreboard_period = int(scoreboard_period)
+                        live_matchup_stats = (
+                            get_matchup_stats(selected_scoreboard_year, selected_scoreboard_period)
+                            if selected_scoreboard_year == current_year
+                            else pd.DataFrame()
+                        )
+                        live_scores = get_weekly_scores_df(
+                            selected_scoreboard_year,
+                            selected_scoreboard_period,
+                            all_time_schedule,
+                            live_matchup_stats,
+                            standings,
+                        )
+                        live_progress = matchup_period_progress(
+                            period_calendar,
+                            selected_scoreboard_year,
+                            selected_scoreboard_period,
+                        )
+                        mobile_scoreboard_image = build_mobile_live_scoreboard_image(
+                            live_scores,
+                            live_progress,
+                            season_label=f"{selected_scoreboard_year - 1}-{str(selected_scoreboard_year)[-2:]}",
+                            period_label=period_date_label(selected_scoreboard_year, selected_scoreboard_period),
+                        )
+                    with st.spinner("Posting the mobile scoreboard to Fantrax..."):
+                        post_fantrax_webhook(
+                            fantrax_webhook_url,
+                            message="",
+                            image_bytes=mobile_scoreboard_image,
+                            image_filename=f"sbcfbl-mobile-overnight-scores-{selected_scoreboard_year}-p{selected_scoreboard_period}.png",
+                        )
+                except (ValueError, RuntimeError, requests.RequestException) as exc:
+                    st.error(str(exc))
+                else:
+                    st.success(f"Posted the mobile scoreboard with {len(live_scores)} matchups to Fantrax.")
+                    st.image(
+                        mobile_scoreboard_image,
+                        caption=f"SBCFBL mobile overnight scores • {selected_scoreboard_year} period {selected_scoreboard_period}",
+                        use_container_width=True,
+                    )
+        if st.button("Post Matchup Preview to Fantrax", type="secondary", key="post_fantrax_matchup_preview", disabled=len(recap_matchups) < 2):
+            if not fantrax_webhook_url.strip():
+                st.error("Paste a webhook URL first.")
+            elif len(recap_matchups) < 2:
+                st.error("At least two matchups are required for the weekly preview.")
+            else:
+                try:
+                    with st.spinner("Building the weekly matchup preview..."):
+                        preview_year, preview_period = int(scoreboard_year), int(scoreboard_period)
+                        preview_live_stats = get_matchup_stats(preview_year, preview_period) if preview_year == current_year else pd.DataFrame()
+                        preview_matchups = get_weekly_scores_df(preview_year, preview_period, all_time_schedule, preview_live_stats, standings).reset_index(drop=True)
+                        conference_tables = [standings_snapshot(standings, preview_year, preview_period, conference) for conference in ["West", "East"]]
+                        standings_lookup = {}
+                        for conference_table in conference_tables:
+                            for seed_index, (_, standing_row) in enumerate(conference_table.iterrows(), start=1):
+                                standings_lookup[str(standing_row.get("Team", ""))] = {
+                                    "wins": float(standing_row.get("wins", 0)), "losses": float(standing_row.get("losses", 0)), "seed": seed_index,
+                                }
+
+                        def preview_rank(row):
+                            a = standings_lookup.get(str(row.get("TeamA", "")), {"wins": 0, "losses": 0, "seed": 15})
+                            b = standings_lookup.get(str(row.get("TeamB", "")), {"wins": 0, "losses": 0, "seed": 15})
+                            pct_a = a["wins"] / max(1, a["wins"] + a["losses"])
+                            pct_b = b["wins"] / max(1, b["wins"] + b["losses"])
+                            strength = (pct_a + pct_b) * 100
+                            closeness = (1 - abs(pct_a - pct_b)) * 24
+                            race = max(0, 14 - min(abs(a["seed"] - 6), abs(a["seed"] - 10), abs(b["seed"] - 6), abs(b["seed"] - 10)))
+                            type_bonus = {"Playoffs": 80, "Play-In": 70, "In-Season Tournament": 35, "Regular Season": 0}.get(str(row.get("Type", "")), 0)
+                            return strength + closeness + race + type_bonus
+
+                        if preview_selection_mode == "Choose manually" and len(preview_manual_indexes) == 2:
+                            selected_raw = [recap_matchups.iloc[index] for index in preview_manual_indexes]
+                            featured_rows = []
+                            for selected in selected_raw:
+                                game_id = str(selected.get("Game_ID", ""))
+                                match = preview_matchups[preview_matchups.get("Game_ID", pd.Series(dtype=str)).astype(str) == game_id]
+                                if match.empty:
+                                    match = preview_matchups[(preview_matchups["TeamA"].astype(str) == str(selected.get("TeamA", ""))) & (preview_matchups["TeamB"].astype(str) == str(selected.get("TeamB", "")))]
+                                if not match.empty:
+                                    featured_rows.append(match.iloc[0].copy())
+                        else:
+                            ranked = preview_matchups.copy()
+                            ranked["_preview_rank"] = ranked.apply(preview_rank, axis=1)
+                            featured_rows = [row.copy() for _, row in ranked.sort_values("_preview_rank", ascending=False).head(2).iterrows()]
+                        if len(featured_rows) < 2:
+                            raise ValueError("Two featured matchups could not be selected.")
+
+                        feature_assets = []
+                        for featured_row in featured_rows:
+                            team_a, team_b = str(featured_row.get("TeamA", "")), str(featured_row.get("TeamB", ""))
+                            team_averages = matchup_preview_team_averages(
+                                all_time_team_stats,
+                                preview_year,
+                                preview_period,
+                                [team_a, team_b],
+                            )
+                            preview_rows = matchup_boxscore_rows(featured_row, all_time_rosters)
+                            try:
+                                road_edition, home_edition, _ = select_game_uniforms(featured_row, team_a, team_b, lambda team, edition: saved_uniform_config(team, edition)[0])
+                            except Exception:
+                                road_edition, home_edition = "Icon", "Association"
+                            lineups = {}
+                            for team in [team_a, team_b]:
+                                try:
+                                    lineup = pregame_starting_five(preview_rows, featured_row, all_time_rosters, team)
+                                    lineup["headshot"] = lineup.get("espn_player_id", pd.Series(dtype=str)).apply(espn_headshot_url)
+                                    lineups[team] = lineup
+                                except Exception:
+                                    lineups[team] = pd.DataFrame()
+                            try:
+                                court = matchup_recap_court_bytes(preview_rows, team_a, team_b, include_shots=False)
+                            except Exception:
+                                court = None
+                            try:
+                                road_jersey = matchup_recap_jersey_bytes(team_a, road_edition)
+                                home_jersey = matchup_recap_jersey_bytes(team_b, home_edition)
+                            except Exception:
+                                road_jersey = home_jersey = None
+                            feature_assets.append({"court": court, "road_jersey": road_jersey, "home_jersey": home_jersey, "road_edition": road_edition, "home_edition": home_edition, "lineups": lineups, "team_averages": team_averages})
+
+                        preview_image = build_matchup_preview_image(
+                            preview_matchups,
+                            featured_rows,
+                            feature_assets,
+                            season_label=f"{preview_year - 1}-{str(preview_year)[-2:]}",
+                            period_label=period_date_label(preview_year, preview_period),
+                        )
+                    with st.spinner("Posting the matchup preview to Fantrax..."):
+                        post_fantrax_webhook(fantrax_webhook_url, message="", image_bytes=preview_image, image_filename=f"sbcfbl-matchup-preview-{preview_year}-p{preview_period}.png")
+                except (ValueError, RuntimeError, requests.RequestException) as exc:
+                    st.error(str(exc))
+                else:
+                    st.success("Posted the weekly matchup preview to Fantrax.")
+                    st.image(preview_image, caption=f"SBCFBL matchup preview • {period_date_label(preview_year, preview_period)}", use_container_width=True)
+        if st.button("Post Mobile Matchup Preview to Fantrax", type="secondary", key="post_fantrax_mobile_matchup_preview", disabled=len(recap_matchups) < 2):
+            if not fantrax_webhook_url.strip():
+                st.error("Paste a webhook URL first.")
+            elif len(recap_matchups) < 2:
+                st.error("At least two matchups are required for the weekly preview.")
+            else:
+                try:
+                    with st.spinner("Building the mobile matchup preview..."):
+                        mobile_preview_year, mobile_preview_period = int(scoreboard_year), int(scoreboard_period)
+                        mobile_preview_live_stats = get_matchup_stats(mobile_preview_year, mobile_preview_period) if mobile_preview_year == current_year else pd.DataFrame()
+                        mobile_preview_matchups = get_weekly_scores_df(
+                            mobile_preview_year, mobile_preview_period, all_time_schedule, mobile_preview_live_stats, standings
+                        ).reset_index(drop=True)
+                        mobile_conference_tables = [
+                            standings_snapshot(standings, mobile_preview_year, mobile_preview_period, conference)
+                            for conference in ["West", "East"]
+                        ]
+                        mobile_standings_lookup = {}
+                        for conference_table in mobile_conference_tables:
+                            for seed_index, (_, standing_row) in enumerate(conference_table.iterrows(), start=1):
+                                mobile_standings_lookup[str(standing_row.get("Team", ""))] = {
+                                    "wins": float(standing_row.get("wins", 0)),
+                                    "losses": float(standing_row.get("losses", 0)),
+                                    "seed": seed_index,
+                                }
+
+                        def mobile_preview_rank(row):
+                            team_a_record = mobile_standings_lookup.get(str(row.get("TeamA", "")), {"wins": 0, "losses": 0, "seed": 15})
+                            team_b_record = mobile_standings_lookup.get(str(row.get("TeamB", "")), {"wins": 0, "losses": 0, "seed": 15})
+                            pct_a = team_a_record["wins"] / max(1, team_a_record["wins"] + team_a_record["losses"])
+                            pct_b = team_b_record["wins"] / max(1, team_b_record["wins"] + team_b_record["losses"])
+                            strength = (pct_a + pct_b) * 100
+                            closeness = (1 - abs(pct_a - pct_b)) * 24
+                            race = max(0, 14 - min(abs(team_a_record["seed"] - 6), abs(team_a_record["seed"] - 10), abs(team_b_record["seed"] - 6), abs(team_b_record["seed"] - 10)))
+                            type_bonus = {"Playoffs": 80, "Play-In": 70, "In-Season Tournament": 35, "Regular Season": 0}.get(str(row.get("Type", "")), 0)
+                            return strength + closeness + race + type_bonus
+
+                        if preview_selection_mode == "Choose manually" and len(preview_manual_indexes) == 2:
+                            mobile_featured_rows = []
+                            for selected_index in preview_manual_indexes:
+                                selected = recap_matchups.iloc[selected_index]
+                                game_id = str(selected.get("Game_ID", ""))
+                                match = mobile_preview_matchups[
+                                    mobile_preview_matchups.get("Game_ID", pd.Series(dtype=str)).astype(str) == game_id
+                                ]
+                                if match.empty:
+                                    match = mobile_preview_matchups[
+                                        (mobile_preview_matchups["TeamA"].astype(str) == str(selected.get("TeamA", "")))
+                                        & (mobile_preview_matchups["TeamB"].astype(str) == str(selected.get("TeamB", "")))
+                                    ]
+                                if not match.empty:
+                                    mobile_featured_rows.append(match.iloc[0].copy())
+                        else:
+                            ranked = mobile_preview_matchups.copy()
+                            ranked["_preview_rank"] = ranked.apply(mobile_preview_rank, axis=1)
+                            mobile_featured_rows = [row.copy() for _, row in ranked.sort_values("_preview_rank", ascending=False).head(2).iterrows()]
+                        if len(mobile_featured_rows) < 2:
+                            raise ValueError("Two featured matchups could not be selected.")
+
+                        mobile_feature_assets = []
+                        for featured_row in mobile_featured_rows:
+                            team_a, team_b = str(featured_row.get("TeamA", "")), str(featured_row.get("TeamB", ""))
+                            team_averages = matchup_preview_team_averages(
+                                all_time_team_stats, mobile_preview_year, mobile_preview_period, [team_a, team_b]
+                            )
+                            preview_rows = matchup_boxscore_rows(featured_row, all_time_rosters)
+                            try:
+                                road_edition, home_edition, _ = select_game_uniforms(
+                                    featured_row, team_a, team_b, lambda team, edition: saved_uniform_config(team, edition)[0]
+                                )
+                            except Exception:
+                                road_edition, home_edition = "Icon", "Association"
+                            lineups = {}
+                            for team in [team_a, team_b]:
+                                try:
+                                    lineup = pregame_starting_five(preview_rows, featured_row, all_time_rosters, team)
+                                    lineup["headshot"] = lineup.get("espn_player_id", pd.Series(dtype=str)).apply(espn_headshot_url)
+                                    lineups[team] = lineup
+                                except Exception:
+                                    lineups[team] = pd.DataFrame()
+                            try:
+                                court = matchup_recap_court_bytes(preview_rows, team_a, team_b, include_shots=False)
+                            except Exception:
+                                court = None
+                            try:
+                                road_jersey = matchup_recap_jersey_bytes(team_a, road_edition)
+                                home_jersey = matchup_recap_jersey_bytes(team_b, home_edition)
+                            except Exception:
+                                road_jersey = home_jersey = None
+                            mobile_feature_assets.append({
+                                "court": court,
+                                "road_jersey": road_jersey,
+                                "home_jersey": home_jersey,
+                                "road_edition": road_edition,
+                                "home_edition": home_edition,
+                                "lineups": lineups,
+                                "team_averages": team_averages,
+                            })
+
+                        mobile_preview_image = build_mobile_matchup_preview_image(
+                            mobile_preview_matchups,
+                            mobile_featured_rows,
+                            mobile_feature_assets,
+                            season_label=f"{mobile_preview_year - 1}-{str(mobile_preview_year)[-2:]}",
+                            period_label=period_date_label(mobile_preview_year, mobile_preview_period),
+                        )
+                    with st.spinner("Posting the mobile matchup preview to Fantrax..."):
+                        post_fantrax_webhook(
+                            fantrax_webhook_url,
+                            message="",
+                            image_bytes=mobile_preview_image,
+                            image_filename=f"sbcfbl-mobile-matchup-preview-{mobile_preview_year}-p{mobile_preview_period}.png",
+                        )
+                except (ValueError, RuntimeError, requests.RequestException) as exc:
+                    st.error(str(exc))
+                else:
+                    st.success("Posted the mobile matchup preview to Fantrax.")
+                    st.image(
+                        mobile_preview_image,
+                        caption=f"SBCFBL mobile matchup preview • {period_date_label(mobile_preview_year, mobile_preview_period)}",
+                        use_container_width=True,
+                    )
+        if st.button("Post Standings to Fantrax", type="secondary", key="post_fantrax_standings"):
+            if not fantrax_webhook_url.strip():
+                st.error("Paste a webhook URL first.")
+            else:
+                try:
+                    with st.spinner("Building the standings and postseason picture..."):
+                        selected_standings_year = int(scoreboard_year)
+                        selected_standings_period = int(scoreboard_period)
+                        west_standings = fantrax_standings_snapshot(standings, all_time_schedule, selected_standings_year, selected_standings_period, "West")
+                        east_standings = fantrax_standings_snapshot(standings, all_time_schedule, selected_standings_year, selected_standings_period, "East")
+                        postseason_schedule = all_time_schedule[
+                            (pd.to_numeric(all_time_schedule["Year"], errors="coerce") == selected_standings_year)
+                            & (pd.to_numeric(all_time_schedule["Period"], errors="coerce") <= selected_standings_period)
+                            & (all_time_schedule["Type"].astype(str).isin(["Play-In", "Playoffs"]))
+                        ].copy()
+                        completed_postseason = history_completed_games(postseason_schedule, ["Play-In", "Playoffs"])
+                        standings_image = build_standings_bracket_image(
+                            west_standings,
+                            east_standings,
+                            completed_postseason,
+                            season_label=f"{selected_standings_year - 1}-{str(selected_standings_year)[-2:]}",
+                            through_label=period_date_label(selected_standings_year, selected_standings_period),
+                            projected=completed_postseason.empty,
+                        )
+                    with st.spinner("Posting the standings to Fantrax..."):
+                        post_fantrax_webhook(
+                            fantrax_webhook_url,
+                            message="",
+                            image_bytes=standings_image,
+                            image_filename=f"sbcfbl-standings-{selected_standings_year}-p{selected_standings_period}.png",
+                        )
+                except (ValueError, RuntimeError, requests.RequestException) as exc:
+                    st.error(str(exc))
+                else:
+                    st.success("Posted the standings and postseason picture to Fantrax.")
+                    st.image(
+                        standings_image,
+                        caption=f"SBCFBL standings • {period_date_label(selected_standings_year, selected_standings_period)}",
+                        use_container_width=True,
+                    )
+        if st.button("Post Mobile Standings to Fantrax", type="secondary", key="post_fantrax_mobile_standings"):
+            if not fantrax_webhook_url.strip():
+                st.error("Paste a webhook URL first.")
+            else:
+                try:
+                    with st.spinner("Building the mobile standings..."):
+                        mobile_standings_year = int(scoreboard_year)
+                        mobile_standings_period = int(scoreboard_period)
+                        mobile_west_standings = fantrax_standings_snapshot(
+                            standings, all_time_schedule, mobile_standings_year, mobile_standings_period, "West"
+                        )
+                        mobile_east_standings = fantrax_standings_snapshot(
+                            standings, all_time_schedule, mobile_standings_year, mobile_standings_period, "East"
+                        )
+                        mobile_postseason_schedule = all_time_schedule[
+                            (pd.to_numeric(all_time_schedule["Year"], errors="coerce") == mobile_standings_year)
+                            & (pd.to_numeric(all_time_schedule["Period"], errors="coerce") <= mobile_standings_period)
+                            & (all_time_schedule["Type"].astype(str).isin(["Play-In", "Playoffs"]))
+                        ].copy()
+                        mobile_completed_postseason = history_completed_games(mobile_postseason_schedule, ["Play-In", "Playoffs"])
+                        mobile_standings_image = build_mobile_standings_image(
+                            mobile_west_standings,
+                            mobile_east_standings,
+                            mobile_completed_postseason,
+                            season_label=f"{mobile_standings_year - 1}-{str(mobile_standings_year)[-2:]}",
+                            through_label=period_date_label(mobile_standings_year, mobile_standings_period),
+                            projected=mobile_completed_postseason.empty,
+                        )
+                    with st.spinner("Posting the mobile standings to Fantrax..."):
+                        post_fantrax_webhook(
+                            fantrax_webhook_url,
+                            message="",
+                            image_bytes=mobile_standings_image,
+                            image_filename=f"sbcfbl-mobile-standings-{mobile_standings_year}-p{mobile_standings_period}.png",
+                        )
+                except (ValueError, RuntimeError, requests.RequestException) as exc:
+                    st.error(str(exc))
+                else:
+                    st.success("Posted the mobile standings and postseason matchups to Fantrax.")
+                    st.image(
+                        mobile_standings_image,
+                        caption=f"SBCFBL mobile standings • {period_date_label(mobile_standings_year, mobile_standings_period)}",
+                        use_container_width=True,
+                    )
+        if st.button("Post Matchup Recap to Fantrax", type="secondary", key="post_fantrax_matchup_recap", disabled=recap_matchup_index is None):
+            if not fantrax_webhook_url.strip():
+                st.error("Paste a webhook URL first.")
+            elif recap_matchup_index is None:
+                st.error("No matchup is available for this year and period.")
+            else:
+                try:
+                    with st.spinner("Building the matchup recap..."):
+                        selected_scoreboard_year = int(scoreboard_year)
+                        selected_scoreboard_period = int(scoreboard_period)
+                        selected_schedule_matchup = recap_matchups.iloc[int(recap_matchup_index)].copy()
+                        recap_live_stats = (
+                            get_matchup_stats(selected_scoreboard_year, selected_scoreboard_period)
+                            if selected_scoreboard_year == current_year
+                            else pd.DataFrame()
+                        )
+                        recap_scores = get_weekly_scores_df(
+                            selected_scoreboard_year,
+                            selected_scoreboard_period,
+                            all_time_schedule,
+                            recap_live_stats,
+                            standings,
+                        )
+                        selected_game_id = str(selected_schedule_matchup.get("Game_ID", ""))
+                        scored_matchup = recap_scores[recap_scores.get("Game_ID", pd.Series(dtype=str)).astype(str) == selected_game_id]
+                        if scored_matchup.empty:
+                            scored_matchup = recap_scores[
+                                (recap_scores["TeamA"].astype(str) == str(selected_schedule_matchup.get("TeamA", "")))
+                                & (recap_scores["TeamB"].astype(str) == str(selected_schedule_matchup.get("TeamB", "")))
+                                & (recap_scores["Type"].astype(str) == str(selected_schedule_matchup.get("Type", "")))
+                            ]
+                        if scored_matchup.empty:
+                            raise ValueError("The selected matchup could not be found in the score data.")
+                        recap_matchup = scored_matchup.iloc[0].copy()
+                        recap_box_rows = matchup_boxscore_rows(recap_matchup, all_time_rosters)
+                        if recap_box_rows.empty:
+                            raise ValueError("No player box-score data is available for the selected matchup.")
+                        recap_aggregate_players = aggregate_boxscore_players(recap_box_rows)
+                        recap_team_totals = team_boxscore_totals(recap_box_rows)
+                        recap_categories, _, _ = matchup_category_results(
+                            recap_team_totals,
+                            str(recap_matchup.get("TeamA", "")),
+                            str(recap_matchup.get("TeamB", "")),
+                        )
+                        recap_team_a = str(recap_matchup.get("TeamA", ""))
+                        recap_team_b = str(recap_matchup.get("TeamB", ""))
+                        recap_events = matchup_pbp_events(recap_box_rows, recap_team_a, recap_team_b)
+                        _, recap_trend = build_pbp_all_category_leads(recap_events, recap_team_a, recap_team_b)
+                        try:
+                            recap_road_edition, recap_home_edition, _ = select_game_uniforms(
+                                recap_matchup,
+                                recap_team_a,
+                                recap_team_b,
+                                lambda uniform_team, uniform_edition: saved_uniform_config(uniform_team, uniform_edition)[0],
+                            )
+                        except Exception:
+                            recap_road_edition, recap_home_edition = "Icon", "Association"
+                        try:
+                            recap_road_jersey = matchup_recap_jersey_bytes(recap_team_a, recap_road_edition)
+                        except Exception:
+                            recap_road_jersey = None
+                        try:
+                            recap_home_jersey = matchup_recap_jersey_bytes(recap_team_b, recap_home_edition)
+                        except Exception:
+                            recap_home_jersey = None
+                        try:
+                            recap_court = matchup_recap_court_bytes(recap_box_rows, recap_team_a, recap_team_b)
+                        except Exception:
+                            recap_court = None
+                        recap_image = build_matchup_recap_image(
+                            recap_matchup,
+                            recap_categories,
+                            recap_aggregate_players,
+                            trend_table=recap_trend,
+                            court_image=recap_court,
+                            road_jersey_image=recap_road_jersey,
+                            home_jersey_image=recap_home_jersey,
+                            road_edition=recap_road_edition,
+                            home_edition=recap_home_edition,
+                            matchup_date_label=period_date_label(
+                                selected_scoreboard_year,
+                                selected_scoreboard_period,
+                            ),
+                            events_table=recap_events,
+                        )
+                    with st.spinner("Posting the matchup recap to Fantrax..."):
+                        post_fantrax_webhook(
+                            fantrax_webhook_url,
+                            message="",
+                            image_bytes=recap_image,
+                            image_filename=f"sbcfbl-matchup-recap-{selected_game_id or selected_scoreboard_year}.png",
+                        )
+                except (ValueError, RuntimeError, requests.RequestException) as exc:
+                    st.error(str(exc))
+                else:
+                    st.success(f"Posted {live_team_full_name(recap_team_a)} at {live_team_full_name(recap_team_b)}.")
+                    st.image(
+                        recap_image,
+                        caption=f"Matchup recap • {live_team_full_name(recap_team_a)} at {live_team_full_name(recap_team_b)}",
+                        use_container_width=True,
+                    )
+
+        if st.button("Post Mobile Matchup Recap to Fantrax", type="secondary", key="post_fantrax_mobile_matchup_recap", disabled=recap_matchup_index is None):
+            if not fantrax_webhook_url.strip():
+                st.error("Paste a webhook URL first.")
+            elif recap_matchup_index is None:
+                st.error("No matchup is available for this year and period.")
+            else:
+                try:
+                    with st.spinner("Building the mobile matchup recap..."):
+                        mobile_recap_year = int(scoreboard_year)
+                        mobile_recap_period = int(scoreboard_period)
+                        mobile_schedule_matchup = recap_matchups.iloc[int(recap_matchup_index)].copy()
+                        mobile_live_stats = (
+                            get_matchup_stats(mobile_recap_year, mobile_recap_period)
+                            if mobile_recap_year == current_year
+                            else pd.DataFrame()
+                        )
+                        mobile_recap_scores = get_weekly_scores_df(
+                            mobile_recap_year,
+                            mobile_recap_period,
+                            all_time_schedule,
+                            mobile_live_stats,
+                            standings,
+                        )
+                        mobile_game_id = str(mobile_schedule_matchup.get("Game_ID", ""))
+                        mobile_scored_matchup = mobile_recap_scores[
+                            mobile_recap_scores.get("Game_ID", pd.Series(dtype=str)).astype(str) == mobile_game_id
+                        ]
+                        if mobile_scored_matchup.empty:
+                            mobile_scored_matchup = mobile_recap_scores[
+                                (mobile_recap_scores["TeamA"].astype(str) == str(mobile_schedule_matchup.get("TeamA", "")))
+                                & (mobile_recap_scores["TeamB"].astype(str) == str(mobile_schedule_matchup.get("TeamB", "")))
+                                & (mobile_recap_scores["Type"].astype(str) == str(mobile_schedule_matchup.get("Type", "")))
+                            ]
+                        if mobile_scored_matchup.empty:
+                            raise ValueError("The selected matchup could not be found in the score data.")
+                        mobile_recap_matchup = mobile_scored_matchup.iloc[0].copy()
+                        mobile_box_rows = matchup_boxscore_rows(mobile_recap_matchup, all_time_rosters)
+                        if mobile_box_rows.empty:
+                            raise ValueError("No player box-score data is available for the selected matchup.")
+                        mobile_players = aggregate_boxscore_players(mobile_box_rows)
+                        mobile_totals = team_boxscore_totals(mobile_box_rows)
+                        mobile_team_a = str(mobile_recap_matchup.get("TeamA", ""))
+                        mobile_team_b = str(mobile_recap_matchup.get("TeamB", ""))
+                        mobile_categories, _, _ = matchup_category_results(mobile_totals, mobile_team_a, mobile_team_b)
+                        mobile_events = matchup_pbp_events(mobile_box_rows, mobile_team_a, mobile_team_b)
+                        _, mobile_trend = build_pbp_all_category_leads(mobile_events, mobile_team_a, mobile_team_b)
+                        try:
+                            mobile_road_edition, mobile_home_edition, _ = select_game_uniforms(
+                                mobile_recap_matchup,
+                                mobile_team_a,
+                                mobile_team_b,
+                                lambda uniform_team, uniform_edition: saved_uniform_config(uniform_team, uniform_edition)[0],
+                            )
+                        except Exception:
+                            mobile_road_edition, mobile_home_edition = "Icon", "Association"
+                        try:
+                            mobile_road_jersey = matchup_recap_jersey_bytes(mobile_team_a, mobile_road_edition)
+                        except Exception:
+                            mobile_road_jersey = None
+                        try:
+                            mobile_home_jersey = matchup_recap_jersey_bytes(mobile_team_b, mobile_home_edition)
+                        except Exception:
+                            mobile_home_jersey = None
+                        try:
+                            mobile_court = matchup_recap_court_bytes(mobile_box_rows, mobile_team_a, mobile_team_b)
+                        except Exception:
+                            mobile_court = None
+                        mobile_recap_image = build_mobile_matchup_recap_image(
+                            mobile_recap_matchup,
+                            mobile_categories,
+                            mobile_players,
+                            trend_table=mobile_trend,
+                            court_image=mobile_court,
+                            road_jersey_image=mobile_road_jersey,
+                            home_jersey_image=mobile_home_jersey,
+                            road_edition=mobile_road_edition,
+                            home_edition=mobile_home_edition,
+                            matchup_date_label=period_date_label(mobile_recap_year, mobile_recap_period),
+                        )
+                    with st.spinner("Posting the mobile matchup recap to Fantrax..."):
+                        post_fantrax_webhook(
+                            fantrax_webhook_url,
+                            message="",
+                            image_bytes=mobile_recap_image,
+                            image_filename=f"sbcfbl-mobile-matchup-recap-{mobile_game_id or mobile_recap_year}.png",
+                        )
+                except (ValueError, RuntimeError, requests.RequestException) as exc:
+                    st.error(str(exc))
+                else:
+                    st.success(f"Posted the mobile recap for {live_team_full_name(mobile_team_a)} at {live_team_full_name(mobile_team_b)}.")
+                    st.image(
+                        mobile_recap_image,
+                        caption=f"Mobile matchup recap • {live_team_full_name(mobile_team_a)} at {live_team_full_name(mobile_team_b)}",
+                        use_container_width=True,
+                    )
 
 if main_page == "Team Hub" and selected_team_page == "History" and team_history_view == "Schedule":
     schedule_years = [year for year in range(2021, 2028) if year in set(pd.to_numeric(all_time_schedule["Year"], errors="coerce").dropna().astype(int))]

@@ -11,12 +11,14 @@ from typing import Any, Callable
 
 import pandas as pd
 import requests
+import functions as fantrax
 
 from ..config import BackendSettings, LiveMode
 from ..datasets import DATASETS, DatasetRepository
 from ..live import EspnNBAClient, LiveScoreService, as_legacy_player_rows, parse_live_game
 from ..storage import FileLock, LockUnavailable, atomic_write_json, atomic_write_parquet
 from ..validation import build_repository_manifest, validate_repository
+from ..fantrax_rotation import FantraxRotation, planned_post_kinds, simulated_today
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -29,6 +31,7 @@ class JobContext:
     repository: DatasetRepository
     target_date: date
     lookback_days: int
+    fantrax_slot: str = "all"
 
     @property
     def season_start(self) -> date:
@@ -233,6 +236,55 @@ def validate_and_catalog(context: JobContext) -> dict[str, Any]:
     }
 
 
+def publish_fantrax_rotation(context: JobContext) -> dict[str, Any]:
+    """Render and publish the date-aware nightly Fantrax image rotation."""
+    webhook = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+    offset_days = int(os.getenv("SBC_FANTRAX_DATE_OFFSET_DAYS", "168"))
+    publishing_date = simulated_today(context.target_date, offset_days)
+    rotation = FantraxRotation(context.repository, PROJECT_ROOT, publishing_date)
+    kinds = planned_post_kinds(rotation.period, context.fantrax_slot)
+    if rotation.period is None:
+        return {
+            "status": "skipped",
+            "publishing_date": publishing_date.isoformat(),
+            "message": "simulated date is outside the SBC matchup calendar",
+        }
+    if not webhook:
+        return {
+            "status": "skipped",
+            "publishing_date": publishing_date.isoformat(),
+            "year": rotation.period.year,
+            "period": rotation.period.period,
+            "slot": context.fantrax_slot,
+            "planned": kinds,
+            "message": "DISCORD_WEBHOOK_URL is not configured",
+        }
+    posts, skipped = rotation.build_posts(kinds)
+    published = []
+    for post in posts:
+        fantrax.post_fantrax_webhook(
+            webhook,
+            message="",
+            image_bytes=post.image_bytes,
+            image_filename=post.filename,
+        )
+        published.append({"kind": post.kind, "filename": post.filename, "bytes": len(post.image_bytes)})
+        # Six images can be published in the 2 a.m. slot. Leave breathing room
+        # between webhook calls instead of relying on Discord's 429 retry path.
+        time.sleep(0.6)
+    return {
+        "publishing_date": publishing_date.isoformat(),
+        "year": rotation.period.year,
+        "period": rotation.period.period,
+        "slot": context.fantrax_slot,
+        "period_start": rotation.period.start.isoformat(),
+        "period_end": rotation.period.end.isoformat(),
+        "planned": kinds,
+        "published": published,
+        "skipped": skipped,
+    }
+
+
 JOBS: dict[str, JobFunction] = {
     "sheets": refresh_sheets,
     "league": refresh_league,
@@ -242,6 +294,7 @@ JOBS: dict[str, JobFunction] = {
     "matchups": refresh_matchups,
     "live_shadow": collect_live_shadow,
     "validate": validate_and_catalog,
+    "fantrax_rotation": publish_fantrax_rotation,
 }
 
 
@@ -250,9 +303,11 @@ def _notify_summary(payload: dict[str, Any]) -> None:
     if not webhook:
         return
     failures = [result["name"] for result in payload["results"] if result["status"] == "failed"]
-    message = f"SBC overnight refresh {payload['status']} for {payload['target_date']}"
-    if failures:
-        message += f". Failed: {', '.join(failures)}"
+    # Successful runs already publish the rotation images. Only send a text
+    # health notification when something failed, avoiding a daily noise post.
+    if not failures:
+        return
+    message = f"SBC overnight refresh failed for {payload['target_date']}. Failed: {', '.join(failures)}"
     try:
         requests.post(webhook, json={"content": message}, timeout=10).raise_for_status()
     except requests.RequestException as exc:
@@ -266,6 +321,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--jobs", nargs="+", choices=tuple(JOBS), default=list(JOBS), help="Ordered jobs to run.")
     parser.add_argument("--dry-run", action="store_true", help="Print the resolved plan without writing or fetching.")
     parser.add_argument("--strict", action="store_true", help="Exit non-zero if any job fails.")
+    parser.add_argument("--fantrax-slot", choices=("all", "overnight", "opening"), default="all", help="Select the 2 a.m. or 3 a.m. publishing rotation.")
     return parser
 
 
@@ -273,10 +329,24 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     settings = BackendSettings.from_env(PROJECT_ROOT)
     repository = DatasetRepository(settings)
-    context = JobContext(settings, repository, args.date, max(0, args.lookback_days))
+    context = JobContext(settings, repository, args.date, max(0, args.lookback_days), args.fantrax_slot)
     if args.dry_run:
+        offset_days = int(os.getenv("SBC_FANTRAX_DATE_OFFSET_DAYS", "168"))
+        publishing_date = simulated_today(args.date, offset_days)
+        calendar = __import__("functions").get_period_calendar()
+        from ..fantrax_rotation import period_for_date
+        rotation_period = period_for_date(calendar, publishing_date)
         print(json.dumps({
             "target_date": args.date.isoformat(),
+            "fantrax_date": publishing_date.isoformat(),
+            "fantrax_offset_days": offset_days,
+            "fantrax_period": None if rotation_period is None else {
+                "year": rotation_period.year,
+                "period": rotation_period.period,
+                "start": rotation_period.start.isoformat(),
+                "end": rotation_period.end.isoformat(),
+                "planned": planned_post_kinds(rotation_period, args.fantrax_slot),
+            },
             "current_sbc_year": settings.current_sbc_year,
             "nba_season": context.nba_season,
             "live_mode": settings.live_mode.value,

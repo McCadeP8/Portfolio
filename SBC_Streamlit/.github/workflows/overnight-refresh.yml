@@ -2,6 +2,7 @@ name: Overnight data refresh
 
 on:
   schedule:
+    - cron: "20 8 * * *"
     - cron: "20 9 * * *"
   workflow_dispatch:
     inputs:
@@ -72,13 +73,19 @@ jobs:
             --no-progress
 
       - name: Run tests
+        if: ${{ github.event.schedule != '20 8 * * *' }}
         run: python -m unittest discover -s tests -v
 
+      - name: Publish 2 a.m. Fantrax rotation
+        if: ${{ github.event.schedule == '20 8 * * *' }}
+        run: python -m sbc_backend.jobs.overnight --strict --jobs fantrax_rotation --fantrax-slot overnight
+
       - name: Refresh and validate data
-        run: python -m sbc_backend.jobs.overnight --strict --lookback-days "${{ inputs.lookback_days || '3' }}"
+        if: ${{ github.event.schedule != '20 8 * * *' }}
+        run: python -m sbc_backend.jobs.overnight --strict --lookback-days "${{ inputs.lookback_days || '3' }}" --fantrax-slot "${{ github.event_name == 'schedule' && 'opening' || 'all' }}"
 
       - name: Publish to S3-compatible storage
-        if: ${{ env.SBC_DATA_BUCKET != '' }}
+        if: ${{ env.SBC_DATA_BUCKET != '' && github.event.schedule != '20 8 * * *' }}
         shell: bash
         run: |
           endpoint=()
