@@ -1,23 +1,172 @@
 {
-  "finished_at": "2026-07-30T16:42:30.566758+00:00",
-  "live_mode": "off",
+  "finished_at": "2026-08-07T14:23:54.000638+00:00",
+  "live_mode": "shadow",
   "results": [
     {
       "details": {
-        "bytes": 144529470,
+        "message": "Google Sheet snapshots refreshed with stale-cache fallback"
+      },
+      "duration_seconds": 9.614,
+      "finished_at": "2026-08-07T14:22:28.300257+00:00",
+      "name": "sheets",
+      "started_at": "2026-08-07T14:22:18.686637+00:00",
+      "status": "ok"
+    },
+    {
+      "details": {
+        "operations": [
+          "get_all_team_stats_history",
+          "get_all_time_rosters_history",
+          "get_all_time_scores",
+          "get_all_time_standings"
+        ]
+      },
+      "duration_seconds": 41.368,
+      "finished_at": "2026-08-07T14:23:09.667964+00:00",
+      "name": "league",
+      "started_at": "2026-08-07T14:22:28.300351+00:00",
+      "status": "ok"
+    },
+    {
+      "details": {
+        "message": "outside the NBA regular-season refresh window"
+      },
+      "duration_seconds": 0.0,
+      "finished_at": "2026-08-07T14:23:09.668102+00:00",
+      "name": "espn_boxscores",
+      "started_at": "2026-08-07T14:23:09.668092+00:00",
+      "status": "skipped"
+    },
+    {
+      "details": {
+        "message": "outside the NBA regular-season refresh window"
+      },
+      "duration_seconds": 0.0,
+      "finished_at": "2026-08-07T14:23:09.668131+00:00",
+      "name": "shots",
+      "started_at": "2026-08-07T14:23:09.668127+00:00",
+      "status": "skipped"
+    },
+    {
+      "details": {
+        "message": "outside the NBA regular-season refresh window"
+      },
+      "duration_seconds": 0.0,
+      "finished_at": "2026-08-07T14:23:09.668168+00:00",
+      "name": "pbp",
+      "started_at": "2026-08-07T14:23:09.668164+00:00",
+      "status": "skipped"
+    },
+    {
+      "details": {
+        "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/sbc_player_matchup_stats.parquet",
+        "rows": 119095
+      },
+      "duration_seconds": 6.17,
+      "finished_at": "2026-08-07T14:23:15.838623+00:00",
+      "name": "matchups",
+      "started_at": "2026-08-07T14:23:09.668192+00:00",
+      "status": "ok"
+    },
+    {
+      "details": {
+        "games": 0,
+        "mode": "shadow",
+        "player_rows": 0,
+        "published": false
+      },
+      "duration_seconds": 0.168,
+      "finished_at": "2026-08-07T14:23:16.006250+00:00",
+      "name": "live_shadow",
+      "started_at": "2026-08-07T14:23:15.838735+00:00",
+      "status": "ok"
+    },
+    {
+      "details": {
+        "bytes": 143781403,
         "datasets": 19,
-        "rows": 7258726,
+        "rows": 7348046,
         "warnings": 0
       },
-      "duration_seconds": 0.516,
-      "finished_at": "2026-07-30T16:42:30.565755+00:00",
+      "duration_seconds": 0.181,
+      "finished_at": "2026-08-07T14:23:16.187289+00:00",
       "name": "validate",
-      "started_at": "2026-07-30T16:42:30.049099+00:00",
+      "started_at": "2026-08-07T14:23:16.006327+00:00",
+      "status": "ok"
+    },
+    {
+      "details": {
+        "period": 34,
+        "period_end": "2026-02-20",
+        "period_start": "2026-02-12",
+        "planned": [
+          "overnight_scores",
+          "mobile_overnight_scores",
+          "matchup_recap",
+          "mobile_matchup_recap",
+          "record_leader"
+        ],
+        "published": [
+          {
+            "bytes": 412030,
+            "filename": "sbcfbl-overnight-scores-2026-p34.png",
+            "kind": "overnight_scores"
+          },
+          {
+            "bytes": 550663,
+            "filename": "sbcfbl-mobile-overnight-scores-2026-p34.png",
+            "kind": "mobile_overnight_scores"
+          },
+          {
+            "bytes": 306669,
+            "filename": "sbcfbl-matchup-recap-2026_1011.png",
+            "kind": "matchup_recap"
+          },
+          {
+            "bytes": 211120,
+            "filename": "sbcfbl-mobile-matchup-recap-2026_1011.png",
+            "kind": "mobile_matchup_recap"
+          },
+          {
+            "bytes": 320881,
+            "filename": "sbcfbl-matchup-recap-2026_1004.png",
+            "kind": "matchup_recap"
+          },
+          {
+            "bytes": 218999,
+            "filename": "sbcfbl-mobile-matchup-recap-2026_1004.png",
+            "kind": "mobile_matchup_recap"
+          },
+          {
+            "bytes": 218906,
+            "filename": "sbcfbl-record-des moines-ts-austin-reaves.png",
+            "kind": "record_leader"
+          },
+          {
+            "bytes": 198005,
+            "filename": "sbcfbl-record-lincoln-blk-isaiah-hartenstein.png",
+            "kind": "record_leader"
+          },
+          {
+            "bytes": 213445,
+            "filename": "sbcfbl-record-st. louis-3pt-ryan-rollins.png",
+            "kind": "record_leader"
+          }
+        ],
+        "publishing_date": "2026-02-20",
+        "skipped": [],
+        "slot": "all",
+        "year": 2026
+      },
+      "duration_seconds": 37.813,
+      "finished_at": "2026-08-07T14:23:54.000273+00:00",
+      "name": "fantrax_rotation",
+      "started_at": "2026-08-07T14:23:16.187347+00:00",
       "status": "ok"
     }
   ],
   "schema_version": 1,
-  "started_at": "2026-07-30T16:42:30.048102+00:00",
+  "started_at": "2026-08-07T14:22:18.686495+00:00",
   "status": "ok",
-  "target_date": "2026-07-30"
+  "target_date": "2026-08-07"
 }

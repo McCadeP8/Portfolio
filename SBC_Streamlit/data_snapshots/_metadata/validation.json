@@ -5,28 +5,28 @@
       "dataset": "team_stats",
       "message": "",
       "path": "all_team_stats_history.parquet",
-      "rows": 7560,
+      "rows": 8820,
       "status": "ok"
     },
     {
       "dataset": "rosters",
       "message": "",
       "path": "all_time_rosters_history.parquet",
-      "rows": 466763,
+      "rows": 552545,
       "status": "ok"
     },
     {
       "dataset": "schedule",
       "message": "",
       "path": "all_time_scores.parquet",
-      "rows": 6777,
+      "rows": 7945,
       "status": "ok"
     },
     {
       "dataset": "standings",
       "message": "",
       "path": "all_time_standings.parquet",
-      "rows": 6660,
+      "rows": 7770,
       "status": "ok"
     },
     {
