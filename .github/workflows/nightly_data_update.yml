@@ -2,39 +2,64 @@ name: Nightly Data Update
 
 on:
   schedule:
-    # Runs at 9 AM UTC every day (adjust time as needed)
-    - cron: '0 9 * * *'
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+    # 2:20 a.m. and 3:20 a.m. Mountain during daylight-saving time.
+    - cron: "20 8 * * *"
+    - cron: "20 9 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sbc-nightly-data-update
+  cancel-in-progress: false
+
+permissions:
+  contents: write
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 90
+    env:
+      SBC_CURRENT_SBC_YEAR: "2027"
+      SBC_LIVE_MODE: shadow
+      SBC_RUNTIME_ROOT: .runtime
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install pandas requests python-dateutil pyarrow streamlit typing_extensions packaging tornado folium        
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Run data update script
-      env:
-        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      run: |
-        cd SBC_Streamlit
-        python big_data.py
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: SBC_Streamlit/requirements.txt
 
-    - name: Commit and push updated data
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git add SBC_Streamlit/*.parquet SBC_Streamlit/data_snapshots/
-        git diff --staged --quiet || git commit -m "Auto-update data files [skip ci]"
-        git push
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r SBC_Streamlit/requirements.txt
+
+      - name: Run tests
+        if: ${{ github.event.schedule != '20 8 * * *' }}
+        working-directory: SBC_Streamlit
+        run: python -m unittest discover -s tests -v
+
+      - name: Publish 2 a.m. Fantrax rotation
+        if: ${{ github.event.schedule == '20 8 * * *' }}
+        working-directory: SBC_Streamlit
+        run: python -m sbc_backend.jobs.overnight --strict --jobs fantrax_rotation --fantrax-slot overnight
+
+      - name: Refresh data and publish 3 a.m. rotation
+        if: ${{ github.event.schedule != '20 8 * * *' }}
+        working-directory: SBC_Streamlit
+        run: python -m sbc_backend.jobs.overnight --strict --lookback-days 3 --fantrax-slot "${{ github.event_name == 'schedule' && 'opening' || 'all' }}"
+
+      - name: Commit and push updated data
+        if: ${{ github.event.schedule != '20 8 * * *' }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add SBC_Streamlit/*.parquet SBC_Streamlit/data_snapshots/
+          git diff --staged --quiet || git commit -m "Auto-update data files [skip ci]"
+          git push
