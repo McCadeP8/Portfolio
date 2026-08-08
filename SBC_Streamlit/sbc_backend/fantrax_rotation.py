@@ -90,9 +90,11 @@ def _normalize_name(value: Any) -> str:
 
 def _team_key(value: Any) -> str:
     text = str(value or "").strip()
+    normalized = text.casefold()
     for city, info in team_info.items():
-        full = f"{city} {info.get('nickname', '')}".strip()
-        if text == city or text == full or text.startswith(city + " "):
+        nickname = str(info.get("nickname", "") or "").strip()
+        full = f"{city} {nickname}".strip()
+        if normalized in {city.casefold(), nickname.casefold(), full.casefold()} or normalized.startswith(city.casefold() + " "):
             return city
     return text
 
@@ -183,10 +185,18 @@ class FantraxRotation:
         keys = ["sbc_team", "fantrax_id", "espn_player_id", "display_player"]
         return _recalc(rows.groupby(keys, as_index=False)[BOX_SUM_STATS].sum()).sort_values(["sbc_team", "PTS"], ascending=[True, False])
 
-    def team_totals(self, rows: pd.DataFrame) -> pd.DataFrame:
+    def team_totals(self, rows: pd.DataFrame, teams: tuple[str, ...] | list[str] = ()) -> pd.DataFrame:
         if rows.empty:
-            return pd.DataFrame(columns=["Team", *CATEGORIES])
-        return _recalc(rows.groupby("sbc_team", as_index=False)[BOX_SUM_STATS].sum()).rename(columns={"sbc_team": "Team"})
+            totals = pd.DataFrame(columns=["Team", *CATEGORIES])
+        else:
+            totals = _recalc(rows.groupby("sbc_team", as_index=False)[BOX_SUM_STATS].sum()).rename(columns={"sbc_team": "Team"})
+        present = set(totals.get("Team", pd.Series(dtype=str)).astype(str))
+        missing = [str(team) for team in teams if str(team) not in present]
+        if missing:
+            zero_rows = pd.DataFrame([{"Team": team, **{column: 0 for column in BOX_SUM_STATS}} for team in missing])
+            zero_totals = _recalc(zero_rows)
+            totals = zero_totals if totals.empty else pd.concat([totals, zero_totals], ignore_index=True, sort=False)
+        return totals
 
     def category_results(self, totals: pd.DataFrame, team_a: str, team_b: str) -> tuple[pd.DataFrame, float, float]:
         if totals.empty or team_a not in set(totals["Team"]) or team_b not in set(totals["Team"]):
@@ -213,7 +223,7 @@ class FantraxRotation:
         totals = []
         for _, game in games.iterrows():
             rows = self.matchup_rows(game, self.as_of)
-            team_totals = self.team_totals(rows)
+            team_totals = self.team_totals(rows, [str(game["TeamA"]), str(game["TeamB"])])
             if not team_totals.empty:
                 team_totals["Game_ID"] = str(game.get("Game_ID", ""))
                 totals.append(team_totals)
@@ -273,18 +283,55 @@ class FantraxRotation:
             bonus = {"Playoffs": 80, "Play-In": 70, "In-Season Tournament": 35}.get(str(row.get("Type")), 0)
             return strength + closeness + race + bonus
         ranked["_rank"] = ranked.apply(rank, axis=1)
-        return [row.copy() for _, row in ranked.sort_values("_rank", ascending=False).head(2).iterrows()]
+        featured, reserved_teams = [], set()
+        for _, row in ranked.sort_values("_rank", ascending=False).iterrows():
+            matchup_teams = {str(row.get("TeamA", "")), str(row.get("TeamB", ""))}
+            if reserved_teams.isdisjoint(matchup_teams):
+                featured.append(row.copy())
+                reserved_teams.update(matchup_teams)
+            if len(featured) == 2:
+                break
+        return featured
 
     def team_averages(self, teams: list[str]) -> dict[str, dict[str, float | None]]:
         stats = self.team_stats[(pd.to_numeric(self.team_stats["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.team_stats["Period"], errors="coerce") < self.period.period)].copy()
+        schedule = self.schedule[
+            (pd.to_numeric(self.schedule["Year"], errors="coerce") == self.period.year)
+            & (pd.to_numeric(self.schedule["Period"], errors="coerce") < self.period.period)
+        ].copy()
+        regular_season = pd.Series(False, index=schedule.index)
+        if "Type" in schedule.columns:
+            regular_season |= schedule["Type"].astype(str).str.strip().str.casefold().str.contains("regular", na=False)
+        if "Round" in schedule.columns:
+            regular_season |= schedule["Round"].astype(str).str.strip().str.casefold().eq("regular")
+        schedule = schedule[regular_season]
+        score_a_column = "TeamAScore" if "TeamAScore" in schedule.columns else "TeamA_Score"
+        score_b_column = "TeamBScore" if "TeamBScore" in schedule.columns else "TeamB_Score"
+        if score_a_column in schedule.columns and score_b_column in schedule.columns:
+            schedule[score_a_column] = pd.to_numeric(schedule[score_a_column], errors="coerce")
+            schedule[score_b_column] = pd.to_numeric(schedule[score_b_column], errors="coerce")
+            schedule = schedule[(schedule[score_a_column] > 0) & (schedule[score_b_column] > 0)]
+        score_rows = []
+        for side, score_column in (("A", score_a_column), ("B", score_b_column)):
+            team_column = f"Team{side}"
+            if team_column in schedule.columns and score_column in schedule.columns:
+                side_scores = schedule[[team_column, score_column]].rename(columns={team_column: "Team", score_column: "FantasyPoints"})
+                side_scores["Team"] = side_scores["Team"].map(_team_key)
+                side_scores["FantasyPoints"] = pd.to_numeric(side_scores["FantasyPoints"], errors="coerce")
+                score_rows.append(side_scores.dropna(subset=["FantasyPoints"]))
+        fantasy_points = pd.concat(score_rows, ignore_index=True) if score_rows else pd.DataFrame(columns=["Team", "FantasyPoints"])
+        fantasy_points_lookup = fantasy_points.groupby(fantasy_points["Team"].astype(str))["FantasyPoints"].mean().to_dict() if not fantasy_points.empty else {}
         result = {}
         for team in teams:
             rows = stats[stats["Team"].astype(str) == team]
             if rows.empty:
-                result[team] = {category: None for category in CATEGORIES}; continue
-            periods = max(1, rows["Period"].nunique())
-            total = _recalc(pd.DataFrame([{column: pd.to_numeric(rows.get(column), errors="coerce").fillna(0).sum() for column in BOX_SUM_STATS}])).iloc[0]
-            result[team] = {category: float(total[category]) if category in PERCENTAGES else float(total[category]) / periods for category in CATEGORIES}
+                result[team] = {category: None for category in CATEGORIES}
+            else:
+                periods = max(1, rows["Period"].nunique())
+                total = _recalc(pd.DataFrame([{column: pd.to_numeric(rows.get(column), errors="coerce").fillna(0).sum() for column in BOX_SUM_STATS}])).iloc[0]
+                result[team] = {category: float(total[category]) if category in PERCENTAGES else float(total[category]) / periods for category in CATEGORIES}
+            team_key = _team_key(team)
+            result[team]["FPPG"] = float(fantasy_points_lookup.get(team_key, 0.0))
         return result
 
     def lineup(self, team: str) -> pd.DataFrame:

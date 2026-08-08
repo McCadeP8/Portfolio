@@ -8758,10 +8758,32 @@ def fantrax_standings_snapshot(standings_df, schedule_df, selected_year, selecte
     return table
 
 
-def matchup_preview_team_averages(team_stats_df, selected_year, selected_period, teams):
+def matchup_preview_team_averages(team_stats_df, schedule_df, selected_year, selected_period, teams):
     """Return per-matchup team averages from games completed before a preview period."""
     categories = BOX_SCORE_CATEGORY_ORDER
-    empty = {str(team): {category: None for category in categories} for team in teams}
+    empty = {str(team): {**{category: None for category in categories}, "FPPG": 0.0} for team in teams}
+    fantasy_points_lookup = {}
+    if schedule_df is not None and not schedule_df.empty:
+        schedule = schedule_df.copy()
+        year_values = pd.to_numeric(schedule.get("Year"), errors="coerce")
+        period_values = pd.to_numeric(schedule.get("Period"), errors="coerce")
+        schedule = schedule[(year_values == int(selected_year)) & (period_values < int(selected_period))].copy()
+        if "Type" in schedule.columns:
+            schedule = schedule[schedule["Type"].astype(str).str.strip().str.casefold().str.contains("regular", na=False)]
+        score_a = pd.to_numeric(schedule.get("TeamAScore"), errors="coerce")
+        score_b = pd.to_numeric(schedule.get("TeamBScore"), errors="coerce")
+        schedule = schedule[(score_a > 0) & (score_b > 0)].copy()
+        score_rows = []
+        for team_column, score_column in (("TeamA", "TeamAScore"), ("TeamB", "TeamBScore")):
+            if team_column in schedule.columns and score_column in schedule.columns:
+                values = schedule[[team_column, score_column]].rename(columns={team_column: "Team", score_column: "FantasyPoints"})
+                values["FantasyPoints"] = pd.to_numeric(values["FantasyPoints"], errors="coerce")
+                score_rows.append(values.dropna(subset=["FantasyPoints"]))
+        if score_rows:
+            fantasy_points = pd.concat(score_rows, ignore_index=True)
+            fantasy_points_lookup = fantasy_points.groupby(fantasy_points["Team"].astype(str))["FantasyPoints"].mean().to_dict()
+    for team in teams:
+        empty[str(team)]["FPPG"] = float(fantasy_points_lookup.get(str(team), 0.0))
     if team_stats_df is None or team_stats_df.empty or "Team" not in team_stats_df.columns:
         return empty
     stats = team_stats_df.copy()
@@ -8790,8 +8812,22 @@ def matchup_preview_team_averages(team_stats_df, selected_year, selected_period,
                 averages[category] = float(value)
             else:
                 averages[category] = float(value) / periods_played
+        averages["FPPG"] = float(fantasy_points_lookup.get(str(team), 0.0))
         result[str(team)] = averages
     return result
+
+
+def distinct_featured_matchups(ranked_matchups, rank_column, limit=2):
+    """Choose ranked preview games without featuring any franchise twice."""
+    selected, reserved_teams = [], set()
+    for _, row in ranked_matchups.sort_values(rank_column, ascending=False).iterrows():
+        matchup_teams = {str(row.get("TeamA", "")), str(row.get("TeamB", ""))}
+        if reserved_teams.isdisjoint(matchup_teams):
+            selected.append(row.copy())
+            reserved_teams.update(matchup_teams)
+        if len(selected) == int(limit):
+            break
+    return selected
 
 
 def history_completed_games(schedule_df, competition_types=None):
@@ -18880,7 +18916,18 @@ if main_page == "Team Hub" and selected_team_page == "History":
             preview_col_one, preview_col_two = st.columns(2)
             with preview_col_one:
                 first_preview = st.selectbox("Featured Matchup 1", preview_options, format_func=preview_label, key="fantrax_preview_one")
-            second_options = [index for index in preview_options if index != first_preview]
+            first_teams = {
+                str(recap_matchups.iloc[first_preview].get("TeamA", "")),
+                str(recap_matchups.iloc[first_preview].get("TeamB", "")),
+            }
+            second_options = [
+                index for index in preview_options
+                if index != first_preview
+                and first_teams.isdisjoint({
+                    str(recap_matchups.iloc[index].get("TeamA", "")),
+                    str(recap_matchups.iloc[index].get("TeamB", "")),
+                })
+            ]
             with preview_col_two:
                 second_preview = st.selectbox("Featured Matchup 2", second_options, format_func=preview_label, key="fantrax_preview_two")
             preview_manual_indexes = [first_preview, second_preview]
@@ -19096,7 +19143,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
                         else:
                             ranked = preview_matchups.copy()
                             ranked["_preview_rank"] = ranked.apply(preview_rank, axis=1)
-                            featured_rows = [row.copy() for _, row in ranked.sort_values("_preview_rank", ascending=False).head(2).iterrows()]
+                            featured_rows = distinct_featured_matchups(ranked, "_preview_rank")
                         if len(featured_rows) < 2:
                             raise ValueError("Two featured matchups could not be selected.")
 
@@ -19105,6 +19152,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
                             team_a, team_b = str(featured_row.get("TeamA", "")), str(featured_row.get("TeamB", ""))
                             team_averages = matchup_preview_team_averages(
                                 all_time_team_stats,
+                                all_time_schedule,
                                 preview_year,
                                 preview_period,
                                 [team_a, team_b],
@@ -19202,7 +19250,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
                         else:
                             ranked = mobile_preview_matchups.copy()
                             ranked["_preview_rank"] = ranked.apply(mobile_preview_rank, axis=1)
-                            mobile_featured_rows = [row.copy() for _, row in ranked.sort_values("_preview_rank", ascending=False).head(2).iterrows()]
+                            mobile_featured_rows = distinct_featured_matchups(ranked, "_preview_rank")
                         if len(mobile_featured_rows) < 2:
                             raise ValueError("Two featured matchups could not be selected.")
 
@@ -19210,7 +19258,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
                         for featured_row in mobile_featured_rows:
                             team_a, team_b = str(featured_row.get("TeamA", "")), str(featured_row.get("TeamB", ""))
                             team_averages = matchup_preview_team_averages(
-                                all_time_team_stats, mobile_preview_year, mobile_preview_period, [team_a, team_b]
+                                all_time_team_stats, all_time_schedule, mobile_preview_year, mobile_preview_period, [team_a, team_b]
                             )
                             preview_rows = matchup_boxscore_rows(featured_row, all_time_rosters)
                             try:

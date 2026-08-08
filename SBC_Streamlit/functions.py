@@ -2250,7 +2250,9 @@ def _scoreboard_logo_bytes(source: str) -> bytes | None:
             content = Path(source).read_bytes()
     except (OSError, requests.RequestException):
         content = None
-    _SCOREBOARD_LOGO_CACHE[source] = content
+    # Keep successful downloads hot, but allow a transient CDN failure to retry.
+    if content is not None:
+        _SCOREBOARD_LOGO_CACHE[source] = content
     return content
 
 
@@ -2275,6 +2277,17 @@ def _scoreboard_color(value, fallback="#64748b"):
 def _scoreboard_team_name(team_key: str) -> str:
     nickname = str(safe_team_info(team_key, "nickname", "") or "").strip()
     return " ".join(part for part in [str(team_key).strip(), nickname] if part)
+
+
+def _scoreboard_team_label(team_key: str) -> str:
+    """Return the compact identity used in dense score lists."""
+    nickname = str(safe_team_info(team_key, "nickname", "") or "").strip()
+    return nickname or str(team_key).strip()
+
+
+def _scoreboard_record(value) -> str:
+    text = str(value or "").strip()
+    return text if text and text.casefold() not in {"nan", "none"} else "—"
 
 
 def _scoreboard_score(value) -> str:
@@ -2334,20 +2347,25 @@ def build_live_scoreboard_image(
     outer_margin = 44
     column_gap = 24
     card_width = (width - outer_margin * 2 - column_gap) // 2
-    header_height = 154
+    regular_column_gap = 18
+    regular_card_width = (width - outer_margin * 2 - regular_column_gap * 2) // 3
+    header_height = 150
     section_header_height = 54
-    row_height = 78
+    row_height = 86
+    regular_row_height = 112
     section_gap = 14
     footer_height = 46
     def section_display_rows(game_type, section_rows):
         if game_type == "Regular Season":
-            return math.ceil(len(section_rows) / 2)
+            return math.ceil(len(section_rows) / 3)
         west_count = int((section_rows["_conference"] == "West").sum())
         east_count = int((section_rows["_conference"] == "East").sum())
         return max(west_count, east_count, 1)
 
     content_height = sum(
-        section_header_height + section_display_rows(game_type, section_rows) * row_height + section_gap
+        section_header_height
+        + section_display_rows(game_type, section_rows) * (regular_row_height if game_type == "Regular Season" else row_height)
+        + section_gap
         for game_type, section_rows in sections
     )
     height = header_height + content_height + footer_height
@@ -2361,18 +2379,18 @@ def build_live_scoreboard_image(
         draw.line((0, y, width, y), fill=color)
     draw.rounded_rectangle((outer_margin, 34, outer_margin + 58, 92), radius=14, fill="#f59e0b")
     draw.text((outer_margin + 29, 63), "S", font=_scoreboard_font(32, True), fill="#172033", anchor="mm")
-    draw.text((outer_margin + 78, 50), "SBCFBL OVERNIGHT SCOREBOARD", font=_scoreboard_font(36, True), fill="#172033", anchor="lm")
+    draw.text((outer_margin + 78, 50), "SBCFBL OVERNIGHT SCORES", font=_scoreboard_font(38, True), fill="#172033", anchor="lm")
     generated_timestamp = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now())
     scores_through = generated_timestamp.strftime("%A, %B %d").replace(" 0", " ")
     draw.text(
         (outer_margin + 78, 96),
-        f"Scores through {scores_through}  •  {season_label}  •  {period_label}  •  {progress_percent:.0f}% of matchup complete",
-        font=_scoreboard_font(18),
+        f"{period_label.upper()}  •  SCORES THROUGH {scores_through.upper()}",
+        font=_scoreboard_font(19, True),
         fill="#5f7185",
         anchor="lm",
     )
     draw.rounded_rectangle((width - 246, 44, width - outer_margin, 86), radius=21, fill="#172033")
-    draw.text((width - 145, 65), f"{len(rows)} MATCHUPS", font=_scoreboard_font(20, True), fill="#ffffff", anchor="mm")
+    draw.text((width - 145, 65), f"{len(rows)} GAMES", font=_scoreboard_font(20, True), fill="#ffffff", anchor="mm")
     draw.line((outer_margin, header_height - 1, width - outer_margin, header_height - 1), fill="#d9e2ec", width=2)
 
     logo_sources = set()
@@ -2394,8 +2412,8 @@ def build_live_scoreboard_image(
 
         team_a = str(row.get("TeamA", ""))
         team_b = str(row.get("TeamB", ""))
-        name_a = _scoreboard_team_name(team_a)
-        name_b = _scoreboard_team_name(team_b)
+        name_a = _scoreboard_team_label(team_a)
+        name_b = _scoreboard_team_label(team_b)
         color_a = _scoreboard_color(row.get("TeamA_color", safe_team_info(team_a, "bg", "#64748b")))
         color_b = _scoreboard_color(row.get("TeamB_color", safe_team_info(team_b, "bg", "#64748b")))
         draw.rounded_rectangle((card_left, card_top, card_left + 7, card_bottom), radius=4, fill=color_a)
@@ -2415,12 +2433,16 @@ def build_live_scoreboard_image(
                 draw.ellipse((logo_x - 20, center_y - 20, logo_x + 20, center_y + 20), fill=fallback_color)
                 draw.text((logo_x, center_y), team[:2].upper(), font=_scoreboard_font(13, True), fill="#ffffff", anchor="mm")
 
-        draw.text((card_left + 69, center_y), name_a, font=_fit_scoreboard_font(draw, name_a, 200, 21, 12), fill="#172033", anchor="lm")
-        draw.text((card_right - 69, center_y), name_b, font=_fit_scoreboard_font(draw, name_b, 200, 21, 12), fill="#172033", anchor="rm")
+        name_y = center_y - 10
+        record_y = center_y + 20
+        draw.text((card_left + 69, name_y), name_a, font=_fit_scoreboard_font(draw, name_a, 180, 25, 15), fill="#172033", anchor="lm")
+        draw.text((card_right - 69, name_y), name_b, font=_fit_scoreboard_font(draw, name_b, 180, 25, 15), fill="#172033", anchor="rm")
+        draw.text((card_left + 69, record_y), _scoreboard_record(row.get("TeamA_record")), font=_scoreboard_font(15, True), fill="#687b90", anchor="lm")
+        draw.text((card_right - 69, record_y), _scoreboard_record(row.get("TeamB_record")), font=_scoreboard_font(15, True), fill="#687b90", anchor="rm")
 
         score_a = _scoreboard_score(row.get("TeamA_Score", row.get("TeamAScore")))
         score_b = _scoreboard_score(row.get("TeamB_Score", row.get("TeamBScore")))
-        score_font = _scoreboard_font(26, True)
+        score_font = _scoreboard_font(30, True)
         score_a_position = (card_left + 370, center_y)
         score_b_position = (card_left + 575, center_y)
         draw.text(score_a_position, score_a, font=score_font, fill="#172033", anchor="rm")
@@ -2440,10 +2462,10 @@ def build_live_scoreboard_image(
         bar_left = card_left + 395
         bar_right = card_left + 550
         bar_width = bar_right - bar_left
-        bar_top, bar_bottom = center_y - 9, center_y + 9
+        bar_top, bar_bottom = center_y - 15, center_y + 15
         if progress >= 100.0:
-            draw.rounded_rectangle((bar_left, bar_top, bar_right, bar_bottom), radius=9, fill="#111111")
-            draw.text(((bar_left + bar_right) // 2, center_y), "Final", font=_scoreboard_font(12, True), fill="#ffffff", anchor="mm")
+            draw.rounded_rectangle((bar_left, bar_top, bar_right, bar_bottom), radius=15, fill="#172033")
+            draw.text(((bar_left + bar_right) // 2, center_y), "FINAL", font=_scoreboard_font(16, True), fill="#ffffff", anchor="mm")
         else:
             draw.rounded_rectangle((bar_left, bar_top, bar_right, bar_bottom), radius=9, fill="#dfe7ef", outline="#cbd6e2", width=1)
             fill_width = int(bar_width * progress / 100.0)
@@ -2454,34 +2476,95 @@ def build_live_scoreboard_image(
                     blend = x / max(1, bar_width - 1)
                     color = tuple(int(a + (b - a) * blend) for a, b in zip(color_a, color_b))
                     draw.line((bar_left + 4 + x, bar_top + 2, bar_left + 4 + x, bar_bottom - 2), fill=color)
-            draw.text(((bar_left + bar_right) // 2, center_y), f"{progress:.0f}%", font=_scoreboard_font(11, True), fill="#ffffff", anchor="mm", stroke_width=2, stroke_fill="#172033")
+            draw.text(((bar_left + bar_right) // 2, center_y), f"{progress:.0f}%", font=_scoreboard_font(14, True), fill="#ffffff", anchor="mm", stroke_width=2, stroke_fill="#172033")
+
+    def draw_regular_matchup_card(row, card_left, card_top):
+        card_right = card_left + regular_card_width
+        card_bottom = card_top + regular_row_height - 8
+        team_a, team_b = str(row.get("TeamA", "")), str(row.get("TeamB", ""))
+        name_a, name_b = _scoreboard_team_label(team_a), _scoreboard_team_label(team_b)
+        color_a = _scoreboard_color(row.get("TeamA_color", safe_team_info(team_a, "bg", "#64748b")))
+        color_b = _scoreboard_color(row.get("TeamB_color", safe_team_info(team_b, "bg", "#64748b")))
+        draw.rounded_rectangle((card_left, card_top, card_right, card_bottom), radius=12, fill="#f8fafc", outline="#d9e2ec", width=2)
+        draw.rounded_rectangle((card_left, card_top, card_left + 7, card_bottom), radius=4, fill=color_a)
+        draw.rounded_rectangle((card_right - 7, card_top, card_right, card_bottom), radius=4, fill=color_b)
+
+        identity_y = card_top + 32
+        for side, team, logo_x, fallback_color in (
+            ("A", team_a, card_left + 36, color_a),
+            ("B", team_b, card_right - 36, color_b),
+        ):
+            source = str(row.get(f"Team{side}_logo", safe_team_info(team, "logo", "")) or "")
+            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(source), 44)
+            if logo is not None:
+                image.paste(logo, (logo_x - logo.width // 2, identity_y - logo.height // 2), logo)
+            else:
+                draw.ellipse((logo_x - 20, identity_y - 20, logo_x + 20, identity_y + 20), fill=fallback_color)
+                draw.text((logo_x, identity_y), team[:2].upper(), font=_scoreboard_font(12, True), fill="#ffffff", anchor="mm")
+
+        draw.text((card_left + 66, card_top + 25), name_a, font=_fit_scoreboard_font(draw, name_a, 180, 21, 14), fill="#172033", anchor="lm")
+        draw.text((card_right - 66, card_top + 25), name_b, font=_fit_scoreboard_font(draw, name_b, 180, 21, 14), fill="#172033", anchor="rm")
+        draw.text((card_left + 66, card_top + 52), _scoreboard_record(row.get("TeamA_record")), font=_scoreboard_font(13, True), fill="#687b90", anchor="lm")
+        draw.text((card_right - 66, card_top + 52), _scoreboard_record(row.get("TeamB_record")), font=_scoreboard_font(13, True), fill="#687b90", anchor="rm")
+
+        score_y = card_top + 81
+        card_mid = (card_left + card_right) // 2
+        score_font = _scoreboard_font(27, True)
+        score_a = _scoreboard_score(row.get("TeamA_Score", row.get("TeamAScore")))
+        score_b = _scoreboard_score(row.get("TeamB_Score", row.get("TeamBScore")))
+        score_a_pos, score_b_pos = (card_mid - 78, score_y), (card_mid + 78, score_y)
+        draw.text(score_a_pos, score_a, font=score_font, fill="#172033", anchor="rm")
+        draw.text(score_b_pos, score_b, font=score_font, fill="#172033", anchor="lm")
+        number_a = _scoreboard_score_number(row.get("TeamA_Score", row.get("TeamAScore")))
+        number_b = _scoreboard_score_number(row.get("TeamB_Score", row.get("TeamBScore")))
+        if number_a is not None and number_b is not None and number_a != number_b:
+            winner_text, winner_pos, winner_anchor, winner_color = (
+                (score_a, score_a_pos, "rm", color_a) if number_a > number_b else (score_b, score_b_pos, "lm", color_b)
+            )
+            bounds = draw.textbbox(winner_pos, winner_text, font=score_font, anchor=winner_anchor)
+            draw.line((bounds[0], bounds[3] + 5, bounds[2], bounds[3] + 5), fill=winner_color, width=3)
+        if progress >= 100:
+            draw.rounded_rectangle((card_mid - 54, score_y - 16, card_mid + 54, score_y + 16), radius=16, fill="#172033")
+            draw.text((card_mid, score_y), "FINAL", font=_scoreboard_font(13, True), fill="#ffffff", anchor="mm")
+        else:
+            draw.rounded_rectangle((card_mid - 54, score_y - 16, card_mid + 54, score_y + 16), radius=16, fill="#dfe7ef")
+            draw.text((card_mid, score_y), f"{progress:.0f}%", font=_scoreboard_font(13, True), fill="#172033", anchor="mm")
 
     y_cursor = header_height
     for game_type, section_rows in sections:
         draw.rectangle((outer_margin, y_cursor + 10, width - outer_margin, y_cursor + section_header_height - 4), fill="#eef3f8")
         draw.rounded_rectangle((outer_margin, y_cursor + 10, outer_margin + 9, y_cursor + section_header_height - 4), radius=4, fill="#f59e0b")
         draw.text((outer_margin + 26, y_cursor + 30), game_type.upper(), font=_scoreboard_font(20, True), fill="#172033", anchor="lm")
-        count_label = f"{len(section_rows)} MATCHUP{'S' if len(section_rows) != 1 else ''}"
+        count_label = f"{len(section_rows)} GAME{'S' if len(section_rows) != 1 else ''}"
         draw.text((width - outer_margin - 18, y_cursor + 30), count_label, font=_scoreboard_font(14, True), fill="#607286", anchor="rm")
         y_cursor += section_header_height
         if game_type == "Regular Season":
-            left_rows = section_rows.iloc[:math.ceil(len(section_rows) / 2)].reset_index(drop=True)
-            right_rows = section_rows.iloc[len(left_rows):].reset_index(drop=True)
+            chunk_size = math.ceil(len(section_rows) / 3)
+            column_rows = [
+                section_rows.iloc[index * chunk_size:(index + 1) * chunk_size].reset_index(drop=True)
+                for index in range(3)
+            ]
+            for row_index in range(max((len(values) for values in column_rows), default=0)):
+                for column_index, values in enumerate(column_rows):
+                    if row_index < len(values):
+                        card_left = outer_margin + column_index * (regular_card_width + regular_column_gap)
+                        draw_regular_matchup_card(values.iloc[row_index], card_left, y_cursor)
+                y_cursor += regular_row_height
         else:
             left_rows = section_rows[section_rows["_conference"] == "West"].sort_values("_home_sort").reset_index(drop=True)
             right_rows = section_rows[section_rows["_conference"] == "East"].sort_values("_home_sort").reset_index(drop=True)
-        for row_index in range(max(len(left_rows), len(right_rows))):
-            if row_index < len(left_rows):
-                draw_matchup_card(left_rows.iloc[row_index], outer_margin, y_cursor)
-            if row_index < len(right_rows):
-                draw_matchup_card(right_rows.iloc[row_index], outer_margin + card_width + column_gap, y_cursor)
-            y_cursor += row_height
+            for row_index in range(max(len(left_rows), len(right_rows))):
+                if row_index < len(left_rows):
+                    draw_matchup_card(left_rows.iloc[row_index], outer_margin, y_cursor)
+                if row_index < len(right_rows):
+                    draw_matchup_card(right_rows.iloc[row_index], outer_margin + card_width + column_gap, y_cursor)
+                y_cursor += row_height
         y_cursor += section_gap
 
     generated = generated_timestamp.strftime("%b %d, %Y • %I:%M %p").replace(" 0", " ")
     draw.line((outer_margin, height - footer_height, width - outer_margin, height - footer_height), fill="#d9e2ec", width=1)
-    draw.text((outer_margin, height - 21), f"OVERNIGHT UPDATE • GENERATED {generated}", font=_scoreboard_font(13, True), fill="#6d7f92", anchor="lm")
-    draw.text((width - outer_margin, height - 21), "CATEGORY SCORES THROUGH COMPLETED NBA GAMES", font=_scoreboard_font(13, True), fill="#6d7f92", anchor="rm")
+    draw.text((outer_margin, height - 21), f"UPDATED {generated}", font=_scoreboard_font(15, True), fill="#6d7f92", anchor="lm")
+    draw.text((width - outer_margin, height - 21), "13-CATEGORY SCORING", font=_scoreboard_font(15, True), fill="#6d7f92", anchor="rm")
 
     output = BytesIO()
     image.save(output, format="PNG", optimize=True)
@@ -2523,27 +2606,37 @@ def build_mobile_live_scoreboard_image(
         sections.append((game_type, section_rows.reset_index(drop=True)))
 
     width = 1080
-    margin = 30
-    header_height = 176
-    section_header_height = 52
-    row_height = 112
+    margin = 24
+    column_gap = 14
+    mobile_card_width = (width - margin * 2 - column_gap) // 2
+    header_height = 150
+    section_header_height = 56
+    row_height = 124
     section_gap = 14
-    footer_height = 48
-    height = header_height + footer_height + sum(section_header_height + len(section_rows) * row_height + section_gap for _, section_rows in sections)
+    footer_height = 52
+    def mobile_section_rows(game_type, section_rows):
+        if game_type == "Regular Season":
+            return math.ceil(len(section_rows) / 2)
+        west_count = int((section_rows["_conference"] == "West").sum())
+        east_count = int((section_rows["_conference"] == "East").sum())
+        return max(west_count, east_count, 1)
+    height = header_height + footer_height + sum(
+        section_header_height + mobile_section_rows(game_type, section_rows) * row_height + section_gap
+        for game_type, section_rows in sections
+    )
     image = Image.new("RGB", (width, height), "#f4f7fb")
     draw = ImageDraw.Draw(image)
     navy, orange = "#172033", "#f59e0b"
 
     draw.rectangle((0, 0, width, header_height), fill="#ffffff")
-    draw.rounded_rectangle((margin, 28, margin + 60, 88), radius=14, fill=orange)
-    draw.text((margin + 30, 58), "S", font=_scoreboard_font(31, True), fill=navy, anchor="mm")
-    draw.text((margin + 82, 50), "OVERNIGHT SCORES", font=_scoreboard_font(34, True), fill=navy, anchor="lm")
+    draw.rounded_rectangle((margin, 24, margin + 64, 88), radius=15, fill=orange)
+    draw.text((margin + 32, 56), "S", font=_scoreboard_font(34, True), fill=navy, anchor="mm")
+    draw.text((margin + 88, 52), "OVERNIGHT SCORES", font=_scoreboard_font(40, True), fill=navy, anchor="lm")
     generated_timestamp = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now())
-    scores_through = generated_timestamp.strftime("%A, %b %d").replace(" 0", " ")
-    draw.text((margin + 82, 90), f"{scores_through}  \u2022  {period_label}", font=_scoreboard_font(16, True), fill="#65778a", anchor="lm")
-    draw.text((margin, 137), season_label, font=_scoreboard_font(14, True), fill="#718398", anchor="lm")
-    draw.rounded_rectangle((width - 210, 116, width - margin, 154), radius=19, fill=navy)
-    draw.text((width - 120, 135), f"{len(rows)} GAMES", font=_scoreboard_font(15, True), fill="#ffffff", anchor="mm")
+    scores_through = generated_timestamp.strftime("%b %d").replace(" 0", " ").upper()
+    draw.text((margin + 88, 105), f"{period_label.upper()}  •  THROUGH {scores_through}", font=_scoreboard_font(19, True), fill="#65778a", anchor="lm")
+    draw.rounded_rectangle((width - 216, 32, width - margin, 80), radius=24, fill=navy)
+    draw.text((width - 123, 56), f"{len(rows)} GAMES", font=_scoreboard_font(18, True), fill="#ffffff", anchor="mm")
 
     logo_sources = set()
     for _, row in rows.iterrows():
@@ -2565,27 +2658,22 @@ def build_mobile_live_scoreboard_image(
             draw.ellipse((center[0] - 27, center[1] - 27, center[0] + 27, center[1] + 27), fill=fallback_color)
             draw.text(center, team[:2].upper(), font=_scoreboard_font(15, True), fill="#ffffff", anchor="mm")
 
-    def draw_mobile_matchup(row, top):
-        left, right, bottom = margin, width - margin, top + row_height - 8
+    def draw_mobile_matchup(row, top, left):
+        right, bottom = left + mobile_card_width, top + row_height - 8
         center_y = (top + bottom) // 2
         team_a, team_b = str(row.get("TeamA", "")), str(row.get("TeamB", ""))
-        # Mobile uses nicknames only: logos and team colors carry the city identity.
-        name_a = str(safe_team_info(team_a, "nickname", _scoreboard_team_name(team_a)) or _scoreboard_team_name(team_a))
-        name_b = str(safe_team_info(team_b, "nickname", _scoreboard_team_name(team_b)) or _scoreboard_team_name(team_b))
         color_a = _scoreboard_color(row.get("TeamA_color", safe_team_info(team_a, "bg", "#64748b")))
         color_b = _scoreboard_color(row.get("TeamB_color", safe_team_info(team_b, "bg", "#64748b")))
-        draw.rounded_rectangle((left, top, right, bottom), radius=16, fill="#ffffff", outline="#d8e2ec", width=2)
-        draw.rounded_rectangle((left, top, left + 9, bottom), radius=5, fill=color_a)
-        draw.rounded_rectangle((right - 9, top, right, bottom), radius=5, fill=color_b)
-        paste_team_logo(row, "A", team_a, (left + 48, center_y), color_a)
-        paste_team_logo(row, "B", team_b, (right - 48, center_y), color_b)
-        draw.text((left + 88, center_y), name_a, font=_fit_scoreboard_font(draw, name_a, 205, 21, 11), fill=navy, anchor="lm")
-        draw.text((right - 88, center_y), name_b, font=_fit_scoreboard_font(draw, name_b, 205, 21, 11), fill=navy, anchor="rm")
+        draw.rounded_rectangle((left, top, right, bottom), radius=18, fill="#ffffff", outline="#d8e2ec", width=2)
+        draw.rounded_rectangle((left, top, left + 12, bottom), radius=6, fill=color_a)
+        draw.rounded_rectangle((right - 12, top, right, bottom), radius=6, fill=color_b)
+        paste_team_logo(row, "A", team_a, (left + 52, center_y), color_a)
+        paste_team_logo(row, "B", team_b, (right - 52, center_y), color_b)
 
         score_a = _scoreboard_score(row.get("TeamA_Score", row.get("TeamAScore")))
         score_b = _scoreboard_score(row.get("TeamB_Score", row.get("TeamBScore")))
-        score_font = _scoreboard_font(35, True)
-        score_a_pos, score_b_pos = (left + 398, center_y), (left + 622, center_y)
+        score_font = _scoreboard_font(38, True)
+        score_a_pos, score_b_pos = (left + 210, center_y), (right - 210, center_y)
         draw.text(score_a_pos, score_a, font=score_font, fill=navy, anchor="rm")
         draw.text(score_b_pos, score_b, font=score_font, fill=navy, anchor="lm")
         number_a = _scoreboard_score_number(row.get("TeamA_Score", row.get("TeamAScore")))
@@ -2595,35 +2683,46 @@ def build_mobile_live_scoreboard_image(
                 (score_a, score_a_pos, "rm", color_a) if number_a > number_b else (score_b, score_b_pos, "lm", color_b)
             )
             bounds = draw.textbbox(winner_pos, winner_text, font=score_font, anchor=winner_anchor)
-            draw.line((bounds[0], bounds[3] + 5, bounds[2], bounds[3] + 5), fill=winner_color, width=4)
+            draw.line((bounds[0], bounds[3] + 6, bounds[2], bounds[3] + 6), fill=winner_color, width=5)
 
-        pill_left, pill_right = left + 423, left + 597
-        pill_top, pill_bottom = center_y - 15, center_y + 15
+        card_mid = (left + right) // 2
+        pill_left, pill_right = card_mid - 31, card_mid + 31
+        pill_top, pill_bottom = center_y - 26, center_y + 26
         if progress >= 100:
-            draw.rounded_rectangle((pill_left, pill_top, pill_right, pill_bottom), radius=15, fill="#111111")
-            draw.text(((pill_left + pill_right) // 2, center_y), "FINAL", font=_scoreboard_font(13, True), fill="#ffffff", anchor="mm")
+            draw.rounded_rectangle((pill_left, pill_top, pill_right, pill_bottom), radius=20, fill=navy)
+            draw.text((card_mid, center_y), "F", font=_scoreboard_font(25, True), fill="#ffffff", anchor="mm")
         else:
-            draw.rounded_rectangle((pill_left, pill_top, pill_right, pill_bottom), radius=15, fill="#dfe7ef")
+            draw.rounded_rectangle((pill_left, pill_top, pill_right, pill_bottom), radius=20, fill="#dfe7ef")
             fill_right = pill_left + int((pill_right - pill_left) * progress / 100)
             if fill_right > pill_left:
-                draw.rounded_rectangle((pill_left, pill_top, max(pill_left + 12, fill_right), pill_bottom), radius=15, fill=color_a)
-            draw.text(((pill_left + pill_right) // 2, center_y), f"{progress:.0f}%", font=_scoreboard_font(12, True), fill="#ffffff", stroke_width=2, stroke_fill=navy, anchor="mm")
+                draw.rounded_rectangle((pill_left, pill_top, max(pill_left + 16, fill_right), pill_bottom), radius=20, fill=color_a)
+            draw.text((card_mid, center_y), f"{progress:.0f}%", font=_scoreboard_font(14, True), fill="#ffffff", stroke_width=2, stroke_fill=navy, anchor="mm")
 
     cursor = header_height
     for game_type, section_rows in sections:
         draw.rectangle((margin, cursor + 8, width - margin, cursor + section_header_height - 4), fill="#e9eff5")
         draw.rounded_rectangle((margin, cursor + 8, margin + 8, cursor + section_header_height - 4), radius=4, fill=orange)
-        draw.text((margin + 24, cursor + 28), game_type.upper(), font=_scoreboard_font(17, True), fill=navy, anchor="lm")
-        draw.text((width - margin - 14, cursor + 28), str(len(section_rows)), font=_scoreboard_font(14, True), fill="#718398", anchor="rm")
+        draw.text((margin + 24, cursor + 30), game_type.upper(), font=_scoreboard_font(19, True), fill=navy, anchor="lm")
+        draw.text((width - margin - 14, cursor + 30), f"{len(section_rows)} GAMES", font=_scoreboard_font(16, True), fill="#718398", anchor="rm")
         cursor += section_header_height
-        for _, row in section_rows.iterrows():
-            draw_mobile_matchup(row, cursor)
+        if game_type == "Regular Season":
+            split = math.ceil(len(section_rows) / 2)
+            left_rows = section_rows.iloc[:split].reset_index(drop=True)
+            right_rows = section_rows.iloc[split:].reset_index(drop=True)
+        else:
+            left_rows = section_rows[section_rows["_conference"] == "West"].reset_index(drop=True)
+            right_rows = section_rows[section_rows["_conference"] == "East"].reset_index(drop=True)
+        for row_index in range(max(len(left_rows), len(right_rows))):
+            if row_index < len(left_rows):
+                draw_mobile_matchup(left_rows.iloc[row_index], cursor, margin)
+            if row_index < len(right_rows):
+                draw_mobile_matchup(right_rows.iloc[row_index], cursor, margin + mobile_card_width + column_gap)
             cursor += row_height
         cursor += section_gap
 
     generated = generated_timestamp.strftime("%b %d  \u2022  %I:%M %p").replace(" 0", " ")
-    draw.text((margin, height - 22), f"SBCFBL  \u2022  {generated}", font=_scoreboard_font(12, True), fill="#718398", anchor="lm")
-    draw.text((width - margin, height - 22), "OVERNIGHT UPDATE", font=_scoreboard_font(12, True), fill="#718398", anchor="rm")
+    draw.text((margin, height - 24), f"UPDATED {generated}", font=_scoreboard_font(15, True), fill="#718398", anchor="lm")
+    draw.text((width - margin, height - 24), "13-CATEGORY SCORING", font=_scoreboard_font(15, True), fill="#718398", anchor="rm")
     output = BytesIO()
     image.save(output, format="PNG", optimize=True)
     return output.getvalue()
@@ -2644,7 +2743,13 @@ def _paste_scoreboard_asset(canvas, content: bytes | None, box, padding=0):
         return False
 
 
-def _recap_stat_text(value, stat):
+def _recap_stat_text(value, stat, attempts=None):
+    if stat in {"TS%", "2PT%", "3PT%", "FT%"} and attempts is not None:
+        try:
+            if float(attempts) == 0:
+                return "—"
+        except (TypeError, ValueError):
+            pass
     try:
         number = float(value)
     except (TypeError, ValueError):
@@ -2703,47 +2808,54 @@ def build_matchup_recap_image(
         player_teams = aggregate_players["sbc_team"].astype(str)
         player_counts = [int((player_teams == team).sum()) for team in (team_a, team_b)]
     visible_player_rows = min(15, max(player_counts, default=0))
-    table_height = max(210, 128 + visible_player_rows * 40)
+    table_height = max(300, 142 + visible_player_rows * 48)
 
-    width, height = 2000, 2860 - (770 - table_height)
+    width = 3600
     margin = 48
+    category_top = 352
+    category_height = 216
+    box_top = category_top + category_height + 48
+    table_top = box_top + 46
+    lower_title_top = table_top + table_height + 48
+    lower_box_top = lower_title_top + 42
+    lower_box_bottom = lower_box_top + 600
+    height = lower_box_bottom + 76
     image = Image.new("RGB", (width, height), "#f4f7fb")
     draw = ImageDraw.Draw(image)
 
     # Matchup masthead.
-    draw.rounded_rectangle((margin, 34, width - margin, 272), radius=24, fill="#ffffff", outline="#dbe4ee", width=2)
-    draw.rectangle((margin, 34, margin + 12, 272), fill=color_a)
-    draw.rectangle((width - margin - 12, 34, width - margin, 272), fill=color_b)
-    draw.text((width // 2, 68), "SBCFBL MATCHUP RECAP", font=_scoreboard_font(24, True), fill="#607286", anchor="mm")
-    draw.text((width // 2, 156), f"{score_a}  —  {score_b}", font=_scoreboard_font(64, True), fill="#172033", anchor="mm")
-    draw.rounded_rectangle((width // 2 - 58, 205, width // 2 + 58, 239), radius=17, fill="#111111")
-    draw.text((width // 2, 222), "FINAL", font=_scoreboard_font(14, True), fill="#ffffff", anchor="mm")
+    draw.rounded_rectangle((margin, 34, width - margin, 292), radius=24, fill="#ffffff", outline="#dbe4ee", width=2)
+    draw.rectangle((margin, 34, margin + 14, 292), fill=color_a)
+    draw.rectangle((width - margin - 14, 34, width - margin, 292), fill=color_b)
+    draw.text((width // 2, 70), "SBCFBL MATCHUP RECAP", font=_scoreboard_font(30, True), fill="#607286", anchor="mm")
+    draw.text((width // 2, 162), f"{score_a}  —  {score_b}", font=_scoreboard_font(78, True), fill="#172033", anchor="mm")
+    draw.rounded_rectangle((width // 2 - 72, 216, width // 2 + 72, 258), radius=21, fill="#111111")
+    draw.text((width // 2, 237), "FINAL", font=_scoreboard_font(17, True), fill="#ffffff", anchor="mm")
 
     for team, name, logo_x, name_x, anchor, color in (
-        (team_a, name_a, margin + 92, margin + 162, "lm", color_a),
-        (team_b, name_b, width - margin - 92, width - margin - 162, "rm", color_b),
+        (team_a, name_a, margin + 112, margin + 205, "lm", color_a),
+        (team_b, name_b, width - margin - 112, width - margin - 205, "rm", color_b),
     ):
         logo_source = str(safe_team_info(team, "logo", "") or "")
-        logo = _scoreboard_logo_image(_scoreboard_logo_bytes(logo_source), 96)
+        logo = _scoreboard_logo_image(_scoreboard_logo_bytes(logo_source), 118)
         if logo is not None:
-            image.paste(logo, (logo_x - logo.width // 2, 153 - logo.height // 2), logo)
+            image.paste(logo, (logo_x - logo.width // 2, 160 - logo.height // 2), logo)
         else:
-            draw.ellipse((logo_x - 42, 111, logo_x + 42, 195), fill=color)
-        draw.text((name_x, 145), name, font=_fit_scoreboard_font(draw, name, 500, 32, 19), fill="#172033", anchor=anchor)
+            draw.ellipse((logo_x - 52, 108, logo_x + 52, 212), fill=color)
+        draw.text((name_x, 148), name, font=_fit_scoreboard_font(draw, name, 720, 40, 24), fill="#172033", anchor=anchor)
         record_key = "TeamA_record" if team == team_a else "TeamB_record"
         record = str(row.get(record_key, "") or "")
         if record:
-            draw.text((name_x, 188), record, font=_scoreboard_font(16, True), fill="#74869a", anchor=anchor)
+            draw.text((name_x, 203), record, font=_scoreboard_font(21, True), fill="#74869a", anchor=anchor)
 
     subtitle = " • ".join(
         value for value in [str(row.get("Type", "")), str(row.get("Round", "")), str(matchup_date_label)] if value
     )
-    draw.text((width // 2, 255), subtitle, font=_scoreboard_font(14, True), fill="#74869a", anchor="mm")
+    draw.text((width // 2, 280), subtitle, font=_scoreboard_font(18, True), fill="#74869a", anchor="mm")
 
     # Horizontal 13-category scoreboard.
-    section_top = 306
-    draw.text((margin, section_top), "13-CATEGORY SCOREBOARD", font=_scoreboard_font(22, True), fill="#172033", anchor="la")
-    category_top = section_top + 34
+    section_top = 318
+    draw.text((margin, section_top), "13-CATEGORY SCOREBOARD", font=_scoreboard_font(30, True), fill="#172033", anchor="la")
     inner_width = width - margin * 2
     category_width = inner_width / 13
     category_lookup = category_table.set_index("Category") if category_table is not None and not category_table.empty else pd.DataFrame()
@@ -2758,6 +2870,24 @@ def build_matchup_recap_image(
             shooting_source[column] = pd.to_numeric(source_values, errors="coerce").fillna(0)
         shooting_totals = shooting_source.groupby("sbc_team")[shooting_columns].sum()
     shooting_pair = {"2PT%": ("2PTM", "2PTA"), "3PT%": ("3PTM", "3PTA"), "FT%": ("FTM", "FTA")}
+
+    def percentage_attempts(source, stat):
+        def numeric(column):
+            try:
+                return float(source.get(column, 0) or 0)
+            except (TypeError, ValueError):
+                return 0.0
+
+        if stat in shooting_pair:
+            return numeric(shooting_pair[stat][1])
+        if stat == "TS%":
+            return numeric("2PTA") + numeric("3PTA") + 0.44 * numeric("FTA")
+        return None
+
+    def category_value_text(team, stat, value):
+        if stat not in {"TS%", *shooting_pair} or shooting_totals.empty or team not in shooting_totals.index:
+            return _recap_stat_text(value, stat)
+        return _recap_stat_text(value, stat, percentage_attempts(shooting_totals.loc[team], stat))
 
     def attempts_text(team, stat):
         if stat not in shooting_pair or shooting_totals.empty or team not in shooting_totals.index:
@@ -2786,62 +2916,58 @@ def build_matchup_recap_image(
             votes = category_row.get("Votes", votes)
         is_tie = winner.casefold() == "tie"
         draw.rounded_rectangle(
-            (left, category_top, right, category_top + 154),
-            radius=10,
+            (left, category_top, right, category_top + category_height),
+            radius=13,
             fill="#edf1f5" if is_tie else "#ffffff",
             outline="#94a3b8" if is_tie else "#dbe4ee",
             width=3 if is_tie else 2,
         )
         if winner == team_a:
-            draw.rounded_rectangle((left + 5, category_top + 5, right - 5, category_top + 50), radius=8, fill=color_a)
+            draw.rounded_rectangle((left + 6, category_top + 6, right - 6, category_top + 68), radius=10, fill=color_a)
         if winner == team_b:
-            draw.rounded_rectangle((left + 5, category_top + 104, right - 5, category_top + 149), radius=8, fill=color_b)
+            draw.rounded_rectangle((left + 6, category_top + 148, right - 6, category_top + 210), radius=10, fill=color_b)
         if is_tie:
             tie_color_a = _recap_tint(color_a)
             tie_color_b = _recap_tint(color_b)
-            draw.rounded_rectangle((left + 5, category_top + 5, right - 5, category_top + 50), radius=8, fill=tie_color_a)
-            draw.rounded_rectangle((left + 5, category_top + 104, right - 5, category_top + 149), radius=8, fill=tie_color_b)
+            draw.rounded_rectangle((left + 6, category_top + 6, right - 6, category_top + 68), radius=10, fill=tie_color_a)
+            draw.rounded_rectangle((left + 6, category_top + 148, right - 6, category_top + 210), radius=10, fill=tie_color_b)
         has_subtext = stat == "MP" or stat in shooting_pair
-        draw.text(((left + right) // 2, category_top + (20 if has_subtext else 28)), _recap_stat_text(value_a, stat), font=_scoreboard_font(17, True), fill=_recap_contrast_text(color_a) if winner == team_a else "#172033", anchor="mm")
+        draw.text(((left + right) // 2, category_top + (27 if has_subtext else 38)), category_value_text(team_a, stat, value_a), font=_scoreboard_font(27, True), fill=_recap_contrast_text(color_a) if winner == team_a else "#172033", anchor="mm")
         if has_subtext:
             subtext_color_a = _recap_contrast_text(color_a) if winner == team_a else "#42546a"
-            draw.text(((left + right) // 2, category_top + 41), category_subtext(team_a, stat), font=_scoreboard_font(10, True), fill=subtext_color_a, anchor="mm")
+            draw.text(((left + right) // 2, category_top + 55), category_subtext(team_a, stat), font=_scoreboard_font(17, True), fill=subtext_color_a, anchor="mm")
         display_stat = {"2PT%": "2P%", "3PT%": "3P%", "ST": "STL", "TO": "TOV*"}.get(stat, stat)
         votes_text = _recap_stat_text(votes, "Votes") if votes != "" else ""
         center_label = f"{display_stat} ({votes_text})" if votes_text else display_stat
-        draw.text(((left + right) // 2, category_top + (70 if is_tie else 77)), center_label, font=_scoreboard_font(14, True), fill="#607286", anchor="mm")
+        draw.text(((left + right) // 2, category_top + (96 if is_tie else 108)), center_label, font=_scoreboard_font(21, True), fill="#52667b", anchor="mm")
         if is_tie:
-            draw.text(((left + right) // 2, category_top + 88), "TIE", font=_scoreboard_font(11, True), fill="#475569", anchor="mm")
-        draw.text(((left + right) // 2, category_top + (115 if has_subtext else 127)), _recap_stat_text(value_b, stat), font=_scoreboard_font(17, True), fill=_recap_contrast_text(color_b) if winner == team_b else "#172033", anchor="mm")
+            draw.text(((left + right) // 2, category_top + 122), "TIE", font=_scoreboard_font(15, True), fill="#475569", anchor="mm")
+        draw.text(((left + right) // 2, category_top + (162 if has_subtext else 179)), category_value_text(team_b, stat, value_b), font=_scoreboard_font(27, True), fill=_recap_contrast_text(color_b) if winner == team_b else "#172033", anchor="mm")
         if has_subtext:
             subtext_color_b = _recap_contrast_text(color_b) if winner == team_b else "#42546a"
-            draw.text(((left + right) // 2, category_top + 138), category_subtext(team_b, stat), font=_scoreboard_font(10, True), fill=subtext_color_b, anchor="mm")
+            draw.text(((left + right) // 2, category_top + 196), category_subtext(team_b, stat), font=_scoreboard_font(17, True), fill=subtext_color_b, anchor="mm")
 
     # Aggregate player box score, one team per half.
-    box_top = category_top + 194
-    draw.text((margin, box_top), "AGGREGATE PLAYER BOX SCORE", font=_scoreboard_font(22, True), fill="#172033", anchor="la")
-    table_top = box_top + 36
-    table_gap = 24
+    draw.text((margin, box_top), "AGGREGATE PLAYER BOX SCORE", font=_scoreboard_font(30, True), fill="#172033", anchor="la")
+    table_gap = 30
     table_width = (inner_width - table_gap) // 2
     player_columns = [
-        ("Player", 170), ("GP", 37), ("MP", 37), ("TS%", 37),
-        ("2PTM", 37), ("2PTA", 37), ("2PT%", 37),
-        ("3PTM", 37), ("3PTA", 37), ("3PT%", 37),
-        ("FTM", 37), ("FTA", 37), ("FT%", 37), ("PTS", 37),
-        ("OREB", 37), ("DREB", 37), ("AST", 37), ("ST", 37),
-        ("BLK", 37), ("TO", 37), ("+/-", 37),
+        ("Player", 280), ("GP", 68), ("MP", 68), ("TS%", 68),
+        ("2PTM", 68), ("2PTA", 68), ("2PT%", 68),
+        ("3PTM", 68), ("3PTA", 68), ("3PT%", 68),
+        ("FTM", 68), ("FTA", 68), ("FT%", 68), ("PTS", 68),
+        ("OREB", 68), ("DREB", 68), ("AST", 68), ("ST", 68),
+        ("BLK", 68), ("TO", 68), ("+/-", 68),
     ]
     for team_index, (team, color) in enumerate(((team_a, color_a), (team_b, color_b))):
         left = margin + team_index * (table_width + table_gap)
         right = left + table_width
-        team_row_count = min(15, player_counts[team_index] if team_index < len(player_counts) else 0)
-        team_table_height = max(210, 128 + team_row_count * 40)
-        draw.rounded_rectangle((left, table_top, right, table_top + team_table_height), radius=14, fill="#ffffff", outline="#dbe4ee", width=2)
-        draw.rounded_rectangle((left, table_top, right, table_top + 52), radius=14, fill=color)
-        draw.rectangle((left, table_top + 38, right, table_top + 52), fill=color)
-        draw.text((left + 18, table_top + 27), _scoreboard_team_name(team), font=_fit_scoreboard_font(draw, _scoreboard_team_name(team), table_width - 36, 21, 14), fill=_recap_contrast_text(color), anchor="lm")
-        header_y = table_top + 76
-        x_cursor = left + 12
+        draw.rounded_rectangle((left, table_top, right, table_top + table_height), radius=16, fill="#ffffff", outline="#dbe4ee", width=2)
+        draw.rounded_rectangle((left, table_top, right, table_top + 64), radius=16, fill=color)
+        draw.rectangle((left, table_top + 46, right, table_top + 64), fill=color)
+        draw.text((left + 22, table_top + 33), _scoreboard_team_name(team), font=_fit_scoreboard_font(draw, _scoreboard_team_name(team), table_width - 44, 27, 18), fill=_recap_contrast_text(color), anchor="lm")
+        header_y = table_top + 96
+        x_cursor = left + 18
         for label, column_width in player_columns:
             display_label = {
                 "MP": "MP", "TS%": "TS%", "2PTM": "2PM", "2PTA": "2PA", "2PT%": "2P%",
@@ -2850,52 +2976,55 @@ def build_matchup_recap_image(
             }.get(label, label)
             anchor = "lm" if label == "Player" else "mm"
             x_position = x_cursor + (0 if label == "Player" else column_width // 2)
-            draw.text((x_position, header_y), display_label, font=_scoreboard_font(9, True), fill="#607286", anchor=anchor)
+            draw.text((x_position, header_y), display_label, font=_scoreboard_font(17, True), fill="#52667b", anchor=anchor)
             x_cursor += column_width
         team_players = aggregate_players[aggregate_players.get("sbc_team", pd.Series(dtype=str)).astype(str) == team].copy() if aggregate_players is not None and not aggregate_players.empty else pd.DataFrame()
         if not team_players.empty:
             team_players = team_players.sort_values(["PTS", "display_player"], ascending=[False, True]).head(15)
-        row_y = table_top + 108
-        row_height = 40
+        row_y = table_top + 130
+        row_height = 48
         for player_index, (_, player) in enumerate(team_players.iterrows()):
             if player_index % 2 == 0:
-                draw.rectangle((left + 6, row_y - 18, right - 6, row_y + 20), fill="#f5f8fb")
-            x_cursor = left + 12
+                draw.rectangle((left + 7, row_y - 21, right - 7, row_y + 23), fill="#f2f6fa")
+            x_cursor = left + 18
             for label, column_width in player_columns:
-                value = player.get("display_player", "") if label == "Player" else _recap_stat_text(player.get(label), label)
+                value = player.get("display_player", "") if label == "Player" else _recap_stat_text(
+                    player.get(label),
+                    label,
+                    percentage_attempts(player, label),
+                )
                 if label == "Player":
-                    font = _fit_scoreboard_font(draw, str(value), column_width - 10, 12, 8)
+                    font = _fit_scoreboard_font(draw, str(value), column_width - 12, 20, 14)
                     draw.text((x_cursor, row_y), str(value), font=font, fill="#172033", anchor="lm")
                 else:
-                    draw.text((x_cursor + column_width // 2, row_y), str(value), font=_scoreboard_font(9, True), fill="#172033", anchor="mm")
+                    draw.text((x_cursor + column_width // 2, row_y), str(value), font=_scoreboard_font(18, True), fill="#172033", anchor="mm")
                 x_cursor += column_width
             row_y += row_height
 
-    # Uniforms and home-floor shot map.
-    visuals_top = table_top + table_height + 44
-    draw.text((margin, visuals_top), "GAME PRESENTATION", font=_scoreboard_font(22, True), fill="#172033", anchor="la")
-    visuals_box_top = visuals_top + 36
-    visuals_box_bottom = visuals_box_top + 570
-    draw.rounded_rectangle((margin, visuals_box_top, width - margin, visuals_box_bottom), radius=16, fill="#ffffff", outline="#dbe4ee", width=2)
-    _paste_scoreboard_asset(image, road_jersey_image, (margin + 18, visuals_box_top + 16, margin + 366, visuals_box_bottom - 48), padding=8)
-    _paste_scoreboard_asset(image, court_image, (margin + 382, visuals_box_top + 18, width - margin - 382, visuals_box_bottom - 48), padding=6)
-    _paste_scoreboard_asset(image, home_jersey_image, (width - margin - 366, visuals_box_top + 16, width - margin - 18, visuals_box_bottom - 48), padding=8)
-    draw.text((margin + 192, visuals_box_bottom - 24), f"{name_a} • {road_edition}", font=_scoreboard_font(13, True), fill="#607286", anchor="mm")
-    draw.text((width // 2, visuals_box_bottom - 24), f"SHOT MAP • {name_b.upper()} HOME FLOOR", font=_scoreboard_font(13, True), fill="#607286", anchor="mm")
-    draw.text((width - margin - 192, visuals_box_bottom - 24), f"{name_b} • {home_edition}", font=_scoreboard_font(13, True), fill="#607286", anchor="mm")
+    # Uniforms/home floor and score movement share one landscape row.
+    presentation_left, presentation_right = margin, 1900
+    trend_left, trend_right = 1924, width - margin
+    draw.text((presentation_left, lower_title_top), "GAME PRESENTATION", font=_scoreboard_font(28, True), fill="#172033", anchor="la")
+    draw.text((trend_left, lower_title_top), "OVERALL MATCHUP SCORE BY DAY", font=_scoreboard_font(28, True), fill="#172033", anchor="la")
+    visuals_box_top, visuals_box_bottom = lower_box_top, lower_box_bottom
+    draw.rounded_rectangle((presentation_left, visuals_box_top, presentation_right, visuals_box_bottom), radius=18, fill="#ffffff", outline="#dbe4ee", width=2)
+    _paste_scoreboard_asset(image, road_jersey_image, (presentation_left + 20, visuals_box_top + 14, presentation_left + 455, visuals_box_bottom - 62), padding=6)
+    _paste_scoreboard_asset(image, court_image, (presentation_left + 465, visuals_box_top + 18, presentation_right - 465, visuals_box_bottom - 62), padding=4)
+    _paste_scoreboard_asset(image, home_jersey_image, (presentation_right - 455, visuals_box_top + 14, presentation_right - 20, visuals_box_bottom - 62), padding=6)
+    draw.text((presentation_left + 238, visuals_box_bottom - 30), f"{name_a} • {road_edition}", font=_scoreboard_font(19, True), fill="#52667b", anchor="mm")
+    draw.text(((presentation_left + presentation_right) // 2, visuals_box_bottom - 30), f"SHOT MAP • {name_b.upper()} HOME FLOOR", font=_scoreboard_font(19, True), fill="#52667b", anchor="mm")
+    draw.text((presentation_right - 238, visuals_box_bottom - 30), f"{name_b} • {home_edition}", font=_scoreboard_font(19, True), fill="#52667b", anchor="mm")
 
     # Day-separated overall score timeline, matching the interactive box score.
-    trend_top = visuals_box_bottom + 48
-    draw.text((margin, trend_top), "OVERALL MATCHUP SCORE BY DAY", font=_scoreboard_font(22, True), fill="#172033", anchor="la")
-    chart_left, chart_top = margin, trend_top + 36
-    chart_right, chart_bottom = width - margin, height - 72
+    chart_left, chart_top = trend_left, lower_box_top
+    chart_right, chart_bottom = trend_right, lower_box_bottom
     draw.rounded_rectangle((chart_left, chart_top, chart_right, chart_bottom), radius=16, fill="#ffffff", outline="#dbe4ee", width=2)
-    draw.rectangle((chart_left + 28, chart_top + 16, chart_left + 48, chart_top + 36), fill=_recap_tint(color_a, 0.45))
-    draw.text((chart_left + 58, chart_top + 26), name_a, font=_scoreboard_font(12, True), fill="#42546a", anchor="lm")
-    draw.rectangle((chart_right - 48, chart_top + 16, chart_right - 28, chart_top + 36), fill=_recap_tint(color_b, 0.45))
-    draw.text((chart_right - 58, chart_top + 26), name_b, font=_scoreboard_font(12, True), fill="#42546a", anchor="rm")
-    plot_left, plot_top = chart_left + 72, chart_top + 50
-    plot_right, plot_bottom = chart_right - 32, chart_bottom - 42
+    draw.rectangle((chart_left + 28, chart_top + 18, chart_left + 54, chart_top + 44), fill=_recap_tint(color_a, 0.45))
+    draw.text((chart_left + 66, chart_top + 31), name_a, font=_scoreboard_font(20, True), fill="#42546a", anchor="lm")
+    draw.rectangle((chart_right - 54, chart_top + 18, chart_right - 28, chart_top + 44), fill=_recap_tint(color_b, 0.45))
+    draw.text((chart_right - 66, chart_top + 31), name_b, font=_scoreboard_font(20, True), fill="#42546a", anchor="rm")
+    plot_left, plot_top = chart_left + 70, chart_top + 58
+    plot_right, plot_bottom = chart_right - 28, chart_bottom - 48
     if trend_table is not None and not trend_table.empty and team_a in trend_table.columns and team_b in trend_table.columns:
         trend = trend_table.copy().reset_index(drop=True)
         trend[team_a] = pd.to_numeric(trend[team_a], errors="coerce")
@@ -2928,9 +3057,9 @@ def build_matchup_recap_image(
         days = list(pd.Series(trend["_day"].dropna().unique()).sort_values())
         panel_gap = 12
         panel_width = int((plot_right - plot_left - panel_gap * max(0, len(days) - 1)) / max(1, len(days)))
-        header_height = 34
+        header_height = 42
         graph_top = plot_top + header_height
-        graph_bottom = plot_bottom - 28
+        graph_bottom = plot_bottom - 40
         score_max = 413.0
         score_mid = score_max / 2
         top_fill = _recap_tint(color_a, 0.72)
@@ -2949,7 +3078,7 @@ def build_matchup_recap_image(
             count = int(game_counts.get(day_value, 0))
             count_text = f" ({count} {'game' if count == 1 else 'games'})" if count else ""
             day_label = day_value.strftime("%a, %b %d").replace(" 0", " ") + count_text
-            draw.text(((panel_left + panel_right) // 2, plot_top + 13), day_label, font=_fit_scoreboard_font(draw, day_label, panel_width - 8, 12, 8), fill="#344054", anchor="mm")
+            draw.text(((panel_left + panel_right) // 2, plot_top + 17), day_label, font=_fit_scoreboard_font(draw, day_label, panel_width - 8, 16, 12), fill="#344054", anchor="mm")
 
             day_rows = trend[trend["_day"] == day].copy().sort_values("_wallclock")
             timeline = [(16.0, prior_score)]
@@ -2978,7 +3107,7 @@ def build_matchup_recap_image(
                 x = hour_x(hour)
                 draw.line((x, graph_top, x, graph_bottom), fill="#d7e0e9", width=1)
                 label_hour = 12 if hour == 24 else 1 if hour == 25 else hour - 12
-                draw.text((x, graph_bottom + 15), f"{label_hour}:00", font=_scoreboard_font(8, False), fill="#607286", anchor="mm")
+                draw.text((x, graph_bottom + 18), f"{label_hour}:00", font=_scoreboard_font(13, True), fill="#607286", anchor="mm")
             draw.rectangle((panel_left, graph_top, panel_right, graph_bottom), outline="#344054", width=2)
 
             for (hour_a, value_a), (hour_b, value_b) in zip(timeline, timeline[1:]):
@@ -2990,14 +3119,14 @@ def build_matchup_recap_image(
             if day_index == 0:
                 axis_labels = [(score_max, "0"), (300, "300"), (score_mid, "206.5"), (113, "300"), (0, "0")]
                 for score_tick, axis_label in axis_labels:
-                    draw.text((panel_left - 12, score_y(score_tick)), axis_label, font=_scoreboard_font(8, False), fill="#475467", anchor="rm")
-            draw.text(((panel_left + panel_right) // 2, plot_bottom - 4), "Time (ET)", font=_scoreboard_font(9, False), fill="#607286", anchor="mm")
+                    draw.text((panel_left - 12, score_y(score_tick)), axis_label, font=_scoreboard_font(13, True), fill="#475467", anchor="rm")
+            draw.text(((panel_left + panel_right) // 2, plot_bottom - 4), "TIME (ET)", font=_scoreboard_font(14, True), fill="#607286", anchor="mm")
     else:
-        draw.text((width // 2, (plot_top + plot_bottom) // 2), "Score movement data is unavailable for this matchup.", font=_scoreboard_font(17, True), fill="#8293a6", anchor="mm")
+        draw.text(((chart_left + chart_right) // 2, (plot_top + plot_bottom) // 2), "Score movement data is unavailable for this matchup.", font=_scoreboard_font(21, True), fill="#8293a6", anchor="mm")
 
     generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d, %Y • %I:%M %p").replace(" 0", " ")
-    draw.text((margin, height - 28), f"MATCHUP RECAP • GENERATED {generated}", font=_scoreboard_font(12, True), fill="#718398", anchor="lm")
-    draw.text((width - margin, height - 28), "SBCFBL CATEGORY SCORING", font=_scoreboard_font(12, True), fill="#718398", anchor="rm")
+    draw.text((margin, height - 30), f"MATCHUP RECAP • GENERATED {generated}", font=_scoreboard_font(16, True), fill="#718398", anchor="lm")
+    draw.text((width - margin, height - 30), "SBCFBL CATEGORY SCORING", font=_scoreboard_font(16, True), fill="#718398", anchor="rm")
 
     output = BytesIO()
     image.save(output, format="PNG", optimize=True)
@@ -3017,7 +3146,7 @@ def build_mobile_matchup_recap_image(
     generated_at=None,
     matchup_date_label: str = "",
 ) -> bytes:
-    """Build a tall, simplified matchup recap for phone screens."""
+    """Build a phone-first matchup recap with readable, stacked detail sections."""
     row = matchup_row.to_dict() if hasattr(matchup_row, "to_dict") else dict(matchup_row)
     team_a, team_b = str(row.get("TeamA", "")), str(row.get("TeamB", ""))
     name_a = str(safe_team_info(team_a, "nickname", _scoreboard_team_name(team_a)) or _scoreboard_team_name(team_a))
@@ -3028,42 +3157,67 @@ def build_mobile_matchup_recap_image(
     score_b = _scoreboard_score(row.get("TeamB_Score", row.get("TeamBScore")))
     score_a_number = _scoreboard_score_number(row.get("TeamA_Score", row.get("TeamAScore")))
     score_b_number = _scoreboard_score_number(row.get("TeamB_Score", row.get("TeamBScore")))
+    width, margin, navy = 1080, 28, "#172033"
 
-    width, height, margin = 1080, 2800, 30
-    navy = "#172033"
+    def roster_for(team):
+        if aggregate_players is None or aggregate_players.empty or "sbc_team" not in aggregate_players.columns:
+            return pd.DataFrame()
+        players = aggregate_players[aggregate_players["sbc_team"].astype(str) == team].copy()
+        if players.empty:
+            return players
+        players["PTS"] = pd.to_numeric(players.get("PTS"), errors="coerce").fillna(0)
+        return players.sort_values(["PTS", "display_player"], ascending=[False, True]).head(12)
+
+    rosters = {team_a: roster_for(team_a), team_b: roster_for(team_b)}
+    header_height, category_top, category_height = 330, 400, 90
+    categories_bottom = category_top + 13 * category_height
+    players_title_y = categories_bottom + 34
+    players_top = players_title_y + 40
+    team_header_height, player_row_height, table_padding = 70, 90, 14
+    table_heights = {
+        team: team_header_height + max(1, len(rosters[team])) * player_row_height + table_padding
+        for team in (team_a, team_b)
+    }
+    table_a_top = players_top
+    table_a_bottom = table_a_top + table_heights[team_a]
+    table_b_top = table_a_bottom + 20
+    table_b_bottom = table_b_top + table_heights[team_b]
+    look_title_y = table_b_bottom + 44
+    look_top, look_bottom = look_title_y + 38, look_title_y + 798
+    flow_title_y = look_bottom + 44
+    chart_top, chart_bottom = flow_title_y + 38, flow_title_y + 518
+    height = chart_bottom + 66
+
     image = Image.new("RGB", (width, height), "#f3f6fa")
     draw = ImageDraw.Draw(image)
 
-    # Score-first header with team identity carried by logos and color.
-    draw.rectangle((0, 0, width, 340), fill="#ffffff")
-    draw.rectangle((0, 0, width // 2, 12), fill=color_a)
-    draw.rectangle((width // 2, 0, width, 12), fill=color_b)
-    draw.text((width // 2, 42), "MATCHUP RECAP", font=_scoreboard_font(17, True), fill="#718398", anchor="mm")
-    for team, logo_x, color in ((team_a, 116, color_a), (team_b, width - 116, color_b)):
-        logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 112)
+    # Score-first masthead.
+    draw.rectangle((0, 0, width, header_height), fill="#ffffff")
+    draw.rectangle((0, 0, width // 2, 14), fill=color_a)
+    draw.rectangle((width // 2, 0, width, 14), fill=color_b)
+    draw.text((width // 2, 42), "MATCHUP RECAP", font=_scoreboard_font(20, True), fill="#6b7e92", anchor="mm")
+    for team, logo_x, color in ((team_a, 120, color_a), (team_b, width - 120, color_b)):
+        logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 126)
         if logo is not None:
-            image.paste(logo, (logo_x - logo.width // 2, 82 - logo.height // 2), logo)
+            image.paste(logo, (logo_x - logo.width // 2, 112 - logo.height // 2), logo)
         else:
-            draw.ellipse((logo_x - 48, 34, logo_x + 48, 130), fill=color)
-    draw.text((392, 116), score_a, font=_scoreboard_font(64, True), fill=navy, anchor="rm")
-    draw.text((688, 116), score_b, font=_scoreboard_font(64, True), fill=navy, anchor="lm")
-    draw.text((width // 2, 116), "—", font=_scoreboard_font(36, True), fill="#8293a6", anchor="mm")
-    draw.text((116, 174), name_a, font=_fit_scoreboard_font(draw, name_a, 190, 24, 14), fill=navy, anchor="mm")
-    draw.text((width - 116, 174), name_b, font=_fit_scoreboard_font(draw, name_b, 190, 24, 14), fill=navy, anchor="mm")
-    record_a, record_b = str(row.get("TeamA_record", "") or ""), str(row.get("TeamB_record", "") or "")
-    if record_a:
-        draw.text((116, 208), record_a, font=_scoreboard_font(14, True), fill="#718398", anchor="mm")
-    if record_b:
-        draw.text((width - 116, 208), record_b, font=_scoreboard_font(14, True), fill="#718398", anchor="mm")
+            draw.ellipse((logo_x - 55, 57, logo_x + 55, 167), fill=color)
+    draw.text((405, 132), score_a, font=_scoreboard_font(74, True), fill=navy, anchor="rm")
+    draw.text((675, 132), score_b, font=_scoreboard_font(74, True), fill=navy, anchor="lm")
+    draw.text((width // 2, 132), "—", font=_scoreboard_font(38, True), fill="#8293a6", anchor="mm")
+    draw.text((120, 202), name_a, font=_fit_scoreboard_font(draw, name_a, 220, 29, 18), fill=navy, anchor="mm")
+    draw.text((width - 120, 202), name_b, font=_fit_scoreboard_font(draw, name_b, 220, 29, 18), fill=navy, anchor="mm")
+    record_a, record_b = _scoreboard_record(row.get("TeamA_record")), _scoreboard_record(row.get("TeamB_record"))
+    draw.text((120, 238), record_a, font=_scoreboard_font(18, True), fill="#718398", anchor="mm")
+    draw.text((width - 120, 238), record_b, font=_scoreboard_font(18, True), fill="#718398", anchor="mm")
     status = "FINAL" if score_a_number is not None and score_b_number is not None else "RECAP"
-    draw.rounded_rectangle((width // 2 - 84, 174, width // 2 + 84, 214), radius=20, fill="#111111")
-    draw.text((width // 2, 194), status, font=_scoreboard_font(13, True), fill="#ffffff", anchor="mm")
-    context = " \u2022 ".join(value for value in [str(row.get("Type", "")), str(row.get("Round", "")), str(matchup_date_label)] if value)
-    draw.text((width // 2, 264), context, font=_fit_scoreboard_font(draw, context, width - 100, 16, 11), fill="#607286", anchor="mm")
+    draw.rounded_rectangle((width // 2 - 88, 188, width // 2 + 88, 236), radius=24, fill="#111827")
+    draw.text((width // 2, 212), status, font=_scoreboard_font(17, True), fill="#ffffff", anchor="mm")
+    context = " • ".join(value for value in [str(row.get("Type", "")), str(row.get("Round", "")), str(matchup_date_label)] if value)
+    draw.text((width // 2, 288), context, font=_fit_scoreboard_font(draw, context, width - 90, 19, 14), fill="#607286", anchor="mm")
 
-    # Thirteen compact category rows.
-    category_title_y, category_top, category_height = 372, 406, 62
-    draw.text((margin, category_title_y), "13-CATEGORY RESULT", font=_scoreboard_font(20, True), fill=navy, anchor="lm")
+    # Large one-row category comparisons.
+    draw.text((margin, 370), "13-CATEGORY RESULT", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
     category_order = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     category_points = {"MP": 11, "TS%": 41, "2PT%": 31, "3PT%": 31, "FT%": 21, "PTS": 61, "OREB": 31, "DREB": 31, "AST": 41, "ST": 31, "BLK": 31, "TO": 21, "+/-": 31}
     category_lookup = category_table.set_index("Category") if category_table is not None and not category_table.empty else pd.DataFrame()
@@ -3088,77 +3242,95 @@ def build_mobile_matchup_recap_image(
         return ""
 
     for index, stat in enumerate(category_order):
-        top = category_top + index * category_height
-        bottom = top + category_height - 5
+        top, bottom = category_top + index * category_height, category_top + (index + 1) * category_height - 6
         category_row = category_lookup.loc[stat] if not category_lookup.empty and stat in category_lookup.index else {}
         value_a, value_b = category_row.get(team_a), category_row.get(team_b)
         winner = str(category_row.get("Winner", ""))
         is_tie = winner.casefold() == "tie"
         left_fill = _recap_tint(color_a, 0.76) if is_tie else (color_a if winner == team_a else "#ffffff")
         right_fill = _recap_tint(color_b, 0.76) if is_tie else (color_b if winner == team_b else "#ffffff")
-        draw.rounded_rectangle((margin, top, width - margin, bottom), radius=11, fill="#ffffff", outline="#dbe4ee", width=2)
-        draw.rounded_rectangle((margin + 4, top + 4, 408, bottom - 4), radius=8, fill=left_fill)
-        draw.rounded_rectangle((672, top + 4, width - margin - 4, bottom - 4), radius=8, fill=right_fill)
+        draw.rounded_rectangle((margin, top, width - margin, bottom), radius=13, fill="#ffffff", outline="#dbe4ee", width=2)
+        draw.rounded_rectangle((margin + 5, top + 5, 414, bottom - 5), radius=10, fill=left_fill)
+        draw.rounded_rectangle((666, top + 5, width - margin - 5, bottom - 5), radius=10, fill=right_fill)
         display_stat = {"2PT%": "2P%", "3PT%": "3P%", "ST": "STL", "TO": "TOV*"}.get(stat, stat)
         votes = category_row.get("Votes", category_points.get(stat, ""))
         votes_text = _recap_stat_text(votes, "Votes") if votes != "" else ""
-        draw.text((width // 2, top + 27), f"{display_stat} ({votes_text})" if votes_text else display_stat, font=_scoreboard_font(14, True), fill="#526579", anchor="mm")
+        draw.text((width // 2, top + 36), f"{display_stat} ({votes_text})" if votes_text else display_stat, font=_scoreboard_font(22, True), fill="#526579", anchor="mm")
         if is_tie:
-            draw.text((width // 2, top + 45), "TIE", font=_scoreboard_font(9, True), fill="#718398", anchor="mm")
-        for team, value, x, fill, won in ((team_a, value_a, 382, left_fill, winner == team_a), (team_b, value_b, 698, right_fill, winner == team_b)):
-            main_y = top + (20 if stat == "MP" or stat in shooting_pair else 28)
-            draw.text((x, main_y), _recap_stat_text(value, stat), font=_scoreboard_font(20, True), fill=_recap_contrast_text(fill) if won else navy, anchor="rm" if team == team_a else "lm")
+            draw.text((width // 2, top + 59), "TIE", font=_scoreboard_font(13, True), fill="#718398", anchor="mm")
+        for team, value, x, fill, won, anchor in (
+            (team_a, value_a, 388, left_fill, winner == team_a, "rm"),
+            (team_b, value_b, 692, right_fill, winner == team_b, "lm"),
+        ):
+            has_subtext = stat == "MP" or stat in shooting_pair
+            draw.text((x, top + (30 if has_subtext else 43)), _recap_stat_text(value, stat), font=_scoreboard_font(32, True), fill=_recap_contrast_text(fill) if won else navy, anchor=anchor)
             subtext = stat_subtext(team, stat)
             if subtext:
-                draw.text((x, top + 43), subtext, font=_scoreboard_font(9, True), fill=_recap_contrast_text(fill) if won else "#607286", anchor="rm" if team == team_a else "lm")
+                draw.text((x, top + 66), subtext, font=_scoreboard_font(17, True), fill=_recap_contrast_text(fill) if won else "#607286", anchor=anchor)
 
-    # Top five scoring lines per team, reduced to the stats that scan well on a phone.
-    leaders_title_y = category_top + len(category_order) * category_height + 22
-    draw.text((margin, leaders_title_y), "PLAYER LEADERS", font=_scoreboard_font(20, True), fill=navy, anchor="lm")
-    leaders_top, leaders_bottom = leaders_title_y + 28, leaders_title_y + 420
-    table_gap = 14
-    table_width = (width - margin * 2 - table_gap) // 2
-    for team_index, (team, color, short_name) in enumerate(((team_a, color_a, name_a), (team_b, color_b, name_b))):
-        left = margin + team_index * (table_width + table_gap)
-        right = left + table_width
-        draw.rounded_rectangle((left, leaders_top, right, leaders_bottom), radius=14, fill="#ffffff", outline="#dbe4ee", width=2)
-        draw.rounded_rectangle((left, leaders_top, right, leaders_top + 54), radius=14, fill=color)
-        draw.rectangle((left, leaders_top + 40, right, leaders_top + 54), fill=color)
-        draw.text((left + 16, leaders_top + 27), short_name, font=_fit_scoreboard_font(draw, short_name, table_width - 32, 19, 12), fill=_recap_contrast_text(color), anchor="lm")
-        players = aggregate_players[aggregate_players.get("sbc_team", pd.Series(dtype=str)).astype(str) == team].copy() if aggregate_players is not None and not aggregate_players.empty else pd.DataFrame()
-        if not players.empty:
-            players["PTS"] = pd.to_numeric(players.get("PTS"), errors="coerce").fillna(0)
-            players = players.sort_values(["PTS", "display_player"], ascending=[False, True]).head(5)
-        row_y = leaders_top + 84
+    # Full-width, stacked player boxes with two readable stat lines.
+    draw.text((margin, players_title_y), "PLAYER BOX SCORE", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
+
+    def numeric(value):
+        return pd.to_numeric(pd.Series([value]), errors="coerce").fillna(0).iloc[0]
+
+    def draw_player_table(team, color, short_name, top):
+        players = rosters[team]
+        bottom = top + table_heights[team]
+        draw.rounded_rectangle((margin, top, width - margin, bottom), radius=16, fill="#ffffff", outline="#dbe4ee", width=2)
+        draw.rounded_rectangle((margin, top, width - margin, top + team_header_height), radius=16, fill=color)
+        draw.rectangle((margin, top + 52, width - margin, top + team_header_height), fill=color)
+        logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 50)
+        if logo is not None:
+            image.paste(logo, (margin + 16, top + 10), logo)
+        draw.text((margin + 82, top + 35), short_name, font=_fit_scoreboard_font(draw, short_name, 600, 27, 19), fill=_recap_contrast_text(color), anchor="lm")
+        draw.text((width - margin - 18, top + 35), f"{len(players)} PLAYERS", font=_scoreboard_font(16, True), fill=_recap_contrast_text(color), anchor="rm")
+        if players.empty:
+            draw.text((width // 2, top + team_header_height + player_row_height // 2), "NO PLAYER DATA", font=_scoreboard_font(18, True), fill="#8293a6", anchor="mm")
+            return bottom
         for player_index, (_, player) in enumerate(players.iterrows()):
+            row_top = top + team_header_height + player_index * player_row_height
+            row_bottom = row_top + player_row_height
             if player_index % 2 == 0:
-                draw.rounded_rectangle((left + 7, row_y - 20, right - 7, row_y + 34), radius=7, fill="#f4f7fb")
+                draw.rectangle((margin + 6, row_top, width - margin - 6, row_bottom), fill="#f2f6fa")
+            rebounds = numeric(player.get("OREB")) + numeric(player.get("DREB"))
             player_name = str(player.get("display_player", ""))
-            rebounds = pd.to_numeric(pd.Series([player.get("OREB")]), errors="coerce").fillna(0).iloc[0] + pd.to_numeric(pd.Series([player.get("DREB")]), errors="coerce").fillna(0).iloc[0]
-            draw.text((left + 16, row_y), player_name, font=_fit_scoreboard_font(draw, player_name, table_width - 170, 14, 9), fill=navy, anchor="lm")
-            draw.text((right - 14, row_y), f"{_recap_stat_text(player.get('PTS'), 'PTS')} P  •  {_recap_stat_text(rebounds, 'REB')} R  •  {_recap_stat_text(player.get('AST'), 'AST')} A", font=_scoreboard_font(10, True), fill="#607286", anchor="rm")
-            row_y += 61
+            primary = f"{_recap_stat_text(player.get('PTS'), 'PTS')} PTS  •  {_recap_stat_text(rebounds, 'REB')} REB  •  {_recap_stat_text(player.get('AST'), 'AST')} AST"
+            secondary = (
+                f"{_recap_stat_text(player.get('MP'), 'MP')} MIN  •  {_recap_stat_text(player.get('TS%'), 'TS%')} TS  •  "
+                f"{_recap_stat_text(player.get('ST'), 'ST')} STL  •  {_recap_stat_text(player.get('BLK'), 'BLK')} BLK  •  "
+                f"{_recap_stat_text(player.get('TO'), 'TO')} TO  •  {_recap_stat_text(player.get('+/-'), '+/-')} +/-"
+            )
+            draw.text((margin + 18, row_top + 31), player_name, font=_fit_scoreboard_font(draw, player_name, 440, 25, 18), fill=navy, anchor="lm")
+            draw.text((width - margin - 18, row_top + 31), primary, font=_scoreboard_font(24, True), fill=navy, anchor="rm")
+            draw.text((margin + 18, row_top + 68), secondary, font=_scoreboard_font(20, True), fill="#42546a", anchor="lm")
+        return bottom
 
-    # Jerseys and the shot chart stay visual and share one compact row.
-    look_title_y = leaders_bottom + 40
-    draw.text((margin, look_title_y), "GAME LOOK", font=_scoreboard_font(20, True), fill=navy, anchor="lm")
-    look_top, look_bottom = look_title_y + 30, look_title_y + 470
-    draw.rounded_rectangle((margin, look_top, width - margin, look_bottom), radius=14, fill="#ffffff", outline="#dbe4ee", width=2)
-    _paste_scoreboard_asset(image, road_jersey_image, (margin + 10, look_top + 12, margin + 214, look_bottom - 38), padding=4)
-    _paste_scoreboard_asset(image, court_image, (margin + 224, look_top + 12, width - margin - 224, look_bottom - 38), padding=4)
-    _paste_scoreboard_asset(image, home_jersey_image, (width - margin - 214, look_top + 12, width - margin - 10, look_bottom - 38), padding=4)
-    draw.text((margin + 112, look_bottom - 20), str(road_edition), font=_scoreboard_font(10, True), fill="#718398", anchor="mm")
-    draw.text((width // 2, look_bottom - 20), "SHOT MAP", font=_scoreboard_font(10, True), fill="#718398", anchor="mm")
-    draw.text((width - margin - 112, look_bottom - 20), str(home_edition), font=_scoreboard_font(10, True), fill="#718398", anchor="mm")
+    draw_player_table(team_a, color_a, name_a, table_a_top)
+    draw_player_table(team_b, color_b, name_b, table_b_top)
 
-    # One differential line: the segment color identifies which team leads.
-    trend_title_y = look_bottom + 38
-    draw.text((margin, trend_title_y), "MATCHUP FLOW", font=_scoreboard_font(20, True), fill=navy, anchor="lm")
-    chart_top, chart_bottom = trend_title_y + 30, height - 66
-    draw.rounded_rectangle((margin, chart_top, width - margin, chart_bottom), radius=14, fill="#ffffff", outline="#dbe4ee", width=2)
-    plot_left, plot_right = margin + 36, width - margin - 36
-    plot_top, plot_bottom = chart_top + 42, chart_bottom - 34
-    draw.line((plot_left, (plot_top + plot_bottom) // 2, plot_right, (plot_top + plot_bottom) // 2), fill="#aab6c3", width=2)
+    # Court first, then large jerseys beneath it so branding remains legible.
+    draw.text((margin, look_title_y), "GAME PRESENTATION", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
+    draw.rounded_rectangle((margin, look_top, width - margin, look_bottom), radius=16, fill="#ffffff", outline="#dbe4ee", width=2)
+    court_bottom = look_top + 408
+    _paste_scoreboard_asset(image, court_image, (margin + 18, look_top + 16, width - margin - 18, court_bottom), padding=4)
+    jersey_top = court_bottom + 6
+    _paste_scoreboard_asset(image, road_jersey_image, (margin + 28, jersey_top, width // 2 - 18, look_bottom - 52), padding=4)
+    _paste_scoreboard_asset(image, home_jersey_image, (width // 2 + 18, jersey_top, width - margin - 28, look_bottom - 52), padding=4)
+    draw.text((width // 4, look_bottom - 27), f"{name_a} • {road_edition}", font=_scoreboard_font(18, True), fill="#52667b", anchor="mm")
+    draw.text((width * 3 // 4, look_bottom - 27), f"{name_b} • {home_edition}", font=_scoreboard_font(18, True), fill="#52667b", anchor="mm")
+
+    # Simplified differential flow with larger labels.
+    draw.text((margin, flow_title_y), "MATCHUP FLOW", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
+    draw.rounded_rectangle((margin, chart_top, width - margin, chart_bottom), radius=16, fill="#ffffff", outline="#dbe4ee", width=2)
+    plot_left, plot_right = margin + 58, width - margin - 28
+    plot_top, plot_bottom = chart_top + 72, chart_bottom - 54
+    mid_y = (plot_top + plot_bottom) // 2
+    draw.line((plot_left, mid_y, plot_right, mid_y), fill="#aab6c3", width=3)
+    draw.text((plot_left, chart_top + 30), name_a, font=_scoreboard_font(24, True), fill=color_a, anchor="lm")
+    draw.text((plot_right, chart_top + 30), name_b, font=_scoreboard_font(24, True), fill=color_b, anchor="rm")
+    draw.text((plot_left, plot_top + 4), f"{name_a.upper()} LEAD", font=_scoreboard_font(17, True), fill="#607286", anchor="la")
+    draw.text((plot_left, plot_bottom - 4), f"{name_b.upper()} LEAD", font=_scoreboard_font(17, True), fill="#607286", anchor="ld")
     trend = trend_table.copy().reset_index(drop=True) if trend_table is not None else pd.DataFrame()
     if not trend.empty and team_a in trend.columns and team_b in trend.columns:
         trend[team_a] = pd.to_numeric(trend[team_a], errors="coerce")
@@ -3172,13 +3344,15 @@ def build_mobile_matchup_recap_image(
         points = []
         for index, value in enumerate(differential):
             x = int(plot_left + index / max(1, len(differential) - 1) * (plot_right - plot_left))
-            y = int((plot_top + plot_bottom) / 2 - value / max_abs * (plot_bottom - plot_top) * 0.43)
+            y = int(mid_y - value / max_abs * (plot_bottom - plot_top) * 0.41)
             points.append((x, y, value))
         for first, second in zip(points, points[1:]):
             segment_color = color_a if (first[2] + second[2]) / 2 >= 0 else color_b
-            draw.line((first[0], first[1], second[0], second[1]), fill=segment_color, width=6)
+            draw.line((first[0], first[1], second[0], second[1]), fill=segment_color, width=8)
         if points:
-            draw.ellipse((points[-1][0] - 6, points[-1][1] - 6, points[-1][0] + 6, points[-1][1] + 6), fill=color_a if points[-1][2] >= 0 else color_b)
+            last = points[-1]
+            last_color = color_a if last[2] >= 0 else color_b
+            draw.ellipse((last[0] - 9, last[1] - 9, last[0] + 9, last[1] + 9), fill=last_color)
         if "game_date" in trend.columns:
             dates = pd.to_datetime(trend["game_date"].astype(str), format="%Y%m%d", errors="coerce")
             valid_dates = dates.dropna()
@@ -3188,22 +3362,20 @@ def build_mobile_matchup_recap_image(
                     indexes = dates[dates.dt.normalize() == date_value].index
                     if len(indexes):
                         x = int(plot_left + int(indexes.min()) / max(1, len(trend) - 1) * (plot_right - plot_left))
-                        draw.line((x, plot_top, x, plot_bottom), fill="#e0e7ef", width=1)
-                        draw.text((x + 5, plot_top - 15), pd.Timestamp(date_value).strftime("%a"), font=_scoreboard_font(9, True), fill="#718398", anchor="lm")
+                        draw.line((x, plot_top, x, plot_bottom), fill="#e0e7ef", width=2)
+                        draw.text((x + 5, plot_bottom + 24), pd.Timestamp(date_value).strftime("%a"), font=_scoreboard_font(18, True), fill="#52667b", anchor="mm")
     else:
-        draw.text((width // 2, (plot_top + plot_bottom) // 2), "FLOW DATA UNAVAILABLE", font=_scoreboard_font(13, True), fill="#8293a6", anchor="mm")
-    draw.text((plot_left, chart_top + 20), name_a, font=_scoreboard_font(11, True), fill=color_a, anchor="lm")
-    draw.text((plot_right, chart_top + 20), name_b, font=_scoreboard_font(11, True), fill=color_b, anchor="rm")
+        draw.text((width // 2, mid_y), "FLOW DATA UNAVAILABLE", font=_scoreboard_font(18, True), fill="#8293a6", anchor="mm")
 
-    generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d  \u2022  %I:%M %p").replace(" 0", " ")
-    draw.text((margin, height - 24), f"SBCFBL  \u2022  {generated}", font=_scoreboard_font(11, True), fill="#718398", anchor="lm")
-    draw.text((width - margin, height - 24), "MATCHUP RECAP", font=_scoreboard_font(11, True), fill="#718398", anchor="rm")
+    generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d • %I:%M %p").replace(" 0", " ")
+    draw.text((margin, height - 26), f"SBCFBL • {generated}", font=_scoreboard_font(14, True), fill="#718398", anchor="lm")
+    draw.text((width - margin, height - 26), "MATCHUP RECAP", font=_scoreboard_font(14, True), fill="#718398", anchor="rm")
     output = BytesIO()
     image.save(output, format="PNG", optimize=True)
     return output.getvalue()
 
 
-def build_standings_bracket_image(
+def _build_standings_bracket_image_legacy(
     west_standings: pd.DataFrame,
     east_standings: pd.DataFrame,
     postseason_games: pd.DataFrame | None,
@@ -3512,7 +3684,276 @@ def build_standings_bracket_image(
     return output.getvalue()
 
 
-def build_mobile_standings_image(
+def build_standings_bracket_image(
+    west_standings: pd.DataFrame,
+    east_standings: pd.DataFrame,
+    postseason_games: pd.DataFrame | None,
+    season_label: str,
+    through_label: str,
+    projected: bool = True,
+    generated_at=None,
+) -> bytes:
+    """Render large standings around a circular, results-driven postseason path."""
+    width, height = 3800, 2000
+    image = Image.new("RGB", (width, height), "#eef3f8")
+    draw = ImageDraw.Draw(image)
+    ink, muted = "#142033", "#66788d"
+    navy, green, orange, gold = "#09438e", "#009c3d", "#f59e0b", "#efbd2e"
+
+    draw.rectangle((0, 0, width, 142), fill="#ffffff")
+    draw.rounded_rectangle((42, 31, 108, 101), radius=15, fill=orange)
+    draw.text((75, 66), "S", font=_scoreboard_font(32, True), fill=ink, anchor="mm")
+    draw.text((132, 54), "SBCFBL STANDINGS + POSTSEASON", font=_scoreboard_font(42, True), fill=ink, anchor="lm")
+    draw.text((132, 104), f"{season_label}  •  THROUGH {through_label.upper()}", font=_scoreboard_font(20, True), fill=muted, anchor="lm")
+    status_text = "CURRENT PLAYOFF PICTURE" if projected else "POSTSEASON RESULTS"
+    draw.rounded_rectangle((width - 520, 39, width - 42, 101), radius=31, fill=navy if projected else green)
+    draw.text((width - 281, 70), status_text, font=_scoreboard_font(20, True), fill="#ffffff", anchor="mm")
+
+    table_top, panel_bottom = 170, height - 58
+    side_margin, table_width = 30, 850
+    west_box = (side_margin, table_top, side_margin + table_width, panel_bottom)
+    east_box = (width - side_margin - table_width, table_top, width - side_margin, panel_bottom)
+
+    def standing_value(row, *keys, default="-"):
+        for key in keys:
+            value = row.get(key, None)
+            if value is not None and not pd.isna(value) and str(value).strip() != "":
+                return str(value)
+        return default
+
+    def draw_standings(table, conference, box, color):
+        left, top, right, bottom = box
+        draw.rounded_rectangle(box, radius=24, fill="#ffffff", outline="#cbd8e5", width=3)
+        draw.rounded_rectangle((left, top, right, top + 82), radius=24, fill=color)
+        draw.rectangle((left, top + 56, right, top + 82), fill=color)
+        draw.text((left + 26, top + 41), f"{conference.upper()} CONFERENCE", font=_scoreboard_font(27, True), fill="#ffffff", anchor="lm")
+        headers = [
+            ("TEAM", left + 84, "lm"), ("W", right - 340, "mm"), ("L", right - 266, "mm"),
+            ("GB", right - 192, "mm"), ("STRK", right - 108, "mm"), ("L10", right - 24, "rm"),
+        ]
+        for label, x, anchor in headers:
+            draw.text((x, top + 112), label, font=_scoreboard_font(16, True), fill=muted, anchor=anchor)
+        rows = table.reset_index(drop=True).head(15) if table is not None else pd.DataFrame()
+        row_top, row_height = top + 137, 101
+        for index, (_, row) in enumerate(rows.iterrows()):
+            y1, y2 = row_top + index * row_height, row_top + (index + 1) * row_height - 5
+            fill = "#eaf7ef" if index < 6 else "#fff6df" if index < 10 else ("#f4f7fa" if index % 2 == 0 else "#ffffff")
+            draw.rounded_rectangle((left + 9, y1, right - 9, y2), radius=11, fill=fill)
+            row_mid = (y1 + y2) // 2
+            draw.text((left + 27, row_mid), str(index + 1), font=_scoreboard_font(21, True), fill=color if index < 10 else "#8091a5", anchor="mm")
+            team = standing_value(row, "Team", default="")
+            logo_source = str(safe_team_info(team, "logo", "") or row.get("Logo", "") or "")
+            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(logo_source), 64)
+            if logo is not None:
+                image.paste(logo, (left + 41, row_mid - logo.height // 2), logo)
+            team_name = standing_value(row, "FullTeam", default=_scoreboard_team_name(team))
+            team_font = _fit_scoreboard_font(draw, team_name, 340, 26, 17)
+            draw.text((left + 118, row_mid), team_name, font=team_font, fill=ink, anchor="lm")
+            values = [
+                (standing_value(row, "wins", "W", default="0"), right - 340),
+                (standing_value(row, "losses", "L", default="0"), right - 266),
+                (standing_value(row, "GB"), right - 192),
+                (standing_value(row, "Streak"), right - 108),
+                (standing_value(row, "Last10", "Last 10"), right - 24),
+            ]
+            for value, x in values:
+                draw.text((x, row_mid), value, font=_scoreboard_font(20, True), fill="#28384c", anchor="rm" if x == right - 24 else "mm")
+        draw.text(((left + right) // 2, bottom - 24), "TOP 6 PLAYOFFS  •  7–10 PLAY-IN", font=_scoreboard_font(16, True), fill=muted, anchor="mm")
+
+    draw_standings(west_standings, "West", west_box, green)
+    draw_standings(east_standings, "East", east_box, navy)
+
+    bracket_left, bracket_right = west_box[2] + 20, east_box[0] - 20
+    bracket_mid = (bracket_left + bracket_right) // 2
+    arena_top, arena_bottom = table_top, panel_bottom
+    draw.rounded_rectangle((bracket_left, arena_top, bracket_right, arena_bottom), radius=26, fill="#101b2b", outline="#253a54", width=3)
+    draw.rectangle((bracket_left, arena_top, bracket_mid, arena_bottom), fill="#075c32")
+    draw.rectangle((bracket_mid, arena_top, bracket_right, arena_bottom), fill="#0b477c")
+
+    # A clean split field keeps the bracket legible; gold owns the championship.
+    ring_center_y = 835
+    draw.rounded_rectangle(
+        (bracket_mid - 205, ring_center_y - 280, bracket_mid + 205, ring_center_y + 280),
+        radius=34,
+        fill="#17263a",
+        outline=gold,
+        width=10,
+    )
+    draw.text((bracket_mid, 206), "THE ROAD TO THE SBCFBL FINALS", font=_scoreboard_font(32, True), fill="#ffffff", anchor="mm")
+    draw.text((bracket_mid, 247), "CURRENT SEEDS ENTER FROM THE OUTSIDE • RESULTS MOVE INWARD", font=_scoreboard_font(17, True), fill="#b9c5d2", anchor="mm")
+
+    def seeded_teams(table):
+        seeds = [str(value) for value in table.get("Team", pd.Series(dtype=str)).head(10).tolist()] if table is not None else []
+        return seeds + ["TBD"] * max(0, 10 - len(seeds))
+
+    def initial_rounds(table):
+        seeds = seeded_teams(table)
+        return {
+            "playin": [(seeds[6], seeds[7]), (seeds[8], seeds[9]), ("L 7/8", "W 9/10")],
+            "first": [(seeds[0], "PLAY-IN #8"), (seeds[3], seeds[4]), (seeds[2], seeds[5]), (seeds[1], "PLAY-IN #7")],
+            "semi": [("", ""), ("", "")],
+            "conf": [("", "")],
+        }
+
+    games = postseason_games.copy() if postseason_games is not None else pd.DataFrame()
+    if not games.empty:
+        games["_type"] = games.get("Type", "").astype(str)
+        games["_round"] = games.get("Round", "").astype(str).str.lower()
+        games["_bucket"] = games.apply(
+            lambda row: "playin" if row["_type"] == "Play-In" else "final" if "finals" in row["_round"] and "conference" not in row["_round"] else "conf" if "conference final" in row["_round"] else "semi" if "semi" in row["_round"] else "first",
+            axis=1,
+        )
+        games["_conf"] = games.apply(
+            lambda row: safe_team_info(row.get("TeamA", ""), "conf", "Final") if safe_team_info(row.get("TeamA", ""), "conf", "") == safe_team_info(row.get("TeamB", ""), "conf", "") else "Final",
+            axis=1,
+        )
+        games["_period"] = pd.to_numeric(games.get("Period", 0), errors="coerce").fillna(0)
+        games = games.sort_values(["_period", "_round"])
+
+    def actual_pairs(conference, bucket):
+        if games.empty:
+            return []
+        selected = games[(games["_conf"] == conference) & (games["_bucket"] == bucket)]
+        return [(str(row.get("TeamA", "")), str(row.get("TeamB", "")), row) for _, row in selected.iterrows()]
+
+    west_rounds, east_rounds = initial_rounds(west_standings), initial_rounds(east_standings)
+    for conference, rounds in (("West", west_rounds), ("East", east_rounds)):
+        for bucket in ("playin", "first", "semi", "conf"):
+            actual = actual_pairs(conference, bucket)
+            for index, card in enumerate(actual[:len(rounds[bucket])]):
+                rounds[bucket][index] = card
+    finals = actual_pairs("Final", "final")
+    final_card = finals[-1] if finals else ("", "")
+
+    def seed_for_team(team):
+        for standings_table in (west_standings, east_standings):
+            reset = standings_table.reset_index(drop=True)
+            if "Team" not in reset.columns:
+                continue
+            matches = reset.index[reset["Team"].astype(str) == str(team)].tolist()
+            if matches:
+                return str(matches[0] + 1)
+        return ""
+
+    def card_scores(card):
+        if len(card) < 3:
+            return None, None
+        row = card[2]
+        return (
+            _scoreboard_score_number(row.get("TeamAScore", row.get("TeamA_Score", ""))),
+            _scoreboard_score_number(row.get("TeamBScore", row.get("TeamB_Score", ""))),
+        )
+
+    def is_winner(card, team_index):
+        score_a, score_b = card_scores(card)
+        return score_a is not None and score_b is not None and score_a != score_b and ((team_index == 0 and score_a > score_b) or (team_index == 1 and score_b > score_a))
+
+    card_w, card_h = 270, 112
+
+    def team_label(team):
+        if not team:
+            return "—"
+        if team in team_info:
+            nickname = str(safe_team_info(team, "nickname", team) or team)
+            city = str(team)
+            return min((city, nickname), key=len)
+        return str(team)
+
+    def draw_matchup_card(center, card, color, compact=False, finals_card=False):
+        x, y = center
+        w, h = ((330, 136) if finals_card else ((226, 98) if compact else (card_w, card_h)))
+        left, top, right, bottom = x - w // 2, y - h // 2, x + w // 2, y + h // 2
+        draw.rounded_rectangle((left, top, right, bottom), radius=18, fill="#f8fafc", outline=color, width=4)
+        draw.line((left + 10, y, right - 10, y), fill="#d8e0e9", width=2)
+        scores = card_scores(card)
+        for team_index, team in enumerate((str(card[0]), str(card[1]))):
+            row_y = top + h // 4 if team_index == 0 else top + 3 * h // 4
+            winner = is_winner(card, team_index)
+            if winner:
+                draw.rounded_rectangle((left + 5, row_y - h // 4 + 3, right - 5, row_y + h // 4 - 3), radius=12, fill="#e8f5ec")
+            seed = seed_for_team(team)
+            if seed and not compact:
+                draw.text((left + 17, row_y), seed, font=_scoreboard_font(17, True), fill=color, anchor="lm")
+            logo_size = 38 if compact else 44
+            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), logo_size) if team in team_info else None
+            logo_x = left + (17 if compact else 42)
+            if logo is not None:
+                image.paste(logo, (logo_x, row_y - logo.height // 2), logo)
+            text_x = logo_x + (logo_size + 7 if logo is not None else 2)
+            score = scores[team_index] if scores[team_index] is not None else None
+            score_space = 50 if score is not None else 10
+            label = team_label(team)
+            font = _fit_scoreboard_font(draw, label, right - score_space - text_x, 20 if compact else 23, 14)
+            draw.text((text_x, row_y), label, font=font, fill=ink if team else "#93a1b2", anchor="lm")
+            if score is not None:
+                score_text = _scoreboard_score(score)
+                draw.text((right - 13, row_y), score_text, font=_scoreboard_font(20, True), fill=color if winner else ink, anchor="rm")
+        return left, top, right, bottom
+
+    west_positions = {"first": [(1050, y) for y in (390, 665, 1005, 1280)], "semi": [(1335, y) for y in (530, 1140)], "conf": [(1555, ring_center_y)]}
+    east_positions = {"first": [(2750, y) for y in (390, 665, 1005, 1280)], "semi": [(2465, y) for y in (530, 1140)], "conf": [(2245, ring_center_y)]}
+
+    def draw_connections(positions, side, color):
+        direction = 1 if side == "West" else -1
+        for index in range(2):
+            target = positions["semi"][index]
+            for source in positions["first"][index * 2:index * 2 + 2]:
+                draw.line((source[0] + direction * card_w // 2, source[1], target[0] - direction * card_w // 2, target[1]), fill=color, width=6)
+        for source in positions["semi"]:
+            target = positions["conf"][0]
+            draw.line((source[0] + direction * card_w // 2, source[1], target[0] - direction * card_w // 2, target[1]), fill=color, width=7)
+
+    draw_connections(west_positions, "West", "#4ba974")
+    draw_connections(east_positions, "East", "#4c7fb9")
+    draw.line((1690, ring_center_y, 1735, ring_center_y), fill=gold, width=8)
+    draw.line((2065, ring_center_y, 2110, ring_center_y), fill=gold, width=8)
+
+    stage_y = 292
+    for x, label, color in ((1050, "FIRST ROUND", green), (1335, "SEMIFINALS", green), (1555, "WEST FINAL", green), (1900, "SBCFBL FINALS", gold), (2245, "EAST FINAL", navy), (2465, "SEMIFINALS", navy), (2750, "FIRST ROUND", navy)):
+        draw.rounded_rectangle((x - 105, stage_y - 22, x + 105, stage_y + 22), radius=22, fill=color)
+        draw.text((x, stage_y), label, font=_scoreboard_font(16, True), fill="#ffffff" if color != gold else ink, anchor="mm")
+
+    for rounds, positions, color in ((west_rounds, west_positions, green), (east_rounds, east_positions, navy)):
+        for bucket in ("first", "semi", "conf"):
+            for center, card in zip(positions[bucket], rounds[bucket]):
+                draw_matchup_card(center, card, color)
+
+    draw.text((bracket_mid, ring_center_y - 118), "SBCFBL", font=_scoreboard_font(22, True), fill="#f8fafc", anchor="mm")
+    draw.text((bracket_mid, ring_center_y - 78), "THE FINALS", font=_scoreboard_font(38, True), fill=gold, anchor="mm")
+    draw_matchup_card((bracket_mid, ring_center_y + 22), final_card, gold, finals_card=True)
+
+    # The play-in is a separate, readable flow instead of sharing bracket connector lines.
+    playin_top, playin_bottom = 1510, 1900
+    draw.rounded_rectangle((bracket_left + 24, playin_top, bracket_right - 24, playin_bottom), radius=24, fill="#f8fafc", outline="#cbd7e4", width=3)
+    draw.text((bracket_mid, playin_top + 34), "PLAY-IN PATH", font=_scoreboard_font(29, True), fill=ink, anchor="mm")
+    draw.text((bracket_mid, playin_top + 70), "7/8 WINNER EARNS #7  •  7/8 LOSER + 9/10 WINNER PLAY FOR #8", font=_scoreboard_font(17, True), fill=muted, anchor="mm")
+
+    def draw_playin_group(rounds, side, group_left, color):
+        group_right = group_left + 925
+        draw.rounded_rectangle((group_left, playin_top + 90, group_right, playin_bottom - 20), radius=20, fill="#eef3f7", outline=color, width=3)
+        draw.text((group_left + 24, playin_top + 117), f"{side.upper()} PLAY-IN", font=_scoreboard_font(22, True), fill=color, anchor="lm")
+        centers = [(group_left + 145, playin_top + 226), (group_left + 450, playin_top + 226), (group_left + 775, playin_top + 226)]
+        labels = ("#7 GAME", "ELIMINATION GAME", "#8 GAME")
+        for center, card, label in zip(centers, rounds["playin"], labels):
+            draw.text((center[0], playin_top + 154), label, font=_scoreboard_font(16, True), fill=ink, anchor="mm")
+            draw_matchup_card(center, card, color, compact=True)
+        draw.text((group_left + 295, playin_top + 226), "+", font=_scoreboard_font(34, True), fill=muted, anchor="mm")
+        draw.text((group_left + 612, playin_top + 226), "→", font=_scoreboard_font(38, True), fill=color, anchor="mm")
+        draw.text((group_left + 145, playin_bottom - 40), "WINNER → #7 SEED", font=_scoreboard_font(16, True), fill=color, anchor="mm")
+        draw.text((group_left + 612, playin_bottom - 40), "LOSER 7/8 + WINNER 9/10 → #8 SEED", font=_scoreboard_font(15, True), fill=color, anchor="mm")
+
+    draw_playin_group(west_rounds, "West", bracket_left + 42, green)
+    draw_playin_group(east_rounds, "East", bracket_mid + 18, navy)
+
+    generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d, %Y • %I:%M %p").replace(" 0", " ")
+    draw.text((42, height - 22), f"STANDINGS REPORT • GENERATED {generated}", font=_scoreboard_font(14, True), fill=muted, anchor="lm")
+    draw.text((width - 42, height - 22), "SBCFBL POSTSEASON PICTURE", font=_scoreboard_font(14, True), fill=muted, anchor="rm")
+    output = BytesIO()
+    image.save(output, format="PNG", optimize=True)
+    return output.getvalue()
+
+
+def _build_mobile_standings_image_legacy(
     west_standings: pd.DataFrame,
     east_standings: pd.DataFrame,
     postseason_games: pd.DataFrame | None,
@@ -3676,6 +4117,215 @@ def build_mobile_standings_image(
     return output.getvalue()
 
 
+def build_mobile_standings_image(
+    west_standings: pd.DataFrame,
+    east_standings: pd.DataFrame,
+    postseason_games: pd.DataFrame | None,
+    season_label: str,
+    through_label: str,
+    projected: bool = True,
+    generated_at=None,
+) -> bytes:
+    """Render compact, logo-first mobile standings and a minimal postseason bracket."""
+    width, height, margin = 1080, 2600, 28
+    image = Image.new("RGB", (width, height), "#eef3f8")
+    draw = ImageDraw.Draw(image)
+    ink, muted = "#142033", "#687b90"
+    west_color, east_color, orange, gold = "#009c3d", "#09438e", "#f59e0b", "#efbd2e"
+
+    draw.rectangle((0, 0, width, 166), fill="#ffffff")
+    draw.rounded_rectangle((margin, 26, margin + 62, 88), radius=14, fill=orange)
+    draw.text((margin + 31, 57), "S", font=_scoreboard_font(32, True), fill=ink, anchor="mm")
+    draw.text((margin + 82, 48), "STANDINGS", font=_scoreboard_font(38, True), fill=ink, anchor="lm")
+    draw.text((margin + 82, 96), f"{season_label}  •  {through_label}", font=_scoreboard_font(18, True), fill=muted, anchor="lm")
+    draw.rounded_rectangle((width - 300, 112, width - margin, 152), radius=20, fill=east_color)
+    draw.text((width - 164, 132), "PLAYOFF PICTURE", font=_scoreboard_font(15, True), fill="#ffffff", anchor="mm")
+
+    def standing_value(row, *keys, default="-"):
+        for key in keys:
+            value = row.get(key, None)
+            if value is not None and not pd.isna(value) and str(value).strip() != "":
+                return str(value)
+        return default
+
+    standings_top, panel_gap = 180, 24
+    panel_width = (width - margin * 2 - panel_gap) // 2
+    conference_header, row_height = 76, 68
+    standings_bottom = standings_top + conference_header + 15 * row_height
+
+    def draw_conference(table, conference, left, color):
+        right = left + panel_width
+        draw.rounded_rectangle((left, standings_top, right, standings_bottom), radius=20, fill="#ffffff", outline="#cbd8e5", width=2)
+        draw.rounded_rectangle((left, standings_top, right, standings_top + conference_header), radius=20, fill=color)
+        draw.rectangle((left, standings_top + 52, right, standings_top + conference_header), fill=color)
+        draw.text((left + 20, standings_top + 28), conference.upper(), font=_scoreboard_font(24, True), fill="#ffffff", anchor="lm")
+        draw.text((left + 82, standings_top + 58), "TEAM", font=_scoreboard_font(13, True), fill="#dff5e7" if conference == "West" else "#dbeafe", anchor="mm")
+        draw.text((right - 136, standings_top + 28), "W–L", font=_scoreboard_font(17, True), fill="#ffffff", anchor="mm")
+        draw.text((right - 34, standings_top + 28), "GB", font=_scoreboard_font(17, True), fill="#ffffff", anchor="mm")
+        rows = table.reset_index(drop=True).head(15) if table is not None else pd.DataFrame()
+        for index in range(15):
+            top = standings_top + conference_header + index * row_height
+            bottom = top + row_height - 4
+            fill = "#eaf7ef" if index < 6 else "#fff6df" if index < 10 else ("#f4f7fa" if index % 2 == 0 else "#ffffff")
+            draw.rounded_rectangle((left + 6, top, right - 6, bottom), radius=9, fill=fill)
+            if index >= len(rows):
+                continue
+            row = rows.iloc[index]
+            team = standing_value(row, "Team", default="")
+            center_y = (top + bottom) // 2
+            draw.text((left + 22, center_y), str(index + 1), font=_scoreboard_font(17, True), fill=color if index < 10 else "#8192a6", anchor="mm")
+            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", row.get("Logo", "")) or "")), 54)
+            if logo is not None:
+                image.paste(logo, (left + 46, center_y - logo.height // 2), logo)
+            else:
+                fallback_color = _scoreboard_color(safe_team_info(team, "bg", color))
+                draw.ellipse((left + 48, center_y - 23, left + 94, center_y + 23), fill=fallback_color, outline="#ffffff", width=2)
+                draw.text((left + 71, center_y), str(team)[:1].upper(), font=_scoreboard_font(17, True), fill="#ffffff", anchor="mm")
+            nickname = _scoreboard_team_label(team)
+            draw.text((left + 108, center_y), nickname, font=_fit_scoreboard_font(draw, nickname, 150, 20, 13), fill=ink, anchor="lm")
+            wins = standing_value(row, "wins", "W", default="0")
+            losses = standing_value(row, "losses", "L", default="0")
+            draw.text((right - 136, center_y), f"{wins}–{losses}", font=_scoreboard_font(24, True), fill=ink, anchor="mm")
+            draw.text((right - 34, center_y), standing_value(row, "GB"), font=_scoreboard_font(22, True), fill=ink, anchor="mm")
+
+    draw_conference(west_standings, "West", margin, west_color)
+    draw_conference(east_standings, "East", margin + panel_width + panel_gap, east_color)
+
+    def seeded_teams(table):
+        seeds = [str(value) for value in table.get("Team", pd.Series(dtype=str)).head(10).tolist()] if table is not None else []
+        return seeds + [""] * max(0, 10 - len(seeds))
+
+    def initial_rounds(table):
+        seeds = seeded_teams(table)
+        return {
+            "playin": [(seeds[6], seeds[7]), (seeds[8], seeds[9]), ("", "")],
+            "first": [(seeds[0], ""), (seeds[3], seeds[4]), (seeds[2], seeds[5]), (seeds[1], "")],
+            "semi": [("", ""), ("", "")],
+            "conf": [("", "")],
+        }
+
+    games = postseason_games.copy() if postseason_games is not None else pd.DataFrame()
+    if not games.empty:
+        games["_type"] = games.get("Type", "").astype(str)
+        games["_round"] = games.get("Round", "").astype(str).str.lower()
+        games["_bucket"] = games.apply(
+            lambda row: "playin" if row["_type"] == "Play-In" else "final" if "finals" in row["_round"] and "conference" not in row["_round"] else "conf" if "conference final" in row["_round"] else "semi" if "semi" in row["_round"] else "first",
+            axis=1,
+        )
+        games["_conf"] = games.apply(
+            lambda row: safe_team_info(row.get("TeamA", ""), "conf", "Final") if safe_team_info(row.get("TeamA", ""), "conf", "") == safe_team_info(row.get("TeamB", ""), "conf", "") else "Final",
+            axis=1,
+        )
+        games["_period"] = pd.to_numeric(games.get("Period", 0), errors="coerce").fillna(0)
+        games = games.sort_values(["_period", "_round"])
+
+    def actual_pairs(conference, bucket):
+        if games.empty:
+            return []
+        selected = games[(games["_conf"] == conference) & (games["_bucket"] == bucket)]
+        return [(str(row.get("TeamA", "")), str(row.get("TeamB", "")), row) for _, row in selected.iterrows()]
+
+    west_rounds, east_rounds = initial_rounds(west_standings), initial_rounds(east_standings)
+    for conference, rounds in (("West", west_rounds), ("East", east_rounds)):
+        for bucket in ("playin", "first", "semi", "conf"):
+            actual = actual_pairs(conference, bucket)
+            for index, card in enumerate(actual[:len(rounds[bucket])]):
+                rounds[bucket][index] = card
+    finals = actual_pairs("Final", "final")
+    final_card = finals[-1] if finals else ("", "")
+
+    def card_scores(card):
+        if len(card) < 3:
+            return None, None
+        row = card[2]
+        return (
+            _scoreboard_score_number(row.get("TeamAScore", row.get("TeamA_Score", ""))),
+            _scoreboard_score_number(row.get("TeamBScore", row.get("TeamB_Score", ""))),
+        )
+
+    def slot_winner(card, index):
+        score_a, score_b = card_scores(card)
+        return score_a is not None and score_b is not None and score_a != score_b and ((index == 0 and score_a > score_b) or (index == 1 and score_b > score_a))
+
+    bracket_top, bracket_bottom = standings_bottom + 28, height - 58
+    bracket_mid = width // 2
+    draw.rounded_rectangle((margin, bracket_top, width - margin, bracket_bottom), radius=22, fill=west_color)
+    draw.rectangle((bracket_mid, bracket_top, width - margin, bracket_bottom), fill=east_color)
+    draw.text((bracket_mid, bracket_top + 34), "POSTSEASON", font=_scoreboard_font(30, True), fill="#ffffff", anchor="mm")
+    draw.text((bracket_mid, bracket_top + 70), "LOGOS MOVE TOWARD THE FINALS", font=_scoreboard_font(15, True), fill="#d8e3ee", anchor="mm")
+
+    path_top, path_bottom = bracket_top + 126, bracket_bottom - 225
+    path_mid_y = (path_top + path_bottom) // 2
+    card_width, card_height = 72, 126
+    west_positions = {"first": [(92, y) for y in (path_top + 45, path_top + 230, path_top + 455, path_top + 640)], "semi": [(265, y) for y in (path_top + 138, path_top + 548)], "conf": [(410, path_mid_y)]}
+    east_positions = {"first": [(988, y) for y in (path_top + 45, path_top + 230, path_top + 455, path_top + 640)], "semi": [(815, y) for y in (path_top + 138, path_top + 548)], "conf": [(670, path_mid_y)]}
+
+    def draw_connections(positions, side):
+        direction = 1 if side == "West" else -1
+        line_color = "#9ae0b4" if side == "West" else "#9dc2e8"
+        for index in range(2):
+            target = positions["semi"][index]
+            for source in positions["first"][index * 2:index * 2 + 2]:
+                draw.line((source[0] + direction * card_width // 2, source[1], target[0] - direction * card_width // 2, target[1]), fill=line_color, width=5)
+        for source in positions["semi"]:
+            target = positions["conf"][0]
+            draw.line((source[0] + direction * card_width // 2, source[1], target[0] - direction * card_width // 2, target[1]), fill=line_color, width=6)
+
+    draw_connections(west_positions, "West")
+    draw_connections(east_positions, "East")
+
+    def draw_logo_slot(center, team, color, winner=False, size=54):
+        x, y = center
+        radius = size // 2 + 5
+        draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill="#ffffff", outline=gold if winner else "#d9e3ed", width=5 if winner else 3)
+        if team:
+            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), size)
+            if logo is not None:
+                image.paste(logo, (x - logo.width // 2, y - logo.height // 2), logo)
+            else:
+                draw.text((x, y), str(team)[:1].upper(), font=_scoreboard_font(21, True), fill=color, anchor="mm")
+
+    def draw_logo_match(center, card, color, final=False):
+        x, y = center
+        spacing = 44 if final else 36
+        for index, team in enumerate((str(card[0]), str(card[1]))):
+            draw_logo_slot((x, y - spacing if index == 0 else y + spacing), team, color, slot_winner(card, index), 60 if final else 50)
+
+    for rounds, positions, color in ((west_rounds, west_positions, west_color), (east_rounds, east_positions, east_color)):
+        for bucket in ("first", "semi", "conf"):
+            for center, card in zip(positions[bucket], rounds[bucket]):
+                draw_logo_match(center, card, color)
+
+    final_left, final_right = bracket_mid - 62, bracket_mid + 62
+    draw.rounded_rectangle((final_left, path_mid_y - 180, final_right, path_mid_y + 180), radius=24, fill="#17263a", outline=gold, width=8)
+    draw.text((bracket_mid, path_mid_y - 137), "FINALS", font=_scoreboard_font(18, True), fill=gold, anchor="mm")
+    draw_logo_match((bracket_mid, path_mid_y + 18), final_card, gold, final=True)
+    draw.line((446, path_mid_y, final_left, path_mid_y), fill=gold, width=7)
+    draw.line((final_right, path_mid_y, 634, path_mid_y), fill=gold, width=7)
+
+    playin_y = bracket_bottom - 88
+    draw.rounded_rectangle((margin + 16, bracket_bottom - 194, width - margin - 16, bracket_bottom - 28), radius=18, fill="#f8fafc", outline="#d4dee8", width=2)
+    draw.text((bracket_mid, bracket_bottom - 168), "PLAY-IN", font=_scoreboard_font(20, True), fill=ink, anchor="mm")
+
+    def draw_playin_logos(rounds, start_x, color):
+        labels = ("7 / 8", "9 / 10", "#8 GAME")
+        for index, (card, label) in enumerate(zip(rounds["playin"], labels)):
+            center_x = start_x + index * 135
+            draw.text((center_x, bracket_bottom - 137), label, font=_scoreboard_font(12, True), fill=color, anchor="mm")
+            draw_logo_slot((center_x - 24, playin_y), str(card[0]), color, slot_winner(card, 0), 38)
+            draw_logo_slot((center_x + 24, playin_y), str(card[1]), color, slot_winner(card, 1), 38)
+
+    draw_playin_logos(west_rounds, 105, west_color)
+    draw_playin_logos(east_rounds, 705, east_color)
+
+    generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d • %I:%M %p").replace(" 0", " ")
+    draw.text((margin, height - 22), f"SBCFBL • {generated}", font=_scoreboard_font(13, True), fill=muted, anchor="lm")
+    draw.text((width - margin, height - 22), "MOBILE STANDINGS", font=_scoreboard_font(13, True), fill=muted, anchor="rm")
+    output = BytesIO()
+    image.save(output, format="PNG", optimize=True)
+    return output.getvalue()
+
+
 def build_matchup_preview_image(
     matchups: pd.DataFrame,
     featured_matchups: list,
@@ -3697,10 +4347,10 @@ def build_matchup_preview_image(
     draw.rounded_rectangle((width - 410, 42, width - 42, 96), radius=27, fill=navy)
     draw.text((width - 226, 69), "WEEKLY PRIMER", font=_scoreboard_font(17, True), fill="#ffffff", anchor="mm")
 
-    slate_left, slate_top, slate_right, slate_bottom = 34, 172, 950, height - 54
+    slate_left, slate_top, slate_right, slate_bottom = 34, 172, 620, height - 54
     draw.rounded_rectangle((slate_left, slate_top, slate_right, slate_bottom), radius=22, fill="#ffffff", outline="#d7e1eb", width=2)
-    draw.text((slate_left + 28, slate_top + 42), "COMPLETE WEEKLY SLATE", font=_scoreboard_font(25, True), fill=navy, anchor="lm")
-    draw.text((slate_right - 24, slate_top + 42), f"{len(matchups)} MATCHUPS", font=_scoreboard_font(14, True), fill="#718398", anchor="rm")
+    draw.text((slate_left + 24, slate_top + 42), "WEEKLY SLATE", font=_scoreboard_font(24, True), fill=navy, anchor="lm")
+    draw.text((slate_right - 22, slate_top + 42), f"{len(matchups)} GAMES", font=_scoreboard_font(14, True), fill="#718398", anchor="rm")
     feature_ids = {str(row.get("Game_ID", "")) for row in featured_matchups}
     rows = matchups.copy().sort_values([column for column in ["Type", "TeamB", "TeamA"] if column in matchups.columns]).reset_index(drop=True)
     row_top = slate_top + 76
@@ -3711,20 +4361,26 @@ def build_matchup_preview_image(
         draw.rounded_rectangle((slate_left + 10, y1, slate_right - 10, y2), radius=10, fill="#fff7e6" if featured else ("#f5f8fb" if index % 2 == 0 else "#ffffff"), outline=orange if featured else None, width=3 if featured else 1)
         team_a, team_b = str(row.get("TeamA", "")), str(row.get("TeamB", ""))
         center_y = (y1 + y2) // 2
-        for team, x in ((team_a, slate_left + 44), (team_b, slate_right - 44)):
+        for team, x in ((team_a, slate_left + 36), (team_b, slate_right - 36)):
             logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), min(46, row_height - 12))
             if logo is not None:
                 image.paste(logo, (x - logo.width // 2, center_y - logo.height // 2), logo)
-        name_a, name_b = _scoreboard_team_name(team_a), _scoreboard_team_name(team_b)
-        draw.text((slate_left + 78, center_y - 11), name_a, font=_fit_scoreboard_font(draw, name_a, 300, 16, 10), fill=navy, anchor="lm")
-        draw.text((slate_left + 78, center_y + 14), str(row.get("TeamA_record", "") or "—"), font=_scoreboard_font(12, True), fill="#718398", anchor="lm")
-        draw.text((slate_right - 78, center_y - 11), name_b, font=_fit_scoreboard_font(draw, name_b, 300, 16, 10), fill=navy, anchor="rm")
-        draw.text((slate_right - 78, center_y + 14), str(row.get("TeamB_record", "") or "—"), font=_scoreboard_font(12, True), fill="#718398", anchor="rm")
-        draw.text(((slate_left + slate_right) // 2, center_y), "AT", font=_scoreboard_font(12, True), fill=orange if featured else "#9aa8b8", anchor="mm")
+        name_a, name_b = _scoreboard_team_label(team_a), _scoreboard_team_label(team_b)
+        matchup_line = f"{name_a} ({row.get('TeamA_record', '—')})  @  {name_b} ({row.get('TeamB_record', '—')})"
+        draw.text(
+            ((slate_left + slate_right) // 2, center_y),
+            matchup_line,
+            font=_fit_scoreboard_font(draw, matchup_line, slate_right - slate_left - 116, 18, 9),
+            fill=orange if featured else navy,
+            anchor="mm",
+        )
 
-    feature_left, feature_right = 980, width - 34
+    feature_left, feature_right = 650, width - 34
+    feature_start = 228
     feature_gap = 22
-    feature_height = (height - 172 - 54 - feature_gap) // 2
+    feature_height = (height - feature_start - 54 - feature_gap) // 2
+    draw.text((feature_left + 4, 193), "FEATURED MATCHUPS", font=_scoreboard_font(32, True), fill=navy, anchor="lm")
+    draw.line((feature_left + 360, 193, feature_right, 193), fill="#cfd9e4", width=2)
 
     def lineup_rows(asset, team):
         lineups = asset.get("lineups", {}) if isinstance(asset, dict) else {}
@@ -3752,20 +4408,24 @@ def build_matchup_preview_image(
     def draw_average_panel(box, team, values, team_color):
         left, top, right, bottom = box
         draw.rounded_rectangle(box, radius=15, fill=_recap_tint(team_color, 0.88), outline=_recap_tint(team_color, 0.58), width=2)
-        draw.text(((left + right) // 2, top + 24), _scoreboard_team_name(team), font=_fit_scoreboard_font(draw, _scoreboard_team_name(team), right - left - 20, 15, 10), fill=navy, anchor="mm")
-        draw.text(((left + right) // 2, top + 46), "SEASON-TO-DATE AVERAGES", font=_scoreboard_font(9, True), fill="#64748b", anchor="mm")
-        labels = [("MP", "MP"), ("TS%", "TS%"), ("2PT%", "2P%"), ("3PT%", "3P%"), ("FT%", "FT%"), ("PTS", "PTS"), ("OREB", "OREB"), ("DREB", "DREB"), ("AST", "AST"), ("ST", "STL"), ("BLK", "BLK"), ("TO", "TOV*"), ("+/-", "+/-")]
-        grid_top = top + 61
-        column_width = (right - left - 18) // 2
-        row_height = max(30, (bottom - grid_top - 9) // 7)
+        team_label = _scoreboard_team_label(team)
+        draw.text(((left + right) // 2, top + 27), team_label, font=_fit_scoreboard_font(draw, team_label, right - left - 24, 23, 16), fill=navy, anchor="mm")
+        draw.text(((left + right) // 2, top + 57), "SEASON AVERAGES", font=_scoreboard_font(14, True), fill="#64748b", anchor="mm")
+        labels = [("MP", "MP"), ("TS%", "TS%"), ("2PT%", "2P%"), ("3PT%", "3P%"), ("FT%", "FT%"), ("PTS", "PTS"), ("OREB", "OREB"), ("DREB", "DREB"), ("AST", "AST"), ("ST", "STL"), ("BLK", "BLK"), ("TO", "TOV*"), ("+/-", "+/-"), ("FPPG", "FPPG"), (None, "")]
+        grid_top = top + 76
+        column_width = (right - left - 18) // 3
+        row_height = max(42, (bottom - grid_top - 9) // 5)
         for index, (category, label) in enumerate(labels):
-            column, row_index = index // 7, index % 7
+            column, row_index = index // 5, index % 5
             x1 = left + 8 + column * column_width
             y1 = grid_top + row_index * row_height
             x2, y2 = x1 + column_width - 5, y1 + row_height - 4
             draw.rounded_rectangle((x1, y1, x2, y2), radius=6, fill="#ffffff")
-            draw.text((x1 + 7, (y1 + y2) // 2), label, font=_scoreboard_font(8, True), fill="#6b7e92", anchor="lm")
-            draw.text((x2 - 7, (y1 + y2) // 2), average_text(category, (values or {}).get(category)), font=_scoreboard_font(10, True), fill=navy, anchor="rm")
+            if category is None:
+                continue
+            draw.text((x1 + 12, (y1 + y2) // 2), label, font=_scoreboard_font(18, True), fill="#111827", anchor="lm")
+            value_text = average_text(category, (values or {}).get(category))
+            draw.text((x2 - 12, (y1 + y2) // 2), value_text, font=_fit_scoreboard_font(draw, value_text, column_width // 2 - 18, 27, 18), fill="#05070a", anchor="rm")
 
     def paste_player_photo(content, box):
         if not content:
@@ -3781,26 +4441,39 @@ def build_matchup_preview_image(
         except Exception:
             return False
 
+    def draw_rounded_gradient(box, start_color, end_color, radius, white_mix=0.0):
+        left, top, right, bottom = [int(value) for value in box]
+        gradient_width, gradient_height = max(1, right - left), max(1, bottom - top)
+        start = _recap_tint(start_color, white_mix) if white_mix else (start_color if isinstance(start_color, tuple) else _scoreboard_color(start_color))
+        end = _recap_tint(end_color, white_mix) if white_mix else (end_color if isinstance(end_color, tuple) else _scoreboard_color(end_color))
+        gradient = Image.new("RGB", (gradient_width, gradient_height))
+        gradient_draw = ImageDraw.Draw(gradient)
+        for x in range(gradient_width):
+            blend = x / max(1, gradient_width - 1)
+            color = tuple(round(a + (b - a) * blend) for a, b in zip(start, end))
+            gradient_draw.line((x, 0, x, gradient_height), fill=color)
+        mask = Image.new("L", (gradient_width, gradient_height), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, gradient_width - 1, gradient_height - 1), radius=radius, fill=255)
+        image.paste(gradient, (left, top), mask)
+
     for feature_index in range(2):
-        top = 172 + feature_index * (feature_height + feature_gap)
+        top = feature_start + feature_index * (feature_height + feature_gap)
         bottom = top + feature_height
         row = featured_matchups[feature_index] if feature_index < len(featured_matchups) else {}
         asset = featured_assets[feature_index] if feature_index < len(featured_assets) else {}
         team_a, team_b = str(row.get("TeamA", "TBD")), str(row.get("TeamB", "TBD"))
         color_a = _scoreboard_color(safe_team_info(team_a, "bg", "#64748b"))
         color_b = _scoreboard_color(safe_team_info(team_b, "bg", "#64748b"))
-        draw.rounded_rectangle((feature_left, top, feature_right, bottom), radius=22, fill="#ffffff", outline="#d7e1eb", width=2)
-        draw.rectangle((feature_left, top, feature_left + 10, bottom), fill=color_a)
-        draw.rectangle((feature_right - 10, top, feature_right, bottom), fill=color_b)
-        draw.text((feature_left + 28, top + 30), f"FEATURED MATCHUP {feature_index + 1}", font=_scoreboard_font(14, True), fill=orange, anchor="lm")
-        draw.text(((feature_left + feature_right) // 2, top + 72), f"{_scoreboard_team_name(team_a)}  vs  {_scoreboard_team_name(team_b)}", font=_fit_scoreboard_font(draw, f"{_scoreboard_team_name(team_a)} vs {_scoreboard_team_name(team_b)}", feature_right - feature_left - 180, 30, 18), fill=navy, anchor="mm")
-        draw.text(((feature_left + feature_right) // 2, top + 108), f"{row.get('TeamA_record', '—')}  •  {row.get('TeamB_record', '—')}", font=_scoreboard_font(15, True), fill="#718398", anchor="mm")
+        draw_rounded_gradient((feature_left, top, feature_right, bottom), color_a, color_b, 22, white_mix=0.91)
+        draw.rounded_rectangle((feature_left, top, feature_right, bottom), radius=22, outline="#cfd9e4", width=2)
+        matchup_title = f"{_scoreboard_team_label(team_a)} ({row.get('TeamA_record', '—')})  @  {_scoreboard_team_label(team_b)} ({row.get('TeamB_record', '—')})"
+        draw.text(((feature_left + feature_right) // 2, top + 42), matchup_title, font=_fit_scoreboard_font(draw, matchup_title, feature_right - feature_left - 140, 34, 22), fill=navy, anchor="mm")
 
-        visual_top, visual_bottom = top + 132, top + 485
+        visual_top, visual_bottom = top + 72, top + 464
         content_left, content_right, slot_gap = feature_left + 22, feature_right - 22, 12
-        average_width, jersey_width = 330, 265
-        court_width = content_right - content_left - (average_width * 2 + jersey_width * 2 + slot_gap * 4)
-        slot_widths = [average_width, average_width, jersey_width, jersey_width, court_width]
+        average_width, uniform_width = 840, 190
+        court_width = content_right - content_left - (average_width * 2 + uniform_width + slot_gap * 3)
+        slot_widths = [average_width, average_width, uniform_width, court_width]
         slots, slot_left = [], content_left
         for slot_width in slot_widths:
             slots.append((slot_left, visual_top, slot_left + slot_width, visual_bottom))
@@ -3808,29 +4481,34 @@ def build_matchup_preview_image(
         team_averages = asset.get("team_averages", {}) if isinstance(asset, dict) else {}
         draw_average_panel(slots[0], team_a, team_averages.get(team_a, {}), color_a)
         draw_average_panel(slots[1], team_b, team_averages.get(team_b, {}), color_b)
-        for jersey_box, jersey_content, edition, team, color in (
-            (slots[2], asset.get("road_jersey"), asset.get("road_edition", "Road"), team_a, color_a),
-            (slots[3], asset.get("home_jersey"), asset.get("home_edition", "Home"), team_b, color_b),
+        uniform_left, uniform_top, uniform_right, uniform_bottom = slots[2]
+        uniform_gap = 8
+        uniform_height = (uniform_bottom - uniform_top - uniform_gap) // 2
+        uniform_boxes = [
+            (uniform_left, uniform_top, uniform_right, uniform_top + uniform_height),
+            (uniform_left, uniform_top + uniform_height + uniform_gap, uniform_right, uniform_bottom),
+        ]
+        for jersey_box, jersey_content, color in (
+            (uniform_boxes[0], asset.get("road_jersey"), color_a),
+            (uniform_boxes[1], asset.get("home_jersey"), color_b),
         ):
             draw.rounded_rectangle(jersey_box, radius=15, fill="#f8fafc", outline=_recap_tint(color, 0.55), width=2)
-            _paste_scoreboard_asset(image, jersey_content, (jersey_box[0] + 4, jersey_box[1] + 4, jersey_box[2] - 4, jersey_box[3] - 32), padding=2)
-            draw.text(((jersey_box[0] + jersey_box[2]) // 2, jersey_box[3] - 15), str(edition), font=_scoreboard_font(10, True), fill="#718398", anchor="mm")
-        draw.rounded_rectangle(slots[4], radius=15, fill="#f8fafc", outline="#d7e1eb", width=2)
-        _paste_scoreboard_asset(image, asset.get("court"), (slots[4][0] + 4, slots[4][1] + 4, slots[4][2] - 4, slots[4][3] - 4), padding=3)
+            _paste_scoreboard_asset(image, jersey_content, (jersey_box[0] + 4, jersey_box[1] + 4, jersey_box[2] - 4, jersey_box[3] - 4), padding=2)
+        draw.rounded_rectangle(slots[3], radius=15, fill="#f8fafc", outline="#d7e1eb", width=2)
+        _paste_scoreboard_asset(image, asset.get("court"), (slots[3][0] + 4, slots[3][1] + 4, slots[3][2] - 4, slots[3][3] - 4), padding=3)
 
-        lineup_top = top + 505
+        draw.text((feature_left + 24, top + 493), "PROJECTED STARTING LINEUPS", font=_scoreboard_font(25, True), fill=navy, anchor="lm")
+        lineup_top = top + 512
         for team_index, (team, color) in enumerate(((team_a, color_a), (team_b, color_b))):
             band_top = lineup_top + team_index * 170
             band_left, band_right, band_bottom = feature_left + 24, feature_right - 24, band_top + 154
             secondary = _scoreboard_color(safe_team_info(team, "bg2", color))
-            draw.rounded_rectangle((band_left, band_top, band_right, band_bottom), radius=14, fill=color)
-            team_panel_width = 245
-            draw.rectangle((band_left, band_top, band_left + team_panel_width, band_bottom), fill=_recap_tint(color, 0.12))
-            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 72)
+            draw_rounded_gradient((band_left, band_top, band_right, band_bottom), color, secondary, 14)
+            team_panel_width = 150
+            draw.line((band_left + team_panel_width, band_top + 8, band_left + team_panel_width, band_bottom - 8), fill="#ffffff", width=3)
+            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 104)
             if logo is not None:
-                image.paste(logo, (band_left + (team_panel_width - logo.width) // 2, band_top + 18), logo)
-            draw.text((band_left + team_panel_width // 2, band_top + 105), _scoreboard_team_name(team), font=_fit_scoreboard_font(draw, _scoreboard_team_name(team), team_panel_width - 18, 16, 10), fill="#ffffff", anchor="mm")
-            draw.text((band_left + team_panel_width // 2, band_top + 132), "STARTING LINEUP", font=_scoreboard_font(10, True), fill="#ffffff", anchor="mm")
+                image.paste(logo, (band_left + (team_panel_width - logo.width) // 2, band_top + (band_bottom - band_top - logo.height) // 2), logo)
             players = lineup_rows(asset, team)[:5]
             while len(players) < 5:
                 players.append({"display_player": "TBD", "lineup_position": ["PG", "SG", "SF", "PF", "C"][len(players)]})
@@ -3840,24 +4518,27 @@ def build_matchup_preview_image(
                 player_left = int(start_x + player_index * player_width)
                 player_right = int(start_x + (player_index + 1) * player_width)
                 center_x = (player_left + player_right) // 2
-                tile_color = _recap_tint(color if player_index % 2 == 0 else secondary, 0.28)
-                draw.rectangle((player_left, band_top, player_right, band_bottom), fill=tile_color)
                 if player_index:
-                    draw.line((player_left, band_top, player_left, band_bottom), fill="#ffffff", width=2)
+                    draw.line((player_left, band_top + 8, player_left, band_bottom - 8), fill="#ffffff", width=2)
                 headshot = str(player.get("headshot", "") or "")
                 photo_content = _scoreboard_logo_bytes(headshot) if headshot else None
-                pasted = paste_player_photo(photo_content, (player_left + 4, band_top + 3, player_right - 4, band_bottom - 35))
+                pasted = paste_player_photo(photo_content, (player_left + 6, band_top + 2, player_right - 6, band_bottom - 36))
                 if not pasted:
-                    draw.ellipse((center_x - 33, band_top + 27, center_x + 33, band_top + 93), fill=_recap_tint(color, 0.70), outline="#ffffff", width=2)
-                badge_left, badge_top = player_left + 8, band_top + 8
-                draw.rounded_rectangle((badge_left, badge_top, badge_left + 38, badge_top + 30), radius=5, fill="#ffffff")
-                draw.text((badge_left + 19, badge_top + 15), str(player.get("lineup_position", "")), font=_scoreboard_font(9, True), fill=navy, anchor="mm")
-                player_name = str(player.get("display_player", "TBD"))
-                first_name, last_name = split_player_name(player_name)
-                strip_top = band_bottom - 35
+                    draw.ellipse((center_x - 42, band_top + 22, center_x + 42, band_top + 106), fill=_recap_tint(color, 0.70), outline="#ffffff", width=3)
+                badge_left, badge_top = player_left + 10, band_top + 10
+                draw.rounded_rectangle((badge_left, badge_top, badge_left + 54, badge_top + 38), radius=8, fill="#ffffff")
+                position = str(player.get("lineup_position", player.get("slot", "")) or "")
+                draw.text((badge_left + 27, badge_top + 19), position, font=_scoreboard_font(15, True), fill=navy, anchor="mm")
+                player_name = str(player.get("display_player", "TBD")).upper()
+                strip_top = band_bottom - 36
                 draw.rectangle((player_left, strip_top, player_right, band_bottom), fill="#17131d")
-                draw.text((player_left + 9, strip_top + 9), first_name.upper(), font=_fit_scoreboard_font(draw, first_name.upper(), int(player_width) - 18, 8, 6), fill="#ffffff", anchor="lm")
-                draw.text((player_left + 9, strip_top + 25), last_name.upper(), font=_fit_scoreboard_font(draw, last_name.upper(), int(player_width) - 18, 13, 8), fill="#ffffff", anchor="lm")
+                draw.text(
+                    (center_x, strip_top + 18),
+                    player_name,
+                    font=_fit_scoreboard_font(draw, player_name, int(player_width) - 24, 22, 13),
+                    fill="#ffffff",
+                    anchor="mm",
+                )
 
     generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d, %Y • %I:%M %p").replace(" 0", " ")
     draw.text((42, height - 22), f"MATCHUP PREVIEW • GENERATED {generated}", font=_scoreboard_font(12, True), fill="#718398", anchor="lm")
@@ -3879,9 +4560,9 @@ def build_mobile_matchup_preview_image(
         raise ValueError("No matchups are available to preview.")
     width, margin = 1080, 30
     header_height, slate_title_height, slate_row_height = 166, 52, 56
-    feature_height, feature_gap, footer_height = 1080, 20, 48
+    feature_title_height, feature_height, feature_gap, footer_height = 58, 1420, 20, 48
     slate_height = slate_title_height + len(matchups) * slate_row_height + 24
-    height = header_height + slate_height + feature_height * 2 + feature_gap + footer_height
+    height = header_height + slate_height + feature_title_height + feature_height * 2 + feature_gap + footer_height
     image = Image.new("RGB", (width, height), "#f3f6fa")
     draw = ImageDraw.Draw(image)
     navy, orange = "#172033", "#f59e0b"
@@ -3899,7 +4580,6 @@ def build_mobile_matchup_preview_image(
     cursor = header_height
     draw.rounded_rectangle((margin, cursor + 5, width - margin, cursor + slate_title_height - 5), radius=12, fill="#e9eff5")
     draw.text((margin + 18, cursor + 26), "WEEKLY SLATE", font=_scoreboard_font(19, True), fill=navy, anchor="lm")
-    draw.text((width - margin - 16, cursor + 26), "FEATURED IN GOLD", font=_scoreboard_font(10, True), fill="#718398", anchor="rm")
     cursor += slate_title_height
     for index, (_, row) in enumerate(slate.iterrows()):
         top, bottom = cursor + index * slate_row_height, cursor + (index + 1) * slate_row_height - 4
@@ -3915,14 +4595,19 @@ def build_mobile_matchup_preview_image(
                 image.paste(logo, (x - logo.width // 2, center_y - logo.height // 2), logo)
             else:
                 draw.ellipse((x - 17, center_y - 17, x + 17, center_y + 17), fill=color)
-        name_a = str(safe_team_info(team_a, "nickname", _scoreboard_team_name(team_a)) or _scoreboard_team_name(team_a))
-        name_b = str(safe_team_info(team_b, "nickname", _scoreboard_team_name(team_b)) or _scoreboard_team_name(team_b))
-        draw.text((margin + 68, center_y - 7), name_a, font=_fit_scoreboard_font(draw, name_a, 265, 16, 10), fill=navy, anchor="lm")
-        draw.text((margin + 68, center_y + 13), str(row.get("TeamA_record", "") or "—"), font=_scoreboard_font(9, True), fill="#718398", anchor="lm")
-        draw.text((width - margin - 68, center_y - 7), name_b, font=_fit_scoreboard_font(draw, name_b, 265, 16, 10), fill=navy, anchor="rm")
-        draw.text((width - margin - 68, center_y + 13), str(row.get("TeamB_record", "") or "—"), font=_scoreboard_font(9, True), fill="#718398", anchor="rm")
-        draw.text((width // 2, center_y), "AT", font=_scoreboard_font(10, True), fill=orange if is_featured else "#9aa8b8", anchor="mm")
+        name_a, name_b = _scoreboard_team_label(team_a), _scoreboard_team_label(team_b)
+        matchup_line = f"{name_a} ({row.get('TeamA_record', '—')})  @  {name_b} ({row.get('TeamB_record', '—')})"
+        draw.text(
+            (width // 2, center_y),
+            matchup_line,
+            font=_fit_scoreboard_font(draw, matchup_line, width - margin * 2 - 125, 18, 10),
+            fill=orange if is_featured else navy,
+            anchor="mm",
+        )
     cursor += len(slate) * slate_row_height + 24
+    draw.text((margin, cursor + 28), "FEATURED MATCHUPS", font=_scoreboard_font(27, True), fill=navy, anchor="lm")
+    draw.line((margin + 318, cursor + 28, width - margin, cursor + 28), fill="#cfd9e4", width=2)
+    cursor += feature_title_height
 
     def lineup_rows(asset, team):
         lineups = asset.get("lineups", {}) if isinstance(asset, dict) else {}
@@ -3942,21 +4627,24 @@ def build_mobile_matchup_preview_image(
     def draw_average_panel(box, team, values, color):
         left, top, right, bottom = box
         draw.rounded_rectangle(box, radius=13, fill=_recap_tint(color, 0.87), outline=_recap_tint(color, 0.55), width=2)
-        name = str(safe_team_info(team, "nickname", _scoreboard_team_name(team)) or _scoreboard_team_name(team))
-        draw.text((left + 14, top + 22), name, font=_fit_scoreboard_font(draw, name, right - left - 120, 16, 10), fill=navy, anchor="lm")
-        draw.text((right - 14, top + 22), "AVG", font=_scoreboard_font(10, True), fill="#64748b", anchor="rm")
-        labels = [("MP", "MP"), ("TS%", "TS%"), ("2PT%", "2P%"), ("3PT%", "3P%"), ("FT%", "FT%"), ("PTS", "PTS"), ("OREB", "OREB"), ("DREB", "DREB"), ("AST", "AST"), ("ST", "STL"), ("BLK", "BLK"), ("TO", "TOV*"), ("+/-", "+/-")]
-        grid_top = top + 42
-        column_width = (right - left - 16) // 2
-        row_height = max(25, (bottom - grid_top - 8) // 7)
+        name = _scoreboard_team_label(team)
+        draw.text((left + 14, top + 24), name, font=_fit_scoreboard_font(draw, name, right - left - 190, 21, 14), fill=navy, anchor="lm")
+        draw.text((right - 14, top + 24), "SEASON AVERAGES", font=_scoreboard_font(13, True), fill="#334155", anchor="rm")
+        labels = [("MP", "MP"), ("TS%", "TS%"), ("2PT%", "2P%"), ("3PT%", "3P%"), ("FT%", "FT%"), ("PTS", "PTS"), ("OREB", "OREB"), ("DREB", "DREB"), ("AST", "AST"), ("ST", "STL"), ("BLK", "BLK"), ("TO", "TOV*"), ("+/-", "+/-"), ("FPPG", "FPPG"), (None, "")]
+        grid_top = top + 48
+        column_width = (right - left - 16) // 3
+        row_height = max(38, (bottom - grid_top - 8) // 5)
         for stat_index, (category, label) in enumerate(labels):
-            column, row_index = stat_index // 7, stat_index % 7
+            column, row_index = stat_index // 5, stat_index % 5
             x1 = left + 7 + column * column_width
             y1 = grid_top + row_index * row_height
             x2, y2 = x1 + column_width - 4, y1 + row_height - 3
             draw.rounded_rectangle((x1, y1, x2, y2), radius=5, fill="#ffffff")
-            draw.text((x1 + 6, (y1 + y2) // 2), label, font=_scoreboard_font(7, True), fill="#718398", anchor="lm")
-            draw.text((x2 - 6, (y1 + y2) // 2), average_text(category, (values or {}).get(category)), font=_scoreboard_font(9, True), fill=navy, anchor="rm")
+            if category is None:
+                continue
+            draw.text((x1 + 8, (y1 + y2) // 2), label, font=_scoreboard_font(15, True), fill="#111827", anchor="lm")
+            value_text = average_text(category, (values or {}).get(category))
+            draw.text((x2 - 8, (y1 + y2) // 2), value_text, font=_fit_scoreboard_font(draw, value_text, column_width // 2 - 10, 20, 14), fill="#05070a", anchor="rm")
 
     def split_name(value):
         parts = str(value or "").split()
@@ -3974,6 +4662,21 @@ def build_mobile_matchup_preview_image(
         except Exception:
             return False
 
+    def draw_rounded_gradient(box, start_color, end_color, radius, white_mix=0.0):
+        left, top, right, bottom = [int(value) for value in box]
+        gradient_width, gradient_height = max(1, right - left), max(1, bottom - top)
+        start = _recap_tint(start_color, white_mix) if white_mix else (start_color if isinstance(start_color, tuple) else _scoreboard_color(start_color))
+        end = _recap_tint(end_color, white_mix) if white_mix else (end_color if isinstance(end_color, tuple) else _scoreboard_color(end_color))
+        gradient = Image.new("RGB", (gradient_width, gradient_height))
+        gradient_draw = ImageDraw.Draw(gradient)
+        for x in range(gradient_width):
+            blend = x / max(1, gradient_width - 1)
+            gradient_color = tuple(round(a + (b - a) * blend) for a, b in zip(start, end))
+            gradient_draw.line((x, 0, x, gradient_height), fill=gradient_color)
+        mask = Image.new("L", (gradient_width, gradient_height), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, gradient_width - 1, gradient_height - 1), radius=radius, fill=255)
+        image.paste(gradient, (left, top), mask)
+
     for feature_index in range(2):
         top = cursor + feature_index * (feature_height + feature_gap)
         bottom = top + feature_height
@@ -3982,52 +4685,46 @@ def build_mobile_matchup_preview_image(
         team_a, team_b = str(row.get("TeamA", "TBD")), str(row.get("TeamB", "TBD"))
         color_a = _scoreboard_color(safe_team_info(team_a, "bg", "#64748b"))
         color_b = _scoreboard_color(safe_team_info(team_b, "bg", "#64748b"))
-        name_a = str(safe_team_info(team_a, "nickname", _scoreboard_team_name(team_a)) or _scoreboard_team_name(team_a))
-        name_b = str(safe_team_info(team_b, "nickname", _scoreboard_team_name(team_b)) or _scoreboard_team_name(team_b))
-        draw.rounded_rectangle((margin, top, width - margin, bottom), radius=18, fill="#ffffff", outline="#d7e1eb", width=2)
-        draw.rectangle((margin, top, width // 2, top + 8), fill=color_a)
-        draw.rectangle((width // 2, top, width - margin, top + 8), fill=color_b)
-        for team, logo_x in ((team_a, margin + 62), (team_b, width - margin - 62)):
-            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 72)
-            if logo is not None:
-                image.paste(logo, (logo_x - logo.width // 2, top + 34), logo)
-        draw.text((margin + 116, top + 57), name_a, font=_fit_scoreboard_font(draw, name_a, 270, 22, 13), fill=navy, anchor="lm")
-        draw.text((margin + 116, top + 88), str(row.get("TeamA_record", "") or "—"), font=_scoreboard_font(11, True), fill="#718398", anchor="lm")
-        draw.text((width - margin - 116, top + 57), name_b, font=_fit_scoreboard_font(draw, name_b, 270, 22, 13), fill=navy, anchor="rm")
-        draw.text((width - margin - 116, top + 88), str(row.get("TeamB_record", "") or "—"), font=_scoreboard_font(11, True), fill="#718398", anchor="rm")
-        draw.text((width // 2, top + 62), "AT", font=_scoreboard_font(14, True), fill=orange, anchor="mm")
+        name_a, name_b = _scoreboard_team_label(team_a), _scoreboard_team_label(team_b)
+        draw_rounded_gradient((margin, top, width - margin, bottom), color_a, color_b, 18, white_mix=0.91)
+        draw.rounded_rectangle((margin, top, width - margin, bottom), radius=18, outline="#cfd9e4", width=2)
+        matchup_title = f"{name_a} ({row.get('TeamA_record', '—')})  @  {name_b} ({row.get('TeamB_record', '—')})"
+        draw.text((width // 2, top + 42), matchup_title, font=_fit_scoreboard_font(draw, matchup_title, width - margin * 2 - 70, 28, 17), fill=navy, anchor="mm")
 
         team_averages = asset.get("team_averages", {}) if isinstance(asset, dict) else {}
-        avg_top, avg_bottom, avg_gap = top + 120, top + 382, 12
-        avg_width = (width - margin * 2 - 28 - avg_gap) // 2
-        draw_average_panel((margin + 14, avg_top, margin + 14 + avg_width, avg_bottom), team_a, team_averages.get(team_a, {}), color_a)
-        draw_average_panel((margin + 14 + avg_width + avg_gap, avg_top, width - margin - 14, avg_bottom), team_b, team_averages.get(team_b, {}), color_b)
+        avg_left, avg_right = margin + 14, width - margin - 14
+        avg_top, average_height, avg_gap = top + 72, 286, 10
+        draw_average_panel((avg_left, avg_top, avg_right, avg_top + average_height), team_a, team_averages.get(team_a, {}), color_a)
+        draw_average_panel((avg_left, avg_top + average_height + avg_gap, avg_right, avg_top + average_height * 2 + avg_gap), team_b, team_averages.get(team_b, {}), color_b)
 
-        visual_top, visual_bottom = top + 398, top + 668
-        jersey_width, gap = 190, 10
-        court_left = margin + 14 + jersey_width * 2 + gap * 2
-        for box, content, edition, color in (
-            ((margin + 14, visual_top, margin + 14 + jersey_width, visual_bottom), asset.get("road_jersey"), asset.get("road_edition", "Road"), color_a),
-            ((margin + 14 + jersey_width + gap, visual_top, margin + 14 + jersey_width * 2 + gap, visual_bottom), asset.get("home_jersey"), asset.get("home_edition", "Home"), color_b),
+        visual_top, visual_bottom = top + 664, top + 914
+        uniform_width, uniform_gap = 190, 8
+        uniform_height = (visual_bottom - visual_top - uniform_gap) // 2
+        uniform_boxes = (
+            (margin + 14, visual_top, margin + 14 + uniform_width, visual_top + uniform_height),
+            (margin + 14, visual_top + uniform_height + uniform_gap, margin + 14 + uniform_width, visual_bottom),
+        )
+        for box, content, color in (
+            (uniform_boxes[0], asset.get("road_jersey"), color_a),
+            (uniform_boxes[1], asset.get("home_jersey"), color_b),
         ):
             draw.rounded_rectangle(box, radius=12, fill="#f8fafc", outline=_recap_tint(color, 0.55), width=2)
-            _paste_scoreboard_asset(image, content, (box[0] + 4, box[1] + 4, box[2] - 4, box[3] - 28), padding=2)
-            draw.text(((box[0] + box[2]) // 2, box[3] - 14), str(edition), font=_scoreboard_font(9, True), fill="#718398", anchor="mm")
-        court_box = (court_left, visual_top, width - margin - 14, visual_bottom)
+            _paste_scoreboard_asset(image, content, (box[0] + 4, box[1] + 4, box[2] - 4, box[3] - 4), padding=2)
+        court_box = (margin + 14 + uniform_width + 12, visual_top, width - margin - 14, visual_bottom)
         draw.rounded_rectangle(court_box, radius=12, fill="#f8fafc", outline="#d7e1eb", width=2)
         _paste_scoreboard_asset(image, asset.get("court"), (court_box[0] + 4, court_box[1] + 4, court_box[2] - 4, court_box[3] - 4), padding=3)
 
-        lineup_top = top + 688
+        draw.text((margin + 14, top + 948), "PROJECTED STARTING LINEUPS", font=_scoreboard_font(23, True), fill=navy, anchor="lm")
+        lineup_top = top + 970
         for team_index, (team, color) in enumerate(((team_a, color_a), (team_b, color_b))):
-            band_top, band_bottom = lineup_top + team_index * 172, lineup_top + team_index * 172 + 156
-            band_left, band_right, team_panel_width = margin + 14, width - margin - 14, 122
+            band_top, band_bottom = lineup_top + team_index * 204, lineup_top + team_index * 204 + 190
+            band_left, band_right, team_panel_width = margin + 14, width - margin - 14, 110
             secondary = _scoreboard_color(safe_team_info(team, "bg2", color))
-            draw.rounded_rectangle((band_left, band_top, band_right, band_bottom), radius=12, fill=color)
-            draw.rectangle((band_left, band_top, band_left + team_panel_width, band_bottom), fill=_recap_tint(color, 0.12))
-            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 66)
+            draw_rounded_gradient((band_left, band_top, band_right, band_bottom), color, secondary, 12)
+            draw.line((band_left + team_panel_width, band_top + 8, band_left + team_panel_width, band_bottom - 8), fill="#ffffff", width=3)
+            logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 82)
             if logo is not None:
-                image.paste(logo, (band_left + (team_panel_width - logo.width) // 2, band_top + 20), logo)
-            draw.text((band_left + team_panel_width // 2, band_top + 116), "STARTING 5", font=_scoreboard_font(9, True), fill="#ffffff", anchor="mm")
+                image.paste(logo, (band_left + (team_panel_width - logo.width) // 2, band_top + (band_bottom - band_top - logo.height) // 2), logo)
             players = lineup_rows(asset, team)[:5]
             while len(players) < 5:
                 players.append({"display_player": "TBD", "lineup_position": ["PG", "SG", "SF", "PF", "C"][len(players)]})
@@ -4035,19 +4732,21 @@ def build_mobile_matchup_preview_image(
             player_width = (band_right - start_x) / 5
             for player_index, player in enumerate(players):
                 player_left, player_right = int(start_x + player_index * player_width), int(start_x + (player_index + 1) * player_width)
-                draw.rectangle((player_left, band_top, player_right, band_bottom), fill=_recap_tint(color if player_index % 2 == 0 else secondary, 0.28))
                 if player_index:
-                    draw.line((player_left, band_top, player_left, band_bottom), fill="#ffffff", width=2)
+                    draw.line((player_left, band_top + 8, player_left, band_bottom - 8), fill="#ffffff", width=2)
                 headshot = str(player.get("headshot", "") or "")
-                if not paste_player_photo(_scoreboard_logo_bytes(headshot) if headshot else None, (player_left + 3, band_top + 3, player_right - 3, band_bottom - 34)):
+                if not paste_player_photo(_scoreboard_logo_bytes(headshot) if headshot else None, (player_left + 3, band_top + 3, player_right - 3, band_bottom - 36)):
                     center_x = (player_left + player_right) // 2
-                    draw.ellipse((center_x - 29, band_top + 30, center_x + 29, band_top + 88), fill=_recap_tint(color, 0.72), outline="#ffffff", width=2)
-                draw.rounded_rectangle((player_left + 6, band_top + 6, player_left + 39, band_top + 32), radius=4, fill="#ffffff")
-                draw.text((player_left + 22, band_top + 19), str(player.get("lineup_position", "")), font=_scoreboard_font(8, True), fill=navy, anchor="mm")
-                first, last = split_name(player.get("display_player", "TBD"))
-                draw.rectangle((player_left, band_bottom - 34, player_right, band_bottom), fill="#17131d")
-                draw.text((player_left + 6, band_bottom - 24), first.upper(), font=_fit_scoreboard_font(draw, first.upper(), int(player_width) - 12, 7, 5), fill="#ffffff", anchor="lm")
-                draw.text((player_left + 6, band_bottom - 9), last.upper(), font=_fit_scoreboard_font(draw, last.upper(), int(player_width) - 12, 11, 7), fill="#ffffff", anchor="lm")
+                    draw.ellipse((center_x - 38, band_top + 38, center_x + 38, band_top + 114), fill=_recap_tint(color, 0.72), outline="#ffffff", width=2)
+                draw.rounded_rectangle((player_left + 6, band_top + 6, player_left + 48, band_top + 36), radius=5, fill="#ffffff")
+                position = str(player.get("lineup_position", player.get("slot", "")) or "")
+                draw.text((player_left + 27, band_top + 21), position, font=_scoreboard_font(10, True), fill=navy, anchor="mm")
+                player_name = str(player.get("display_player", "TBD")).upper()
+                draw.rectangle((player_left, band_bottom - 36, player_right, band_bottom), fill="#17131d")
+                draw.text((
+                    (player_left + player_right) // 2,
+                    band_bottom - 18,
+                ), player_name, font=_fit_scoreboard_font(draw, player_name, int(player_width) - 10, 16, 9), fill="#ffffff", anchor="mm")
 
     generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d  \u2022  %I:%M %p").replace(" 0", " ")
     draw.text((margin, height - 24), f"SBCFBL  \u2022  {generated}", font=_scoreboard_font(11, True), fill="#718398", anchor="lm")
@@ -4076,7 +4775,7 @@ def build_record_leader_announcement_image(
     image = Image.new("RGB", (width, height), "#f4f7fb")
     draw = ImageDraw.Draw(image)
 
-    def paste_photo(source, box, cover=False):
+    def paste_photo(source, box, cover=False, zoom=1.0, align_top=False):
         content = _scoreboard_logo_bytes(str(source or ""))
         if not content:
             return False
@@ -4092,8 +4791,13 @@ def build_record_leader_announcement_image(
                 photo = resized.crop((crop_left, crop_top, crop_left + target_width, crop_top + target_height))
                 image.paste(photo, (left, top), photo)
             else:
-                photo.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
-                image.paste(photo, (left + (target_width - photo.width) // 2, bottom - photo.height), photo)
+                scale = min(target_width / max(1, photo.width), target_height / max(1, photo.height)) * max(1.0, float(zoom))
+                photo = photo.resize((max(1, int(photo.width * scale)), max(1, int(photo.height * scale))), Image.Resampling.LANCZOS)
+                clipped = Image.new("RGBA", (target_width, target_height), (0, 0, 0, 0))
+                paste_x = (target_width - photo.width) // 2
+                paste_y = 0 if align_top else target_height - photo.height
+                clipped.paste(photo, (paste_x, paste_y), photo)
+                image.paste(clipped, (left, top), clipped)
             return True
         except Exception:
             return False
@@ -4129,10 +4833,10 @@ def build_record_leader_announcement_image(
     logo = _scoreboard_logo_image(_scoreboard_logo_bytes(str(safe_team_info(team, "logo", "") or "")), 104)
     if logo is not None:
         image.paste(logo, (42, 35), logo)
-    draw.text((166, 69), team_name.upper(), font=_fit_scoreboard_font(draw, team_name.upper(), 650, 31, 18), fill=navy, anchor="lm")
+    draw.text((166, 69), team_name.upper(), font=_fit_scoreboard_font(draw, team_name.upper(), 520, 31, 18), fill=navy, anchor="lm")
     draw.text((166, 112), "FRANCHISE RECORD BOOK", font=_scoreboard_font(14, True), fill="#718398", anchor="lm")
-    draw.rounded_rectangle((width - 290, 59, width - 42, 105), radius=23, fill=primary)
-    draw.text((width - 166, 82), "NEW ALL-TIME LEADER", font=_scoreboard_font(13, True), fill=_recap_contrast_text(primary), anchor="mm")
+    draw.rounded_rectangle((width - 380, 48, width - 34, 116), radius=34, fill=primary)
+    draw.text((width - 207, 82), "NEW ALL-TIME LEADER", font=_scoreboard_font(18, True), fill=_recap_contrast_text(primary), anchor="mm")
 
     # Hero field with a subtle team-color gradient.
     hero_top, hero_bottom = 164, 850
@@ -4145,10 +4849,12 @@ def build_record_leader_announcement_image(
     draw.text((58, 226), "A NEW STANDARD", font=_scoreboard_font(18, True), fill=primary, anchor="lm")
     draw.text((58, 284), str(statistic).upper(), font=_scoreboard_font(45, True), fill=navy, anchor="lm")
     draw.text((58, 352), stat_label, font=_fit_scoreboard_font(draw, stat_label, 420, 18, 11), fill="#526579", anchor="lm")
-    draw.text((58, 510), record_value(new_value), font=_fit_scoreboard_font(draw, record_value(new_value), 435, 112, 62), fill=primary, anchor="lm")
-    draw.text((62, 562), "ANAHEIM ALL-TIME RECORD" if team == "Anaheim" else f"{team.upper()} ALL-TIME RECORD", font=_scoreboard_font(14, True), fill="#526579", anchor="lm")
-    if not paste_photo(new_leader_image, (470, hero_top + 24, width - 20, hero_bottom)):
-        draw.ellipse((650, 300, 930, 580), fill=_recap_tint(primary, 0.54), outline="#ffffff", width=6)
+    if not paste_photo(new_leader_image, (300, hero_top + 8, width - 4, hero_bottom), zoom=1.30, align_top=True):
+        draw.ellipse((600, 260, 1010, 670), fill=_recap_tint(primary, 0.54), outline="#ffffff", width=6)
+    record_box = (48, 424, 438, 600)
+    draw.rounded_rectangle(record_box, radius=34, fill=primary, outline=_recap_tint(primary, 0.30), width=4)
+    draw.text(((record_box[0] + record_box[2]) // 2, 490), record_value(new_value), font=_fit_scoreboard_font(draw, record_value(new_value), 330, 96, 62), fill=_recap_contrast_text(primary), anchor="mm")
+    draw.text(((record_box[0] + record_box[2]) // 2, 557), f"NEW {stat_label} RECORD", font=_fit_scoreboard_font(draw, f"NEW {stat_label} RECORD", 330, 18, 12), fill=_recap_contrast_text(primary), anchor="mm")
 
     # Player nameplate.
     draw.rectangle((0, 770, width, 982), fill=navy)
@@ -4159,14 +4865,11 @@ def build_record_leader_announcement_image(
     # Former record holder context keeps the achievement grounded in history.
     card = (34, 1014, width - 34, 1276)
     draw.rounded_rectangle(card, radius=22, fill="#ffffff", outline="#d7e1eb", width=2)
-    draw.rounded_rectangle((52, 1032, 246, 1258), radius=18, fill=_recap_tint(primary, 0.89))
-    if not paste_photo(previous_leader_image, (60, 1042, 238, 1252), cover=True):
-        draw.ellipse((90, 1068, 208, 1186), fill=_recap_tint(primary, 0.56))
-    draw.text((286, 1071), "RECORD PASSED", font=_scoreboard_font(14, True), fill=primary, anchor="lm")
-    draw.text((286, 1122), str(previous_leader).upper(), font=_fit_scoreboard_font(draw, str(previous_leader).upper(), 700, 31, 17), fill=navy, anchor="lm")
-    draw.text((286, 1187), record_value(previous_value), font=_scoreboard_font(42, True), fill=navy, anchor="lm")
-    draw.text((500, 1187), stat_label, font=_fit_scoreboard_font(draw, stat_label, 470, 14, 9), fill="#718398", anchor="lm")
-    draw.text((286, 1230), f"{new_leader} now stands alone atop the {team_name} record book.", font=_fit_scoreboard_font(draw, f"{new_leader} now stands alone atop the {team_name} record book.", 720, 14, 9), fill="#526579", anchor="lm")
+    draw.rounded_rectangle((52, 1032, 300, 1258), radius=18, fill=_recap_tint(primary, 0.89))
+    if not paste_photo(previous_leader_image, (60, 1040, 292, 1252), cover=True):
+        draw.ellipse((104, 1068, 248, 1212), fill=_recap_tint(primary, 0.56))
+    draw.text((340, 1110), str(previous_leader).upper(), font=_fit_scoreboard_font(draw, str(previous_leader).upper(), 650, 38, 22), fill=navy, anchor="lm")
+    draw.text((340, 1200), record_value(previous_value), font=_scoreboard_font(58, True), fill=primary, anchor="lm")
 
     generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d, %Y").replace(" 0", " ")
     draw.text((34, height - 30), f"SBCFBL  \u2022  {generated}", font=_scoreboard_font(11, True), fill="#718398", anchor="lm")
@@ -4520,10 +5223,16 @@ def get_weekly_scores_df(SelectedYear, SelectedPeriod, df, df2, df3):
     df["lookup_col"] = np.select(conditions, choices, default=None)
     standings_cols = ["Year", "Period", "Team", "Record", "GSRecord", "IST Seed", "Playoff Seed"]
     if df3 is not None and not df3.empty and all(col in df3.columns for col in ["Year", "Period", "Team"]):
-        if ((df3["Year"] == SelectedYear) & (df3["Period"] == SelectedPeriod)).any():
-            df3 = df3[(df3["Year"] == SelectedYear) & (df3["Period"] == SelectedPeriod)].copy()
+        year_rows = df3[df3["Year"] == SelectedYear].copy()
+        available_periods = pd.to_numeric(year_rows["Period"], errors="coerce")
+        if (available_periods == SelectedPeriod).any():
+            chosen_period = SelectedPeriod
+        elif (available_periods == 99).any():
+            chosen_period = 99
         else:
-            df3 = df3[(df3["Year"] == SelectedYear) & (df3["Period"] == 99)].copy()
+            prior_periods = available_periods[available_periods < SelectedPeriod].dropna()
+            chosen_period = prior_periods.max() if not prior_periods.empty else None
+        df3 = year_rows[available_periods == chosen_period].copy() if chosen_period is not None else year_rows.iloc[0:0].copy()
         for col in standings_cols:
             if col not in df3.columns:
                 df3[col] = None

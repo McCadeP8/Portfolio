@@ -8,7 +8,8 @@ import pandas as pd
 import requests
 from PIL import Image
 
-from functions import build_live_scoreboard_image, build_mobile_live_scoreboard_image, build_mobile_matchup_preview_image, build_mobile_matchup_recap_image, build_mobile_standings_image, build_matchup_preview_image, build_matchup_recap_image, build_record_leader_announcement_image, build_standings_bracket_image, matchup_period_progress, post_fantrax_webhook
+from functions import build_live_scoreboard_image, build_mobile_live_scoreboard_image, build_mobile_matchup_preview_image, build_mobile_matchup_recap_image, build_mobile_standings_image, build_matchup_preview_image, build_matchup_recap_image, build_record_leader_announcement_image, build_standings_bracket_image, get_weekly_scores_df, matchup_period_progress, post_fantrax_webhook
+from sbc_backend.fantrax_rotation import FantraxRotation
 
 
 class FantraxWebhookTests(unittest.TestCase):
@@ -87,7 +88,74 @@ class FantraxWebhookTests(unittest.TestCase):
         rendered = Image.open(BytesIO(result))
 
         self.assertEqual(rendered.format, "PNG")
-        self.assertEqual(rendered.size, (2000, 154 + 54 + 78 + 14 + 46))
+        self.assertEqual(rendered.size, (2000, 150 + 54 + 112 + 14 + 46))
+
+    def test_uses_latest_prior_standings_for_matchup_records(self):
+        schedule = pd.DataFrame([{
+            "Year": 2026, "Period": 34, "Type": "Regular Season", "Round": "Regular",
+            "TeamA": "Vegas", "TeamB": "Baltimore", "TeamAScore": 200, "TeamBScore": 190,
+        }])
+        standings = pd.DataFrame([
+            {"Year": 2026, "Period": 33, "Team": "Vegas", "Record": "18-14"},
+            {"Year": 2026, "Period": 33, "Team": "Baltimore", "Record": "21-11"},
+        ])
+
+        scored = get_weekly_scores_df(2026, 34, schedule, pd.DataFrame(), standings)
+
+        self.assertEqual(scored.iloc[0]["TeamA_record"], "18-14")
+        self.assertEqual(scored.iloc[0]["TeamB_record"], "21-11")
+
+    def test_zero_stat_teams_receive_tied_category_score(self):
+        rotation = FantraxRotation.__new__(FantraxRotation)
+
+        totals = rotation.team_totals(pd.DataFrame(), ["Tulsa", "Jacksonville"])
+        _, score_a, score_b = rotation.category_results(totals, "Tulsa", "Jacksonville")
+
+        self.assertEqual(set(totals["Team"]), {"Tulsa", "Jacksonville"})
+        self.assertEqual((score_a, score_b), (206.5, 206.5))
+
+    def test_featured_matchups_do_not_repeat_a_team(self):
+        rotation = FantraxRotation.__new__(FantraxRotation)
+        standings = pd.DataFrame([
+            {"Team": "Honolulu", "wins": 10, "losses": 0},
+            {"Team": "Vegas", "wins": 9, "losses": 1},
+            {"Team": "Anaheim", "wins": 8, "losses": 2},
+            {"Team": "Baltimore", "wins": 7, "losses": 3},
+            {"Team": "Pittsburgh", "wins": 6, "losses": 4},
+        ])
+        rotation.standings_table = lambda _conference: standings.copy()
+        slate = pd.DataFrame([
+            {"Game_ID": "1", "TeamA": "Honolulu", "TeamB": "Vegas", "Type": "Regular Season"},
+            {"Game_ID": "2", "TeamA": "Honolulu", "TeamB": "Anaheim", "Type": "Regular Season"},
+            {"Game_ID": "3", "TeamA": "Baltimore", "TeamB": "Pittsburgh", "Type": "Regular Season"},
+        ])
+
+        featured = rotation.featured(slate)
+        selected_teams = [str(game[side]) for game in featured for side in ("TeamA", "TeamB")]
+
+        self.assertEqual(len(featured), 2)
+        self.assertEqual(len(selected_teams), len(set(selected_teams)))
+
+    def test_team_averages_include_season_fantasy_points_per_game(self):
+        rotation = FantraxRotation.__new__(FantraxRotation)
+        rotation.period = Mock(year=2026, period=3)
+        box_stats = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
+        rotation.team_stats = pd.DataFrame([
+            {"Year": 2026, "Period": period, "Team": "Vegas", **{stat: 0 for stat in box_stats}}
+            for period in (1, 2)
+        ])
+        rotation.schedule = pd.DataFrame([
+            {"Year": 2026, "Period": 1, "Type": "Regular", "TeamA": "Blackjack", "TeamB": "Anaheim", "TeamAScore": 250, "TeamBScore": 163},
+            {"Year": 2026, "Period": 2, "Type": "Regular Season", "TeamA": "Baltimore", "TeamB": "Vegas", "TeamAScore": 201.5, "TeamBScore": 270},
+            {"Year": 2026, "Period": 2, "Type": "Regular Season", "TeamA": "Vegas", "TeamB": "Tulsa", "TeamAScore": 0, "TeamBScore": 0},
+            {"Year": 2026, "Period": 2, "Type": "Playoffs", "TeamA": "Vegas", "TeamB": "Pittsburgh", "TeamAScore": 413, "TeamBScore": 0},
+        ])
+
+        averages = rotation.team_averages(["Vegas", "Anaheim", "Tulsa"])
+
+        self.assertEqual(averages["Vegas"]["FPPG"], 260.0)
+        self.assertEqual(averages["Anaheim"]["FPPG"], 163.0)
+        self.assertEqual(averages["Tulsa"]["FPPG"], 0.0)
 
     @patch("functions._scoreboard_logo_bytes", return_value=None)
     def test_builds_tall_mobile_scoreboard(self, _mock_logo):
@@ -100,7 +168,20 @@ class FantraxWebhookTests(unittest.TestCase):
         rendered = Image.open(BytesIO(result))
 
         self.assertEqual(rendered.format, "PNG")
-        self.assertEqual(rendered.size, (1080, 176 + 52 + 2 * 112 + 14 + 48))
+        self.assertEqual(rendered.size, (1080, 150 + 56 + 124 + 14 + 52))
+
+    @patch("functions._scoreboard_logo_bytes", return_value=None)
+    def test_regular_scoreboards_use_three_desktop_and_two_mobile_columns(self, _mock_logo):
+        scores = pd.DataFrame([
+            {"TeamA": f"Road {index}", "TeamB": f"Home {index}", "TeamA_Score": 200 + index, "TeamB_Score": 190 + index}
+            for index in range(5)
+        ])
+
+        desktop = Image.open(BytesIO(build_live_scoreboard_image(scores, 100, "2025-26", "Feb 12-Feb 20")))
+        mobile = Image.open(BytesIO(build_mobile_live_scoreboard_image(scores, 100, "2025-26", "Feb 12-Feb 20")))
+
+        self.assertEqual(desktop.size, (2000, 150 + 54 + 2 * 112 + 14 + 46))
+        self.assertEqual(mobile.size, (1080, 150 + 56 + 3 * 124 + 14 + 52))
 
     @patch("functions._scoreboard_logo_bytes", return_value=None)
     def test_non_regular_sections_reserve_west_and_east_columns(self, _mock_logo):
@@ -115,7 +196,7 @@ class FantraxWebhookTests(unittest.TestCase):
         rendered = Image.open(BytesIO(result))
 
         # Three West games require three rows even though the East has only one.
-        self.assertEqual(rendered.size, (2000, 154 + 54 + 3 * 78 + 14 + 46))
+        self.assertEqual(rendered.size, (2000, 150 + 54 + 3 * 86 + 14 + 46))
 
     @patch("functions._scoreboard_logo_bytes", return_value=None)
     def test_builds_matchup_recap_one_pager(self, _mock_logo):
@@ -152,7 +233,7 @@ class FantraxWebhookTests(unittest.TestCase):
         rendered = Image.open(BytesIO(result))
 
         self.assertEqual(rendered.format, "PNG")
-        self.assertEqual(rendered.size, (2000, 2300))
+        self.assertEqual(rendered.size, (3600, 1728))
 
         mobile_result = build_mobile_matchup_recap_image(
             matchup,
@@ -163,7 +244,7 @@ class FantraxWebhookTests(unittest.TestCase):
         )
         mobile_rendered = Image.open(BytesIO(mobile_result))
         self.assertEqual(mobile_rendered.format, "PNG")
-        self.assertEqual(mobile_rendered.size, (1080, 2800))
+        self.assertEqual(mobile_rendered.size, (1080, 3482))
 
     @patch("functions._scoreboard_logo_bytes", return_value=None)
     def test_builds_projected_standings_bracket(self, _mock_logo):
@@ -183,7 +264,7 @@ class FantraxWebhookTests(unittest.TestCase):
         mobile_result = build_mobile_standings_image(west, east, pd.DataFrame(), "2025-26", "Mar 23-Mar 29")
         mobile_rendered = Image.open(BytesIO(mobile_result))
         self.assertEqual(mobile_rendered.format, "PNG")
-        self.assertEqual(mobile_rendered.size, (1080, 3690))
+        self.assertEqual(mobile_rendered.size, (1080, 2600))
 
     @patch("functions._scoreboard_logo_bytes", return_value=None)
     def test_builds_weekly_matchup_preview(self, _mock_logo):
@@ -202,7 +283,7 @@ class FantraxWebhookTests(unittest.TestCase):
         mobile_result = build_mobile_matchup_preview_image(matchups, featured, [{}, {}], "2025-26", "Jan 5-Jan 11")
         mobile_rendered = Image.open(BytesIO(mobile_result))
         self.assertEqual(mobile_rendered.format, "PNG")
-        self.assertEqual(mobile_rendered.size, (1080, 166 + 52 + 2 * 56 + 24 + 2 * 1080 + 20 + 48))
+        self.assertEqual(mobile_rendered.size, (1080, 166 + 52 + 2 * 56 + 24 + 58 + 2 * 1420 + 20 + 48))
 
     @patch("functions._scoreboard_logo_bytes", return_value=None)
     def test_builds_record_leader_announcement(self, _mock_logo):
