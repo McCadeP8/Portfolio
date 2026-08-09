@@ -23,6 +23,9 @@ jobs:
       SBC_LIVE_MODE: shadow
       SBC_RUNTIME_ROOT: .runtime
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DISCORD_WEBHOOK_URLS: ${{ secrets.DISCORD_WEBHOOK_URLS }}
+      DISCORD_WEBHOOK_URL_MOBILE: ${{ secrets.DISCORD_WEBHOOK_URL_MOBILE }}
+      DISCORD_WEBHOOK_URL_WEB: ${{ secrets.DISCORD_WEBHOOK_URL_WEB }}
 
     steps:
       - name: Checkout code

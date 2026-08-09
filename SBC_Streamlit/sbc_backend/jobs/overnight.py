@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import re
 import time
 from typing import Any, Callable
 
@@ -236,9 +237,45 @@ def validate_and_catalog(context: JobContext) -> dict[str, Any]:
     }
 
 
+def _dedupe_webhook_values(*values: str) -> list[str]:
+    urls: list[str] = []
+    for value in re.split(r"[\r\n,;]+", "\n".join(values)):
+        url = value.strip()
+        if url and url not in urls:
+            urls.append(url)
+    return urls
+
+
+def _discord_webhook_urls() -> list[str]:
+    """Resolve active Discord destinations without exposing their values."""
+    mobile = os.getenv("DISCORD_WEBHOOK_URL_MOBILE", "")
+    web = os.getenv("DISCORD_WEBHOOK_URL_WEB", "")
+    named = _dedupe_webhook_values(web, mobile)
+    if named:
+        return named
+    return _dedupe_webhook_values(
+        os.getenv("DISCORD_WEBHOOK_URLS", ""),
+        os.getenv("DISCORD_WEBHOOK_URL", ""),
+    )
+
+
+def _discord_webhooks_for_post(kind: str) -> list[str]:
+    """Route desktop/mobile renders while sharing record announcements."""
+    mobile = _dedupe_webhook_values(os.getenv("DISCORD_WEBHOOK_URL_MOBILE", ""))
+    web = _dedupe_webhook_values(os.getenv("DISCORD_WEBHOOK_URL_WEB", ""))
+    if mobile or web:
+        if str(kind) == "record_leader":
+            return _dedupe_webhook_values(*web, *mobile)
+        return mobile if str(kind).startswith("mobile_") else web
+    return _dedupe_webhook_values(
+        os.getenv("DISCORD_WEBHOOK_URLS", ""),
+        os.getenv("DISCORD_WEBHOOK_URL", ""),
+    )
+
+
 def publish_fantrax_rotation(context: JobContext) -> dict[str, Any]:
     """Render and publish the date-aware nightly Fantrax image rotation."""
-    webhook = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+    webhooks = _discord_webhook_urls()
     offset_days = int(os.getenv("SBC_FANTRAX_DATE_OFFSET_DAYS", "168"))
     publishing_date = simulated_today(context.target_date, offset_days)
     rotation = FantraxRotation(context.repository, PROJECT_ROOT, publishing_date)
@@ -249,7 +286,7 @@ def publish_fantrax_rotation(context: JobContext) -> dict[str, Any]:
             "publishing_date": publishing_date.isoformat(),
             "message": "simulated date is outside the SBC matchup calendar",
         }
-    if not webhook:
+    if not webhooks:
         return {
             "status": "skipped",
             "publishing_date": publishing_date.isoformat(),
@@ -257,21 +294,39 @@ def publish_fantrax_rotation(context: JobContext) -> dict[str, Any]:
             "period": rotation.period.period,
             "slot": context.fantrax_slot,
             "planned": kinds,
-            "message": "DISCORD_WEBHOOK_URL is not configured",
+            "message": "No Discord webhook secrets are configured",
         }
     posts, skipped = rotation.build_posts(kinds)
     published = []
+    delivery_errors = []
     for post in posts:
-        fantrax.post_fantrax_webhook(
-            webhook,
-            message="",
-            image_bytes=post.image_bytes,
-            image_filename=post.filename,
-        )
-        published.append({"kind": post.kind, "filename": post.filename, "bytes": len(post.image_bytes)})
-        # Six images can be published in the 2 a.m. slot. Leave breathing room
-        # between webhook calls instead of relying on Discord's 429 retry path.
-        time.sleep(0.6)
+        post_webhooks = _discord_webhooks_for_post(post.kind)
+        delivered = 0
+        if not post_webhooks:
+            delivery_errors.append(f"{post.kind}: its routed webhook secret is not configured")
+        for target_index, webhook in enumerate(post_webhooks, start=1):
+            try:
+                fantrax.post_fantrax_webhook(
+                    webhook,
+                    message="",
+                    image_bytes=post.image_bytes,
+                    image_filename=post.filename,
+                )
+                delivered += 1
+            except (ValueError, RuntimeError, requests.RequestException) as exc:
+                delivery_errors.append(f"{post.kind} to target {target_index}: {exc}")
+            # Multiple destinations multiply the Discord calls. Leave breathing
+            # room after every delivery instead of relying on a 429 retry path.
+            time.sleep(0.6)
+        published.append({
+            "kind": post.kind,
+            "filename": post.filename,
+            "bytes": len(post.image_bytes),
+            "delivered": delivered,
+            "destinations": len(post_webhooks),
+        })
+    if delivery_errors:
+        raise RuntimeError("Discord delivery failures: " + "; ".join(delivery_errors))
     return {
         "publishing_date": publishing_date.isoformat(),
         "year": rotation.period.year,
@@ -280,6 +335,7 @@ def publish_fantrax_rotation(context: JobContext) -> dict[str, Any]:
         "period_start": rotation.period.start.isoformat(),
         "period_end": rotation.period.end.isoformat(),
         "planned": kinds,
+        "destinations": len(webhooks),
         "published": published,
         "skipped": skipped,
     }
@@ -299,8 +355,8 @@ JOBS: dict[str, JobFunction] = {
 
 
 def _notify_summary(payload: dict[str, Any]) -> None:
-    webhook = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
-    if not webhook:
+    webhooks = _discord_webhook_urls()
+    if not webhooks:
         return
     failures = [result["name"] for result in payload["results"] if result["status"] == "failed"]
     # Successful runs already publish the rotation images. Only send a text
@@ -308,10 +364,11 @@ def _notify_summary(payload: dict[str, Any]) -> None:
     if not failures:
         return
     message = f"SBC overnight refresh failed for {payload['target_date']}. Failed: {', '.join(failures)}"
-    try:
-        requests.post(webhook, json={"content": message}, timeout=10).raise_for_status()
-    except requests.RequestException as exc:
-        print(f"Discord notification failed: {exc}")
+    for target_index, webhook in enumerate(webhooks, start=1):
+        try:
+            requests.post(webhook, json={"content": message}, timeout=10).raise_for_status()
+        except requests.RequestException as exc:
+            print(f"Discord notification failed for target {target_index}: {exc}")
 
 
 def build_parser() -> argparse.ArgumentParser:
