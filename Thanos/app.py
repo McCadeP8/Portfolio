@@ -320,8 +320,11 @@ def inject_css() -> None:
         .split-stage { max-width:920px; margin:0 auto 2rem; }
         .split-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; }
         .realm-column { min-width:0; }
-        div[data-baseweb="tab-list"] { overflow-x:auto; scrollbar-width:thin; }
-        div[data-baseweb="tab-list"] button { min-width:72px; }
+        div[data-baseweb="tab-list"] { overflow-x:auto; scrollbar-width:none; gap:5px; }
+        div[data-baseweb="tab-list"]::-webkit-scrollbar { display:none; }
+        div[data-baseweb="tab-list"] button[role="tab"] { min-width:72px; color:#fff !important; background:#17131d; border:1px solid #45394f; border-radius:7px 7px 0 0; opacity:1; }
+        div[data-baseweb="tab-list"] button[role="tab"] * { color:#fff !important; opacity:1 !important; }
+        div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] { background:#6f45c7; border-color:#f6c65b; box-shadow:inset 0 -3px 0 #f6c65b,0 0 15px rgba(111,69,199,.35); }
         .draft-universes { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; align-items:start; }
         .draft-universe { min-width:0; border:1px solid #3c3345; border-radius:12px; background:linear-gradient(160deg,rgba(24,19,29,.96),rgba(5,5,6,.96)); padding:.8rem; box-shadow:0 18px 50px rgba(0,0,0,.28); }
         .draft-universe-head { display:flex; align-items:end; justify-content:space-between; gap:1rem; border-bottom:1px solid #3a3341; padding:.25rem .2rem .7rem; }
@@ -389,6 +392,8 @@ def inject_css() -> None:
             .all-player-card { min-height:2.75rem; padding:.38rem .4rem; font-size:.58rem; }
             .center-roster { max-width:100%; }
             .pool-heading strong { font-size:1.65rem; }
+            div[data-baseweb="tab-list"] { gap:4px; padding-bottom:3px; }
+            div[data-baseweb="tab-list"] button[role="tab"] { min-width:62px; min-height:2.65rem; padding:.35rem .55rem; font-size:.72rem; font-weight:900; }
             .stButton > button { min-height:3rem; font-size:.72rem; }
             .draft-universes { grid-template-columns:1fr; gap:14px; }
             .draft-universe { padding:.45rem; }
