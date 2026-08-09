@@ -15,10 +15,10 @@ Every visitor sees the same split because all eight snaps are derived from the f
 
 The app reads both public tabs directly and refreshes cached data every 15 seconds:
 
-- Draft tab (`gid=1410253704`): `Draft, Round, Pick, Team, Player`
+- Draft tab (`gid=1410253704`): `Draft, Round, Pick, Player`
 - Randomization tab (`gid=1215542528`): `Type, Name`
 
-Use `Team` in the `Type` column for the 16 fantasy teams. Position types are `QB`, `RB`, `WR`, `TE`, `K`, and `DST`. Drafted-player positions are inferred by matching `Player` against this tab.
+Use `Team` in the `Type` column for the 16 fantasy teams. Position types are `QB`, `RB`, `WR`, `TE`, `K`, and `DST`. Drafted-player positions are inferred by matching `Player` against this tab, and each drafting team is inferred from `Draft`, `Round`, and `Pick` using the seeded snake order.
 
 The `Draft` field assigns a recorded selection to `Alive` or `Dusted`. If that column is blank, the app assigns picks to a board using the team's seeded universe. If either Sheet cannot be reached or fails validation, the app stays usable with deterministic demo data and clearly labels the fallback.
 
@@ -28,4 +28,4 @@ The `Draft` field assigns a recorded selection to `Alive` or `Dusted`. If that c
 
 ## Expected draft columns
 
-`Draft, Round, Pick, Team, Player`
+`Draft, Round, Pick, Player`

@@ -24,7 +24,7 @@ STAGES = ["Teams", *POSITION_SEQUENCE, "Team Order"]
 SHEET_ID = "1xzjWIp8K2mqWREVIkwmirCyLTrC4KuS-yXL9mmN6sgg"
 DRAFT_GID = "1410253704"
 PLAYERS_GID = "1215542528"
-DRAFT_COLUMNS = ["Draft", "Round", "Pick", "Team", "Player"]
+DRAFT_COLUMNS = ["Draft", "Round", "Pick", "Player"]
 SILHOUETTE_PLAYER_HEADSHOT = (
     "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 200 200%27%3E"
     "%3Crect width=%27200%27 height=%27200%27 fill=%27%231c1822%27/%3E"
@@ -190,10 +190,10 @@ def live_draft_data() -> tuple[pd.DataFrame, bool]:
         if missing:
             raise ValueError(f"Draft tab is missing: {', '.join(missing)}")
         frame = frame[DRAFT_COLUMNS].copy()
-        frame = frame.dropna(subset=["Team", "Player"], how="all")
+        frame = frame.dropna(subset=["Player"])
         for column in ["Round", "Pick"]:
             frame[column] = pd.to_numeric(frame[column], errors="coerce").astype("Int64")
-        _, pools, _ = live_player_data()
+        teams, pools, _ = live_player_data()
         position_by_player = {
             picture_key(name): position
             for position, names in pools.items()
@@ -203,6 +203,25 @@ def live_draft_data() -> tuple[pd.DataFrame, bool]:
             lambda player: position_by_player.get(picture_key(player), "")
             if pd.notna(player) else ""
         )
+        teams_split = seeded_split(teams, "teams")
+        realm_orders = {
+            "alive": seeded_team_order(teams_split.alive, "Alive"),
+            "dusted": seeded_team_order(teams_split.dusted, "Dusted"),
+        }
+
+        def infer_team(row: pd.Series) -> str:
+            realm = str(row.get("Draft", "")).strip().casefold()
+            order = realm_orders.get(realm)
+            round_number = row.get("Round")
+            pick_number = row.get("Pick")
+            if order is None or pd.isna(round_number) or pd.isna(pick_number):
+                return ""
+            round_number = int(round_number)
+            pick_in_round = (int(pick_number) - 1) % 8
+            team_index = pick_in_round if round_number % 2 else 7 - pick_in_round
+            return order[team_index]
+
+        frame["Team"] = frame.apply(infer_team, axis=1)
         return frame, True
     except Exception:
         return dummy_draft(), False
@@ -856,6 +875,13 @@ def on_clock_html(draft: pd.DataFrame, teams_split: Split, animate: bool) -> str
 
 
 def render_draft_boards(teams_split: Split, animate_order: bool = False) -> None:
+    st.markdown("## LIVE DRAFT BOARDS")
+    st.markdown('<div class="section-rule"></div>', unsafe_allow_html=True)
+    refresh_left, refresh_center, refresh_right = st.columns([1, 1.15, 1])
+    with refresh_center:
+        if st.button("↻ Update Draft Board", key="refresh_draft_board", type="primary"):
+            load_google_tab.clear()
+            st.rerun()
     draft, _ = live_draft_data()
     duplicates = duplicate_players(draft)
     if not duplicates.empty:
