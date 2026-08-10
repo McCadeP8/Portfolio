@@ -248,19 +248,27 @@ def _dedupe_webhook_values(*values: str) -> list[str]:
 
 def _discord_webhook_urls() -> list[str]:
     """Resolve active Discord destinations without exposing their values."""
-    mobile = os.getenv("DISCORD_WEBHOOK_URL_MOBILE", "")
-    web = os.getenv("DISCORD_WEBHOOK_URL_WEB", "")
-    named = _dedupe_webhook_values(web, mobile)
-    if named:
-        return named
-    return _dedupe_webhook_values(
+    mode = os.getenv("SBC_DISCORD_ROUTING_MODE", "split").strip().casefold()
+    primary = _dedupe_webhook_values(os.getenv("DISCORD_WEBHOOK_URL", ""))
+    generic = _dedupe_webhook_values(
         os.getenv("DISCORD_WEBHOOK_URLS", ""),
         os.getenv("DISCORD_WEBHOOK_URL", ""),
     )
+    mobile = os.getenv("DISCORD_WEBHOOK_URL_MOBILE", "")
+    web = os.getenv("DISCORD_WEBHOOK_URL_WEB", "")
+    named = _dedupe_webhook_values(web, mobile)
+    if mode == "primary":
+        return (primary or generic or named)[:1]
+    if named:
+        return named
+    return generic
 
 
 def _discord_webhooks_for_post(kind: str) -> list[str]:
     """Route desktop/mobile renders while sharing record announcements."""
+    mode = os.getenv("SBC_DISCORD_ROUTING_MODE", "split").strip().casefold()
+    if mode == "primary":
+        return _discord_webhook_urls()
     mobile = _dedupe_webhook_values(os.getenv("DISCORD_WEBHOOK_URL_MOBILE", ""))
     web = _dedupe_webhook_values(os.getenv("DISCORD_WEBHOOK_URL_WEB", ""))
     if mobile or web:

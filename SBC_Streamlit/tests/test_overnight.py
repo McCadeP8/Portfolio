@@ -22,6 +22,7 @@ class OvernightTests(unittest.TestCase):
                 "DISCORD_WEBHOOK_URL": "https://discord.test/legacy",
                 "DISCORD_WEBHOOK_URL_MOBILE": "",
                 "DISCORD_WEBHOOK_URL_WEB": "",
+                "SBC_DISCORD_ROUTING_MODE": "split",
             },
             clear=False,
         ):
@@ -53,6 +54,7 @@ class OvernightTests(unittest.TestCase):
                     "DISCORD_WEBHOOK_URL_WEB": "https://discord.test/web",
                     "DISCORD_WEBHOOK_URLS": "",
                     "DISCORD_WEBHOOK_URL": "",
+                    "SBC_DISCORD_ROUTING_MODE": "split",
                 },
                 clear=False,
             ),
@@ -75,6 +77,40 @@ class OvernightTests(unittest.TestCase):
         self.assertEqual(result["destinations"], 2)
         self.assertEqual([item["destinations"] for item in result["published"]], [1, 1, 2])
         self.assertEqual([item["delivered"] for item in result["published"]], [1, 1, 2])
+
+    def test_primary_mode_sends_every_render_to_original_private_webhook(self):
+        period = RotationPeriod(2026, 34, date(2026, 2, 19), date(2026, 2, 20), date(2026, 2, 20))
+        rotation = SimpleNamespace(
+            period=period,
+            build_posts=lambda kinds: ([
+                SimpleNamespace(kind="overnight_scores", filename="web.png", image_bytes=b"web"),
+                SimpleNamespace(kind="mobile_overnight_scores", filename="mobile.png", image_bytes=b"mobile"),
+                SimpleNamespace(kind="record_leader", filename="record.png", image_bytes=b"record"),
+            ], []),
+        )
+        context = SimpleNamespace(repository=object(), target_date=date(2026, 8, 7), fantrax_slot="overnight")
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "SBC_DISCORD_ROUTING_MODE": "primary",
+                    "DISCORD_WEBHOOK_URL": "https://discord.test/private",
+                    "DISCORD_WEBHOOK_URLS": "",
+                    "DISCORD_WEBHOOK_URL_MOBILE": "https://discord.test/mobile",
+                    "DISCORD_WEBHOOK_URL_WEB": "https://discord.test/web",
+                },
+                clear=False,
+            ),
+            patch("sbc_backend.jobs.overnight.FantraxRotation", return_value=rotation),
+            patch("sbc_backend.jobs.overnight.fantrax.post_fantrax_webhook") as post,
+            patch("sbc_backend.jobs.overnight.time.sleep"),
+        ):
+            result = publish_fantrax_rotation(context)
+
+        self.assertEqual(post.call_count, 3)
+        self.assertEqual([call.args[0] for call in post.call_args_list], ["https://discord.test/private"] * 3)
+        self.assertEqual(result["destinations"], 1)
+        self.assertEqual([item["destinations"] for item in result["published"]], [1, 1, 1])
 
     def test_dry_run_resolves_without_network(self):
         output = io.StringIO()
