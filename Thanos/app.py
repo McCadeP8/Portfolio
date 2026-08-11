@@ -228,8 +228,7 @@ def live_draft_data() -> tuple[pd.DataFrame, bool]:
 
 
 def init_state() -> None:
-    st.session_state.setdefault("snap_count", 0)
-    st.session_state.setdefault("show_intro", True)
+    st.session_state.setdefault("snap_count", 8)
     st.session_state.setdefault("just_snapped", None)
     st.session_state.setdefault("position_view", "QB")
     st.session_state.setdefault("pending_position_view", None)
@@ -290,6 +289,7 @@ def inject_css() -> None:
         .player-list { display:grid; grid-template-columns:1fr; gap:6px; }
         .player-card { min-height:2.7rem; display:flex; align-items:center; padding:.55rem .8rem; font-size:.76rem; font-weight:800; border:1px solid rgba(255,255,255,.25); }
         .player-card.drafted-player { border-color:rgba(255,255,255,.14); filter:saturate(.7); }
+        .player-rank { flex:0 0 2rem; margin-right:.4rem; font-size:.55rem; font-weight:1000; opacity:.68; letter-spacing:.04em; }
         .taken-chip { margin-left:auto; padding:.2rem .35rem; border:1px solid currentColor; border-radius:999px; font-size:.48rem; line-height:1; letter-spacing:.1em; text-transform:uppercase; opacity:.7; }
         .all-player-swipe { overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; }
         .all-player-swipe::-webkit-scrollbar { display:none; width:0; height:0; }
@@ -297,6 +297,7 @@ def inject_css() -> None:
         .all-realm-grid { display:grid; grid-template-columns:repeat(4,minmax(100px,1fr)); gap:6px; }
         .all-player-card { min-height:3rem; padding:.45rem .5rem; display:flex; flex-direction:column; justify-content:center; border:1px solid rgba(255,255,255,.18); border-radius:5px; font-size:.64rem; font-weight:900; overflow-wrap:anywhere; }
         .all-player-card .all-pos { margin-top:.25rem; font-size:.48rem; opacity:.65; letter-spacing:.1em; text-transform:uppercase; }
+        .all-player-card .all-rank { font-size:.48rem; opacity:.68; letter-spacing:.08em; }
         .all-player-card.drafted-player { filter:saturate(.7); }
         .player-card.player-left { --start-x:calc(50% + 5px); animation:sortedMove 1s cubic-bezier(.2,.8,.2,1) both; }
         .player-card.player-right { --start-x:calc(-50% - 5px); animation:sortedMove 1s cubic-bezier(.2,.8,.2,1) both; }
@@ -386,6 +387,7 @@ def inject_css() -> None:
             .team-card { min-height:2.75rem; padding:.45rem .5rem; font-size:.66rem; }
             .player-list-shell { max-height:none; overflow:visible; padding-right:0; }
             .player-card { min-height:2.45rem; padding:.4rem .42rem; font-size:.64rem; overflow-wrap:anywhere; }
+            .player-rank { flex-basis:1.65rem; margin-right:.25rem; font-size:.48rem; }
             .taken-chip { font-size:.43rem; padding:.17rem .25rem; }
             .all-realms-grid { grid-template-columns:405px 405px; min-width:824px; gap:14px; }
             .all-realm-grid { grid-template-columns:repeat(4,96px); gap:5px; }
@@ -431,7 +433,7 @@ def team_cards(
     source_order: list[str] | None = None,
 ) -> str:
     source = sorted(source_order or teams, key=str.casefold)
-    source_indices = {name: index for index, name in enumerate(source)}
+    source_indices = {picture_key(name): index for index, name in enumerate(source)}
     cards = []
     for final_index, team in enumerate(teams):
         original_index = source_indices.get(team, final_index)
@@ -458,10 +460,19 @@ def team_split_html(split: Split, source_order: list[str], animate: bool) -> str
     return f'<div class="split-stage"><div class="split-grid">{"".join(columns)}</div></div>'
 
 
-def sorted_player_names(names: list[str], drafted_keys: set[str]) -> list[str]:
+def sorted_player_names(
+    names: list[str],
+    drafted_keys: set[str],
+    ranking: list[str] | None = None,
+) -> list[str]:
+    ranking = ranking or names
+    rank = {picture_key(name): index for index, name in enumerate(ranking)}
     return sorted(
         names,
-        key=lambda name: (picture_key(name) in drafted_keys, str(name).casefold()),
+        key=lambda name: (
+            picture_key(name) in drafted_keys,
+            rank.get(picture_key(name), len(rank)),
+        ),
     )
 
 
@@ -474,14 +485,14 @@ def player_cards(
     drafted_keys: set[str] | None = None,
 ) -> str:
     drafted_keys = drafted_keys or set()
-    source = sorted_player_names(source_order or names, drafted_keys)
+    source = sorted_player_names(source_order or names, drafted_keys, source_order or names)
     source_indices = {name: index for index, name in enumerate(source)}
     last_source_index = max(len(source) - 1, 1)
     cards = []
     for final_index, name in enumerate(names):
         is_drafted = picture_key(name) in drafted_keys
         background, foreground = POSITION_SOFT_STYLE[position] if is_drafted else POSITION_STYLE[position]
-        original_index = source_indices.get(name, final_index)
+        original_index = source_indices.get(picture_key(name), final_index)
         delay = (original_index * 6 / last_source_index) if animate else 0
         start_y = (original_index - final_index) * 3.075 if animate else 0
         motion = "player-left" if animate and realm == "alive" else "player-right" if animate else ""
@@ -491,7 +502,7 @@ def player_cards(
             f'data-status="{"drafted" if is_drafted else "available"}" '
             f'style="background:{background};color:{foreground};'
             f'--start-y:{start_y:.3f}rem;animation-delay:{delay:.2f}s">'
-            f'{html.escape(name)}{taken_html}</div>'
+            f'<span class="player-rank">#{original_index + 1}</span>{html.escape(name)}{taken_html}</div>'
         )
     return f'<div class="player-list-shell"><div class="player-list">{"".join(cards)}</div></div>'
 
@@ -500,7 +511,7 @@ def player_split_html(names: list[str], position: str, animate: bool, drafted_ke
     split = seeded_split(names, position)
     columns = []
     for realm, realm_names in (("alive", split.alive), ("dusted", split.dusted)):
-        sorted_names = sorted_player_names(realm_names, drafted_keys)
+        sorted_names = sorted_player_names(realm_names, drafted_keys, names)
         columns.append(
             f'<div class="realm-column"><div class="realm-head {realm}">'
             f'<div class="realm-title">{realm.upper()}</div></div>'
@@ -514,6 +525,10 @@ def all_players_html(
     drafted_keys: set[str],
     snapped_positions: list[str],
 ) -> str:
+    rank_by_position = {
+        position: {picture_key(name): index for index, name in enumerate(pools[position])}
+        for position in snapped_positions
+    }
     realm_columns = []
     for realm in ("alive", "dusted"):
         players: list[tuple[str, str]] = []
@@ -524,20 +539,22 @@ def all_players_html(
         players.sort(
             key=lambda item: (
                 picture_key(item[0]) in drafted_keys,
-                item[0].casefold(),
                 POSITION_SEQUENCE.index(item[1]),
+                rank_by_position[item[1]].get(picture_key(item[0]), len(pools[item[1]])),
             )
         )
         cards = []
         for name, position in players:
             is_drafted = picture_key(name) in drafted_keys
+            rank_number = rank_by_position[position].get(picture_key(name), 0) + 1
             background, foreground = POSITION_SOFT_STYLE[position] if is_drafted else POSITION_STYLE[position]
             status_class = "drafted-player" if is_drafted else ""
             status = " - Taken" if is_drafted else ""
             cards.append(
                 f'<div class="all-player-card {status_class}" data-status="{"drafted" if is_drafted else "available"}" '
                 f'style="background:{background};color:{foreground}">'
-                f'{html.escape(name)}<span class="all-pos">{position}{status}</span></div>'
+                f'<span class="all-rank">#{rank_number}</span>{html.escape(name)}'
+                f'<span class="all-pos">{position}{status}</span></div>'
             )
         realm_columns.append(
             f'<div class="realm-column"><div class="realm-head {realm}">'
@@ -556,12 +573,13 @@ def position_tabs(
     tabs = st.tabs([*POSITION_SEQUENCE, "All"])
     for index, (tab, position) in enumerate(zip(tabs[:-1], POSITION_SEQUENCE)):
         stage_number = index + 2
-        names = sorted_player_names(pools[position], drafted_keys)
+        pool_names = pools[position]
+        names = sorted_player_names(pool_names, drafted_keys, pool_names)
         drafted_count = sum(picture_key(name) in drafted_keys for name in pools[position])
         with tab:
             if count >= stage_number:
                 st.markdown(
-                    player_split_html(names, position, animate=just_snapped == position, drafted_keys=drafted_keys),
+                    player_split_html(pool_names, position, animate=just_snapped == position, drafted_keys=drafted_keys),
                     unsafe_allow_html=True,
                 )
             elif count == stage_number - 1:
@@ -576,7 +594,7 @@ def position_tabs(
                         st.session_state.just_snapped = position
                         st.rerun()
                 st.markdown(
-                    f'<div class="center-roster">{player_cards(names, position, drafted_keys=drafted_keys)}</div>',
+                    f'<div class="center-roster">{player_cards(names, position, source_order=pool_names, drafted_keys=drafted_keys)}</div>',
                     unsafe_allow_html=True,
                 )
             else:
@@ -830,6 +848,30 @@ def duplicate_players(draft: pd.DataFrame) -> pd.Series:
     return players.value_counts()[lambda counts: counts > 1]
 
 
+def league_assignment_issues(draft: pd.DataFrame, pools: dict[str, list[str]]) -> list[str]:
+    expected_realm: dict[str, str] = {}
+    for position, names in pools.items():
+        split = seeded_split(names, position)
+        expected_realm.update({picture_key(name): "Alive" for name in split.alive})
+        expected_realm.update({picture_key(name): "Dusted" for name in split.dusted})
+
+    issues = []
+    for _, row in draft.iterrows():
+        player = str(row.get("Player", "")).strip()
+        if not player or player.casefold() in {"nan", "none", "<na>"}:
+            continue
+        expected = expected_realm.get(picture_key(player))
+        actual_raw = str(row.get("Draft", "")).strip()
+        actual = "Alive" if "alive" in actual_raw.casefold() else "Dusted" if "dust" in actual_raw.casefold() else ""
+        if expected is None:
+            issues.append(f"{player}: not found in the player pools")
+        elif not actual:
+            issues.append(f"{player}: Draft must be Alive or Dusted (belongs in {expected})")
+        elif actual != expected:
+            issues.append(f"{player}: entered in {actual}, belongs in {expected}")
+    return issues
+
+
 def draft_order_reveal_html(teams_split: Split, animate: bool) -> str:
     realms = []
     for realm_index, (realm, teams) in enumerate((("Alive", teams_split.alive), ("Dusted", teams_split.dusted))):
@@ -887,7 +929,23 @@ def render_draft_boards(teams_split: Split, animate_order: bool = False) -> None
         if st.button("↻ Update Draft Board", key="refresh_draft_board", type="primary"):
             load_google_tab.clear()
             st.rerun()
-    draft, _ = live_draft_data()
+    draft, is_live = live_draft_data()
+    st.markdown(on_clock_html(draft, teams_split, False), unsafe_allow_html=True)
+    _, pools, _ = live_player_data()
+    league_issues = league_assignment_issues(draft, pools) if is_live else []
+    if league_issues:
+        examples = " · ".join(league_issues[:8])
+        extra = f" · +{len(league_issues) - 8} more" if len(league_issues) > 8 else ""
+        st.markdown(
+            f'<div class="duplicate-alarm"><strong>🚨 Wrong Draft Detected 🚨</strong>'
+            f'{html.escape(examples + extra)}</div>',
+            unsafe_allow_html=True,
+        )
+    elif is_live:
+        st.markdown(
+            '<div class="unique-ok">✓ League assignment check passed · every player is in the correct universe</div>',
+            unsafe_allow_html=True,
+        )
     duplicates = duplicate_players(draft)
     if not duplicates.empty:
         examples = ", ".join(f"{name} ×{count}" for name, count in duplicates.head(8).items())
@@ -902,9 +960,6 @@ def render_draft_boards(teams_split: Split, animate_order: bool = False) -> None
             unsafe_allow_html=True,
         )
 
-    st.markdown(draft_order_reveal_html(teams_split, animate_order), unsafe_allow_html=True)
-    st.markdown(on_clock_html(draft, teams_split, animate_order), unsafe_allow_html=True)
-
     universe_html = []
     for realm, realm_teams in (("Alive", teams_split.alive), ("Dusted", teams_split.dusted)):
         order = seeded_team_order(realm_teams, realm)
@@ -917,30 +972,7 @@ def render_draft_boards(teams_split: Split, animate_order: bool = False) -> None
             f'<div class="board-label">Roster by position</div>{roster_board_html(realm_draft, order)}'
             f'<div class="board-label">Draft order · snake</div>{round_board_html(realm_draft, order)}</section>'
         )
-    pending_class = " order-pending" if animate_order else ""
-    st.markdown(f'<div class="draft-universes{pending_class}">{"".join(universe_html)}</div>', unsafe_allow_html=True)
-
-
-def render_intro() -> None:
-    left, right = st.columns([1.35, .65], gap="large", vertical_alignment="center")
-    with left:
-        st.markdown('<div class="eyebrow">Fantasy football · season 08</div>', unsafe_allow_html=True)
-        st.markdown('<div class="hero-title">THANOS<br><span>LEAGUE</span></div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="hero-copy">Sixteen franchises enter. Half survive. Every position pool is split across two drafts by one deterministic, universe-altering snap.</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown('<div class="year-mark">YEAR EIGHT · TWO UNIVERSES · ONE CHAMPION</div>', unsafe_allow_html=True)
-    with right:
-        st.markdown('<div class="snap-orbit">🫰</div>', unsafe_allow_html=True)
-        if st.button("Thanos Snap", type="primary", key="intro_snap"):
-            st.session_state.snap_count = 0
-            st.session_state.just_snapped = None
-            st.session_state.position_view = "QB"
-            st.session_state.pending_position_view = None
-            st.session_state.show_intro = False
-            st.rerun()
-        st.caption("Enter the universe")
+    st.markdown(f'<div class="draft-universes">{"".join(universe_html)}</div>', unsafe_allow_html=True)
 
 
 def render_app() -> None:
@@ -954,68 +986,66 @@ def render_app() -> None:
     }
     just_snapped = st.session_state.just_snapped
     teams_split = seeded_split(teams, "teams")
-    top_left, top_right = st.columns([1, .34], gap="large", vertical_alignment="bottom")
-    with top_left:
-        st.markdown('<div class="eyebrow">Thanos League · Year 8</div>', unsafe_allow_html=True)
-        st.markdown("# THE SNAP PROTOCOL")
-    with top_right:
-        if count == 0:
-            if st.button("🫰 Snap Teams", key="next_snap"):
+    st.markdown('<div class="eyebrow">Thanos League · Year 8</div>', unsafe_allow_html=True)
+    st.markdown("# LIVE DRAFT COMMAND CENTER")
+    render_draft_boards(teams_split)
+
+    st.markdown("## AVAILABLE PLAYER POOLS")
+    st.markdown('<div class="section-rule"></div>', unsafe_allow_html=True)
+    position_tabs(8, pools, None, drafted_keys)
+
+    st.markdown("## THANOS SNAP RANDOMIZATION")
+    st.markdown('<div class="section-rule"></div>', unsafe_allow_html=True)
+    with st.expander("View or replay the complete randomization", expanded=count < 8):
+        control_left, control_center, control_right = st.columns(3)
+        with control_left:
+            if count == 0 and st.button("🫰 Snap Teams", key="next_snap"):
                 st.session_state.snap_count = 1
                 st.session_state.just_snapped = "Teams"
-                st.session_state.pending_position_view = "QB"
                 st.rerun()
-        if count > 0:
-            if st.button("Reset all snaps", key="reset"):
+        with control_center:
+            if count > 0 and st.button("Replay from beginning", key="reset"):
                 st.session_state.snap_count = 0
                 st.session_state.just_snapped = None
-                st.session_state.position_view = "QB"
-                st.session_state.pending_position_view = None
                 st.rerun()
-        if count < 8:
-            if st.button("Skip all randomizers", key="skip_all"):
+        with control_right:
+            if count < 8 and st.button("Skip all randomizers", key="skip_all"):
                 st.session_state.snap_count = 8
                 st.session_state.just_snapped = None
-                st.session_state.pending_position_view = None
                 st.rerun()
 
-    stage_track(count)
-    if count == 0:
-        st.markdown('<div class="center-roster"><div class="center-roster-title">16 teams awaiting the snap</div>', unsafe_allow_html=True)
-        st.markdown(team_cards(sorted(teams, key=str.casefold), "unsnapped"), unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(
-            team_split_html(teams_split, teams, animate=just_snapped == "Teams"),
-            unsafe_allow_html=True,
-        )
+        stage_track(count)
+        if count == 0:
+            st.markdown('<div class="center-roster"><div class="center-roster-title">16 teams awaiting the snap</div>', unsafe_allow_html=True)
+            st.markdown(team_cards(sorted(teams, key=str.casefold), "unsnapped"), unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(
+                team_split_html(teams_split, teams, animate=just_snapped == "Teams"),
+                unsafe_allow_html=True,
+            )
 
-    st.markdown("## POSITION POOLS")
-    st.markdown('<div class="section-rule"></div>', unsafe_allow_html=True)
-    position_tabs(count, pools, just_snapped, drafted_keys)
-    if count == 7:
-        st.markdown("## FINAL RANDOMIZER")
-        st.markdown('<div class="section-rule"></div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="order-wait">Alive and Dusted teams are ready · Snap Team Order to assign draft slots 1–8</div>',
-            unsafe_allow_html=True,
-        )
-        order_left, order_center, order_right = st.columns([1, 1.25, 1])
-        with order_center:
-            if st.button("🫰 Snap Team Order", key="snap_team_order"):
-                st.session_state.snap_count = 8
-                st.session_state.just_snapped = "Team Order"
-                st.rerun()
-    elif count >= 8:
-        st.markdown("## DRAFT ORDER & BOARDS")
-        st.markdown('<div class="section-rule"></div>', unsafe_allow_html=True)
-        render_draft_boards(teams_split, animate_order=just_snapped == "Team Order")
+        st.markdown("### POSITION SNAP REPLAY")
+        position_tabs(count, pools, just_snapped, drafted_keys)
+        if count == 7:
+            st.markdown(
+                '<div class="order-wait">Alive and Dusted teams are ready · Snap Team Order to assign draft slots 1–8</div>',
+                unsafe_allow_html=True,
+            )
+            order_left, order_center, order_right = st.columns([1, 1.25, 1])
+            with order_center:
+                if st.button("🫰 Snap Team Order", key="snap_team_order"):
+                    st.session_state.snap_count = 8
+                    st.session_state.just_snapped = "Team Order"
+                    st.rerun()
+        elif count >= 8:
+            st.markdown(
+                draft_order_reveal_html(teams_split, animate=just_snapped == "Team Order"),
+                unsafe_allow_html=True,
+            )
     st.session_state.just_snapped = None
 
 
 init_state()
 inject_css()
-if st.session_state.show_intro:
-    render_intro()
-else:
-    render_app()
+render_app()
