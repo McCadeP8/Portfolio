@@ -470,7 +470,10 @@ def sorted_player_names(
     rank = {picture_key(name): index for index, name in enumerate(ranking)}
     return sorted(
         names,
-        key=lambda name: rank.get(picture_key(name), len(rank)),
+        key=lambda name: (
+            picture_key(name) in drafted_keys,
+            rank.get(picture_key(name), len(rank)),
+        ),
     )
 
 
@@ -484,7 +487,7 @@ def player_cards(
 ) -> str:
     drafted_keys = drafted_keys or set()
     source = list(source_order or names)
-    source_indices = {name: index for index, name in enumerate(source)}
+    source_indices = {picture_key(name): index for index, name in enumerate(source)}
     last_source_index = max(len(source) - 1, 1)
     cards = []
     for final_index, name in enumerate(names):
@@ -536,6 +539,7 @@ def all_players_html(
             players.extend((name, position) for name in realm_names)
         players.sort(
             key=lambda item: (
+                picture_key(item[0]) in drafted_keys,
                 rank_by_position[item[1]].get(picture_key(item[0]), len(pools[item[1]])),
                 POSITION_SEQUENCE.index(item[1]),
             )
