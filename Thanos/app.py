@@ -805,9 +805,9 @@ def roster_board_html(draft: pd.DataFrame, team_order: list[str]) -> str:
             record = rosters[team].get(slot_key)
             player = "" if not record else record.get("player", "")
             tile_background, tile_foreground = background, foreground
-            if color_key == "BENCH" and record:
+            if color_key in {"BENCH", "FLX"} and record:
                 tile_background, tile_foreground = POSITION_STYLE.get(
-                    record.get("position", ""), POSITION_STYLE["BENCH"]
+                    record.get("position", ""), POSITION_STYLE[color_key]
                 )
             cells.append(
                 f'<div class="draft-cell" style="background:{tile_background};color:{tile_foreground}" title="{html.escape(player)}">'
