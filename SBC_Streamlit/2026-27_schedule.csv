@@ -1,0 +1,1169 @@
+Round,Type,Year,Period,TeamA,TeamB,TeamAScore,TeamBScore,DivisionGame,ConferenceGame,Game_ID,RoadJersey,HomeJersey,JerseyClashAdjusted
+Regular,Regular Season,2027,1,Tulsa,St. Louis,0.0,0.0,1,1,2027_001,Statement,Association,False
+Regular,Regular Season,2027,1,San Diego,Seattle,0.0,0.0,0,1,2027_002,Icon,Association,False
+Regular,Regular Season,2027,1,Honolulu,Anchorage,0.0,0.0,0,1,2027_003,Icon,Statement,False
+Regular,Regular Season,2027,1,San Jose,Des Moines,0.0,0.0,0,0,2027_004,Icon,Association,False
+Regular,Regular Season,2027,1,El Paso,Nashville,0.0,0.0,0,0,2027_005,Statement,Association,False
+Regular,Regular Season,2027,1,Vegas,Manchester,0.0,0.0,0,0,2027_006,Icon,Association,False
+Regular,Regular Season,2027,1,Vancouver,Baltimore,0.0,0.0,0,0,2027_007,Statement,Association,False
+Regular,Regular Season,2027,1,Anaheim,Tampa Bay,0.0,0.0,0,0,2027_008,Icon,Statement,True
+Regular,Regular Season,2027,1,Boise,Columbus,0.0,0.0,0,0,2027_009,Icon,Association,False
+Regular,Regular Season,2027,1,Lincoln,Buffalo,0.0,0.0,0,0,2027_010,Icon,Association,False
+Regular,Regular Season,2027,1,Albuquerque,Birmingham,0.0,0.0,0,0,2027_011,Statement,Association,False
+Regular,Regular Season,2027,1,Austin,Little Rock,0.0,0.0,0,0,2027_012,Statement,Association,False
+Regular,Regular Season,2027,1,Lansing,Cincinnati,0.0,0.0,1,1,2027_013,Icon,Association,False
+Regular,Regular Season,2027,1,Kentucky,Pittsburgh,0.0,0.0,0,1,2027_014,Icon,Statement,False
+Regular,Regular Season,2027,1,Jacksonville,Providence,0.0,0.0,0,1,2027_015,Icon,Association,False
+Regular,Regular Season,2027,1,Tulsa,Providence,0.0,0.0,0,0,2027_016,Association,Statement,True
+Regular,Regular Season,2027,1,Pittsburgh,Jacksonville,0.0,0.0,0,1,2027_017,Statement,Association,False
+Regular,Regular Season,2027,1,Cincinnati,Kentucky,0.0,0.0,1,1,2027_018,Statement,Association,False
+Regular,Regular Season,2027,1,Little Rock,Lansing,0.0,0.0,0,1,2027_019,Icon,Association,False
+Regular,Regular Season,2027,1,Birmingham,Austin,0.0,0.0,0,0,2027_020,Statement,Statement,False
+Regular,Regular Season,2027,1,Buffalo,Albuquerque,0.0,0.0,0,0,2027_021,Icon,Association,False
+Regular,Regular Season,2027,1,Columbus,Lincoln,0.0,0.0,0,0,2027_022,Icon,Association,False
+Regular,Regular Season,2027,1,Tampa Bay,Boise,0.0,0.0,0,0,2027_023,Icon,Statement,False
+Regular,Regular Season,2027,1,Baltimore,Anaheim,0.0,0.0,0,0,2027_024,Icon,Association,False
+Regular,Regular Season,2027,1,Manchester,Vancouver,0.0,0.0,0,0,2027_025,Icon,Association,False
+Regular,Regular Season,2027,1,Nashville,Vegas,0.0,0.0,0,0,2027_026,Icon,Association,False
+Regular,Regular Season,2027,1,Des Moines,El Paso,0.0,0.0,0,0,2027_027,Icon,Statement,False
+Regular,Regular Season,2027,1,Anchorage,San Jose,0.0,0.0,0,1,2027_028,Icon,Association,False
+Regular,Regular Season,2027,1,Seattle,Honolulu,0.0,0.0,0,1,2027_029,Icon,Association,False
+Regular,Regular Season,2027,1,St. Louis,San Diego,0.0,0.0,0,1,2027_030,Icon,Association,False
+Regular,Regular Season,2027,2,Tulsa,Kentucky,0.0,0.0,0,0,2027_031,Icon,Association,False
+Regular,Regular Season,2027,2,Jacksonville,Lansing,0.0,0.0,0,1,2027_032,Statement,Association,False
+Regular,Regular Season,2027,2,Providence,Austin,0.0,0.0,0,0,2027_033,Icon,Association,False
+Regular,Regular Season,2027,2,Pittsburgh,Albuquerque,0.0,0.0,0,0,2027_034,Icon,Statement,False
+Regular,Regular Season,2027,2,Cincinnati,Lincoln,0.0,0.0,0,0,2027_035,Icon,Association,False
+Regular,Regular Season,2027,2,Little Rock,Boise,0.0,0.0,0,0,2027_036,Icon,Association,False
+Regular,Regular Season,2027,2,Birmingham,Anaheim,0.0,0.0,0,0,2027_037,Statement,Association,False
+Regular,Regular Season,2027,2,Buffalo,Vancouver,0.0,0.0,0,0,2027_038,Statement,Association,False
+Regular,Regular Season,2027,2,Columbus,Vegas,0.0,0.0,0,0,2027_039,Statement,Association,False
+Regular,Regular Season,2027,2,Tampa Bay,El Paso,0.0,0.0,0,0,2027_040,Statement,Association,False
+Regular,Regular Season,2027,2,Baltimore,San Jose,0.0,0.0,0,0,2027_041,Icon,Association,False
+Regular,Regular Season,2027,2,Manchester,Honolulu,0.0,0.0,0,0,2027_042,Icon,Association,False
+Regular,Regular Season,2027,2,Nashville,San Diego,0.0,0.0,0,0,2027_043,Icon,Association,False
+Regular,Regular Season,2027,2,Des Moines,St. Louis,0.0,0.0,0,0,2027_044,Icon,Association,False
+Regular,Regular Season,2027,2,Anchorage,Seattle,0.0,0.0,1,1,2027_045,Icon,Association,False
+Regular,Regular Season,2027,2,Des Moines,Tulsa,0.0,0.0,0,0,2027_046,Icon,Association,False
+Regular,Regular Season,2027,2,Nashville,Anchorage,0.0,0.0,0,0,2027_047,Icon,Association,False
+Regular,Regular Season,2027,2,Manchester,Seattle,0.0,0.0,0,0,2027_048,Icon,Association,True
+Regular,Regular Season,2027,2,Baltimore,St. Louis,0.0,0.0,0,0,2027_049,Icon,Statement,False
+Regular,Regular Season,2027,2,Tampa Bay,San Diego,0.0,0.0,0,0,2027_050,Statement,Association,False
+Regular,Regular Season,2027,2,Columbus,Honolulu,0.0,0.0,0,0,2027_051,Icon,Association,False
+Regular,Regular Season,2027,2,Buffalo,San Jose,0.0,0.0,0,0,2027_052,Icon,Association,False
+Regular,Regular Season,2027,2,Birmingham,El Paso,0.0,0.0,0,0,2027_053,Icon,Association,False
+Regular,Regular Season,2027,2,Little Rock,Vegas,0.0,0.0,0,0,2027_054,Icon,Association,False
+Regular,Regular Season,2027,2,Cincinnati,Vancouver,0.0,0.0,0,0,2027_055,Statement,Association,False
+Regular,Regular Season,2027,2,Pittsburgh,Anaheim,0.0,0.0,0,0,2027_056,Icon,Association,False
+Regular,Regular Season,2027,2,Providence,Boise,0.0,0.0,0,0,2027_057,Icon,Statement,False
+Regular,Regular Season,2027,2,Jacksonville,Lincoln,0.0,0.0,0,0,2027_058,Statement,Association,False
+Regular,Regular Season,2027,2,Kentucky,Albuquerque,0.0,0.0,0,0,2027_059,Statement,Association,False
+Regular,Regular Season,2027,2,Lansing,Austin,0.0,0.0,0,0,2027_060,Icon,Association,False
+Regular,Regular Season,2027,3,Seattle,Tulsa,0.0,0.0,0,1,2027_061,Statement,Association,False
+Regular,Regular Season,2027,3,Anchorage,St. Louis,0.0,0.0,0,1,2027_062,Icon,Association,False
+Regular,Regular Season,2027,3,Des Moines,San Diego,0.0,0.0,0,0,2027_063,Icon,Association,False
+Regular,Regular Season,2027,3,Nashville,Honolulu,0.0,0.0,0,0,2027_064,Icon,Association,False
+Regular,Regular Season,2027,3,Manchester,San Jose,0.0,0.0,0,0,2027_065,Statement,Statement,False
+Regular,Regular Season,2027,3,Baltimore,El Paso,0.0,0.0,0,0,2027_066,Icon,Association,False
+Regular,Regular Season,2027,3,Tampa Bay,Vegas,0.0,0.0,0,0,2027_067,Icon,Association,False
+Regular,Regular Season,2027,3,Columbus,Vancouver,0.0,0.0,0,0,2027_068,Icon,Association,False
+Regular,Regular Season,2027,3,Buffalo,Anaheim,0.0,0.0,0,0,2027_069,Statement,Association,False
+Regular,Regular Season,2027,3,Birmingham,Boise,0.0,0.0,0,0,2027_070,Icon,Statement,False
+Regular,Regular Season,2027,3,Little Rock,Lincoln,0.0,0.0,0,0,2027_071,Icon,Association,False
+Regular,Regular Season,2027,3,Cincinnati,Albuquerque,0.0,0.0,0,0,2027_072,Icon,Association,False
+Regular,Regular Season,2027,3,Pittsburgh,Austin,0.0,0.0,0,0,2027_073,Icon,Association,False
+Regular,Regular Season,2027,3,Providence,Lansing,0.0,0.0,0,1,2027_074,Statement,Statement,False
+Regular,Regular Season,2027,3,Jacksonville,Kentucky,0.0,0.0,0,1,2027_075,Icon,Association,False
+Regular,Regular Season,2027,3,Honolulu,Tulsa,0.0,0.0,0,1,2027_076,Icon,Association,False
+Regular,Regular Season,2027,3,San Diego,San Jose,0.0,0.0,1,1,2027_077,Statement,Association,False
+Regular,Regular Season,2027,3,St. Louis,El Paso,0.0,0.0,1,1,2027_078,Icon,Association,False
+Regular,Regular Season,2027,3,Seattle,Vegas,0.0,0.0,0,1,2027_079,Icon,Association,False
+Regular,Regular Season,2027,3,Anchorage,Vancouver,0.0,0.0,1,1,2027_080,Statement,Statement,False
+Regular,Regular Season,2027,3,Des Moines,Anaheim,0.0,0.0,0,0,2027_081,Icon,Association,False
+Regular,Regular Season,2027,3,Nashville,Boise,0.0,0.0,0,0,2027_082,Statement,Association,False
+Regular,Regular Season,2027,3,Manchester,Lincoln,0.0,0.0,0,0,2027_083,Statement,Statement,False
+Regular,Regular Season,2027,3,Baltimore,Albuquerque,0.0,0.0,0,0,2027_084,Icon,Statement,False
+Regular,Regular Season,2027,3,Tampa Bay,Austin,0.0,0.0,0,0,2027_085,Icon,Association,False
+Regular,Regular Season,2027,3,Columbus,Lansing,0.0,0.0,1,1,2027_086,Icon,Association,False
+Regular,Regular Season,2027,3,Buffalo,Kentucky,0.0,0.0,0,1,2027_087,Icon,Association,False
+Regular,Regular Season,2027,3,Birmingham,Jacksonville,0.0,0.0,1,1,2027_088,Icon,Statement,False
+Regular,Regular Season,2027,3,Little Rock,Providence,0.0,0.0,0,1,2027_089,Icon,Association,False
+Regular,Regular Season,2027,3,Cincinnati,Pittsburgh,0.0,0.0,0,1,2027_090,Icon,Statement,True
+Regular,Regular Season,2027,4,Tulsa,Anaheim,0.0,0.0,0,1,2027_091,Statement,Statement,False
+Regular,Regular Season,2027,4,Boise,Vancouver,0.0,0.0,1,1,2027_092,Statement,Association,False
+Regular,Regular Season,2027,4,Lincoln,Vegas,0.0,0.0,0,1,2027_093,Icon,Association,False
+Regular,Regular Season,2027,4,Albuquerque,El Paso,0.0,0.0,1,1,2027_094,Icon,Association,False
+Regular,Regular Season,2027,4,Austin,San Jose,0.0,0.0,0,1,2027_095,Icon,Association,False
+Regular,Regular Season,2027,4,Lansing,Honolulu,0.0,0.0,0,0,2027_096,Icon,Association,False
+Regular,Regular Season,2027,4,Kentucky,San Diego,0.0,0.0,0,0,2027_097,Icon,Association,False
+Regular,Regular Season,2027,4,Jacksonville,St. Louis,0.0,0.0,0,0,2027_098,Statement,Association,False
+Regular,Regular Season,2027,4,Providence,Seattle,0.0,0.0,0,0,2027_099,Icon,Association,False
+Regular,Regular Season,2027,4,Pittsburgh,Anchorage,0.0,0.0,0,0,2027_100,Icon,Association,False
+Regular,Regular Season,2027,4,Cincinnati,Des Moines,0.0,0.0,1,1,2027_101,Statement,Association,False
+Regular,Regular Season,2027,4,Little Rock,Nashville,0.0,0.0,1,1,2027_102,Icon,Association,False
+Regular,Regular Season,2027,4,Birmingham,Manchester,0.0,0.0,0,1,2027_103,Icon,Association,False
+Regular,Regular Season,2027,4,Buffalo,Baltimore,0.0,0.0,1,1,2027_104,Icon,Statement,False
+Regular,Regular Season,2027,4,Columbus,Tampa Bay,0.0,0.0,0,1,2027_105,Icon,Association,False
+Regular,Regular Season,2027,4,Tulsa,Baltimore,0.0,0.0,0,0,2027_106,Icon,Statement,False
+Regular,Regular Season,2027,4,Manchester,Tampa Bay,0.0,0.0,0,1,2027_107,Icon,Association,False
+Regular,Regular Season,2027,4,Nashville,Columbus,0.0,0.0,0,1,2027_108,Statement,Statement,False
+Regular,Regular Season,2027,4,Des Moines,Buffalo,0.0,0.0,0,1,2027_109,Icon,Association,False
+Regular,Regular Season,2027,4,Anchorage,Birmingham,0.0,0.0,0,0,2027_110,Icon,Association,False
+Regular,Regular Season,2027,4,Seattle,Little Rock,0.0,0.0,0,0,2027_111,Icon,Association,False
+Regular,Regular Season,2027,4,St. Louis,Cincinnati,0.0,0.0,0,0,2027_112,Icon,Association,False
+Regular,Regular Season,2027,4,San Diego,Pittsburgh,0.0,0.0,0,0,2027_113,Icon,Association,False
+Regular,Regular Season,2027,4,Honolulu,Providence,0.0,0.0,0,0,2027_114,Statement,Statement,False
+Regular,Regular Season,2027,4,San Jose,Jacksonville,0.0,0.0,0,0,2027_115,Icon,Association,False
+Regular,Regular Season,2027,4,El Paso,Kentucky,0.0,0.0,0,0,2027_116,Icon,Statement,False
+Regular,Regular Season,2027,4,Vegas,Lansing,0.0,0.0,0,0,2027_117,Icon,Statement,False
+Regular,Regular Season,2027,4,Vancouver,Austin,0.0,0.0,0,1,2027_118,Icon,Association,False
+Regular,Regular Season,2027,4,Anaheim,Albuquerque,0.0,0.0,0,1,2027_119,Association,Statement,True
+Regular,Regular Season,2027,4,Boise,Lincoln,0.0,0.0,1,1,2027_120,Icon,Association,False
+Regular,Regular Season,2027,5,Baltimore,Tulsa,0.0,0.0,0,0,2027_121,Icon,Association,False
+Regular,Regular Season,2027,5,Tampa Bay,Manchester,0.0,0.0,0,1,2027_122,Icon,Statement,False
+Regular,Regular Season,2027,5,Columbus,Nashville,0.0,0.0,0,1,2027_123,Icon,Association,False
+Regular,Regular Season,2027,5,Buffalo,Des Moines,0.0,0.0,0,1,2027_124,Icon,Association,False
+Regular,Regular Season,2027,5,Birmingham,Anchorage,0.0,0.0,0,0,2027_125,Icon,Association,False
+Regular,Regular Season,2027,5,Little Rock,Seattle,0.0,0.0,0,0,2027_126,Icon,Association,False
+Regular,Regular Season,2027,5,Cincinnati,St. Louis,0.0,0.0,0,0,2027_127,Statement,Association,False
+Regular,Regular Season,2027,5,Pittsburgh,San Diego,0.0,0.0,0,0,2027_128,Icon,Association,False
+Regular,Regular Season,2027,5,Providence,Honolulu,0.0,0.0,0,0,2027_129,Statement,Association,False
+Regular,Regular Season,2027,5,Jacksonville,San Jose,0.0,0.0,0,0,2027_130,Icon,Association,False
+Regular,Regular Season,2027,5,Kentucky,El Paso,0.0,0.0,0,0,2027_131,Icon,Association,False
+Regular,Regular Season,2027,5,Lansing,Vegas,0.0,0.0,0,0,2027_132,Icon,Association,False
+Regular,Regular Season,2027,5,Austin,Vancouver,0.0,0.0,0,1,2027_133,Statement,Statement,False
+Regular,Regular Season,2027,5,Albuquerque,Anaheim,0.0,0.0,0,1,2027_134,Icon,Association,False
+Regular,Regular Season,2027,5,Lincoln,Boise,0.0,0.0,1,1,2027_135,Statement,Association,False
+Regular,Regular Season,2027,5,Boise,Vancouver,0.0,0.0,1,1,2027_136,Icon,Association,False
+Regular,Regular Season,2027,5,Lincoln,Vegas,0.0,0.0,0,1,2027_137,Icon,Association,False
+Regular,Regular Season,2027,5,Albuquerque,El Paso,0.0,0.0,1,1,2027_138,Icon,Association,False
+Regular,Regular Season,2027,5,Austin,San Jose,0.0,0.0,0,1,2027_139,Icon,Association,False
+Regular,Regular Season,2027,5,Tulsa,Honolulu,0.0,0.0,0,1,2027_140,Icon,Association,False
+Regular,Regular Season,2027,5,Anchorage,San Diego,0.0,0.0,0,1,2027_141,Icon,Association,False
+Regular,Regular Season,2027,5,Seattle,St. Louis,0.0,0.0,0,1,2027_142,Icon,Statement,False
+Regular,Regular Season,2027,5,Anaheim,Pittsburgh,0.0,0.0,0,0,2027_143,Icon,Association,False
+Regular,Regular Season,2027,5,Providence,Cincinnati,0.0,0.0,0,1,2027_144,Icon,Association,False
+Regular,Regular Season,2027,5,Jacksonville,Little Rock,0.0,0.0,1,1,2027_145,Icon,Association,False
+Regular,Regular Season,2027,5,Kentucky,Birmingham,0.0,0.0,0,1,2027_146,Icon,Statement,False
+Regular,Regular Season,2027,5,Lansing,Buffalo,0.0,0.0,0,1,2027_147,Icon,Association,False
+Regular,Regular Season,2027,5,Des Moines,Columbus,0.0,0.0,1,1,2027_148,Icon,Association,False
+Regular,Regular Season,2027,5,Nashville,Tampa Bay,0.0,0.0,1,1,2027_149,Icon,Association,False
+Regular,Regular Season,2027,5,Manchester,Baltimore,0.0,0.0,1,1,2027_150,Icon,Association,False
+Regular,Regular Season,2027,6,Tulsa,Pittsburgh,0.0,0.0,0,0,2027_151,Icon,Association,False
+Regular,Regular Season,2027,6,Cincinnati,Providence,0.0,0.0,0,1,2027_152,Icon,Association,False
+Regular,Regular Season,2027,6,Little Rock,Jacksonville,0.0,0.0,1,1,2027_153,Icon,Association,False
+Regular,Regular Season,2027,6,Birmingham,Kentucky,0.0,0.0,0,1,2027_154,Icon,Association,False
+Regular,Regular Season,2027,6,Buffalo,Lansing,0.0,0.0,0,1,2027_155,Icon,Statement,False
+Regular,Regular Season,2027,6,Columbus,Austin,0.0,0.0,0,0,2027_156,Statement,Association,False
+Regular,Regular Season,2027,6,Tampa Bay,Albuquerque,0.0,0.0,0,0,2027_157,Icon,Association,False
+Regular,Regular Season,2027,6,Baltimore,Lincoln,0.0,0.0,0,0,2027_158,Icon,Association,False
+Regular,Regular Season,2027,6,Manchester,Boise,0.0,0.0,0,0,2027_159,Icon,Association,True
+Regular,Regular Season,2027,6,Nashville,Anaheim,0.0,0.0,0,0,2027_160,Icon,Association,False
+Regular,Regular Season,2027,6,Des Moines,Vancouver,0.0,0.0,0,0,2027_161,Icon,Association,False
+Regular,Regular Season,2027,6,Anchorage,Vegas,0.0,0.0,0,1,2027_162,Icon,Association,False
+Regular,Regular Season,2027,6,Seattle,El Paso,0.0,0.0,0,1,2027_163,Icon,Statement,False
+Regular,Regular Season,2027,6,St. Louis,San Jose,0.0,0.0,0,1,2027_164,Icon,Association,False
+Regular,Regular Season,2027,6,San Diego,Honolulu,0.0,0.0,1,1,2027_165,Icon,Association,False
+Regular,Regular Season,2027,6,Nashville,Tulsa,0.0,0.0,0,0,2027_166,Icon,Association,False
+Regular,Regular Season,2027,6,Manchester,Des Moines,0.0,0.0,0,1,2027_167,Icon,Statement,True
+Regular,Regular Season,2027,6,Baltimore,Anchorage,0.0,0.0,0,0,2027_168,Icon,Association,False
+Regular,Regular Season,2027,6,Tampa Bay,Seattle,0.0,0.0,0,0,2027_169,Icon,Association,False
+Regular,Regular Season,2027,6,Columbus,St. Louis,0.0,0.0,0,0,2027_170,Icon,Association,False
+Regular,Regular Season,2027,6,Buffalo,San Diego,0.0,0.0,0,0,2027_171,Icon,Association,False
+Regular,Regular Season,2027,6,Birmingham,Honolulu,0.0,0.0,0,0,2027_172,Icon,Association,False
+Regular,Regular Season,2027,6,Little Rock,San Jose,0.0,0.0,0,0,2027_173,Icon,Association,False
+Regular,Regular Season,2027,6,Cincinnati,El Paso,0.0,0.0,0,0,2027_174,Icon,Association,False
+Regular,Regular Season,2027,6,Pittsburgh,Vegas,0.0,0.0,0,0,2027_175,Icon,Association,False
+Regular,Regular Season,2027,6,Providence,Vancouver,0.0,0.0,0,0,2027_176,Icon,Association,False
+Regular,Regular Season,2027,6,Jacksonville,Anaheim,0.0,0.0,0,0,2027_177,Statement,Association,False
+Regular,Regular Season,2027,6,Kentucky,Boise,0.0,0.0,0,0,2027_178,Icon,Association,False
+Regular,Regular Season,2027,6,Lansing,Lincoln,0.0,0.0,0,0,2027_179,Icon,Association,False
+Regular,Regular Season,2027,6,Austin,Albuquerque,0.0,0.0,1,1,2027_180,Icon,Association,False
+Regular,Regular Season,2027,7,Anchorage,Tulsa,0.0,0.0,0,1,2027_181,Statement,Statement,False
+Regular,Regular Season,2027,7,Des Moines,Seattle,0.0,0.0,0,0,2027_182,Icon,Association,False
+Regular,Regular Season,2027,7,Nashville,St. Louis,0.0,0.0,0,0,2027_183,Icon,Association,False
+Regular,Regular Season,2027,7,Manchester,San Diego,0.0,0.0,0,0,2027_184,Icon,Association,False
+Regular,Regular Season,2027,7,Baltimore,Honolulu,0.0,0.0,0,0,2027_185,Icon,Statement,False
+Regular,Regular Season,2027,7,Tampa Bay,San Jose,0.0,0.0,0,0,2027_186,Icon,Association,False
+Regular,Regular Season,2027,7,Columbus,El Paso,0.0,0.0,0,0,2027_187,Icon,Association,False
+Regular,Regular Season,2027,7,Buffalo,Vegas,0.0,0.0,0,0,2027_188,Icon,Association,False
+Regular,Regular Season,2027,7,Birmingham,Vancouver,0.0,0.0,0,0,2027_189,Icon,Statement,False
+Regular,Regular Season,2027,7,Little Rock,Anaheim,0.0,0.0,0,0,2027_190,Icon,Association,False
+Regular,Regular Season,2027,7,Cincinnati,Boise,0.0,0.0,0,0,2027_191,Icon,Association,False
+Regular,Regular Season,2027,7,Pittsburgh,Lincoln,0.0,0.0,0,0,2027_192,Icon,Association,False
+Regular,Regular Season,2027,7,Providence,Albuquerque,0.0,0.0,0,0,2027_193,Icon,Association,False
+Regular,Regular Season,2027,7,Jacksonville,Austin,0.0,0.0,0,0,2027_194,Icon,Association,False
+Regular,Regular Season,2027,7,Kentucky,Lansing,0.0,0.0,1,1,2027_195,Statement,Association,False
+Regular,Regular Season,2027,7,Cincinnati,Tulsa,0.0,0.0,0,0,2027_196,Icon,Association,False
+Regular,Regular Season,2027,7,Pittsburgh,Little Rock,0.0,0.0,0,1,2027_197,Icon,Association,False
+Regular,Regular Season,2027,7,Providence,Birmingham,0.0,0.0,0,1,2027_198,Icon,Association,False
+Regular,Regular Season,2027,7,Jacksonville,Buffalo,0.0,0.0,0,1,2027_199,Icon,Association,False
+Regular,Regular Season,2027,7,Kentucky,Columbus,0.0,0.0,1,1,2027_200,Icon,Association,False
+Regular,Regular Season,2027,7,Lansing,Tampa Bay,0.0,0.0,0,1,2027_201,Icon,Association,False
+Regular,Regular Season,2027,7,Austin,Baltimore,0.0,0.0,0,0,2027_202,Icon,Association,False
+Regular,Regular Season,2027,7,Albuquerque,Manchester,0.0,0.0,0,0,2027_203,Icon,Association,False
+Regular,Regular Season,2027,7,Lincoln,Nashville,0.0,0.0,0,0,2027_204,Statement,Association,False
+Regular,Regular Season,2027,7,Boise,Des Moines,0.0,0.0,0,0,2027_205,Icon,Association,False
+Regular,Regular Season,2027,7,Anaheim,Anchorage,0.0,0.0,0,1,2027_206,Statement,Association,False
+Regular,Regular Season,2027,7,Vancouver,Seattle,0.0,0.0,1,1,2027_207,Association,Statement,True
+Regular,Regular Season,2027,7,Vegas,St. Louis,0.0,0.0,0,1,2027_208,Icon,Association,False
+Regular,Regular Season,2027,7,El Paso,San Diego,0.0,0.0,0,1,2027_209,Icon,Association,False
+Regular,Regular Season,2027,7,San Jose,Honolulu,0.0,0.0,1,1,2027_210,Icon,Association,False
+Regular,Regular Season,2027,8,Anchorage,Austin,0.0,0.0,0,1,2027_211,Icon,Statement,False
+Regular,Regular Season,2027,8,Seattle,Albuquerque,0.0,0.0,0,1,2027_212,Icon,Statement,False
+Regular,Regular Season,2027,8,St. Louis,Lincoln,0.0,0.0,0,1,2027_213,Icon,Association,False
+Regular,Regular Season,2027,8,San Diego,Boise,0.0,0.0,0,1,2027_214,Icon,Association,False
+Regular,Regular Season,2027,8,Honolulu,Anaheim,0.0,0.0,1,1,2027_215,Statement,Association,False
+Regular,Regular Season,2027,8,San Jose,Vancouver,0.0,0.0,0,1,2027_216,Icon,Association,False
+Regular,Regular Season,2027,8,El Paso,Vegas,0.0,0.0,0,1,2027_217,Icon,Association,False
+Regular,Regular Season,2027,8,Tulsa,Des Moines,0.0,0.0,0,0,2027_218,Icon,Association,False
+Regular,Regular Season,2027,8,Nashville,Lansing,0.0,0.0,0,1,2027_219,Icon,Association,False
+Regular,Regular Season,2027,8,Manchester,Kentucky,0.0,0.0,0,1,2027_220,Icon,Association,True
+Regular,Regular Season,2027,8,Baltimore,Jacksonville,0.0,0.0,0,1,2027_221,Statement,Statement,False
+Regular,Regular Season,2027,8,Tampa Bay,Providence,0.0,0.0,0,1,2027_222,Statement,Statement,False
+Regular,Regular Season,2027,8,Columbus,Pittsburgh,0.0,0.0,0,1,2027_223,Icon,Statement,False
+Regular,Regular Season,2027,8,Buffalo,Cincinnati,0.0,0.0,0,1,2027_224,Statement,Association,False
+Regular,Regular Season,2027,8,Birmingham,Little Rock,0.0,0.0,1,1,2027_225,Icon,Association,False
+Regular,Regular Season,2027,8,St. Louis,Anchorage,0.0,0.0,0,1,2027_226,Icon,Association,False
+Regular,Regular Season,2027,8,San Diego,Tulsa,0.0,0.0,0,1,2027_227,Statement,Association,False
+Regular,Regular Season,2027,8,Honolulu,Austin,0.0,0.0,0,1,2027_228,Association,Statement,True
+Regular,Regular Season,2027,8,San Jose,Albuquerque,0.0,0.0,0,1,2027_229,Icon,Association,False
+Regular,Regular Season,2027,8,El Paso,Lincoln,0.0,0.0,0,1,2027_230,Icon,Association,False
+Regular,Regular Season,2027,8,Vegas,Boise,0.0,0.0,0,1,2027_231,Icon,Statement,False
+Regular,Regular Season,2027,8,Vancouver,Anaheim,0.0,0.0,0,1,2027_232,Icon,Association,False
+Regular,Regular Season,2027,8,Seattle,Manchester,0.0,0.0,0,0,2027_233,Icon,Association,False
+Regular,Regular Season,2027,8,Baltimore,Nashville,0.0,0.0,0,1,2027_234,Icon,Statement,False
+Regular,Regular Season,2027,8,Tampa Bay,Des Moines,0.0,0.0,0,1,2027_235,Icon,Association,False
+Regular,Regular Season,2027,8,Columbus,Lansing,0.0,0.0,1,1,2027_236,Icon,Association,False
+Regular,Regular Season,2027,8,Buffalo,Kentucky,0.0,0.0,0,1,2027_237,Statement,Association,False
+Regular,Regular Season,2027,8,Birmingham,Jacksonville,0.0,0.0,1,1,2027_238,Icon,Association,False
+Regular,Regular Season,2027,8,Little Rock,Providence,0.0,0.0,0,1,2027_239,Icon,Association,False
+Regular,Regular Season,2027,8,Cincinnati,Pittsburgh,0.0,0.0,0,1,2027_240,Icon,Association,False
+Regular,Regular Season,2027,9,Tulsa,Seattle,0.0,0.0,0,1,2027_241,Icon,Association,False
+Regular,Regular Season,2027,9,St. Louis,Anchorage,0.0,0.0,0,1,2027_242,Icon,Association,False
+Regular,Regular Season,2027,9,San Diego,Des Moines,0.0,0.0,0,0,2027_243,Icon,Statement,False
+Regular,Regular Season,2027,9,Honolulu,Nashville,0.0,0.0,0,0,2027_244,Statement,Association,False
+Regular,Regular Season,2027,9,San Jose,Manchester,0.0,0.0,0,0,2027_245,Icon,Association,False
+Regular,Regular Season,2027,9,El Paso,Baltimore,0.0,0.0,0,0,2027_246,Icon,Association,False
+Regular,Regular Season,2027,9,Vegas,Tampa Bay,0.0,0.0,0,0,2027_247,Icon,Statement,False
+Regular,Regular Season,2027,9,Vancouver,Columbus,0.0,0.0,0,0,2027_248,Icon,Statement,False
+Regular,Regular Season,2027,9,Anaheim,Buffalo,0.0,0.0,0,0,2027_249,Statement,Statement,False
+Regular,Regular Season,2027,9,Boise,Birmingham,0.0,0.0,0,0,2027_250,Icon,Statement,False
+Regular,Regular Season,2027,9,Lincoln,Little Rock,0.0,0.0,0,0,2027_251,Icon,Statement,False
+Regular,Regular Season,2027,9,Albuquerque,Cincinnati,0.0,0.0,0,0,2027_252,Icon,Statement,False
+Regular,Regular Season,2027,9,Austin,Pittsburgh,0.0,0.0,0,0,2027_253,Statement,Association,False
+Regular,Regular Season,2027,9,Lansing,Providence,0.0,0.0,0,1,2027_254,Icon,Association,False
+Regular,Regular Season,2027,9,Kentucky,Jacksonville,0.0,0.0,0,1,2027_255,Icon,Statement,False
+Regular,Regular Season,2027,9,Albuquerque,Boise,0.0,0.0,0,1,2027_256,Icon,Association,False
+Regular,Regular Season,2027,9,Austin,Anaheim,0.0,0.0,0,1,2027_257,Icon,Association,False
+Regular,Regular Season,2027,9,Tulsa,Vancouver,0.0,0.0,0,1,2027_258,Icon,Statement,False
+Regular,Regular Season,2027,9,Anchorage,Vegas,0.0,0.0,0,1,2027_259,Icon,Association,False
+Regular,Regular Season,2027,9,Seattle,El Paso,0.0,0.0,0,1,2027_260,Icon,Statement,False
+Regular,Regular Season,2027,9,St. Louis,San Jose,0.0,0.0,0,1,2027_261,Icon,Statement,False
+Regular,Regular Season,2027,9,San Diego,Honolulu,0.0,0.0,1,1,2027_262,Icon,Association,False
+Regular,Regular Season,2027,9,Lincoln,Jacksonville,0.0,0.0,0,0,2027_263,Icon,Association,False
+Regular,Regular Season,2027,9,Kentucky,Providence,0.0,0.0,0,1,2027_264,Icon,Association,False
+Regular,Regular Season,2027,9,Lansing,Pittsburgh,0.0,0.0,0,1,2027_265,Icon,Association,False
+Regular,Regular Season,2027,9,Des Moines,Cincinnati,0.0,0.0,1,1,2027_266,Icon,Association,False
+Regular,Regular Season,2027,9,Nashville,Little Rock,0.0,0.0,1,1,2027_267,Icon,Association,False
+Regular,Regular Season,2027,9,Manchester,Birmingham,0.0,0.0,0,1,2027_268,Statement,Statement,True
+Regular,Regular Season,2027,9,Baltimore,Buffalo,0.0,0.0,1,1,2027_269,Icon,Association,True
+Regular,Regular Season,2027,9,Tampa Bay,Columbus,0.0,0.0,0,1,2027_270,Icon,Association,False
+Regular,Regular Season,2027,10,Albuquerque,Tulsa,0.0,0.0,1,1,2027_271,Association,Statement,True
+Regular,Regular Season,2027,10,Lincoln,Austin,0.0,0.0,0,1,2027_272,Statement,Association,False
+Regular,Regular Season,2027,10,Boise,Lansing,0.0,0.0,0,0,2027_273,Icon,Association,False
+Regular,Regular Season,2027,10,Anaheim,Kentucky,0.0,0.0,0,0,2027_274,Icon,Association,False
+Regular,Regular Season,2027,10,Vancouver,Jacksonville,0.0,0.0,0,0,2027_275,Icon,Association,False
+Regular,Regular Season,2027,10,Vegas,Providence,0.0,0.0,0,0,2027_276,Statement,Association,False
+Regular,Regular Season,2027,10,El Paso,Pittsburgh,0.0,0.0,0,0,2027_277,Statement,Association,False
+Regular,Regular Season,2027,10,San Jose,Cincinnati,0.0,0.0,0,0,2027_278,Icon,Association,False
+Regular,Regular Season,2027,10,Honolulu,Little Rock,0.0,0.0,0,0,2027_279,Icon,Association,False
+Regular,Regular Season,2027,10,San Diego,Birmingham,0.0,0.0,0,0,2027_280,Icon,Association,False
+Regular,Regular Season,2027,10,St. Louis,Buffalo,0.0,0.0,0,0,2027_281,Statement,Association,False
+Regular,Regular Season,2027,10,Seattle,Columbus,0.0,0.0,0,0,2027_282,Icon,Association,False
+Regular,Regular Season,2027,10,Anchorage,Tampa Bay,0.0,0.0,0,0,2027_283,Icon,Association,False
+Regular,Regular Season,2027,10,Des Moines,Baltimore,0.0,0.0,0,1,2027_284,Icon,Association,False
+Regular,Regular Season,2027,10,Nashville,Manchester,0.0,0.0,0,1,2027_285,Icon,Association,False
+Regular,Regular Season,2027,10,Austin,Tulsa,0.0,0.0,1,1,2027_286,Association,Statement,True
+Regular,Regular Season,2027,10,Albuquerque,Lansing,0.0,0.0,0,0,2027_287,Icon,Statement,False
+Regular,Regular Season,2027,10,Lincoln,Kentucky,0.0,0.0,0,0,2027_288,Icon,Association,False
+Regular,Regular Season,2027,10,Boise,Jacksonville,0.0,0.0,0,0,2027_289,Icon,Association,False
+Regular,Regular Season,2027,10,Anaheim,Providence,0.0,0.0,0,0,2027_290,Icon,Association,False
+Regular,Regular Season,2027,10,Vancouver,Pittsburgh,0.0,0.0,0,0,2027_291,Icon,Statement,False
+Regular,Regular Season,2027,10,Vegas,Cincinnati,0.0,0.0,0,0,2027_292,Icon,Association,False
+Regular,Regular Season,2027,10,El Paso,Little Rock,0.0,0.0,0,0,2027_293,Icon,Statement,False
+Regular,Regular Season,2027,10,San Jose,Birmingham,0.0,0.0,0,0,2027_294,Icon,Statement,False
+Regular,Regular Season,2027,10,Honolulu,Buffalo,0.0,0.0,0,0,2027_295,Icon,Association,False
+Regular,Regular Season,2027,10,San Diego,Columbus,0.0,0.0,0,0,2027_296,Icon,Association,False
+Regular,Regular Season,2027,10,St. Louis,Tampa Bay,0.0,0.0,0,0,2027_297,Icon,Association,False
+Regular,Regular Season,2027,10,Seattle,Baltimore,0.0,0.0,0,0,2027_298,Statement,Association,False
+Regular,Regular Season,2027,10,Anchorage,Manchester,0.0,0.0,0,0,2027_299,Icon,Association,False
+Regular,Regular Season,2027,10,Des Moines,Nashville,0.0,0.0,0,1,2027_300,Icon,Association,False
+Regular,Regular Season,2027,11,Tulsa,Honolulu,0.0,0.0,0,1,2027_301,Icon,Association,False
+Regular,Regular Season,2027,11,San Jose,San Diego,0.0,0.0,1,1,2027_302,Statement,Association,False
+Regular,Regular Season,2027,11,El Paso,St. Louis,0.0,0.0,1,1,2027_303,Icon,Association,False
+Regular,Regular Season,2027,11,Vegas,Seattle,0.0,0.0,0,1,2027_304,Icon,Association,False
+Regular,Regular Season,2027,11,Vancouver,Anchorage,0.0,0.0,1,1,2027_305,Icon,Association,False
+Regular,Regular Season,2027,11,Anaheim,Des Moines,0.0,0.0,0,0,2027_306,Statement,Statement,False
+Regular,Regular Season,2027,11,Boise,Nashville,0.0,0.0,0,0,2027_307,Icon,Association,False
+Regular,Regular Season,2027,11,Lincoln,Manchester,0.0,0.0,0,0,2027_308,Statement,Association,False
+Regular,Regular Season,2027,11,Albuquerque,Baltimore,0.0,0.0,0,0,2027_309,Icon,Association,False
+Regular,Regular Season,2027,11,Austin,Tampa Bay,0.0,0.0,0,0,2027_310,Icon,Statement,False
+Regular,Regular Season,2027,11,Lansing,Columbus,0.0,0.0,1,1,2027_311,Icon,Association,False
+Regular,Regular Season,2027,11,Kentucky,Buffalo,0.0,0.0,0,1,2027_312,Icon,Association,False
+Regular,Regular Season,2027,11,Jacksonville,Birmingham,0.0,0.0,1,1,2027_313,Icon,Association,False
+Regular,Regular Season,2027,11,Providence,Little Rock,0.0,0.0,0,1,2027_314,Icon,Association,False
+Regular,Regular Season,2027,11,Pittsburgh,Cincinnati,0.0,0.0,0,1,2027_315,Icon,Association,False
+Regular,Regular Season,2027,11,Tulsa,Vegas,0.0,0.0,0,1,2027_316,Icon,Association,False
+Regular,Regular Season,2027,11,Vancouver,El Paso,0.0,0.0,0,1,2027_317,Icon,Association,False
+Regular,Regular Season,2027,11,Anaheim,San Jose,0.0,0.0,1,1,2027_318,Icon,Association,False
+Regular,Regular Season,2027,11,Boise,Honolulu,0.0,0.0,0,1,2027_319,Icon,Association,False
+Regular,Regular Season,2027,11,Lincoln,San Diego,0.0,0.0,0,1,2027_320,Icon,Association,False
+Regular,Regular Season,2027,11,Albuquerque,St. Louis,0.0,0.0,1,1,2027_321,Icon,Association,False
+Regular,Regular Season,2027,11,Austin,Seattle,0.0,0.0,0,1,2027_322,Statement,Statement,False
+Regular,Regular Season,2027,11,Lansing,Anchorage,0.0,0.0,0,0,2027_323,Icon,Statement,True
+Regular,Regular Season,2027,11,Kentucky,Des Moines,0.0,0.0,1,1,2027_324,Statement,Association,False
+Regular,Regular Season,2027,11,Jacksonville,Nashville,0.0,0.0,1,1,2027_325,Statement,Association,False
+Regular,Regular Season,2027,11,Providence,Manchester,0.0,0.0,1,1,2027_326,Icon,Association,False
+Regular,Regular Season,2027,11,Pittsburgh,Baltimore,0.0,0.0,1,1,2027_327,Icon,Association,False
+Regular,Regular Season,2027,11,Cincinnati,Tampa Bay,0.0,0.0,0,1,2027_328,Icon,Association,False
+Regular,Regular Season,2027,11,Little Rock,Columbus,0.0,0.0,0,1,2027_329,Icon,Association,False
+Regular,Regular Season,2027,11,Birmingham,Buffalo,0.0,0.0,0,1,2027_330,Icon,Statement,False
+Regular,Regular Season,2027,12,Lansing,Tulsa,0.0,0.0,0,0,2027_331,Statement,Association,False
+Regular,Regular Season,2027,12,Austin,Kentucky,0.0,0.0,0,0,2027_332,Icon,Association,False
+Regular,Regular Season,2027,12,Albuquerque,Jacksonville,0.0,0.0,0,0,2027_333,Icon,Statement,False
+Regular,Regular Season,2027,12,Lincoln,Providence,0.0,0.0,0,0,2027_334,Icon,Association,False
+Regular,Regular Season,2027,12,Boise,Pittsburgh,0.0,0.0,0,0,2027_335,Icon,Association,False
+Regular,Regular Season,2027,12,Anaheim,Cincinnati,0.0,0.0,0,0,2027_336,Icon,Statement,False
+Regular,Regular Season,2027,12,Vancouver,Little Rock,0.0,0.0,0,0,2027_337,Statement,Association,False
+Regular,Regular Season,2027,12,Vegas,Birmingham,0.0,0.0,0,0,2027_338,Icon,Association,False
+Regular,Regular Season,2027,12,El Paso,Buffalo,0.0,0.0,0,0,2027_339,Icon,Association,False
+Regular,Regular Season,2027,12,San Jose,Columbus,0.0,0.0,0,0,2027_340,Statement,Association,False
+Regular,Regular Season,2027,12,Honolulu,Tampa Bay,0.0,0.0,0,0,2027_341,Icon,Association,False
+Regular,Regular Season,2027,12,San Diego,Baltimore,0.0,0.0,0,0,2027_342,Icon,Association,False
+Regular,Regular Season,2027,12,St. Louis,Manchester,0.0,0.0,0,0,2027_343,Icon,Statement,False
+Regular,Regular Season,2027,12,Seattle,Nashville,0.0,0.0,0,0,2027_344,Icon,Association,False
+Regular,Regular Season,2027,12,Anchorage,Des Moines,0.0,0.0,0,0,2027_345,Statement,Statement,False
+Regular,Regular Season,2027,12,San Diego,Seattle,0.0,0.0,0,1,2027_346,Icon,Association,False
+Regular,Regular Season,2027,12,Honolulu,Anchorage,0.0,0.0,0,1,2027_347,Statement,Association,False
+Regular,Regular Season,2027,12,San Jose,Tulsa,0.0,0.0,0,1,2027_348,Icon,Association,False
+Regular,Regular Season,2027,12,El Paso,Austin,0.0,0.0,1,1,2027_349,Icon,Association,False
+Regular,Regular Season,2027,12,Vegas,Albuquerque,0.0,0.0,0,1,2027_350,Icon,Association,False
+Regular,Regular Season,2027,12,Vancouver,Lincoln,0.0,0.0,1,1,2027_351,Icon,Association,False
+Regular,Regular Season,2027,12,Anaheim,Boise,0.0,0.0,0,1,2027_352,Icon,Association,False
+Regular,Regular Season,2027,12,St. Louis,Baltimore,0.0,0.0,0,0,2027_353,Icon,Association,False
+Regular,Regular Season,2027,12,Tampa Bay,Manchester,0.0,0.0,0,1,2027_354,Icon,Association,False
+Regular,Regular Season,2027,12,Columbus,Nashville,0.0,0.0,0,1,2027_355,Icon,Association,False
+Regular,Regular Season,2027,12,Buffalo,Des Moines,0.0,0.0,0,1,2027_356,Icon,Association,False
+Regular,Regular Season,2027,12,Birmingham,Lansing,0.0,0.0,0,1,2027_357,Icon,Association,False
+Regular,Regular Season,2027,12,Little Rock,Kentucky,0.0,0.0,0,1,2027_358,Icon,Association,False
+Regular,Regular Season,2027,12,Cincinnati,Jacksonville,0.0,0.0,0,1,2027_359,Statement,Association,False
+Regular,Regular Season,2027,12,Pittsburgh,Providence,0.0,0.0,1,1,2027_360,Statement,Association,False
+Regular,Regular Season,2027,13,Tulsa,Lansing,0.0,0.0,0,0,2027_361,Icon,Association,False
+Regular,Regular Season,2027,13,Kentucky,Austin,0.0,0.0,0,0,2027_362,Statement,Association,False
+Regular,Regular Season,2027,13,Jacksonville,Albuquerque,0.0,0.0,0,0,2027_363,Statement,Association,False
+Regular,Regular Season,2027,13,Providence,Lincoln,0.0,0.0,0,0,2027_364,Statement,Association,False
+Regular,Regular Season,2027,13,Pittsburgh,Boise,0.0,0.0,0,0,2027_365,Statement,Association,False
+Regular,Regular Season,2027,13,Cincinnati,Anaheim,0.0,0.0,0,0,2027_366,Icon,Association,False
+Regular,Regular Season,2027,13,Little Rock,Vancouver,0.0,0.0,0,0,2027_367,Icon,Statement,False
+Regular,Regular Season,2027,13,Birmingham,Vegas,0.0,0.0,0,0,2027_368,Statement,Association,False
+Regular,Regular Season,2027,13,Buffalo,El Paso,0.0,0.0,0,0,2027_369,Icon,Association,False
+Regular,Regular Season,2027,13,Columbus,San Jose,0.0,0.0,0,0,2027_370,Icon,Association,False
+Regular,Regular Season,2027,13,Tampa Bay,Honolulu,0.0,0.0,0,0,2027_371,Statement,Association,False
+Regular,Regular Season,2027,13,Baltimore,San Diego,0.0,0.0,0,0,2027_372,Icon,Association,False
+Regular,Regular Season,2027,13,Manchester,St. Louis,0.0,0.0,0,0,2027_373,Icon,Association,True
+Regular,Regular Season,2027,13,Nashville,Seattle,0.0,0.0,0,0,2027_374,Icon,Association,False
+Regular,Regular Season,2027,13,Des Moines,Anchorage,0.0,0.0,0,0,2027_375,Icon,Association,False
+Regular,Regular Season,2027,13,Tampa Bay,Tulsa,0.0,0.0,0,0,2027_376,Icon,Association,False
+Regular,Regular Season,2027,13,Columbus,Baltimore,0.0,0.0,0,1,2027_377,Icon,Association,False
+Regular,Regular Season,2027,13,Buffalo,Manchester,0.0,0.0,1,1,2027_378,Icon,Association,False
+Regular,Regular Season,2027,13,Birmingham,Nashville,0.0,0.0,1,1,2027_379,Icon,Association,False
+Regular,Regular Season,2027,13,Little Rock,Des Moines,0.0,0.0,0,1,2027_380,Icon,Association,False
+Regular,Regular Season,2027,13,Cincinnati,Anchorage,0.0,0.0,0,0,2027_381,Icon,Association,False
+Regular,Regular Season,2027,13,Pittsburgh,Seattle,0.0,0.0,0,0,2027_382,Icon,Association,False
+Regular,Regular Season,2027,13,Providence,St. Louis,0.0,0.0,0,0,2027_383,Icon,Association,False
+Regular,Regular Season,2027,13,Jacksonville,San Diego,0.0,0.0,0,0,2027_384,Statement,Association,False
+Regular,Regular Season,2027,13,Kentucky,Honolulu,0.0,0.0,0,0,2027_385,Icon,Association,False
+Regular,Regular Season,2027,13,Lansing,San Jose,0.0,0.0,0,0,2027_386,Icon,Association,False
+Regular,Regular Season,2027,13,Austin,El Paso,0.0,0.0,1,1,2027_387,Icon,Association,False
+Regular,Regular Season,2027,13,Albuquerque,Vegas,0.0,0.0,0,1,2027_388,Icon,Association,False
+Regular,Regular Season,2027,13,Lincoln,Vancouver,0.0,0.0,1,1,2027_389,Icon,Association,False
+Regular,Regular Season,2027,13,Boise,Anaheim,0.0,0.0,0,1,2027_390,Icon,Association,False
+Regular,Regular Season,2027,14,Birmingham,Tulsa,0.0,0.0,0,0,2027_391,Icon,Association,False
+Regular,Regular Season,2027,14,Little Rock,Buffalo,0.0,0.0,0,1,2027_392,Icon,Association,False
+Regular,Regular Season,2027,14,Cincinnati,Columbus,0.0,0.0,1,1,2027_393,Icon,Association,False
+Regular,Regular Season,2027,14,Pittsburgh,Tampa Bay,0.0,0.0,0,1,2027_394,Icon,Association,False
+Regular,Regular Season,2027,14,Providence,Baltimore,0.0,0.0,1,1,2027_395,Icon,Association,False
+Regular,Regular Season,2027,14,Jacksonville,Manchester,0.0,0.0,0,1,2027_396,Icon,Statement,False
+Regular,Regular Season,2027,14,Kentucky,Nashville,0.0,0.0,0,1,2027_397,Icon,Association,False
+Regular,Regular Season,2027,14,Lansing,Des Moines,0.0,0.0,1,1,2027_398,Icon,Association,False
+Regular,Regular Season,2027,14,Austin,Anchorage,0.0,0.0,0,1,2027_399,Icon,Association,False
+Regular,Regular Season,2027,14,Albuquerque,Seattle,0.0,0.0,0,1,2027_400,Icon,Association,False
+Regular,Regular Season,2027,14,Lincoln,St. Louis,0.0,0.0,0,1,2027_401,Icon,Association,False
+Regular,Regular Season,2027,14,Boise,San Diego,0.0,0.0,0,1,2027_402,Icon,Association,False
+Regular,Regular Season,2027,14,Anaheim,Honolulu,0.0,0.0,1,1,2027_403,Statement,Association,False
+Regular,Regular Season,2027,14,Vancouver,San Jose,0.0,0.0,0,1,2027_404,Icon,Association,False
+Regular,Regular Season,2027,14,Vegas,El Paso,0.0,0.0,0,1,2027_405,Statement,Association,False
+Regular,Regular Season,2027,14,Honolulu,St. Louis,0.0,0.0,0,1,2027_406,Icon,Association,False
+Regular,Regular Season,2027,14,San Jose,Seattle,0.0,0.0,0,1,2027_407,Icon,Association,False
+Regular,Regular Season,2027,14,El Paso,Anchorage,0.0,0.0,0,1,2027_408,Icon,Association,False
+Regular,Regular Season,2027,14,Vegas,Tulsa,0.0,0.0,0,1,2027_409,Icon,Association,False
+Regular,Regular Season,2027,14,Vancouver,Austin,0.0,0.0,0,1,2027_410,Icon,Statement,False
+Regular,Regular Season,2027,14,Anaheim,Albuquerque,0.0,0.0,0,1,2027_411,Icon,Association,False
+Regular,Regular Season,2027,14,Boise,Lincoln,0.0,0.0,1,1,2027_412,Icon,Association,False
+Regular,Regular Season,2027,14,San Diego,Tampa Bay,0.0,0.0,0,0,2027_413,Icon,Association,False
+Regular,Regular Season,2027,14,Columbus,Baltimore,0.0,0.0,0,1,2027_414,Icon,Association,False
+Regular,Regular Season,2027,14,Buffalo,Manchester,0.0,0.0,1,1,2027_415,Statement,Association,False
+Regular,Regular Season,2027,14,Birmingham,Nashville,0.0,0.0,1,1,2027_416,Icon,Association,False
+Regular,Regular Season,2027,14,Little Rock,Des Moines,0.0,0.0,0,1,2027_417,Icon,Association,False
+Regular,Regular Season,2027,14,Cincinnati,Lansing,0.0,0.0,1,1,2027_418,Statement,Association,False
+Regular,Regular Season,2027,14,Pittsburgh,Kentucky,0.0,0.0,0,1,2027_419,Icon,Association,False
+Regular,Regular Season,2027,14,Providence,Jacksonville,0.0,0.0,0,1,2027_420,Statement,Association,False
+Regular,Regular Season,2027,15,Kentucky,Tulsa,0.0,0.0,0,0,2027_421,Icon,Association,False
+Regular,Regular Season,2027,15,Lansing,Jacksonville,0.0,0.0,0,1,2027_422,Statement,Association,False
+Regular,Regular Season,2027,15,Austin,Providence,0.0,0.0,0,0,2027_423,Icon,Association,False
+Regular,Regular Season,2027,15,Albuquerque,Pittsburgh,0.0,0.0,0,0,2027_424,Icon,Association,False
+Regular,Regular Season,2027,15,Lincoln,Cincinnati,0.0,0.0,0,0,2027_425,Statement,Association,False
+Regular,Regular Season,2027,15,Boise,Little Rock,0.0,0.0,0,0,2027_426,Icon,Association,False
+Regular,Regular Season,2027,15,Anaheim,Birmingham,0.0,0.0,0,0,2027_427,Icon,Association,False
+Regular,Regular Season,2027,15,Vancouver,Buffalo,0.0,0.0,0,0,2027_428,Icon,Association,False
+Regular,Regular Season,2027,15,Vegas,Columbus,0.0,0.0,0,0,2027_429,Icon,Statement,False
+Regular,Regular Season,2027,15,El Paso,Tampa Bay,0.0,0.0,0,0,2027_430,Icon,Statement,False
+Regular,Regular Season,2027,15,San Jose,Baltimore,0.0,0.0,0,0,2027_431,Icon,Association,False
+Regular,Regular Season,2027,15,Honolulu,Manchester,0.0,0.0,0,0,2027_432,Icon,Association,False
+Regular,Regular Season,2027,15,San Diego,Nashville,0.0,0.0,0,0,2027_433,Icon,Statement,False
+Regular,Regular Season,2027,15,St. Louis,Des Moines,0.0,0.0,0,0,2027_434,Icon,Association,False
+Regular,Regular Season,2027,15,Seattle,Anchorage,0.0,0.0,1,1,2027_435,Icon,Association,False
+Regular,Regular Season,2027,15,Boise,Tulsa,0.0,0.0,0,1,2027_436,Icon,Association,False
+Regular,Regular Season,2027,15,Anaheim,Lincoln,0.0,0.0,0,1,2027_437,Icon,Association,False
+Regular,Regular Season,2027,15,Vancouver,Albuquerque,0.0,0.0,0,1,2027_438,Icon,Statement,False
+Regular,Regular Season,2027,15,Vegas,Austin,0.0,0.0,0,1,2027_439,Association,Statement,True
+Regular,Regular Season,2027,15,El Paso,Lansing,0.0,0.0,0,0,2027_440,Icon,Association,False
+Regular,Regular Season,2027,15,San Jose,Kentucky,0.0,0.0,0,0,2027_441,Icon,Association,False
+Regular,Regular Season,2027,15,Honolulu,Jacksonville,0.0,0.0,0,0,2027_442,Icon,Association,False
+Regular,Regular Season,2027,15,San Diego,Providence,0.0,0.0,0,0,2027_443,Icon,Statement,False
+Regular,Regular Season,2027,15,St. Louis,Pittsburgh,0.0,0.0,0,0,2027_444,Icon,Statement,False
+Regular,Regular Season,2027,15,Seattle,Cincinnati,0.0,0.0,0,0,2027_445,Icon,Association,False
+Regular,Regular Season,2027,15,Anchorage,Little Rock,0.0,0.0,0,0,2027_446,Icon,Association,False
+Regular,Regular Season,2027,15,Des Moines,Birmingham,0.0,0.0,0,1,2027_447,Icon,Association,False
+Regular,Regular Season,2027,15,Nashville,Buffalo,0.0,0.0,0,1,2027_448,Statement,Association,False
+Regular,Regular Season,2027,15,Manchester,Columbus,0.0,0.0,0,1,2027_449,Icon,Association,False
+Regular,Regular Season,2027,15,Baltimore,Tampa Bay,0.0,0.0,0,1,2027_450,Icon,Association,False
+Regular,Regular Season,2027,16,Vegas,Tulsa,0.0,0.0,0,1,2027_451,Association,Statement,True
+Regular,Regular Season,2027,16,El Paso,Vancouver,0.0,0.0,0,1,2027_452,Icon,Association,False
+Regular,Regular Season,2027,16,San Jose,Anaheim,0.0,0.0,1,1,2027_453,Icon,Association,False
+Regular,Regular Season,2027,16,Honolulu,Boise,0.0,0.0,0,1,2027_454,Icon,Association,False
+Regular,Regular Season,2027,16,San Diego,Lincoln,0.0,0.0,0,1,2027_455,Icon,Statement,False
+Regular,Regular Season,2027,16,St. Louis,Albuquerque,0.0,0.0,1,1,2027_456,Statement,Association,False
+Regular,Regular Season,2027,16,Seattle,Austin,0.0,0.0,0,1,2027_457,Association,Statement,True
+Regular,Regular Season,2027,16,Anchorage,Lansing,0.0,0.0,0,0,2027_458,Icon,Statement,False
+Regular,Regular Season,2027,16,Des Moines,Kentucky,0.0,0.0,1,1,2027_459,Icon,Association,False
+Regular,Regular Season,2027,16,Nashville,Jacksonville,0.0,0.0,1,1,2027_460,Statement,Association,False
+Regular,Regular Season,2027,16,Manchester,Providence,0.0,0.0,1,1,2027_461,Icon,Association,False
+Regular,Regular Season,2027,16,Baltimore,Pittsburgh,0.0,0.0,1,1,2027_462,Icon,Association,False
+Regular,Regular Season,2027,16,Tampa Bay,Cincinnati,0.0,0.0,0,1,2027_463,Icon,Association,False
+Regular,Regular Season,2027,16,Columbus,Little Rock,0.0,0.0,0,1,2027_464,Icon,Association,False
+Regular,Regular Season,2027,16,Buffalo,Birmingham,0.0,0.0,0,1,2027_465,Icon,Statement,False
+Regular,Regular Season,2027,16,Anaheim,Vegas,0.0,0.0,1,1,2027_466,Icon,Association,False
+Regular,Regular Season,2027,16,Boise,El Paso,0.0,0.0,0,1,2027_467,Statement,Association,False
+Regular,Regular Season,2027,16,Lincoln,San Jose,0.0,0.0,0,1,2027_468,Icon,Association,False
+Regular,Regular Season,2027,16,Albuquerque,Honolulu,0.0,0.0,0,1,2027_469,Icon,Association,False
+Regular,Regular Season,2027,16,Austin,San Diego,0.0,0.0,0,1,2027_470,Icon,Association,False
+Regular,Regular Season,2027,16,Tulsa,St. Louis,0.0,0.0,1,1,2027_471,Icon,Association,False
+Regular,Regular Season,2027,16,Anchorage,Seattle,0.0,0.0,1,1,2027_472,Icon,Association,False
+Regular,Regular Season,2027,16,Vancouver,Cincinnati,0.0,0.0,0,0,2027_473,Icon,Association,False
+Regular,Regular Season,2027,16,Pittsburgh,Little Rock,0.0,0.0,0,1,2027_474,Icon,Association,False
+Regular,Regular Season,2027,16,Providence,Birmingham,0.0,0.0,0,1,2027_475,Icon,Statement,False
+Regular,Regular Season,2027,16,Jacksonville,Buffalo,0.0,0.0,0,1,2027_476,Icon,Association,False
+Regular,Regular Season,2027,16,Kentucky,Columbus,0.0,0.0,1,1,2027_477,Icon,Association,False
+Regular,Regular Season,2027,16,Lansing,Tampa Bay,0.0,0.0,0,1,2027_478,Statement,Statement,False
+Regular,Regular Season,2027,16,Des Moines,Baltimore,0.0,0.0,0,1,2027_479,Icon,Association,False
+Regular,Regular Season,2027,16,Nashville,Manchester,0.0,0.0,0,1,2027_480,Icon,Association,False
+Regular,Regular Season,2027,17,San Diego,Tulsa,0.0,0.0,0,1,2027_481,Icon,Association,False
+Regular,Regular Season,2027,17,St. Louis,Honolulu,0.0,0.0,0,1,2027_482,Icon,Statement,False
+Regular,Regular Season,2027,17,Seattle,San Jose,0.0,0.0,0,1,2027_483,Icon,Association,False
+Regular,Regular Season,2027,17,Anchorage,El Paso,0.0,0.0,0,1,2027_484,Statement,Statement,False
+Regular,Regular Season,2027,17,Des Moines,Vegas,0.0,0.0,0,0,2027_485,Icon,Association,False
+Regular,Regular Season,2027,17,Nashville,Vancouver,0.0,0.0,0,0,2027_486,Icon,Statement,False
+Regular,Regular Season,2027,17,Manchester,Anaheim,0.0,0.0,0,0,2027_487,Icon,Association,True
+Regular,Regular Season,2027,17,Baltimore,Boise,0.0,0.0,0,0,2027_488,Icon,Association,False
+Regular,Regular Season,2027,17,Tampa Bay,Lincoln,0.0,0.0,0,0,2027_489,Icon,Association,False
+Regular,Regular Season,2027,17,Columbus,Albuquerque,0.0,0.0,0,0,2027_490,Icon,Association,False
+Regular,Regular Season,2027,17,Buffalo,Austin,0.0,0.0,0,0,2027_491,Icon,Association,False
+Regular,Regular Season,2027,17,Birmingham,Lansing,0.0,0.0,0,1,2027_492,Icon,Association,False
+Regular,Regular Season,2027,17,Little Rock,Kentucky,0.0,0.0,0,1,2027_493,Icon,Association,False
+Regular,Regular Season,2027,17,Cincinnati,Jacksonville,0.0,0.0,0,1,2027_494,Icon,Association,False
+Regular,Regular Season,2027,17,Pittsburgh,Providence,0.0,0.0,1,1,2027_495,Statement,Statement,False
+Regular,Regular Season,2027,17,Austin,Lincoln,0.0,0.0,0,1,2027_496,Icon,Association,False
+Regular,Regular Season,2027,17,Tulsa,Boise,0.0,0.0,0,1,2027_497,Icon,Association,False
+Regular,Regular Season,2027,17,Anchorage,Anaheim,0.0,0.0,0,1,2027_498,Icon,Association,False
+Regular,Regular Season,2027,17,Seattle,Vancouver,0.0,0.0,1,1,2027_499,Icon,Association,False
+Regular,Regular Season,2027,17,St. Louis,Vegas,0.0,0.0,0,1,2027_500,Icon,Association,False
+Regular,Regular Season,2027,17,San Diego,El Paso,0.0,0.0,0,1,2027_501,Icon,Association,False
+Regular,Regular Season,2027,17,Honolulu,San Jose,0.0,0.0,1,1,2027_502,Icon,Association,False
+Regular,Regular Season,2027,17,Albuquerque,Kentucky,0.0,0.0,0,0,2027_503,Icon,Statement,False
+Regular,Regular Season,2027,17,Lansing,Jacksonville,0.0,0.0,0,1,2027_504,Icon,Association,False
+Regular,Regular Season,2027,17,Des Moines,Providence,0.0,0.0,0,1,2027_505,Association,Statement,True
+Regular,Regular Season,2027,17,Nashville,Pittsburgh,0.0,0.0,0,1,2027_506,Icon,Statement,False
+Regular,Regular Season,2027,17,Manchester,Cincinnati,0.0,0.0,0,1,2027_507,Icon,Association,False
+Regular,Regular Season,2027,17,Baltimore,Little Rock,0.0,0.0,0,1,2027_508,Icon,Association,False
+Regular,Regular Season,2027,17,Tampa Bay,Birmingham,0.0,0.0,1,1,2027_509,Icon,Statement,False
+Regular,Regular Season,2027,17,Columbus,Buffalo,0.0,0.0,0,1,2027_510,Icon,Association,False
+Regular,Regular Season,2027,18,Tulsa,El Paso,0.0,0.0,1,1,2027_511,Icon,Association,False
+Regular,Regular Season,2027,18,Vegas,San Jose,0.0,0.0,1,1,2027_512,Icon,Association,False
+Regular,Regular Season,2027,18,Vancouver,Honolulu,0.0,0.0,0,1,2027_513,Icon,Statement,False
+Regular,Regular Season,2027,18,Anaheim,San Diego,0.0,0.0,1,1,2027_514,Icon,Association,False
+Regular,Regular Season,2027,18,Boise,St. Louis,0.0,0.0,0,1,2027_515,Icon,Statement,False
+Regular,Regular Season,2027,18,Lincoln,Seattle,0.0,0.0,1,1,2027_516,Icon,Association,False
+Regular,Regular Season,2027,18,Albuquerque,Anchorage,0.0,0.0,0,1,2027_517,Icon,Association,False
+Regular,Regular Season,2027,18,Austin,Des Moines,0.0,0.0,0,0,2027_518,Icon,Association,False
+Regular,Regular Season,2027,18,Lansing,Nashville,0.0,0.0,0,1,2027_519,Statement,Association,False
+Regular,Regular Season,2027,18,Kentucky,Manchester,0.0,0.0,0,1,2027_520,Icon,Association,False
+Regular,Regular Season,2027,18,Jacksonville,Baltimore,0.0,0.0,0,1,2027_521,Icon,Association,False
+Regular,Regular Season,2027,18,Providence,Tampa Bay,0.0,0.0,0,1,2027_522,Icon,Association,False
+Regular,Regular Season,2027,18,Pittsburgh,Columbus,0.0,0.0,0,1,2027_523,Icon,Association,False
+Regular,Regular Season,2027,18,Cincinnati,Buffalo,0.0,0.0,0,1,2027_524,Icon,Statement,False
+Regular,Regular Season,2027,18,Little Rock,Birmingham,0.0,0.0,1,1,2027_525,Icon,Association,False
+Regular,Regular Season,2027,18,El Paso,Honolulu,0.0,0.0,0,1,2027_526,Icon,Association,False
+Regular,Regular Season,2027,18,Vegas,San Diego,0.0,0.0,1,1,2027_527,Icon,Statement,False
+Regular,Regular Season,2027,18,Vancouver,St. Louis,0.0,0.0,0,1,2027_528,Statement,Statement,False
+Regular,Regular Season,2027,18,Anaheim,Seattle,0.0,0.0,0,1,2027_529,Icon,Association,False
+Regular,Regular Season,2027,18,Boise,Anchorage,0.0,0.0,1,1,2027_530,Icon,Association,False
+Regular,Regular Season,2027,18,Lincoln,Tulsa,0.0,0.0,0,1,2027_531,Icon,Association,False
+Regular,Regular Season,2027,18,Albuquerque,Austin,0.0,0.0,1,1,2027_532,Icon,Association,False
+Regular,Regular Season,2027,18,San Jose,Buffalo,0.0,0.0,0,0,2027_533,Statement,Association,False
+Regular,Regular Season,2027,18,Birmingham,Columbus,0.0,0.0,0,1,2027_534,Icon,Association,False
+Regular,Regular Season,2027,18,Little Rock,Tampa Bay,0.0,0.0,1,1,2027_535,Statement,Association,False
+Regular,Regular Season,2027,18,Cincinnati,Baltimore,0.0,0.0,0,1,2027_536,Statement,Association,False
+Regular,Regular Season,2027,18,Pittsburgh,Manchester,0.0,0.0,1,1,2027_537,Icon,Association,False
+Regular,Regular Season,2027,18,Providence,Nashville,0.0,0.0,0,1,2027_538,Statement,Association,False
+Regular,Regular Season,2027,18,Jacksonville,Des Moines,0.0,0.0,0,1,2027_539,Icon,Association,False
+Regular,Regular Season,2027,18,Kentucky,Lansing,0.0,0.0,1,1,2027_540,Icon,Association,False
+Regular,Regular Season,2027,19,Tulsa,Lincoln,0.0,0.0,0,1,2027_541,Icon,Association,False
+Regular,Regular Season,2027,19,Albuquerque,Boise,0.0,0.0,0,1,2027_542,Icon,Statement,False
+Regular,Regular Season,2027,19,Austin,Anaheim,0.0,0.0,0,1,2027_543,Icon,Association,False
+Regular,Regular Season,2027,19,Lansing,Vancouver,0.0,0.0,0,0,2027_544,Icon,Statement,False
+Regular,Regular Season,2027,19,Kentucky,Vegas,0.0,0.0,0,0,2027_545,Icon,Association,False
+Regular,Regular Season,2027,19,Jacksonville,El Paso,0.0,0.0,0,0,2027_546,Statement,Statement,False
+Regular,Regular Season,2027,19,Providence,San Jose,0.0,0.0,0,0,2027_547,Icon,Association,False
+Regular,Regular Season,2027,19,Pittsburgh,Honolulu,0.0,0.0,0,0,2027_548,Icon,Association,False
+Regular,Regular Season,2027,19,Cincinnati,San Diego,0.0,0.0,0,0,2027_549,Icon,Statement,False
+Regular,Regular Season,2027,19,Little Rock,St. Louis,0.0,0.0,0,0,2027_550,Icon,Statement,False
+Regular,Regular Season,2027,19,Birmingham,Seattle,0.0,0.0,0,0,2027_551,Icon,Statement,False
+Regular,Regular Season,2027,19,Buffalo,Anchorage,0.0,0.0,0,0,2027_552,Icon,Association,False
+Regular,Regular Season,2027,19,Columbus,Des Moines,0.0,0.0,1,1,2027_553,Icon,Association,False
+Regular,Regular Season,2027,19,Tampa Bay,Nashville,0.0,0.0,1,1,2027_554,Icon,Association,False
+Regular,Regular Season,2027,19,Baltimore,Manchester,0.0,0.0,1,1,2027_555,Icon,Association,False
+Regular,Regular Season,2027,19,Tulsa,Birmingham,0.0,0.0,0,0,2027_556,Icon,Association,False
+Regular,Regular Season,2027,19,Buffalo,Little Rock,0.0,0.0,0,1,2027_557,Statement,Association,False
+Regular,Regular Season,2027,19,Columbus,Cincinnati,0.0,0.0,1,1,2027_558,Icon,Association,False
+Regular,Regular Season,2027,19,Tampa Bay,Pittsburgh,0.0,0.0,0,1,2027_559,Icon,Association,False
+Regular,Regular Season,2027,19,Baltimore,Providence,0.0,0.0,1,1,2027_560,Icon,Association,False
+Regular,Regular Season,2027,19,Manchester,Jacksonville,0.0,0.0,0,1,2027_561,Icon,Statement,False
+Regular,Regular Season,2027,19,Nashville,Kentucky,0.0,0.0,0,1,2027_562,Icon,Association,False
+Regular,Regular Season,2027,19,Des Moines,Lansing,0.0,0.0,1,1,2027_563,Icon,Association,True
+Regular,Regular Season,2027,19,Anchorage,Austin,0.0,0.0,0,1,2027_564,Icon,Association,False
+Regular,Regular Season,2027,19,Seattle,Albuquerque,0.0,0.0,0,1,2027_565,Icon,Statement,False
+Regular,Regular Season,2027,19,St. Louis,Lincoln,0.0,0.0,0,1,2027_566,Icon,Statement,False
+Regular,Regular Season,2027,19,San Diego,Boise,0.0,0.0,0,1,2027_567,Icon,Statement,False
+Regular,Regular Season,2027,19,Honolulu,Anaheim,0.0,0.0,1,1,2027_568,Icon,Association,False
+Regular,Regular Season,2027,19,San Jose,Vancouver,0.0,0.0,0,1,2027_569,Icon,Association,False
+Regular,Regular Season,2027,19,El Paso,Vegas,0.0,0.0,0,1,2027_570,Icon,Association,False
+Regular,Regular Season,2027,20,Tulsa,Albuquerque,0.0,0.0,1,1,2027_571,Icon,Association,False
+Regular,Regular Season,2027,20,Austin,Lincoln,0.0,0.0,0,1,2027_572,Icon,Association,False
+Regular,Regular Season,2027,20,Lansing,Boise,0.0,0.0,0,0,2027_573,Icon,Association,False
+Regular,Regular Season,2027,20,Kentucky,Anaheim,0.0,0.0,0,0,2027_574,Icon,Association,False
+Regular,Regular Season,2027,20,Jacksonville,Vancouver,0.0,0.0,0,0,2027_575,Icon,Association,False
+Regular,Regular Season,2027,20,Providence,Vegas,0.0,0.0,0,0,2027_576,Icon,Statement,False
+Regular,Regular Season,2027,20,Pittsburgh,El Paso,0.0,0.0,0,0,2027_577,Statement,Association,False
+Regular,Regular Season,2027,20,Cincinnati,San Jose,0.0,0.0,0,0,2027_578,Icon,Association,False
+Regular,Regular Season,2027,20,Little Rock,Honolulu,0.0,0.0,0,0,2027_579,Icon,Association,False
+Regular,Regular Season,2027,20,Birmingham,San Diego,0.0,0.0,0,0,2027_580,Icon,Association,False
+Regular,Regular Season,2027,20,Buffalo,St. Louis,0.0,0.0,0,0,2027_581,Icon,Association,False
+Regular,Regular Season,2027,20,Columbus,Seattle,0.0,0.0,0,0,2027_582,Icon,Association,False
+Regular,Regular Season,2027,20,Tampa Bay,Anchorage,0.0,0.0,0,0,2027_583,Icon,Association,False
+Regular,Regular Season,2027,20,Baltimore,Des Moines,0.0,0.0,0,1,2027_584,Icon,Association,False
+Regular,Regular Season,2027,20,Manchester,Nashville,0.0,0.0,0,1,2027_585,Icon,Association,False
+Regular,Regular Season,2027,20,El Paso,Tulsa,0.0,0.0,1,1,2027_586,Statement,Association,False
+Regular,Regular Season,2027,20,San Jose,Vegas,0.0,0.0,1,1,2027_587,Icon,Statement,False
+Regular,Regular Season,2027,20,Honolulu,Vancouver,0.0,0.0,0,1,2027_588,Icon,Statement,False
+Regular,Regular Season,2027,20,San Diego,Anaheim,0.0,0.0,1,1,2027_589,Icon,Association,False
+Regular,Regular Season,2027,20,St. Louis,Boise,0.0,0.0,0,1,2027_590,Icon,Association,False
+Regular,Regular Season,2027,20,Seattle,Lincoln,0.0,0.0,1,1,2027_591,Icon,Statement,False
+Regular,Regular Season,2027,20,Anchorage,Albuquerque,0.0,0.0,0,1,2027_592,Icon,Association,False
+Regular,Regular Season,2027,20,Des Moines,Austin,0.0,0.0,0,0,2027_593,Icon,Association,False
+Regular,Regular Season,2027,20,Nashville,Lansing,0.0,0.0,0,1,2027_594,Icon,Association,False
+Regular,Regular Season,2027,20,Manchester,Kentucky,0.0,0.0,0,1,2027_595,Icon,Association,True
+Regular,Regular Season,2027,20,Baltimore,Jacksonville,0.0,0.0,0,1,2027_596,Icon,Association,False
+Regular,Regular Season,2027,20,Tampa Bay,Providence,0.0,0.0,0,1,2027_597,Icon,Association,False
+Regular,Regular Season,2027,20,Columbus,Pittsburgh,0.0,0.0,0,1,2027_598,Icon,Association,False
+Regular,Regular Season,2027,20,Buffalo,Cincinnati,0.0,0.0,0,1,2027_599,Icon,Statement,True
+Regular,Regular Season,2027,20,Birmingham,Little Rock,0.0,0.0,1,1,2027_600,Icon,Statement,False
+Regular,Regular Season,2027,21,Tulsa,Boise,0.0,0.0,0,1,2027_601,Icon,Association,False
+Regular,Regular Season,2027,21,Lincoln,Anaheim,0.0,0.0,0,1,2027_602,Statement,Association,False
+Regular,Regular Season,2027,21,Albuquerque,Vancouver,0.0,0.0,0,1,2027_603,Icon,Association,False
+Regular,Regular Season,2027,21,Austin,Vegas,0.0,0.0,0,1,2027_604,Icon,Association,False
+Regular,Regular Season,2027,21,Lansing,El Paso,0.0,0.0,0,0,2027_605,Icon,Association,False
+Regular,Regular Season,2027,21,Kentucky,San Jose,0.0,0.0,0,0,2027_606,Statement,Association,False
+Regular,Regular Season,2027,21,Jacksonville,Honolulu,0.0,0.0,0,0,2027_607,Icon,Statement,False
+Regular,Regular Season,2027,21,Providence,San Diego,0.0,0.0,0,0,2027_608,Icon,Association,False
+Regular,Regular Season,2027,21,Pittsburgh,St. Louis,0.0,0.0,0,0,2027_609,Icon,Association,False
+Regular,Regular Season,2027,21,Cincinnati,Seattle,0.0,0.0,0,0,2027_610,Icon,Association,False
+Regular,Regular Season,2027,21,Little Rock,Anchorage,0.0,0.0,0,0,2027_611,Icon,Association,False
+Regular,Regular Season,2027,21,Birmingham,Des Moines,0.0,0.0,0,1,2027_612,Icon,Association,False
+Regular,Regular Season,2027,21,Buffalo,Nashville,0.0,0.0,0,1,2027_613,Icon,Association,False
+Regular,Regular Season,2027,21,Columbus,Manchester,0.0,0.0,0,1,2027_614,Statement,Statement,False
+Regular,Regular Season,2027,21,Tampa Bay,Baltimore,0.0,0.0,0,1,2027_615,Icon,Association,False
+Regular,Regular Season,2027,21,San Jose,San Diego,0.0,0.0,1,1,2027_616,Icon,Statement,False
+Regular,Regular Season,2027,21,El Paso,St. Louis,0.0,0.0,1,1,2027_617,Icon,Statement,False
+Regular,Regular Season,2027,21,Vegas,Seattle,0.0,0.0,0,1,2027_618,Statement,Association,False
+Regular,Regular Season,2027,21,Vancouver,Anchorage,0.0,0.0,1,1,2027_619,Icon,Association,False
+Regular,Regular Season,2027,21,Anaheim,Tulsa,0.0,0.0,0,1,2027_620,Icon,Statement,False
+Regular,Regular Season,2027,21,Boise,Austin,0.0,0.0,0,1,2027_621,Statement,Association,False
+Regular,Regular Season,2027,21,Lincoln,Albuquerque,0.0,0.0,0,1,2027_622,Statement,Association,False
+Regular,Regular Season,2027,21,Honolulu,Columbus,0.0,0.0,0,0,2027_623,Icon,Association,False
+Regular,Regular Season,2027,21,Buffalo,Tampa Bay,0.0,0.0,0,1,2027_624,Statement,Statement,False
+Regular,Regular Season,2027,21,Birmingham,Baltimore,0.0,0.0,0,1,2027_625,Icon,Association,False
+Regular,Regular Season,2027,21,Little Rock,Manchester,0.0,0.0,0,1,2027_626,Icon,Statement,False
+Regular,Regular Season,2027,21,Cincinnati,Nashville,0.0,0.0,0,1,2027_627,Statement,Association,False
+Regular,Regular Season,2027,21,Pittsburgh,Des Moines,0.0,0.0,0,1,2027_628,Icon,Association,False
+Regular,Regular Season,2027,21,Providence,Lansing,0.0,0.0,0,1,2027_629,Icon,Association,False
+Regular,Regular Season,2027,21,Jacksonville,Kentucky,0.0,0.0,0,1,2027_630,Icon,Association,False
+Regular,Regular Season,2027,22,Tulsa,Vancouver,0.0,0.0,0,1,2027_631,Icon,Association,False
+Regular,Regular Season,2027,22,Anaheim,Vegas,0.0,0.0,1,1,2027_632,Icon,Association,False
+Regular,Regular Season,2027,22,Boise,El Paso,0.0,0.0,0,1,2027_633,Icon,Association,False
+Regular,Regular Season,2027,22,Lincoln,San Jose,0.0,0.0,0,1,2027_634,Statement,Association,False
+Regular,Regular Season,2027,22,Albuquerque,Honolulu,0.0,0.0,0,1,2027_635,Icon,Association,False
+Regular,Regular Season,2027,22,Austin,San Diego,0.0,0.0,0,1,2027_636,Icon,Statement,False
+Regular,Regular Season,2027,22,Lansing,St. Louis,0.0,0.0,0,0,2027_637,Statement,Statement,False
+Regular,Regular Season,2027,22,Kentucky,Seattle,0.0,0.0,0,0,2027_638,Icon,Association,False
+Regular,Regular Season,2027,22,Jacksonville,Anchorage,0.0,0.0,0,0,2027_639,Icon,Statement,False
+Regular,Regular Season,2027,22,Providence,Des Moines,0.0,0.0,0,1,2027_640,Statement,Association,False
+Regular,Regular Season,2027,22,Pittsburgh,Nashville,0.0,0.0,0,1,2027_641,Icon,Statement,False
+Regular,Regular Season,2027,22,Cincinnati,Manchester,0.0,0.0,0,1,2027_642,Icon,Association,False
+Regular,Regular Season,2027,22,Little Rock,Baltimore,0.0,0.0,0,1,2027_643,Icon,Association,False
+Regular,Regular Season,2027,22,Birmingham,Tampa Bay,0.0,0.0,1,1,2027_644,Icon,Association,False
+Regular,Regular Season,2027,22,Buffalo,Columbus,0.0,0.0,0,1,2027_645,Icon,Association,False
+Regular,Regular Season,2027,22,Buffalo,Tulsa,0.0,0.0,0,0,2027_646,Icon,Association,False
+Regular,Regular Season,2027,22,Birmingham,Columbus,0.0,0.0,0,1,2027_647,Icon,Statement,False
+Regular,Regular Season,2027,22,Little Rock,Tampa Bay,0.0,0.0,1,1,2027_648,Icon,Association,False
+Regular,Regular Season,2027,22,Cincinnati,Baltimore,0.0,0.0,0,1,2027_649,Icon,Statement,False
+Regular,Regular Season,2027,22,Pittsburgh,Manchester,0.0,0.0,1,1,2027_650,Statement,Association,False
+Regular,Regular Season,2027,22,Providence,Nashville,0.0,0.0,0,1,2027_651,Icon,Association,False
+Regular,Regular Season,2027,22,Jacksonville,Des Moines,0.0,0.0,0,1,2027_652,Icon,Association,False
+Regular,Regular Season,2027,22,Kentucky,Anchorage,0.0,0.0,0,0,2027_653,Icon,Statement,False
+Regular,Regular Season,2027,22,Lansing,Seattle,0.0,0.0,0,0,2027_654,Icon,Association,False
+Regular,Regular Season,2027,22,Austin,St. Louis,0.0,0.0,1,1,2027_655,Icon,Association,False
+Regular,Regular Season,2027,22,Albuquerque,San Diego,0.0,0.0,0,1,2027_656,Icon,Association,False
+Regular,Regular Season,2027,22,Lincoln,Honolulu,0.0,0.0,0,1,2027_657,Icon,Association,False
+Regular,Regular Season,2027,22,Boise,San Jose,0.0,0.0,0,1,2027_658,Icon,Association,False
+Regular,Regular Season,2027,22,Anaheim,El Paso,0.0,0.0,0,1,2027_659,Icon,Statement,False
+Regular,Regular Season,2027,22,Vancouver,Vegas,0.0,0.0,0,1,2027_660,Icon,Association,False
+Regular,Regular Season,2027,23,Manchester,Tulsa,0.0,0.0,0,0,2027_661,Icon,Association,False
+Regular,Regular Season,2027,23,Baltimore,Nashville,0.0,0.0,0,1,2027_662,Icon,Association,False
+Regular,Regular Season,2027,23,Tampa Bay,Des Moines,0.0,0.0,0,1,2027_663,Icon,Association,False
+Regular,Regular Season,2027,23,Columbus,Anchorage,0.0,0.0,0,0,2027_664,Icon,Association,False
+Regular,Regular Season,2027,23,Buffalo,Seattle,0.0,0.0,0,0,2027_665,Icon,Statement,False
+Regular,Regular Season,2027,23,Birmingham,St. Louis,0.0,0.0,0,0,2027_666,Icon,Statement,False
+Regular,Regular Season,2027,23,Little Rock,San Diego,0.0,0.0,0,0,2027_667,Icon,Association,False
+Regular,Regular Season,2027,23,Cincinnati,Honolulu,0.0,0.0,0,0,2027_668,Icon,Statement,False
+Regular,Regular Season,2027,23,Pittsburgh,San Jose,0.0,0.0,0,0,2027_669,Icon,Statement,True
+Regular,Regular Season,2027,23,Providence,El Paso,0.0,0.0,0,0,2027_670,Icon,Association,False
+Regular,Regular Season,2027,23,Jacksonville,Vegas,0.0,0.0,0,0,2027_671,Statement,Association,False
+Regular,Regular Season,2027,23,Kentucky,Vancouver,0.0,0.0,0,0,2027_672,Icon,Statement,False
+Regular,Regular Season,2027,23,Lansing,Anaheim,0.0,0.0,0,0,2027_673,Icon,Association,False
+Regular,Regular Season,2027,23,Austin,Boise,0.0,0.0,0,1,2027_674,Icon,Statement,False
+Regular,Regular Season,2027,23,Albuquerque,Lincoln,0.0,0.0,0,1,2027_675,Icon,Association,False
+Regular,Regular Season,2027,23,Tulsa,Jacksonville,0.0,0.0,0,0,2027_676,Icon,Association,False
+Regular,Regular Season,2027,23,Providence,Kentucky,0.0,0.0,0,1,2027_677,Statement,Association,False
+Regular,Regular Season,2027,23,Pittsburgh,Lansing,0.0,0.0,0,1,2027_678,Icon,Association,False
+Regular,Regular Season,2027,23,Cincinnati,Austin,0.0,0.0,0,0,2027_679,Icon,Statement,False
+Regular,Regular Season,2027,23,Little Rock,Albuquerque,0.0,0.0,0,0,2027_680,Icon,Association,False
+Regular,Regular Season,2027,23,Birmingham,Lincoln,0.0,0.0,0,0,2027_681,Icon,Association,False
+Regular,Regular Season,2027,23,Buffalo,Boise,0.0,0.0,0,0,2027_682,Statement,Association,False
+Regular,Regular Season,2027,23,Columbus,Anaheim,0.0,0.0,0,0,2027_683,Icon,Association,False
+Regular,Regular Season,2027,23,Tampa Bay,Vancouver,0.0,0.0,0,0,2027_684,Statement,Association,False
+Regular,Regular Season,2027,23,Baltimore,Vegas,0.0,0.0,0,0,2027_685,Icon,Association,False
+Regular,Regular Season,2027,23,Manchester,El Paso,0.0,0.0,0,0,2027_686,Icon,Association,True
+Regular,Regular Season,2027,23,Nashville,San Jose,0.0,0.0,0,0,2027_687,Icon,Association,False
+Regular,Regular Season,2027,23,Des Moines,Honolulu,0.0,0.0,0,0,2027_688,Icon,Association,False
+Regular,Regular Season,2027,23,Anchorage,San Diego,0.0,0.0,0,1,2027_689,Icon,Association,False
+Regular,Regular Season,2027,23,Seattle,St. Louis,0.0,0.0,0,1,2027_690,Statement,Association,False
+Regular,Regular Season,2027,24,Tulsa,Columbus,0.0,0.0,0,0,2027_691,Icon,Association,False
+Regular,Regular Season,2027,24,Tampa Bay,Buffalo,0.0,0.0,0,1,2027_692,Statement,Association,False
+Regular,Regular Season,2027,24,Baltimore,Birmingham,0.0,0.0,0,1,2027_693,Icon,Association,False
+Regular,Regular Season,2027,24,Manchester,Little Rock,0.0,0.0,0,1,2027_694,Icon,Association,False
+Regular,Regular Season,2027,24,Nashville,Cincinnati,0.0,0.0,0,1,2027_695,Icon,Association,False
+Regular,Regular Season,2027,24,Des Moines,Pittsburgh,0.0,0.0,0,1,2027_696,Icon,Association,False
+Regular,Regular Season,2027,24,Anchorage,Providence,0.0,0.0,0,0,2027_697,Statement,Association,False
+Regular,Regular Season,2027,24,Seattle,Jacksonville,0.0,0.0,0,0,2027_698,Icon,Association,False
+Regular,Regular Season,2027,24,St. Louis,Kentucky,0.0,0.0,0,0,2027_699,Statement,Statement,False
+Regular,Regular Season,2027,24,San Diego,Lansing,0.0,0.0,0,0,2027_700,Icon,Association,False
+Regular,Regular Season,2027,24,Honolulu,Austin,0.0,0.0,0,1,2027_701,Icon,Association,False
+Regular,Regular Season,2027,24,San Jose,Albuquerque,0.0,0.0,0,1,2027_702,Icon,Statement,False
+Regular,Regular Season,2027,24,El Paso,Lincoln,0.0,0.0,0,1,2027_703,Statement,Association,False
+Regular,Regular Season,2027,24,Vegas,Boise,0.0,0.0,0,1,2027_704,Icon,Statement,False
+Regular,Regular Season,2027,24,Vancouver,Anaheim,0.0,0.0,0,1,2027_705,Icon,Association,False
+Regular,Regular Season,2027,24,Vancouver,Tulsa,0.0,0.0,0,1,2027_706,Icon,Association,False
+Regular,Regular Season,2027,24,Vegas,Anaheim,0.0,0.0,1,1,2027_707,Icon,Statement,False
+Regular,Regular Season,2027,24,El Paso,Boise,0.0,0.0,0,1,2027_708,Icon,Association,False
+Regular,Regular Season,2027,24,San Jose,Lincoln,0.0,0.0,0,1,2027_709,Statement,Statement,False
+Regular,Regular Season,2027,24,Honolulu,Albuquerque,0.0,0.0,0,1,2027_710,Icon,Association,False
+Regular,Regular Season,2027,24,San Diego,Austin,0.0,0.0,0,1,2027_711,Icon,Association,False
+Regular,Regular Season,2027,24,St. Louis,Lansing,0.0,0.0,0,0,2027_712,Icon,Association,False
+Regular,Regular Season,2027,24,Seattle,Kentucky,0.0,0.0,0,0,2027_713,Icon,Statement,False
+Regular,Regular Season,2027,24,Anchorage,Jacksonville,0.0,0.0,0,0,2027_714,Association,Statement,True
+Regular,Regular Season,2027,24,Des Moines,Providence,0.0,0.0,0,1,2027_715,Icon,Association,False
+Regular,Regular Season,2027,24,Nashville,Pittsburgh,0.0,0.0,0,1,2027_716,Icon,Association,False
+Regular,Regular Season,2027,24,Manchester,Cincinnati,0.0,0.0,0,1,2027_717,Icon,Association,False
+Regular,Regular Season,2027,24,Baltimore,Little Rock,0.0,0.0,0,1,2027_718,Icon,Association,False
+Regular,Regular Season,2027,24,Tampa Bay,Birmingham,0.0,0.0,1,1,2027_719,Statement,Association,False
+Regular,Regular Season,2027,24,Columbus,Buffalo,0.0,0.0,0,1,2027_720,Icon,Association,False
+Regular,Regular Season,2027,25,St. Louis,Tulsa,0.0,0.0,1,1,2027_721,Statement,Association,False
+Regular,Regular Season,2027,25,Seattle,San Diego,0.0,0.0,0,1,2027_722,Icon,Association,False
+Regular,Regular Season,2027,25,Anchorage,Honolulu,0.0,0.0,0,1,2027_723,Icon,Association,False
+Regular,Regular Season,2027,25,Des Moines,San Jose,0.0,0.0,0,0,2027_724,Icon,Statement,False
+Regular,Regular Season,2027,25,Nashville,El Paso,0.0,0.0,0,0,2027_725,Icon,Association,False
+Regular,Regular Season,2027,25,Manchester,Vegas,0.0,0.0,0,0,2027_726,Icon,Association,False
+Regular,Regular Season,2027,25,Baltimore,Vancouver,0.0,0.0,0,0,2027_727,Icon,Association,True
+Regular,Regular Season,2027,25,Tampa Bay,Anaheim,0.0,0.0,0,0,2027_728,Icon,Statement,False
+Regular,Regular Season,2027,25,Columbus,Boise,0.0,0.0,0,0,2027_729,Icon,Association,False
+Regular,Regular Season,2027,25,Buffalo,Lincoln,0.0,0.0,0,0,2027_730,Icon,Association,False
+Regular,Regular Season,2027,25,Birmingham,Albuquerque,0.0,0.0,0,0,2027_731,Icon,Association,False
+Regular,Regular Season,2027,25,Little Rock,Austin,0.0,0.0,0,0,2027_732,Statement,Association,False
+Regular,Regular Season,2027,25,Cincinnati,Lansing,0.0,0.0,1,1,2027_733,Icon,Association,False
+Regular,Regular Season,2027,25,Pittsburgh,Kentucky,0.0,0.0,0,1,2027_734,Icon,Statement,False
+Regular,Regular Season,2027,25,Providence,Jacksonville,0.0,0.0,0,1,2027_735,Icon,Statement,False
+Regular,Regular Season,2027,25,Lincoln,Anaheim,0.0,0.0,0,1,2027_736,Icon,Statement,False
+Regular,Regular Season,2027,25,Albuquerque,Vancouver,0.0,0.0,0,1,2027_737,Icon,Association,False
+Regular,Regular Season,2027,25,Austin,Vegas,0.0,0.0,0,1,2027_738,Icon,Association,False
+Regular,Regular Season,2027,25,Tulsa,El Paso,0.0,0.0,1,1,2027_739,Statement,Association,False
+Regular,Regular Season,2027,25,Anchorage,San Jose,0.0,0.0,0,1,2027_740,Icon,Association,False
+Regular,Regular Season,2027,25,Seattle,Honolulu,0.0,0.0,0,1,2027_741,Icon,Association,False
+Regular,Regular Season,2027,25,St. Louis,San Diego,0.0,0.0,0,1,2027_742,Statement,Association,False
+Regular,Regular Season,2027,25,Boise,Providence,0.0,0.0,0,0,2027_743,Icon,Association,False
+Regular,Regular Season,2027,25,Jacksonville,Pittsburgh,0.0,0.0,0,1,2027_744,Icon,Association,False
+Regular,Regular Season,2027,25,Kentucky,Cincinnati,0.0,0.0,1,1,2027_745,Icon,Association,False
+Regular,Regular Season,2027,25,Lansing,Little Rock,0.0,0.0,0,1,2027_746,Icon,Association,False
+Regular,Regular Season,2027,25,Des Moines,Birmingham,0.0,0.0,0,1,2027_747,Icon,Association,False
+Regular,Regular Season,2027,25,Nashville,Buffalo,0.0,0.0,0,1,2027_748,Statement,Statement,False
+Regular,Regular Season,2027,25,Manchester,Columbus,0.0,0.0,0,1,2027_749,Icon,Association,True
+Regular,Regular Season,2027,25,Baltimore,Tampa Bay,0.0,0.0,0,1,2027_750,Icon,Association,True
+Regular,Regular Season,2027,26,Lincoln,Tulsa,0.0,0.0,0,1,2027_751,Statement,Association,False
+Regular,Regular Season,2027,26,Boise,Albuquerque,0.0,0.0,0,1,2027_752,Icon,Association,False
+Regular,Regular Season,2027,26,Anaheim,Austin,0.0,0.0,0,1,2027_753,Icon,Association,False
+Regular,Regular Season,2027,26,Vancouver,Lansing,0.0,0.0,0,0,2027_754,Icon,Association,False
+Regular,Regular Season,2027,26,Vegas,Kentucky,0.0,0.0,0,0,2027_755,Icon,Association,False
+Regular,Regular Season,2027,26,El Paso,Jacksonville,0.0,0.0,0,0,2027_756,Association,Statement,True
+Regular,Regular Season,2027,26,San Jose,Providence,0.0,0.0,0,0,2027_757,Icon,Association,False
+Regular,Regular Season,2027,26,Honolulu,Pittsburgh,0.0,0.0,0,0,2027_758,Statement,Association,False
+Regular,Regular Season,2027,26,San Diego,Cincinnati,0.0,0.0,0,0,2027_759,Icon,Association,False
+Regular,Regular Season,2027,26,St. Louis,Little Rock,0.0,0.0,0,0,2027_760,Icon,Association,False
+Regular,Regular Season,2027,26,Seattle,Birmingham,0.0,0.0,0,0,2027_761,Icon,Association,False
+Regular,Regular Season,2027,26,Anchorage,Buffalo,0.0,0.0,0,0,2027_762,Icon,Association,False
+Regular,Regular Season,2027,26,Des Moines,Columbus,0.0,0.0,1,1,2027_763,Icon,Statement,False
+Regular,Regular Season,2027,26,Nashville,Tampa Bay,0.0,0.0,1,1,2027_764,Statement,Association,False
+Regular,Regular Season,2027,26,Manchester,Baltimore,0.0,0.0,1,1,2027_765,Icon,Statement,False
+Regular,Regular Season,2027,26,Tulsa,Anchorage,0.0,0.0,0,1,2027_766,Statement,Association,False
+Regular,Regular Season,2027,26,Seattle,Des Moines,0.0,0.0,0,0,2027_767,Icon,Association,False
+Regular,Regular Season,2027,26,St. Louis,Nashville,0.0,0.0,0,0,2027_768,Icon,Association,False
+Regular,Regular Season,2027,26,San Diego,Manchester,0.0,0.0,0,0,2027_769,Icon,Association,False
+Regular,Regular Season,2027,26,Honolulu,Baltimore,0.0,0.0,0,0,2027_770,Icon,Association,False
+Regular,Regular Season,2027,26,San Jose,Tampa Bay,0.0,0.0,0,0,2027_771,Statement,Association,False
+Regular,Regular Season,2027,26,El Paso,Columbus,0.0,0.0,0,0,2027_772,Icon,Association,False
+Regular,Regular Season,2027,26,Vegas,Buffalo,0.0,0.0,0,0,2027_773,Icon,Association,False
+Regular,Regular Season,2027,26,Vancouver,Birmingham,0.0,0.0,0,0,2027_774,Icon,Association,False
+Regular,Regular Season,2027,26,Anaheim,Little Rock,0.0,0.0,0,0,2027_775,Icon,Statement,True
+Regular,Regular Season,2027,26,Boise,Cincinnati,0.0,0.0,0,0,2027_776,Icon,Association,False
+Regular,Regular Season,2027,26,Lincoln,Pittsburgh,0.0,0.0,0,0,2027_777,Icon,Statement,False
+Regular,Regular Season,2027,26,Albuquerque,Providence,0.0,0.0,0,0,2027_778,Statement,Association,False
+Regular,Regular Season,2027,26,Austin,Jacksonville,0.0,0.0,0,0,2027_779,Icon,Association,False
+Regular,Regular Season,2027,26,Lansing,Kentucky,0.0,0.0,1,1,2027_780,Icon,Association,False
+Regular,Regular Season,2027,27,Little Rock,Tulsa,0.0,0.0,0,0,2027_781,Statement,Association,False
+Regular,Regular Season,2027,27,Cincinnati,Birmingham,0.0,0.0,0,1,2027_782,Icon,Association,False
+Regular,Regular Season,2027,27,Pittsburgh,Buffalo,0.0,0.0,1,1,2027_783,Icon,Association,False
+Regular,Regular Season,2027,27,Providence,Columbus,0.0,0.0,0,1,2027_784,Icon,Statement,False
+Regular,Regular Season,2027,27,Jacksonville,Tampa Bay,0.0,0.0,1,1,2027_785,Icon,Association,False
+Regular,Regular Season,2027,27,Kentucky,Baltimore,0.0,0.0,0,1,2027_786,Icon,Association,False
+Regular,Regular Season,2027,27,Lansing,Manchester,0.0,0.0,0,1,2027_787,Icon,Association,False
+Regular,Regular Season,2027,27,Austin,Nashville,0.0,0.0,0,0,2027_788,Icon,Association,False
+Regular,Regular Season,2027,27,Albuquerque,Des Moines,0.0,0.0,0,0,2027_789,Icon,Association,False
+Regular,Regular Season,2027,27,Lincoln,Anchorage,0.0,0.0,1,1,2027_790,Icon,Statement,False
+Regular,Regular Season,2027,27,Boise,Seattle,0.0,0.0,1,1,2027_791,Icon,Association,False
+Regular,Regular Season,2027,27,Anaheim,St. Louis,0.0,0.0,0,1,2027_792,Icon,Association,False
+Regular,Regular Season,2027,27,Vancouver,San Diego,0.0,0.0,0,1,2027_793,Icon,Statement,False
+Regular,Regular Season,2027,27,Vegas,Honolulu,0.0,0.0,1,1,2027_794,Icon,Association,False
+Regular,Regular Season,2027,27,El Paso,San Jose,0.0,0.0,0,1,2027_795,Icon,Association,False
+Regular,Regular Season,2027,27,Columbus,Tulsa,0.0,0.0,0,0,2027_796,Icon,Association,False
+Regular,Regular Season,2027,27,Buffalo,Tampa Bay,0.0,0.0,0,1,2027_797,Icon,Association,False
+Regular,Regular Season,2027,27,Birmingham,Baltimore,0.0,0.0,0,1,2027_798,Statement,Association,False
+Regular,Regular Season,2027,27,Little Rock,Manchester,0.0,0.0,0,1,2027_799,Statement,Association,False
+Regular,Regular Season,2027,27,Cincinnati,Nashville,0.0,0.0,0,1,2027_800,Icon,Association,False
+Regular,Regular Season,2027,27,Pittsburgh,Des Moines,0.0,0.0,0,1,2027_801,Icon,Association,False
+Regular,Regular Season,2027,27,Providence,Anchorage,0.0,0.0,0,0,2027_802,Statement,Statement,False
+Regular,Regular Season,2027,27,Jacksonville,Seattle,0.0,0.0,0,0,2027_803,Icon,Association,False
+Regular,Regular Season,2027,27,Kentucky,St. Louis,0.0,0.0,0,0,2027_804,Icon,Association,False
+Regular,Regular Season,2027,27,Lansing,San Diego,0.0,0.0,0,0,2027_805,Icon,Association,False
+Regular,Regular Season,2027,27,Austin,Honolulu,0.0,0.0,0,1,2027_806,Icon,Association,False
+Regular,Regular Season,2027,27,Albuquerque,San Jose,0.0,0.0,0,1,2027_807,Icon,Association,False
+Regular,Regular Season,2027,27,Lincoln,El Paso,0.0,0.0,0,1,2027_808,Icon,Association,False
+Regular,Regular Season,2027,27,Boise,Vegas,0.0,0.0,0,1,2027_809,Statement,Association,False
+Regular,Regular Season,2027,27,Anaheim,Vancouver,0.0,0.0,0,1,2027_810,Icon,Statement,False
+Regular,Regular Season,2027,28,Tulsa,San Jose,0.0,0.0,0,1,2027_811,Statement,Association,False
+Regular,Regular Season,2027,28,El Paso,Honolulu,0.0,0.0,0,1,2027_812,Icon,Association,False
+Regular,Regular Season,2027,28,Vegas,San Diego,0.0,0.0,1,1,2027_813,Icon,Association,False
+Regular,Regular Season,2027,28,Vancouver,St. Louis,0.0,0.0,0,1,2027_814,Icon,Association,False
+Regular,Regular Season,2027,28,Anaheim,Seattle,0.0,0.0,0,1,2027_815,Icon,Statement,False
+Regular,Regular Season,2027,28,Boise,Anchorage,0.0,0.0,1,1,2027_816,Statement,Association,False
+Regular,Regular Season,2027,28,Lincoln,Des Moines,0.0,0.0,0,0,2027_817,Statement,Statement,False
+Regular,Regular Season,2027,28,Albuquerque,Nashville,0.0,0.0,0,0,2027_818,Icon,Statement,False
+Regular,Regular Season,2027,28,Austin,Manchester,0.0,0.0,0,0,2027_819,Icon,Association,False
+Regular,Regular Season,2027,28,Lansing,Baltimore,0.0,0.0,0,1,2027_820,Icon,Association,False
+Regular,Regular Season,2027,28,Kentucky,Tampa Bay,0.0,0.0,0,1,2027_821,Icon,Association,False
+Regular,Regular Season,2027,28,Jacksonville,Columbus,0.0,0.0,0,1,2027_822,Icon,Association,False
+Regular,Regular Season,2027,28,Providence,Buffalo,0.0,0.0,1,1,2027_823,Icon,Association,False
+Regular,Regular Season,2027,28,Pittsburgh,Birmingham,0.0,0.0,0,1,2027_824,Statement,Statement,False
+Regular,Regular Season,2027,28,Cincinnati,Little Rock,0.0,0.0,0,1,2027_825,Icon,Association,False
+Regular,Regular Season,2027,28,San Jose,Tulsa,0.0,0.0,0,1,2027_826,Icon,Association,False
+Regular,Regular Season,2027,28,Honolulu,El Paso,0.0,0.0,0,1,2027_827,Icon,Association,False
+Regular,Regular Season,2027,28,San Diego,Vegas,0.0,0.0,1,1,2027_828,Icon,Association,False
+Regular,Regular Season,2027,28,St. Louis,Vancouver,0.0,0.0,0,1,2027_829,Icon,Association,False
+Regular,Regular Season,2027,28,Seattle,Anaheim,0.0,0.0,0,1,2027_830,Statement,Association,False
+Regular,Regular Season,2027,28,Anchorage,Boise,0.0,0.0,1,1,2027_831,Statement,Association,False
+Regular,Regular Season,2027,28,Des Moines,Lincoln,0.0,0.0,0,0,2027_832,Icon,Statement,False
+Regular,Regular Season,2027,28,Nashville,Albuquerque,0.0,0.0,0,0,2027_833,Statement,Association,False
+Regular,Regular Season,2027,28,Manchester,Austin,0.0,0.0,0,0,2027_834,Statement,Statement,False
+Regular,Regular Season,2027,28,Baltimore,Lansing,0.0,0.0,0,1,2027_835,Icon,Association,False
+Regular,Regular Season,2027,28,Tampa Bay,Kentucky,0.0,0.0,0,1,2027_836,Statement,Association,False
+Regular,Regular Season,2027,28,Columbus,Jacksonville,0.0,0.0,0,1,2027_837,Icon,Statement,False
+Regular,Regular Season,2027,28,Buffalo,Providence,0.0,0.0,1,1,2027_838,Icon,Association,False
+Regular,Regular Season,2027,28,Birmingham,Pittsburgh,0.0,0.0,0,1,2027_839,Icon,Association,False
+Regular,Regular Season,2027,28,Little Rock,Cincinnati,0.0,0.0,0,1,2027_840,Statement,Association,False
+Regular,Regular Season,2027,29,Tulsa,Buffalo,0.0,0.0,0,0,2027_841,Icon,Association,False
+Regular,Regular Season,2027,29,Columbus,Birmingham,0.0,0.0,0,1,2027_842,Statement,Statement,False
+Regular,Regular Season,2027,29,Tampa Bay,Little Rock,0.0,0.0,1,1,2027_843,Icon,Association,False
+Regular,Regular Season,2027,29,Baltimore,Cincinnati,0.0,0.0,0,1,2027_844,Icon,Statement,False
+Regular,Regular Season,2027,29,Manchester,Pittsburgh,0.0,0.0,1,1,2027_845,Icon,Association,False
+Regular,Regular Season,2027,29,Nashville,Providence,0.0,0.0,0,1,2027_846,Statement,Association,False
+Regular,Regular Season,2027,29,Des Moines,Jacksonville,0.0,0.0,0,1,2027_847,Association,Statement,True
+Regular,Regular Season,2027,29,Anchorage,Kentucky,0.0,0.0,0,0,2027_848,Statement,Association,False
+Regular,Regular Season,2027,29,Seattle,Lansing,0.0,0.0,0,0,2027_849,Statement,Association,False
+Regular,Regular Season,2027,29,St. Louis,Austin,0.0,0.0,1,1,2027_850,Icon,Association,False
+Regular,Regular Season,2027,29,San Diego,Albuquerque,0.0,0.0,0,1,2027_851,Icon,Association,False
+Regular,Regular Season,2027,29,Honolulu,Lincoln,0.0,0.0,0,1,2027_852,Icon,Association,False
+Regular,Regular Season,2027,29,San Jose,Boise,0.0,0.0,0,1,2027_853,Icon,Association,False
+Regular,Regular Season,2027,29,El Paso,Anaheim,0.0,0.0,0,1,2027_854,Icon,Statement,False
+Regular,Regular Season,2027,29,Vegas,Vancouver,0.0,0.0,0,1,2027_855,Icon,Statement,False
+Regular,Regular Season,2027,29,Tulsa,Austin,0.0,0.0,1,1,2027_856,Association,Statement,True
+Regular,Regular Season,2027,29,Lansing,Albuquerque,0.0,0.0,0,0,2027_857,Icon,Association,False
+Regular,Regular Season,2027,29,Kentucky,Lincoln,0.0,0.0,0,0,2027_858,Icon,Statement,False
+Regular,Regular Season,2027,29,Jacksonville,Boise,0.0,0.0,0,0,2027_859,Icon,Association,False
+Regular,Regular Season,2027,29,Providence,Anaheim,0.0,0.0,0,0,2027_860,Icon,Association,False
+Regular,Regular Season,2027,29,Pittsburgh,Vancouver,0.0,0.0,0,0,2027_861,Icon,Association,False
+Regular,Regular Season,2027,29,Cincinnati,Vegas,0.0,0.0,0,0,2027_862,Statement,Association,False
+Regular,Regular Season,2027,29,Little Rock,El Paso,0.0,0.0,0,0,2027_863,Icon,Association,False
+Regular,Regular Season,2027,29,Birmingham,San Jose,0.0,0.0,0,0,2027_864,Statement,Statement,False
+Regular,Regular Season,2027,29,Buffalo,Honolulu,0.0,0.0,0,0,2027_865,Icon,Association,False
+Regular,Regular Season,2027,29,Columbus,San Diego,0.0,0.0,0,0,2027_866,Statement,Association,False
+Regular,Regular Season,2027,29,Tampa Bay,St. Louis,0.0,0.0,0,0,2027_867,Icon,Association,False
+Regular,Regular Season,2027,29,Baltimore,Seattle,0.0,0.0,0,0,2027_868,Icon,Association,False
+Regular,Regular Season,2027,29,Manchester,Anchorage,0.0,0.0,0,0,2027_869,Icon,Statement,False
+Regular,Regular Season,2027,29,Nashville,Des Moines,0.0,0.0,0,1,2027_870,Icon,Statement,False
+Regular,Regular Season,2027,30,Tulsa,San Diego,0.0,0.0,0,1,2027_871,Statement,Association,False
+Regular,Regular Season,2027,30,Honolulu,St. Louis,0.0,0.0,0,1,2027_872,Icon,Association,False
+Regular,Regular Season,2027,30,San Jose,Seattle,0.0,0.0,0,1,2027_873,Icon,Association,False
+Regular,Regular Season,2027,30,El Paso,Anchorage,0.0,0.0,0,1,2027_874,Statement,Statement,False
+Regular,Regular Season,2027,30,Vegas,Des Moines,0.0,0.0,0,0,2027_875,Icon,Association,False
+Regular,Regular Season,2027,30,Vancouver,Nashville,0.0,0.0,0,0,2027_876,Icon,Association,False
+Regular,Regular Season,2027,30,Anaheim,Manchester,0.0,0.0,0,0,2027_877,Icon,Association,False
+Regular,Regular Season,2027,30,Boise,Baltimore,0.0,0.0,0,0,2027_878,Icon,Statement,False
+Regular,Regular Season,2027,30,Lincoln,Tampa Bay,0.0,0.0,0,0,2027_879,Statement,Association,False
+Regular,Regular Season,2027,30,Albuquerque,Columbus,0.0,0.0,0,0,2027_880,Statement,Association,False
+Regular,Regular Season,2027,30,Austin,Buffalo,0.0,0.0,0,0,2027_881,Icon,Statement,False
+Regular,Regular Season,2027,30,Lansing,Birmingham,0.0,0.0,0,1,2027_882,Icon,Association,False
+Regular,Regular Season,2027,30,Kentucky,Little Rock,0.0,0.0,0,1,2027_883,Icon,Association,False
+Regular,Regular Season,2027,30,Jacksonville,Cincinnati,0.0,0.0,0,1,2027_884,Statement,Association,False
+Regular,Regular Season,2027,30,Providence,Pittsburgh,0.0,0.0,1,1,2027_885,Icon,Statement,False
+Regular,Regular Season,2027,30,Tulsa,Nashville,0.0,0.0,0,0,2027_886,Icon,Association,False
+Regular,Regular Season,2027,30,Des Moines,Manchester,0.0,0.0,0,1,2027_887,Icon,Statement,False
+Regular,Regular Season,2027,30,Anchorage,Baltimore,0.0,0.0,0,0,2027_888,Statement,Association,False
+Regular,Regular Season,2027,30,Seattle,Tampa Bay,0.0,0.0,0,0,2027_889,Statement,Statement,False
+Regular,Regular Season,2027,30,St. Louis,Columbus,0.0,0.0,0,0,2027_890,Icon,Association,False
+Regular,Regular Season,2027,30,San Diego,Buffalo,0.0,0.0,0,0,2027_891,Statement,Association,False
+Regular,Regular Season,2027,30,Honolulu,Birmingham,0.0,0.0,0,0,2027_892,Statement,Statement,False
+Regular,Regular Season,2027,30,San Jose,Little Rock,0.0,0.0,0,0,2027_893,Icon,Statement,False
+Regular,Regular Season,2027,30,El Paso,Cincinnati,0.0,0.0,0,0,2027_894,Icon,Statement,True
+Regular,Regular Season,2027,30,Vegas,Pittsburgh,0.0,0.0,0,0,2027_895,Icon,Association,False
+Regular,Regular Season,2027,30,Vancouver,Providence,0.0,0.0,0,0,2027_896,Icon,Association,False
+Regular,Regular Season,2027,30,Anaheim,Jacksonville,0.0,0.0,0,0,2027_897,Icon,Statement,False
+Regular,Regular Season,2027,30,Boise,Kentucky,0.0,0.0,0,0,2027_898,Icon,Association,False
+Regular,Regular Season,2027,30,Lincoln,Lansing,0.0,0.0,0,0,2027_899,Icon,Statement,False
+Regular,Regular Season,2027,30,Albuquerque,Austin,0.0,0.0,1,1,2027_900,Association,Statement,True
+Regular,Regular Season,2027,31,Providence,Tulsa,0.0,0.0,0,0,2027_901,Icon,Statement,False
+Regular,Regular Season,2027,31,Jacksonville,Pittsburgh,0.0,0.0,0,1,2027_902,Icon,Association,False
+Regular,Regular Season,2027,31,Kentucky,Cincinnati,0.0,0.0,1,1,2027_903,Icon,Statement,False
+Regular,Regular Season,2027,31,Lansing,Little Rock,0.0,0.0,0,1,2027_904,Icon,Association,False
+Regular,Regular Season,2027,31,Austin,Birmingham,0.0,0.0,0,0,2027_905,Icon,Association,False
+Regular,Regular Season,2027,31,Albuquerque,Buffalo,0.0,0.0,0,0,2027_906,Statement,Association,False
+Regular,Regular Season,2027,31,Lincoln,Columbus,0.0,0.0,0,0,2027_907,Icon,Association,False
+Regular,Regular Season,2027,31,Boise,Tampa Bay,0.0,0.0,0,0,2027_908,Icon,Association,False
+Regular,Regular Season,2027,31,Anaheim,Baltimore,0.0,0.0,0,0,2027_909,Icon,Statement,False
+Regular,Regular Season,2027,31,Vancouver,Manchester,0.0,0.0,0,0,2027_910,Icon,Statement,False
+Regular,Regular Season,2027,31,Vegas,Nashville,0.0,0.0,0,0,2027_911,Icon,Association,False
+Regular,Regular Season,2027,31,El Paso,Des Moines,0.0,0.0,0,0,2027_912,Icon,Association,False
+Regular,Regular Season,2027,31,San Jose,Anchorage,0.0,0.0,0,1,2027_913,Statement,Association,False
+Regular,Regular Season,2027,31,Honolulu,Seattle,0.0,0.0,0,1,2027_914,Icon,Statement,False
+Regular,Regular Season,2027,31,San Diego,St. Louis,0.0,0.0,0,1,2027_915,Icon,Association,False
+Regular,Regular Season,2027,31,Pittsburgh,Tulsa,0.0,0.0,0,0,2027_916,Icon,Association,False
+Regular,Regular Season,2027,31,Providence,Cincinnati,0.0,0.0,0,1,2027_917,Icon,Association,False
+Regular,Regular Season,2027,31,Jacksonville,Little Rock,0.0,0.0,1,1,2027_918,Icon,Association,False
+Regular,Regular Season,2027,31,Kentucky,Birmingham,0.0,0.0,0,1,2027_919,Icon,Association,False
+Regular,Regular Season,2027,31,Lansing,Buffalo,0.0,0.0,0,1,2027_920,Icon,Association,False
+Regular,Regular Season,2027,31,Austin,Columbus,0.0,0.0,0,0,2027_921,Icon,Association,False
+Regular,Regular Season,2027,31,Albuquerque,Tampa Bay,0.0,0.0,0,0,2027_922,Icon,Association,False
+Regular,Regular Season,2027,31,Lincoln,Baltimore,0.0,0.0,0,0,2027_923,Icon,Association,False
+Regular,Regular Season,2027,31,Boise,Manchester,0.0,0.0,0,0,2027_924,Icon,Statement,False
+Regular,Regular Season,2027,31,Anaheim,Nashville,0.0,0.0,0,0,2027_925,Icon,Statement,False
+Regular,Regular Season,2027,31,Vancouver,Des Moines,0.0,0.0,0,0,2027_926,Icon,Statement,False
+Regular,Regular Season,2027,31,Vegas,Anchorage,0.0,0.0,0,1,2027_927,Statement,Association,False
+Regular,Regular Season,2027,31,El Paso,Seattle,0.0,0.0,0,1,2027_928,Statement,Statement,False
+Regular,Regular Season,2027,31,San Jose,St. Louis,0.0,0.0,0,1,2027_929,Icon,Association,False
+Regular,Regular Season,2027,31,Honolulu,San Diego,0.0,0.0,1,1,2027_930,Icon,Association,False
+Regular,Regular Season,2027,32,Tulsa,Cincinnati,0.0,0.0,0,0,2027_931,Icon,Association,False
+Regular,Regular Season,2027,32,Little Rock,Pittsburgh,0.0,0.0,0,1,2027_932,Icon,Association,False
+Regular,Regular Season,2027,32,Birmingham,Providence,0.0,0.0,0,1,2027_933,Icon,Statement,False
+Regular,Regular Season,2027,32,Buffalo,Jacksonville,0.0,0.0,0,1,2027_934,Association,Statement,True
+Regular,Regular Season,2027,32,Columbus,Kentucky,0.0,0.0,1,1,2027_935,Icon,Association,False
+Regular,Regular Season,2027,32,Tampa Bay,Lansing,0.0,0.0,0,1,2027_936,Icon,Association,False
+Regular,Regular Season,2027,32,Baltimore,Austin,0.0,0.0,0,0,2027_937,Icon,Association,False
+Regular,Regular Season,2027,32,Manchester,Albuquerque,0.0,0.0,0,0,2027_938,Icon,Association,False
+Regular,Regular Season,2027,32,Nashville,Lincoln,0.0,0.0,0,0,2027_939,Icon,Statement,False
+Regular,Regular Season,2027,32,Des Moines,Boise,0.0,0.0,0,0,2027_940,Icon,Association,False
+Regular,Regular Season,2027,32,Anchorage,Anaheim,0.0,0.0,0,1,2027_941,Icon,Association,False
+Regular,Regular Season,2027,32,Seattle,Vancouver,0.0,0.0,1,1,2027_942,Icon,Statement,False
+Regular,Regular Season,2027,32,St. Louis,Vegas,0.0,0.0,0,1,2027_943,Icon,Association,False
+Regular,Regular Season,2027,32,San Diego,El Paso,0.0,0.0,0,1,2027_944,Icon,Association,False
+Regular,Regular Season,2027,32,Honolulu,San Jose,0.0,0.0,1,1,2027_945,Icon,Association,False
+Regular,Regular Season,2027,32,Anaheim,Tulsa,0.0,0.0,0,1,2027_946,Statement,Association,False
+Regular,Regular Season,2027,32,Vancouver,Boise,0.0,0.0,1,1,2027_947,Icon,Association,False
+Regular,Regular Season,2027,32,Vegas,Lincoln,0.0,0.0,0,1,2027_948,Statement,Association,False
+Regular,Regular Season,2027,32,El Paso,Albuquerque,0.0,0.0,1,1,2027_949,Statement,Association,False
+Regular,Regular Season,2027,32,San Jose,Austin,0.0,0.0,0,1,2027_950,Icon,Association,False
+Regular,Regular Season,2027,32,Honolulu,Lansing,0.0,0.0,0,0,2027_951,Icon,Association,False
+Regular,Regular Season,2027,32,San Diego,Kentucky,0.0,0.0,0,0,2027_952,Icon,Association,False
+Regular,Regular Season,2027,32,St. Louis,Jacksonville,0.0,0.0,0,0,2027_953,Icon,Association,False
+Regular,Regular Season,2027,32,Seattle,Providence,0.0,0.0,0,0,2027_954,Statement,Association,False
+Regular,Regular Season,2027,32,Anchorage,Pittsburgh,0.0,0.0,0,0,2027_955,Icon,Statement,False
+Regular,Regular Season,2027,32,Des Moines,Cincinnati,0.0,0.0,1,1,2027_956,Icon,Association,True
+Regular,Regular Season,2027,32,Nashville,Little Rock,0.0,0.0,1,1,2027_957,Icon,Statement,False
+Regular,Regular Season,2027,32,Manchester,Birmingham,0.0,0.0,0,1,2027_958,Icon,Association,False
+Regular,Regular Season,2027,32,Baltimore,Buffalo,0.0,0.0,1,1,2027_959,Icon,Association,True
+Regular,Regular Season,2027,32,Tampa Bay,Columbus,0.0,0.0,0,1,2027_960,Statement,Association,False
+Regular,Regular Season,2027,33,Jacksonville,Tulsa,0.0,0.0,0,0,2027_961,Icon,Association,False
+Regular,Regular Season,2027,33,Kentucky,Providence,0.0,0.0,0,1,2027_962,Statement,Statement,False
+Regular,Regular Season,2027,33,Lansing,Pittsburgh,0.0,0.0,0,1,2027_963,Icon,Association,False
+Regular,Regular Season,2027,33,Austin,Cincinnati,0.0,0.0,0,0,2027_964,Icon,Association,False
+Regular,Regular Season,2027,33,Albuquerque,Little Rock,0.0,0.0,0,0,2027_965,Icon,Association,False
+Regular,Regular Season,2027,33,Lincoln,Birmingham,0.0,0.0,0,0,2027_966,Icon,Statement,False
+Regular,Regular Season,2027,33,Boise,Buffalo,0.0,0.0,0,0,2027_967,Icon,Association,False
+Regular,Regular Season,2027,33,Anaheim,Columbus,0.0,0.0,0,0,2027_968,Icon,Statement,False
+Regular,Regular Season,2027,33,Vancouver,Tampa Bay,0.0,0.0,0,0,2027_969,Icon,Association,False
+Regular,Regular Season,2027,33,Vegas,Baltimore,0.0,0.0,0,0,2027_970,Icon,Association,False
+Regular,Regular Season,2027,33,El Paso,Manchester,0.0,0.0,0,0,2027_971,Icon,Association,False
+Regular,Regular Season,2027,33,San Jose,Nashville,0.0,0.0,0,0,2027_972,Icon,Association,False
+Regular,Regular Season,2027,33,Honolulu,Des Moines,0.0,0.0,0,0,2027_973,Icon,Statement,False
+Regular,Regular Season,2027,33,San Diego,Anchorage,0.0,0.0,0,1,2027_974,Icon,Association,False
+Regular,Regular Season,2027,33,St. Louis,Seattle,0.0,0.0,0,1,2027_975,Statement,Association,False
+Regular,Regular Season,2027,33,Tulsa,Tampa Bay,0.0,0.0,0,0,2027_976,Icon,Association,False
+Regular,Regular Season,2027,33,Baltimore,Columbus,0.0,0.0,0,1,2027_977,Icon,Association,False
+Regular,Regular Season,2027,33,Manchester,Buffalo,0.0,0.0,1,1,2027_978,Icon,Association,False
+Regular,Regular Season,2027,33,Nashville,Birmingham,0.0,0.0,1,1,2027_979,Icon,Association,False
+Regular,Regular Season,2027,33,Des Moines,Little Rock,0.0,0.0,0,1,2027_980,Icon,Statement,False
+Regular,Regular Season,2027,33,Anchorage,Cincinnati,0.0,0.0,0,0,2027_981,Statement,Association,False
+Regular,Regular Season,2027,33,Seattle,Pittsburgh,0.0,0.0,0,0,2027_982,Statement,Association,False
+Regular,Regular Season,2027,33,St. Louis,Providence,0.0,0.0,0,0,2027_983,Icon,Association,False
+Regular,Regular Season,2027,33,San Diego,Jacksonville,0.0,0.0,0,0,2027_984,Icon,Association,False
+Regular,Regular Season,2027,33,Honolulu,Kentucky,0.0,0.0,0,0,2027_985,Icon,Association,False
+Regular,Regular Season,2027,33,San Jose,Lansing,0.0,0.0,0,0,2027_986,Statement,Association,False
+Regular,Regular Season,2027,33,El Paso,Austin,0.0,0.0,1,1,2027_987,Statement,Association,False
+Regular,Regular Season,2027,33,Vegas,Albuquerque,0.0,0.0,0,1,2027_988,Icon,Association,False
+Regular,Regular Season,2027,33,Vancouver,Lincoln,0.0,0.0,1,1,2027_989,Icon,Association,False
+Regular,Regular Season,2027,33,Anaheim,Boise,0.0,0.0,0,1,2027_990,Icon,Association,False
+Regular,Regular Season,2027,34,Tulsa,Little Rock,0.0,0.0,0,0,2027_991,Icon,Statement,False
+Regular,Regular Season,2027,34,Birmingham,Cincinnati,0.0,0.0,0,1,2027_992,Statement,Association,False
+Regular,Regular Season,2027,34,Buffalo,Pittsburgh,0.0,0.0,1,1,2027_993,Statement,Association,False
+Regular,Regular Season,2027,34,Columbus,Providence,0.0,0.0,0,1,2027_994,Statement,Association,False
+Regular,Regular Season,2027,34,Tampa Bay,Jacksonville,0.0,0.0,1,1,2027_995,Association,Statement,True
+Regular,Regular Season,2027,34,Baltimore,Kentucky,0.0,0.0,0,1,2027_996,Icon,Association,False
+Regular,Regular Season,2027,34,Manchester,Lansing,0.0,0.0,0,1,2027_997,Icon,Association,False
+Regular,Regular Season,2027,34,Nashville,Austin,0.0,0.0,0,0,2027_998,Association,Statement,True
+Regular,Regular Season,2027,34,Des Moines,Albuquerque,0.0,0.0,0,0,2027_999,Icon,Association,False
+Regular,Regular Season,2027,34,Anchorage,Lincoln,0.0,0.0,1,1,2027_1000,Icon,Association,False
+Regular,Regular Season,2027,34,Seattle,Boise,0.0,0.0,1,1,2027_1001,Icon,Statement,False
+Regular,Regular Season,2027,34,St. Louis,Anaheim,0.0,0.0,0,1,2027_1002,Icon,Association,False
+Regular,Regular Season,2027,34,San Diego,Vancouver,0.0,0.0,0,1,2027_1003,Icon,Association,False
+Regular,Regular Season,2027,34,Honolulu,Vegas,0.0,0.0,1,1,2027_1004,Statement,Association,False
+Regular,Regular Season,2027,34,San Jose,El Paso,0.0,0.0,0,1,2027_1005,Icon,Association,False
+Regular,Regular Season,2027,34,Tulsa,Manchester,0.0,0.0,0,0,2027_1006,Statement,Statement,False
+Regular,Regular Season,2027,34,Nashville,Baltimore,0.0,0.0,0,1,2027_1007,Icon,Association,False
+Regular,Regular Season,2027,34,Des Moines,Tampa Bay,0.0,0.0,0,1,2027_1008,Icon,Association,True
+Regular,Regular Season,2027,34,Anchorage,Columbus,0.0,0.0,0,0,2027_1009,Icon,Association,False
+Regular,Regular Season,2027,34,Seattle,Buffalo,0.0,0.0,0,0,2027_1010,Icon,Association,False
+Regular,Regular Season,2027,34,St. Louis,Birmingham,0.0,0.0,0,0,2027_1011,Icon,Association,False
+Regular,Regular Season,2027,34,San Diego,Little Rock,0.0,0.0,0,0,2027_1012,Icon,Association,False
+Regular,Regular Season,2027,34,Honolulu,Cincinnati,0.0,0.0,0,0,2027_1013,Statement,Statement,False
+Regular,Regular Season,2027,34,San Jose,Pittsburgh,0.0,0.0,0,0,2027_1014,Icon,Association,False
+Regular,Regular Season,2027,34,El Paso,Providence,0.0,0.0,0,0,2027_1015,Icon,Association,False
+Regular,Regular Season,2027,34,Vegas,Jacksonville,0.0,0.0,0,0,2027_1016,Icon,Statement,False
+Regular,Regular Season,2027,34,Vancouver,Kentucky,0.0,0.0,0,0,2027_1017,Icon,Statement,False
+Regular,Regular Season,2027,34,Anaheim,Lansing,0.0,0.0,0,0,2027_1018,Icon,Association,False
+Regular,Regular Season,2027,34,Boise,Austin,0.0,0.0,0,1,2027_1019,Icon,Association,False
+Regular,Regular Season,2027,34,Lincoln,Albuquerque,0.0,0.0,0,1,2027_1020,Statement,Association,False
+Regular,Regular Season,2027,35,Seattle,Tulsa,0.0,0.0,0,1,2027_1021,Icon,Association,False
+Regular,Regular Season,2027,35,St. Louis,Austin,0.0,0.0,1,1,2027_1022,Icon,Association,False
+Regular,Regular Season,2027,35,San Diego,Albuquerque,0.0,0.0,0,1,2027_1023,Icon,Statement,False
+Regular,Regular Season,2027,35,Honolulu,Lincoln,0.0,0.0,0,1,2027_1024,Icon,Association,False
+Regular,Regular Season,2027,35,San Jose,Boise,0.0,0.0,0,1,2027_1025,Icon,Association,False
+Regular,Regular Season,2027,35,El Paso,Anaheim,0.0,0.0,0,1,2027_1026,Icon,Association,False
+Regular,Regular Season,2027,35,Vegas,Vancouver,0.0,0.0,0,1,2027_1027,Icon,Statement,False
+Regular,Regular Season,2027,35,Anchorage,Nashville,0.0,0.0,0,0,2027_1028,Statement,Association,False
+Regular,Regular Season,2027,35,Manchester,Des Moines,0.0,0.0,0,1,2027_1029,Icon,Association,False
+Regular,Regular Season,2027,35,Baltimore,Lansing,0.0,0.0,0,1,2027_1030,Icon,Association,False
+Regular,Regular Season,2027,35,Tampa Bay,Kentucky,0.0,0.0,0,1,2027_1031,Icon,Statement,False
+Regular,Regular Season,2027,35,Columbus,Jacksonville,0.0,0.0,0,1,2027_1032,Statement,Association,False
+Regular,Regular Season,2027,35,Buffalo,Providence,0.0,0.0,1,1,2027_1033,Icon,Association,False
+Regular,Regular Season,2027,35,Birmingham,Pittsburgh,0.0,0.0,0,1,2027_1034,Icon,Association,False
+Regular,Regular Season,2027,35,Little Rock,Cincinnati,0.0,0.0,0,1,2027_1035,Icon,Association,False
+Regular,Regular Season,2027,35,Vegas,San Jose,0.0,0.0,1,1,2027_1036,Icon,Association,False
+Regular,Regular Season,2027,35,Vancouver,Honolulu,0.0,0.0,0,1,2027_1037,Icon,Statement,False
+Regular,Regular Season,2027,35,Anaheim,San Diego,0.0,0.0,1,1,2027_1038,Statement,Statement,False
+Regular,Regular Season,2027,35,Boise,St. Louis,0.0,0.0,0,1,2027_1039,Icon,Association,False
+Regular,Regular Season,2027,35,Lincoln,Seattle,0.0,0.0,1,1,2027_1040,Statement,Statement,False
+Regular,Regular Season,2027,35,Albuquerque,Anchorage,0.0,0.0,0,1,2027_1041,Icon,Association,False
+Regular,Regular Season,2027,35,Austin,Tulsa,0.0,0.0,1,1,2027_1042,Icon,Association,False
+Regular,Regular Season,2027,35,El Paso,Birmingham,0.0,0.0,0,0,2027_1043,Icon,Association,False
+Regular,Regular Season,2027,35,Little Rock,Buffalo,0.0,0.0,0,1,2027_1044,Icon,Statement,False
+Regular,Regular Season,2027,35,Cincinnati,Columbus,0.0,0.0,1,1,2027_1045,Icon,Association,False
+Regular,Regular Season,2027,35,Pittsburgh,Tampa Bay,0.0,0.0,0,1,2027_1046,Icon,Association,False
+Regular,Regular Season,2027,35,Providence,Baltimore,0.0,0.0,1,1,2027_1047,Icon,Association,False
+Regular,Regular Season,2027,35,Jacksonville,Manchester,0.0,0.0,0,1,2027_1048,Icon,Association,False
+Regular,Regular Season,2027,35,Kentucky,Nashville,0.0,0.0,0,1,2027_1049,Icon,Association,False
+Regular,Regular Season,2027,35,Lansing,Des Moines,0.0,0.0,1,1,2027_1050,Statement,Association,False
+Regular,Regular Season,2027,36,Tulsa,Albuquerque,0.0,0.0,1,1,2027_1051,Icon,Statement,False
+Regular,Regular Season,2027,36,Anchorage,Lincoln,0.0,0.0,1,1,2027_1052,Statement,Statement,False
+Regular,Regular Season,2027,36,Seattle,Boise,0.0,0.0,1,1,2027_1053,Icon,Statement,False
+Regular,Regular Season,2027,36,St. Louis,Anaheim,0.0,0.0,0,1,2027_1054,Icon,Association,False
+Regular,Regular Season,2027,36,San Diego,Vancouver,0.0,0.0,0,1,2027_1055,Icon,Statement,False
+Regular,Regular Season,2027,36,Honolulu,Vegas,0.0,0.0,1,1,2027_1056,Statement,Association,False
+Regular,Regular Season,2027,36,San Jose,El Paso,0.0,0.0,0,1,2027_1057,Icon,Association,False
+Regular,Regular Season,2027,36,Austin,Lansing,0.0,0.0,0,0,2027_1058,Icon,Statement,False
+Regular,Regular Season,2027,36,Des Moines,Kentucky,0.0,0.0,1,1,2027_1059,Icon,Association,False
+Regular,Regular Season,2027,36,Nashville,Jacksonville,0.0,0.0,1,1,2027_1060,Icon,Statement,False
+Regular,Regular Season,2027,36,Manchester,Providence,0.0,0.0,1,1,2027_1061,Icon,Association,False
+Regular,Regular Season,2027,36,Baltimore,Pittsburgh,0.0,0.0,1,1,2027_1062,Icon,Association,False
+Regular,Regular Season,2027,36,Tampa Bay,Cincinnati,0.0,0.0,0,1,2027_1063,Icon,Association,False
+Regular,Regular Season,2027,36,Columbus,Little Rock,0.0,0.0,0,1,2027_1064,Icon,Statement,False
+Regular,Regular Season,2027,36,Buffalo,Birmingham,0.0,0.0,0,1,2027_1065,Statement,Association,False
+Regular,Regular Season,2027,36,Vancouver,El Paso,0.0,0.0,0,1,2027_1066,Icon,Association,False
+Regular,Regular Season,2027,36,Anaheim,San Jose,0.0,0.0,1,1,2027_1067,Icon,Statement,False
+Regular,Regular Season,2027,36,Boise,Honolulu,0.0,0.0,0,1,2027_1068,Icon,Association,False
+Regular,Regular Season,2027,36,Lincoln,San Diego,0.0,0.0,0,1,2027_1069,Statement,Association,False
+Regular,Regular Season,2027,36,Albuquerque,St. Louis,0.0,0.0,1,1,2027_1070,Statement,Association,False
+Regular,Regular Season,2027,36,Austin,Seattle,0.0,0.0,0,1,2027_1071,Icon,Statement,False
+Regular,Regular Season,2027,36,Tulsa,Anchorage,0.0,0.0,0,1,2027_1072,Icon,Statement,False
+Regular,Regular Season,2027,36,Vegas,Little Rock,0.0,0.0,0,0,2027_1073,Icon,Association,False
+Regular,Regular Season,2027,36,Cincinnati,Birmingham,0.0,0.0,0,1,2027_1074,Icon,Statement,False
+Regular,Regular Season,2027,36,Pittsburgh,Buffalo,0.0,0.0,1,1,2027_1075,Icon,Association,False
+Regular,Regular Season,2027,36,Providence,Columbus,0.0,0.0,0,1,2027_1076,Icon,Association,False
+Regular,Regular Season,2027,36,Jacksonville,Tampa Bay,0.0,0.0,1,1,2027_1077,Icon,Association,False
+Regular,Regular Season,2027,36,Kentucky,Baltimore,0.0,0.0,0,1,2027_1078,Icon,Association,False
+Regular,Regular Season,2027,36,Lansing,Manchester,0.0,0.0,0,1,2027_1079,Icon,Association,False
+Regular,Regular Season,2027,36,Des Moines,Nashville,0.0,0.0,0,1,2027_1080,Icon,Association,False
+Group Stage,In-Season Tournament,2027,9,Nashville,Providence,0.0,0.0,0,0,2027_1081,Icon,Association,False
+Group Stage,In-Season Tournament,2027,9,Jacksonville,Des Moines,0.0,0.0,0,0,2027_1082,Statement,Association,False
+Group Stage,In-Season Tournament,2027,9,Little Rock,Lansing,0.0,0.0,0,0,2027_1083,Icon,Statement,False
+Group Stage,In-Season Tournament,2027,9,Buffalo,Columbus,0.0,0.0,0,0,2027_1084,Statement,Statement,False
+Group Stage,In-Season Tournament,2027,9,Manchester,Kentucky,0.0,0.0,0,0,2027_1085,Icon,Association,False
+Group Stage,In-Season Tournament,2027,9,Birmingham,Baltimore,0.0,0.0,0,0,2027_1086,Icon,Association,False
+Group Stage,In-Season Tournament,2027,9,San Jose,Albuquerque,0.0,0.0,0,0,2027_1087,Statement,Association,False
+Group Stage,In-Season Tournament,2027,9,Tulsa,Anaheim,0.0,0.0,0,0,2027_1088,Icon,Association,False
+Group Stage,In-Season Tournament,2027,9,Vegas,Anchorage,0.0,0.0,0,0,2027_1089,Icon,Association,False
+Group Stage,In-Season Tournament,2027,9,El Paso,Honolulu,0.0,0.0,0,0,2027_1090,Icon,Statement,False
+Group Stage,In-Season Tournament,2027,9,Austin,Lincoln,0.0,0.0,0,0,2027_1091,Icon,Association,False
+Group Stage,In-Season Tournament,2027,9,San Diego,Seattle,0.0,0.0,0,0,2027_1092,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Tampa Bay,Des Moines,0.0,0.0,0,0,2027_1093,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Nashville,Jacksonville,0.0,0.0,0,0,2027_1094,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Cincinnati,Columbus,0.0,0.0,0,0,2027_1095,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Little Rock,Buffalo,0.0,0.0,0,0,2027_1096,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Pittsburgh,Baltimore,0.0,0.0,0,0,2027_1097,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Manchester,Birmingham,0.0,0.0,0,0,2027_1098,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Boise,Anchorage,0.0,0.0,0,0,2027_1099,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,El Paso,Vegas,0.0,0.0,0,0,2027_1100,Association,Statement,True
+Group Stage,In-Season Tournament,2027,10,St. Louis,Lincoln,0.0,0.0,0,0,2027_1101,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,San Diego,Austin,0.0,0.0,0,0,2027_1102,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Vancouver,Albuquerque,0.0,0.0,0,0,2027_1103,Icon,Association,False
+Group Stage,In-Season Tournament,2027,10,Tulsa,San Jose,0.0,0.0,0,0,2027_1104,Icon,Association,False
+Group Stage,In-Season Tournament,2027,11,Providence,Jacksonville,0.0,0.0,0,0,2027_1105,Icon,Association,False
+Group Stage,In-Season Tournament,2027,11,Tampa Bay,Nashville,0.0,0.0,0,0,2027_1106,Statement,Statement,False
+Group Stage,In-Season Tournament,2027,11,Lansing,Buffalo,0.0,0.0,0,0,2027_1107,Icon,Association,False
+Group Stage,In-Season Tournament,2027,11,Cincinnati,Little Rock,0.0,0.0,0,0,2027_1108,Icon,Statement,False
+Group Stage,In-Season Tournament,2027,11,Kentucky,Birmingham,0.0,0.0,0,0,2027_1109,Icon,Statement,False
+Group Stage,In-Season Tournament,2027,11,Pittsburgh,Manchester,0.0,0.0,0,0,2027_1110,Icon,Association,False
+Group Stage,In-Season Tournament,2027,11,Honolulu,Vegas,0.0,0.0,0,0,2027_1111,Statement,Association,False
+Group Stage,In-Season Tournament,2027,11,Boise,El Paso,0.0,0.0,0,0,2027_1112,Icon,Association,False
+Group Stage,In-Season Tournament,2027,11,Seattle,Austin,0.0,0.0,0,0,2027_1113,Statement,Association,False
+Group Stage,In-Season Tournament,2027,11,St. Louis,San Diego,0.0,0.0,0,0,2027_1114,Icon,Association,False
+Group Stage,In-Season Tournament,2027,11,Anaheim,San Jose,0.0,0.0,0,0,2027_1115,Icon,Association,False
+Group Stage,In-Season Tournament,2027,11,Vancouver,Tulsa,0.0,0.0,0,0,2027_1116,Statement,Association,False
+Group Stage,In-Season Tournament,2027,12,Des Moines,Nashville,0.0,0.0,0,0,2027_1117,Icon,Statement,False
+Group Stage,In-Season Tournament,2027,12,Providence,Tampa Bay,0.0,0.0,0,0,2027_1118,Icon,Association,False
+Group Stage,In-Season Tournament,2027,12,Columbus,Little Rock,0.0,0.0,0,0,2027_1119,Icon,Association,False
+Group Stage,In-Season Tournament,2027,12,Lansing,Cincinnati,0.0,0.0,0,0,2027_1120,Icon,Association,False
+Group Stage,In-Season Tournament,2027,12,Baltimore,Manchester,0.0,0.0,0,0,2027_1121,Icon,Association,False
+Group Stage,In-Season Tournament,2027,12,Kentucky,Pittsburgh,0.0,0.0,0,0,2027_1122,Icon,Association,False
+Group Stage,In-Season Tournament,2027,12,Anchorage,El Paso,0.0,0.0,0,0,2027_1123,Icon,Association,False
+Group Stage,In-Season Tournament,2027,12,Honolulu,Boise,0.0,0.0,0,0,2027_1124,Icon,Association,False
+Group Stage,In-Season Tournament,2027,12,Lincoln,San Diego,0.0,0.0,0,0,2027_1125,Statement,Association,False
+Group Stage,In-Season Tournament,2027,12,Seattle,St. Louis,0.0,0.0,0,0,2027_1126,Icon,Statement,False
+Group Stage,In-Season Tournament,2027,12,Albuquerque,Tulsa,0.0,0.0,0,0,2027_1127,Icon,Association,False
+Group Stage,In-Season Tournament,2027,12,Anaheim,Vancouver,0.0,0.0,0,0,2027_1128,Icon,Association,False
+Group Stage,In-Season Tournament,2027,13,Jacksonville,Tampa Bay,0.0,0.0,0,0,2027_1129,Icon,Association,False
+Group Stage,In-Season Tournament,2027,13,Des Moines,Providence,0.0,0.0,0,0,2027_1130,Icon,Association,True
+Group Stage,In-Season Tournament,2027,13,Buffalo,Cincinnati,0.0,0.0,0,0,2027_1131,Statement,Association,False
+Group Stage,In-Season Tournament,2027,13,Columbus,Lansing,0.0,0.0,0,0,2027_1132,Statement,Association,False
+Group Stage,In-Season Tournament,2027,13,Birmingham,Pittsburgh,0.0,0.0,0,0,2027_1133,Statement,Association,False
+Group Stage,In-Season Tournament,2027,13,Baltimore,Kentucky,0.0,0.0,0,0,2027_1134,Icon,Association,True
+Group Stage,In-Season Tournament,2027,13,Vegas,Boise,0.0,0.0,0,0,2027_1135,Icon,Association,False
+Group Stage,In-Season Tournament,2027,13,Anchorage,Honolulu,0.0,0.0,0,0,2027_1136,Icon,Association,False
+Group Stage,In-Season Tournament,2027,13,Austin,St. Louis,0.0,0.0,0,0,2027_1137,Icon,Association,False
+Group Stage,In-Season Tournament,2027,13,Lincoln,Seattle,0.0,0.0,0,0,2027_1138,Icon,Statement,False
+Group Stage,In-Season Tournament,2027,13,San Jose,Vancouver,0.0,0.0,0,0,2027_1139,Icon,Association,False
+Group Stage,In-Season Tournament,2027,13,Albuquerque,Anaheim,0.0,0.0,0,0,2027_1140,Icon,Statement,False
+IST Quarterfinals,In-Season Tournament,2027,14,Wild Card,#1 Seed,0.0,0.0,0,0,2027_1141,,,False
+IST Quarterfinals,In-Season Tournament,2027,14,#3 Seed,#2 Seed,0.0,0.0,0,0,2027_1142,,,False
+IST Quarterfinals,In-Season Tournament,2027,14,Wild Card,#1 Seed,0.0,0.0,0,0,2027_1143,,,False
+IST Quarterfinals,In-Season Tournament,2027,14,#3 Seed,#2 Seed,0.0,0.0,0,0,2027_1144,,,False
+IST Semifinals,In-Season Tournament,2027,15,TBD,TBD,0.0,0.0,0,0,2027_1145,,,False
+IST Semifinals,In-Season Tournament,2027,15,TBD,TBD,0.0,0.0,0,0,2027_1146,,,False
+IST Championship,In-Season Tournament,2027,16,TBD,TBD,0.0,0.0,0,0,2027_1147,,,False
+Play-In Round 1,Play-In,2027,37,#10 Seed,#9 Seed,0.0,0.0,0,0,2027_1148,,,False
+Play-In Round 1,Play-In,2027,37,#8 Seed,#7 Seed,0.0,0.0,0,0,2027_1149,,,False
+Play-In Round 1,Play-In,2027,37,#10 Seed,#9 Seed,0.0,0.0,0,0,2027_1150,,,False
+Play-In Round 1,Play-In,2027,37,#8 Seed,#7 Seed,0.0,0.0,0,0,2027_1151,,,False
+Play-In Round 2,Play-In,2027,38,TBD,TBD,0.0,0.0,0,0,2027_1152,,,False
+Play-In Round 2,Play-In,2027,38,TBD,TBD,0.0,0.0,0,0,2027_1153,,,False
+Conference Quarterfinals,Playoffs,2027,39,TBD,#1 Seed,0.0,0.0,0,0,2027_1154,,,False
+Conference Quarterfinals,Playoffs,2027,39,TBD,#2 Seed,0.0,0.0,0,0,2027_1155,,,False
+Conference Quarterfinals,Playoffs,2027,39,#6 Seed,#3 Seed,0.0,0.0,0,0,2027_1156,,,False
+Conference Quarterfinals,Playoffs,2027,39,#5 Seed,#4 Seed,0.0,0.0,0,0,2027_1157,,,False
+Conference Quarterfinals,Playoffs,2027,39,TBD,#1 Seed,0.0,0.0,0,0,2027_1158,,,False
+Conference Quarterfinals,Playoffs,2027,39,TBD,#2 Seed,0.0,0.0,0,0,2027_1159,,,False
+Conference Quarterfinals,Playoffs,2027,39,#6 Seed,#3 Seed,0.0,0.0,0,0,2027_1160,,,False
+Conference Quarterfinals,Playoffs,2027,39,#5 Seed,#4 Seed,0.0,0.0,0,0,2027_1161,,,False
+Conference Semifinals,Playoffs,2027,40,TBD,TBD,0.0,0.0,0,0,2027_1162,,,False
+Conference Semifinals,Playoffs,2027,40,TBD,TBD,0.0,0.0,0,0,2027_1163,,,False
+Conference Semifinals,Playoffs,2027,40,TBD,TBD,0.0,0.0,0,0,2027_1164,,,False
+Conference Semifinals,Playoffs,2027,40,TBD,TBD,0.0,0.0,0,0,2027_1165,,,False
+Conference Finals,Playoffs,2027,41,TBD,TBD,0.0,0.0,0,0,2027_1166,,,False
+Conference Finals,Playoffs,2027,41,TBD,TBD,0.0,0.0,0,0,2027_1167,,,False
+SBCFBL Finals,Playoffs,2027,42,TBD,TBD,0.0,0.0,0,0,2027_1168,,,False

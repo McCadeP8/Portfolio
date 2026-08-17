@@ -760,7 +760,14 @@ def assigned_roster(team_picks: pd.DataFrame) -> dict[str, dict[str, str]]:
         roster["FLEX"] = flex
         used.add(flex["id"])
 
-    bench = [record for record in records if record["id"] not in used][:7]
+    bench_position_order = {position: index for index, position in enumerate(POSITION_SEQUENCE)}
+    bench = sorted(
+        (record for record in records if record["id"] not in used),
+        key=lambda record: (
+            bench_position_order.get(record["position"], len(bench_position_order)),
+            record["id"],
+        ),
+    )[:7]
     for index, record in enumerate(bench, 1):
         roster[f"BENCH{index}"] = record
     return roster
