@@ -58,20 +58,20 @@ Smack Talkers snake and auction draft preparation project.
 
 ## Rebuild
 
-Install the shared dependencies from this project directory, then run:
+From the repository root, install the shared dependencies, then run:
 
 ```powershell
-python -m pip install -r ..\requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ```powershell
-python "Draft Prep/scripts/build_draft_history.py"
+python "Smack_Talkers_DP/scripts/build_draft_history.py"
 ```
 
 ## Run the league-history app
 
 ```powershell
-streamlit run "Draft Prep/app.py"
+streamlit run "Smack_Talkers_DP/app.py"
 ```
 
 The history views are coverage-aware: complete schedule-score tables power the

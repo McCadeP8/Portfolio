@@ -9,37 +9,8 @@ __pycache__/
 tmp/
 *.log
 
-# Local dependency and working directories
-Draft Prep/.app_packages/
-Draft Prep/.artifact_work/
-Draft Prep/.python_packages/
-Draft Prep/.runtime_packages/
-
-# Draft Prep development/build files (not needed to run the app)
-Draft Prep/scripts/
-Draft Prep/tests/
-Draft Prep/outputs/
+# Development files not needed to run the app
 test_game.py
-
-# Keep only the datasets read directly by the Draft Prep app
-Draft Prep/data/*
-!Draft Prep/data/context/
-Draft Prep/data/context/*
-!Draft Prep/data/context/Team owners.csv
-!Draft Prep/data/processed/
-Draft Prep/data/processed/*
-!Draft Prep/data/processed/smack_talkers_2026_auction_values.csv
-!Draft Prep/data/processed/smack_talkers_draft_history.parquet
-!Draft Prep/data/processed/draft_history_with_espn.parquet
-!Draft Prep/data/processed/yahoo/
-Draft Prep/data/processed/yahoo/*
-!Draft Prep/data/processed/yahoo/league_inventory.csv
-!Draft Prep/data/processed/yahoo/all_leagues_weekly_lineups_scraped.parquet
-!Draft Prep/data/processed/yahoo/all_leagues_weekly_scores_scraped.parquet
-!Draft Prep/data/processed/yahoo/all_leagues_team_owner_map.parquet
-!Draft Prep/data/processed/yahoo/all_leagues_standings.parquet
-!Draft Prep/data/processed/yahoo/all_leagues_regular_season_scores.parquet
-!Draft Prep/data/processed/yahoo/all_leagues_regular_season_matchups.parquet
 
 # Presentation and document artifacts (not part of the app)
 *.ppt

@@ -1,0 +1,40 @@
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local dependency and working directories
+.app_packages/
+.artifact_work/
+.python_packages/
+.runtime_packages/
+
+# Development/build files not needed to run the deployed app
+scripts/
+tests/
+outputs/
+*.log
+
+# Keep only the datasets read directly by the app
+data/*
+!data/context/
+data/context/*
+!data/context/Team owners.csv
+!data/processed/
+data/processed/*
+!data/processed/smack_talkers_2026_auction_values.csv
+!data/processed/smack_talkers_draft_history.parquet
+!data/processed/draft_history_with_espn.parquet
+!data/processed/yahoo/
+data/processed/yahoo/*
+!data/processed/yahoo/league_inventory.csv
+!data/processed/yahoo/all_leagues_weekly_lineups_scraped.parquet
+!data/processed/yahoo/all_leagues_weekly_scores_scraped.parquet
+!data/processed/yahoo/all_leagues_team_owner_map.parquet
+!data/processed/yahoo/all_leagues_standings.parquet
+!data/processed/yahoo/all_leagues_regular_season_scores.parquet
+!data/processed/yahoo/all_leagues_regular_season_matchups.parquet
+
+# Source documents are not required at runtime
+*.pdf
+*.inspect.ndjson
