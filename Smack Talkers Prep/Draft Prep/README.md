@@ -58,7 +58,11 @@ Smack Talkers snake and auction draft preparation project.
 
 ## Rebuild
 
-Install the dependencies in `requirements.txt`, then run:
+Install the shared dependencies from the repository root, then run:
+
+```powershell
+python -m pip install -r requirements.txt
+```
 
 ```powershell
 python "Draft Prep/scripts/build_draft_history.py"
