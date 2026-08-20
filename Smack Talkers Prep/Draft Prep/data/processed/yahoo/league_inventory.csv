@@ -1,0 +1,11 @@
+season,league_id,draft_type,team_count,standings_rows,schedule_teams,week1_teams,detailed_lineup_pages,status,source_url,notes
+2022,606619,snake,12,12,12,12,216,complete_18_weeks,https://football.fantasysports.yahoo.com/2022/f1/606619,All 216 team-week rosters plus 180 regular-season team scores and 90 matchups captured; Week 1 is the temporary draft baseline
+2022,420424,auction,10,10,10,10,180,complete_18_weeks,https://football.fantasysports.yahoo.com/2022/f1/420424,All 180 team-week rosters plus 150 regular-season team scores and 75 matchups captured; Week 1 is the temporary draft baseline
+2021,729039,auction,10,10,10,10,180,complete_18_weeks,https://football.fantasysports.yahoo.com/2021/f1/729039,All 180 team-week rosters plus 150 regular-season team scores and 75 matchups captured; Week 1 is the temporary draft baseline
+2021,451157,snake,10,10,10,10,180,complete_18_weeks,https://football.fantasysports.yahoo.com/2021/f1/451157,All 180 team-week rosters plus 150 regular-season team scores and 75 matchups captured; Week 1 is the temporary draft baseline
+2025,866885,snake,12,12,12,12,216,complete_18_weeks,https://football.fantasysports.yahoo.com/2025/f1/866885,All 216 team-week rosters plus 180 regular-season team scores and 90 matchups captured
+2025,724433,auction,12,12,12,12,216,complete_18_weeks,https://football.fantasysports.yahoo.com/2025/f1/724433,All 216 team-week rosters plus 180 regular-season team scores and 90 matchups captured
+2024,608509,auction,10,10,10,10,180,complete_18_weeks_schedule_gap,https://football.fantasysports.yahoo.com/2024/f1/608509,All 180 lineup pages captured; Yahoo schedule tables expose 14 rows per team while final records include one additional matchup week
+2024,748838,snake,12,12,12,12,216,complete_18_weeks_schedule_gap,https://football.fantasysports.yahoo.com/2024/f1/748838,All 216 lineup pages captured; Yahoo schedule tables expose 13 rows per team while final records include two additional matchup weeks
+2023,727134,snake,12,12,12,12,216,complete_18_weeks,https://football.fantasysports.yahoo.com/2023/f1/727134,All 216 team-week rosters plus 180 regular-season team scores and 90 matchups captured
+2023,773070,auction,10,10,10,10,180,complete_18_weeks,https://football.fantasysports.yahoo.com/2023/f1/773070,All 180 team-week rosters plus 150 regular-season team scores and 75 matchups captured
