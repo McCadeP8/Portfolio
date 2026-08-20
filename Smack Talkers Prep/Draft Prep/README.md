@@ -58,10 +58,10 @@ Smack Talkers snake and auction draft preparation project.
 
 ## Rebuild
 
-Install the shared dependencies from the repository root, then run:
+Install the shared dependencies from this project directory, then run:
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -r ..\requirements.txt
 ```
 
 ```powershell

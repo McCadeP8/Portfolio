@@ -5,7 +5,7 @@ A polished solo Streamlit rules lab for playing the seven stages slowly, replayi
 ## Run
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -r ..\requirements.txt
 streamlit run app.py
 ```
 
