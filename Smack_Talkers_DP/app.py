@@ -25,6 +25,8 @@ from history_metrics import (
     prepare_draft_board,
     roster_decay,
     season_h2h_records,
+    STARTER_SLOT_ORDER,
+    starter_slot_rankings,
 )
 
 
@@ -408,8 +410,25 @@ matchups = selected(data["matchups"])
 standings = selected(data["standings"])
 lineup_weeks = selected(data["all_lineup_weeks"])
 lineup_summary = owner_lineup_summary(lineup_weeks)
+slot_rankings = starter_slot_rankings(lineups)
 all_play_weekly, all_play = all_play_summary(scoring_history) if not scoring_history.empty else (pd.DataFrame(), pd.DataFrame())
 counterfactual = perfect_start_counterfactual(lineup_weeks, scores)
+
+owner_entry_counts = (
+    standings[["season", "league_id", "team_id", "owner"]]
+    .dropna(subset=["owner"])
+    .drop_duplicates()
+    .groupby("owner")
+    .size()
+    .astype(int)
+    .to_dict()
+)
+
+
+def owner_sample_label(owner: object) -> str:
+    """Add the number of filtered league-season entries to an owner name."""
+    name = str(owner)
+    return f"{name} ({owner_entry_counts.get(name, 0)})"
 
 score_team_weeks = len(scores)
 lineup_team_weeks = len(lineup_weeks)
@@ -558,6 +577,7 @@ with tab_live_auction:
                 DRAFT_OWNERS[draft_format],
                 index=None,
                 placeholder="Choose team…",
+                format_func=owner_sample_label,
                 key=f"live_pick_team_{draft_format}_{revision}",
             )
         suggested_value = (
@@ -834,7 +854,9 @@ with tab_live_auction:
                     )
             board_rows.append(board_row)
 
-        owner_board = pd.DataFrame(board_rows)
+        owner_board = pd.DataFrame(board_rows).rename(
+            columns={owner: owner_sample_label(owner) for owner in DRAFT_OWNERS[draft_format]}
+        )
         board_position_by_row = owner_board["Position"].to_dict()
 
         def color_code_position_row(row: pd.Series) -> list[str]:
@@ -852,7 +874,7 @@ with tab_live_auction:
             column_config={
                 "Position": st.column_config.TextColumn(width=72, pinned=True),
                 **{
-                    owner: st.column_config.TextColumn(width=155)
+                    owner_sample_label(owner): st.column_config.TextColumn(width=155)
                     for owner in DRAFT_OWNERS[draft_format]
                 },
             },
@@ -864,7 +886,7 @@ with tab_live_auction:
             owner_counts = team_draft_counts(records, owner, position_lookup)
             rostered = sum(owner_counts.values())
             roster_row: dict[str, object] = {
-                "Owner": owner,
+                "Owner": owner_sample_label(owner),
                 **owner_counts,
                 "Rostered": rostered,
                 "Open": max(DRAFT_ROSTER_SIZE - rostered, 0),
@@ -917,19 +939,22 @@ with tab_pulse:
         luckiest = all_play.nlargest(1, "schedule_luck").iloc[0]
         strongest = all_play.nlargest(1, "all_play_win_pct").iloc[0]
         steadiest = all_play.dropna(subset=["score_std"]).nsmallest(1, "score_std").iloc[0]
-        c1.markdown(f'<div class="insight"><b>{luckiest.owner}</b><br>Most schedule help<br><span style="color:#6FB1FC">{luckiest.schedule_luck:+.1%} win-rate lift</span></div>', unsafe_allow_html=True)
-        c2.markdown(f'<div class="insight"><b>{strongest.owner}</b><br>Best all-play team<br><span style="color:#6FB1FC">{strongest.all_play_win_pct:.1%} all-play rate</span></div>', unsafe_allow_html=True)
-        c3.markdown(f'<div class="insight"><b>{steadiest.owner}</b><br>Most consistent scoring<br><span style="color:#6FB1FC">{steadiest.score_std:.1f} weekly SD</span></div>', unsafe_allow_html=True)
+        c1.markdown(f'<div class="insight"><b>{owner_sample_label(luckiest.owner)}</b><br>Most schedule help<br><span style="color:#6FB1FC">{luckiest.schedule_luck:+.1%} win-rate lift</span></div>', unsafe_allow_html=True)
+        c2.markdown(f'<div class="insight"><b>{owner_sample_label(strongest.owner)}</b><br>Best all-play team<br><span style="color:#6FB1FC">{strongest.all_play_win_pct:.1%} all-play rate</span></div>', unsafe_allow_html=True)
+        c3.markdown(f'<div class="insight"><b>{owner_sample_label(steadiest.owner)}</b><br>Most consistent scoring<br><span style="color:#6FB1FC">{steadiest.score_std:.1f} weekly SD</span></div>', unsafe_allow_html=True)
+
+        all_play_chart = all_play.assign(owner_label=all_play["owner"].map(owner_sample_label))
+        all_play_weekly_chart = all_play_weekly.assign(owner_label=all_play_weekly["owner"].map(owner_sample_label))
 
         left, right = st.columns([1.05, 1])
         with left:
             scatter = px.scatter(
-                all_play,
+                all_play_chart,
                 x="all_play_win_pct",
                 y="actual_win_pct",
                 size="average_points",
                 color="schedule_luck",
-                text="owner",
+                text="owner_label",
                 color_continuous_scale=["#C05E85", "#1C1F26", "#6FB1FC"],
                 color_continuous_midpoint=0,
                 labels={"all_play_win_pct": "All-play win rate", "actual_win_pct": "Actual win rate", "schedule_luck": "Schedule luck"},
@@ -942,13 +967,13 @@ with tab_pulse:
             render_plot(scatter, "luck_scatter")
         with right:
             score_box = px.box(
-                all_play_weekly,
-                x="owner",
+                all_play_weekly_chart,
+                x="owner_label",
                 y="net_points_vs_weekly_median",
                 points="outliers",
-                color="owner",
+                color="owner_label",
                 title="Weekly scoring relative to that league's median",
-                labels={"net_points_vs_weekly_median": "Net points vs weekly median", "owner": "Owner"},
+                labels={"net_points_vs_weekly_median": "Net points vs weekly median", "owner_label": "Owner"},
             )
             score_box.add_hline(y=0, line_dash="dash", line_color="#7E8A96")
             score_box.update_layout(showlegend=False)
@@ -956,13 +981,14 @@ with tab_pulse:
             render_plot(score_box, "score_box")
 
         display = all_play.copy()
+        display["Owner"] = display["owner"].map(owner_sample_label)
         display["Actual W%"] = display["actual_win_pct"].map(pct)
         display["All-play W%"] = display["all_play_win_pct"].map(pct)
         display["Wins + median W%"] = display["combined_win_pct"].map(pct)
         display["Schedule lift"] = display["schedule_luck"].map(lambda value: f"{value:+.1%}")
         display["Avg net vs median"] = display["average_net_points"].round(1)
         st.dataframe(
-            display[["owner", "weeks", "matchups", "Avg net vs median", "Actual W%", "Wins + median W%", "All-play W%", "Schedule lift"]].rename(columns={"owner": "Owner", "weeks": "Scoring weeks", "matchups": "H2H matchups"}),
+            display[["Owner", "weeks", "matchups", "Avg net vs median", "Actual W%", "Wins + median W%", "All-play W%", "Schedule lift"]].rename(columns={"weeks": "Scoring weeks", "matchups": "H2H matchups"}),
             hide_index=True,
             width="stretch",
         )
@@ -980,7 +1006,10 @@ with tab_owner_history:
         st.info("No owner history is available for the selected league seasons.")
     else:
         owner_default = history_owners.index("McCade") if "McCade" in history_owners else 0
-        history_owner = st.selectbox("Owner", history_owners, index=owner_default, key="owner_history_owner")
+        history_owner = st.selectbox(
+            "Owner", history_owners, index=owner_default, format_func=owner_sample_label, key="owner_history_owner"
+        )
+        history_owner_label = owner_sample_label(history_owner)
         owner_standings = standings.loc[standings["owner"].eq(history_owner)].copy()
         owner_weekly = all_play_weekly.loc[all_play_weekly["owner"].eq(history_owner)].copy()
         owner_scores = scores.loc[scores["owner"].eq(history_owner)].copy()
@@ -1080,7 +1109,7 @@ with tab_owner_history:
         st.markdown("### Championships")
         championships = owner_ledger.loc[owner_ledger["rank"].eq(1)].sort_values(["season", "draft_type"])
         if championships.empty:
-            st.caption(f"{history_owner} has no championships in the selected seasons.")
+            st.caption(f"{history_owner_label} has no championships in the selected seasons.")
         else:
             championship_lines = [
                 f"- **{int(row.season)} {str(row.draft_type).title()}** — {row.team_name}"
@@ -1091,7 +1120,7 @@ with tab_owner_history:
         st.markdown("### Runner-up finishes")
         runners_up = owner_ledger.loc[owner_ledger["rank"].eq(2)].sort_values(["season", "draft_type"])
         if runners_up.empty:
-            st.caption(f"{history_owner} has no H2H runner-up finishes in the selected seasons.")
+            st.caption(f"{history_owner_label} has no H2H runner-up finishes in the selected seasons.")
         else:
             runner_up_lines = [
                 f"- **{int(row.season)} {str(row.draft_type).title()}** — {row.team_name}"
@@ -1099,7 +1128,7 @@ with tab_owner_history:
             ]
             st.markdown("\n".join(runner_up_lines))
 
-        section_title("Season ledger", f"{history_owner}'s year-by-year results")
+        section_title("Season ledger", f"{history_owner_label}'s year-by-year results")
         trajectory = owner_ledger.sort_values(["season", "draft_type"]).copy()
         if not trajectory.empty:
             trajectory["Format"] = trajectory["draft_type"].str.title()
@@ -1164,6 +1193,56 @@ with tab_owner_history:
                     f"at {best_row.average_net_points:+.1f} points per week versus the league median."
                 )
 
+        section_title(
+            "Starter-slot history",
+            "Where the lineup ranked at every position",
+            "Ranks compare total starter points within each league-season. W/T starters—including tight ends—fill WR1/WR2/WR3; only the dedicated TE slot counts as TE1.",
+        )
+        owner_slot_history = slot_rankings.loc[slot_rankings["owner"].eq(history_owner)].copy()
+        if owner_slot_history.empty:
+            st.info("No detailed starter-slot history is available for this owner in the selected seasons.")
+        else:
+            owner_slot_history["entry"] = (
+                owner_slot_history["season"].astype(int).astype(str)
+                + " "
+                + owner_slot_history["draft_type"].str.title()
+            )
+            entry_order = (
+                owner_slot_history[["season", "draft_type", "entry"]]
+                .drop_duplicates()
+                .sort_values(["season", "draft_type"])["entry"]
+                .tolist()
+            )
+            rank_history = owner_slot_history.pivot(index="entry", columns="starter_slot", values="slot_rank").reindex(
+                index=entry_order, columns=STARTER_SLOT_ORDER
+            )
+            point_history = owner_slot_history.pivot(
+                index="entry", columns="starter_slot", values="starter_points"
+            ).reindex(index=entry_order, columns=STARTER_SLOT_ORDER)
+            rank_limit = max(float(owner_slot_history["league_teams"].max()), 2.0)
+            history_heatmap = px.imshow(
+                rank_history,
+                aspect="auto",
+                text_auto=".0f",
+                color_continuous_scale=["#6FB1FC", "#1C1F26", "#C05E85"],
+                zmin=1,
+                zmax=rank_limit,
+                labels=dict(x="Starting slot", y="League entry", color="League rank"),
+                title=f"{history_owner_label}: starter-point rank by league-season",
+            )
+            history_heatmap.update_traces(
+                customdata=point_history.to_numpy(),
+                hovertemplate="Entry: %{y}<br>Slot: %{x}<br>Rank: %{z:.0f}<br>Starter points: %{customdata:.1f}<extra></extra>",
+            )
+            polish(history_heatmap, height=max(390, 34 * len(rank_history.index) + 170))
+            st.plotly_chart(
+                history_heatmap,
+                width="stretch",
+                config={"displaylogo": False},
+                key="owner_history_slot_ranks",
+            )
+            st.caption("1 is best. RB TOTAL, WR TOTAL, and TOTAL rank the combined starter points in those groups. Weekly RB and W/T starters are ordered by fantasy points before their slot totals are accumulated.")
+
         section_title("Rivalry book", "Head-to-head record against every owner")
         opponent_lookup = selected(team_map)[["season", "league_id", "yahoo_team_id", "owner"]].drop_duplicates().rename(
             columns={"yahoo_team_id": "opponent_id", "owner": "opponent"}
@@ -1194,17 +1273,18 @@ with tab_owner_history:
             )
             rivalry["margin_per_game"] = (rivalry["points_for"] - rivalry["points_against"]) / rivalry["games"]
             rivalry["record"] = rivalry.apply(lambda row: f"{row.wins}-{row.losses}-{row.ties}", axis=1)
+            rivalry["opponent_label"] = rivalry["opponent"].map(owner_sample_label)
             established = rivalry.loc[rivalry["games"].ge(3)]
             r1, r2 = st.columns(2)
             if not established.empty:
                 favorite = established.sort_values(["win_pct", "games"], ascending=[False, False]).iloc[0]
                 nemesis = established.sort_values(["win_pct", "games"], ascending=[True, False]).iloc[0]
-                r1.metric("Best matchup", favorite.opponent, favorite.record)
-                r2.metric("Toughest rival", nemesis.opponent, nemesis.record)
+                r1.metric("Best matchup", owner_sample_label(favorite.opponent), favorite.record)
+                r2.metric("Toughest rival", owner_sample_label(nemesis.opponent), nemesis.record)
             rivalry_chart = px.bar(
                 rivalry.sort_values("win_pct"),
                 x="win_pct",
-                y="opponent",
+                y="opponent_label",
                 orientation="h",
                 color="margin_per_game",
                 text="record",
@@ -1212,12 +1292,12 @@ with tab_owner_history:
                 color_continuous_midpoint=0,
                 hover_data={"games": True, "points_for": ":.1f", "points_against": ":.1f", "margin_per_game": ":+.1f"},
                 title="Career regular-season H2H win rate",
-                labels={"win_pct": "Win rate", "opponent": "Opponent", "margin_per_game": "Margin / game"},
+                labels={"win_pct": "Win rate", "opponent_label": "Opponent", "margin_per_game": "Margin / game"},
             )
             rivalry_chart.update_xaxes(tickformat=".0%", range=[0, 1])
             render_plot(rivalry_chart, "owner_history_rivalries")
             rivalry_display = rivalry.sort_values(["games", "win_pct"], ascending=[False, False]).copy()
-            rivalry_display["Opponent"] = rivalry_display["opponent"]
+            rivalry_display["Opponent"] = rivalry_display["opponent_label"]
             rivalry_display["Games"] = rivalry_display["games"]
             rivalry_display["Record"] = rivalry_display["record"]
             rivalry_display["Win %"] = rivalry_display["win_pct"].map(pct)
@@ -1313,7 +1393,7 @@ with tab_owner_history:
                 .mean()
                 .rename(columns={"size": "Selections"})
             )
-            owner_mix["Series"] = history_owner
+            owner_mix["Series"] = history_owner_label
             league_mix = early_grid.groupby("position", as_index=False)["size"].mean().rename(columns={"size": "Selections"})
             league_mix["Series"] = "League average"
             draft_mix = pd.concat([owner_mix, league_mix], ignore_index=True)
@@ -1342,7 +1422,7 @@ with tab_owner_history:
                 y="Selections",
                 color="Series",
                 barmode="group",
-                color_discrete_map={history_owner: "#6FB1FC", "League average": "#667483"},
+                color_discrete_map={history_owner_label: "#6FB1FC", "League average": "#667483"},
                 category_orders={"position": ["QB", "RB", "WR", "TE", "K", "DST"]},
                 title="Average position allocation in the first five de facto rounds",
                 labels={"position": "Position", "Selections": "Players selected per draft"},
@@ -1353,11 +1433,11 @@ with tab_owner_history:
                 owner_roles = owner_roles.sort_values("role")
                 role_display = owner_roles.copy()
                 role_display["Role"] = role_display["role"].astype(str)
-                role_display[f"{history_owner} avg round"] = role_display["owner_average"].round(1)
+                role_display[f"{history_owner_label} avg round"] = role_display["owner_average"].round(1)
                 role_display["League avg round"] = role_display["league_average"].round(1)
                 role_display["Rounds earlier"] = role_display["aggression_vs_league"].round(1)
                 st.dataframe(
-                    role_display[["Role", f"{history_owner} avg round", "League avg round", "Rounds earlier"]],
+                    role_display[["Role", f"{history_owner_label} avg round", "League avg round", "Rounds earlier"]],
                     hide_index=True,
                     width="stretch",
                 )
@@ -1392,21 +1472,74 @@ with tab_position:
             .groupby(["owner", "position_group"], as_index=False)["fan_points"]
             .sum()
         )
+        starter_points["owner_label"] = starter_points["owner"].map(owner_sample_label)
         owner_totals = starter_points.groupby("owner")["fan_points"].transform("sum")
         starter_points["share"] = starter_points["fan_points"] / owner_totals
         stack = px.bar(
             starter_points,
-            x="owner",
+            x="owner_label",
             y="share",
             color="position_group",
             category_orders={"position_group": POSITION_ORDER},
             color_discrete_map=COLORS,
             text=starter_points["share"].map(lambda value: f"{value:.0%}" if value >= 0.06 else ""),
-            labels={"owner": "Owner", "share": "Share of starter points", "position_group": "Position"},
+            labels={"owner_label": "Owner", "share": "Share of starter points", "position_group": "Position"},
             title="Position share of observed starter points",
         )
         stack.update_yaxes(tickformat=".0%")
         render_plot(stack, "position_share")
+
+        section_title(
+            "Starter-slot rankings",
+            "Who squeezed the most scoring from each lineup spot",
+            "Each team is ranked on total observed starter points inside its league-season. Across multiple selected seasons, the heatmap shows the owner's average rank.",
+        )
+        if slot_rankings.empty:
+            st.info("No starter-slot rankings are available for the selected league seasons.")
+        else:
+            slot_summary = slot_rankings.copy()
+            slot_summary["points_per_week"] = (
+                slot_summary["starter_points"] / slot_summary["observed_weeks"].replace(0, np.nan)
+            )
+            slot_summary = slot_summary.groupby(["owner", "starter_slot"], as_index=False).agg(
+                average_rank=("slot_rank", "mean"),
+                points_per_week=("points_per_week", "mean"),
+                team_seasons=("season", "size"),
+            )
+            rank_grid = slot_summary.pivot(index="owner", columns="starter_slot", values="average_rank").reindex(
+                index=sorted(slot_summary["owner"].unique(), key=str.casefold),
+                columns=STARTER_SLOT_ORDER,
+            )
+            scoring_grid = slot_summary.pivot(
+                index="owner", columns="starter_slot", values="points_per_week"
+            ).reindex(index=rank_grid.index, columns=STARTER_SLOT_ORDER)
+            rank_grid.index = [owner_sample_label(owner) for owner in rank_grid.index]
+            scoring_grid.index = rank_grid.index
+            rank_limit = max(float(slot_rankings["league_teams"].max()), 2.0)
+            slot_heatmap = px.imshow(
+                rank_grid,
+                aspect="auto",
+                text_auto=".1f" if slot_rankings[["season", "league_id"]].drop_duplicates().shape[0] > 1 else ".0f",
+                color_continuous_scale=["#6FB1FC", "#1C1F26", "#C05E85"],
+                zmin=1,
+                zmax=rank_limit,
+                labels=dict(x="Starting slot", y="Owner", color="League rank"),
+                title="Starter-point rank by lineup slot",
+            )
+            slot_heatmap.update_traces(
+                customdata=scoring_grid.to_numpy(),
+                hovertemplate="Owner: %{y}<br>Slot: %{x}<br>Rank: %{z:.1f}<br>Points / observed week: %{customdata:.1f}<extra></extra>",
+            )
+            polish(slot_heatmap, height=max(500, 29 * len(rank_grid.index) + 175))
+            st.plotly_chart(
+                slot_heatmap,
+                width="stretch",
+                config={"displaylogo": False},
+                key="position_slot_rankings",
+            )
+            st.caption(
+                "1 is best. RB TOTAL, WR TOTAL, and TOTAL rank combined starter points. RB1/RB2 and WR1/WR2/WR3 are assigned by weekly starter scoring; a TE used at W/T counts as a WR-slot performance."
+            )
 
         position_table = (
             plot_rows.groupby(["position_group", "lineup_role"])["fan_points"]
@@ -1437,6 +1570,7 @@ with tab_draft_room:
         heat_data = role_metrics.loc[role_metrics["role"].isin(core_roles)]
         heat = heat_data.pivot(index="owner", columns="role", values="aggression_vs_league").reindex(columns=core_roles)
         heat = heat.reindex(sorted(heat.index, key=str.casefold))
+        heat.index = [owner_sample_label(owner) for owner in heat.index]
         heat_limit = max(float(np.nanmax(np.abs(heat.to_numpy(dtype=float)))), 0.5)
         unit = "fractional rounds earlier"
         heatmap = px.imshow(
@@ -1455,7 +1589,10 @@ with tab_draft_room:
 
         owner_names = sorted(draft_view["owner"].unique(), key=str.casefold)
         profile_default = owner_names.index("McCade") if "McCade" in owner_names else 0
-        profile_owner = st.selectbox("Owner profile", owner_names, index=profile_default, key="draft_profile_owner")
+        profile_owner = st.selectbox(
+            "Owner profile", owner_names, index=profile_default, format_func=owner_sample_label, key="draft_profile_owner"
+        )
+        profile_owner_label = owner_sample_label(profile_owner)
         owner_roles = role_metrics.loc[role_metrics["owner"].eq(profile_owner) & role_metrics["role"].isin(core_roles)].copy()
         owner_roles["role"] = pd.Categorical(owner_roles["role"], categories=core_roles, ordered=True)
         owner_roles = owner_roles.sort_values("role")
@@ -1473,15 +1610,15 @@ with tab_draft_room:
             var_name="Series",
             value_name="Value",
         )
-        profile_long["Series"] = profile_long["Series"].map({"owner_average": profile_owner, "league_average": "League average"})
+        profile_long["Series"] = profile_long["Series"].map({"owner_average": profile_owner_label, "league_average": "League average"})
         role_compare = px.bar(
             profile_long,
             x="role",
             y="Value",
             color="Series",
             barmode="group",
-            color_discrete_map={profile_owner: "#6FB1FC", "League average": "#667483"},
-            title=f"{profile_owner}: combined roster-role timing",
+            color_discrete_map={profile_owner_label: "#6FB1FC", "League average": "#667483"},
+            title=f"{profile_owner_label}: combined roster-role timing",
             labels={"role": "Roster role", "Value": "Average de facto round"},
         )
         render_plot(role_compare, "owner_role_compare")
@@ -1508,20 +1645,21 @@ with tab_draft_room:
             .groupby(["owner", "position"], as_index=False)["size"].mean()
             .rename(columns={"position": "Position", "size": "Players"})
         )
+        allocation["owner_label"] = allocation["owner"].map(owner_sample_label)
         allocation_chart = px.bar(
             allocation,
-            x="owner",
+            x="owner_label",
             y="Players",
             color="Position",
             color_discrete_map=COLORS,
             text=allocation["Players"].map(lambda value: f"{value:.1f}"),
             title=f"Average position mix in the first {round_window} de facto rounds",
-            labels={"owner": "Owner", "Players": "Players selected"},
+            labels={"owner_label": "Owner", "Players": "Players selected"},
         )
-        allocation_totals = allocation.groupby("owner", as_index=False)["Players"].sum()
+        allocation_totals = allocation.groupby("owner_label", as_index=False)["Players"].sum()
         allocation_chart.add_trace(
             go.Scatter(
-                x=allocation_totals["owner"],
+                x=allocation_totals["owner_label"],
                 y=allocation_totals["Players"] + 0.12,
                 mode="text",
                 text=allocation_totals["Players"].map(lambda value: f"{value:.1f}"),
@@ -1567,7 +1705,9 @@ with tab_draft_room:
         filter_left, filter_right = st.columns(2)
         market_positions = filter_left.multiselect("Positions", position_options, default=position_options, key="market_positions")
         owner_options = sorted(player_results["owner"].dropna().unique(), key=str.casefold)
-        market_owners = filter_right.multiselect("Owners", owner_options, default=owner_options, key="market_owners")
+        market_owners = filter_right.multiselect(
+            "Owners", owner_options, default=owner_options, format_func=owner_sample_label, key="market_owners"
+        )
         player_results = player_results.loc[player_results["position"].isin(market_positions) & player_results["owner"].isin(market_owners)]
         ascending_market = market_view_choice.endswith("values")
         market_table = player_results.sort_values("market_pick_gap", ascending=ascending_market).head(30).copy()
@@ -1584,12 +1724,13 @@ with tab_draft_room:
         market_table["Latest roster week"] = market_table["latest_roster_week"].map(
             lambda value: "Not observed" if pd.isna(value) else str(int(value))
         )
+        market_table["Owner"] = market_table["owner"].map(owner_sample_label)
         st.dataframe(
             market_table[
-                ["season", "draft_type", "owner", "player_name", "role", "position", "Draft cost", "De facto pick", "ESPN rank", "Pick gap", "observed_team_weeks", "Roster weeks", "Latest roster week", "Starter pts / observed wk", "median_net_points", "finish_rank"]
+                ["season", "draft_type", "Owner", "player_name", "role", "position", "Draft cost", "De facto pick", "ESPN rank", "Pick gap", "observed_team_weeks", "Roster weeks", "Latest roster week", "Starter pts / observed wk", "median_net_points", "finish_rank"]
             ].rename(
                 columns={
-                    "season": "Season", "draft_type": "Format", "owner": "Owner", "player_name": "Player", "role": "Role", "position": "Pos",
+                    "season": "Season", "draft_type": "Format", "player_name": "Player", "role": "Role", "position": "Pos",
                     "observed_team_weeks": "Team weeks observed",
                     "median_net_points": "Median net pts", "finish_rank": "Finish",
                 }
@@ -1601,6 +1742,7 @@ with tab_draft_room:
 
         observed_players = player_results.loc[player_results["observed_team_weeks"].fillna(0).ge(10)].copy()
         if not observed_players.empty:
+            observed_players["Owner"] = observed_players["owner"].map(owner_sample_label)
             market_scatter = px.scatter(
                 observed_players,
                 x="market_pick_gap",
@@ -1608,7 +1750,7 @@ with tab_draft_room:
                 color="position",
                 color_discrete_map=COLORS,
                 hover_name="player_name",
-                hover_data={"owner": True, "season": True, "role": True, "roster_weeks": True, "latest_roster_week": True},
+                hover_data={"Owner": True, "season": True, "role": True, "roster_weeks": True, "latest_roster_week": True},
                 title="Did the market call turn into starter production? · owners with 10+ captured weeks",
                 labels={"market_pick_gap": "De facto picks earlier than ESPN", "starter_points_per_observed_week": "Starter points per observed team-week", "position": "Position"},
             )
@@ -1638,6 +1780,7 @@ with tab_draft_room:
             x_column, y_column = strategy_options[x_label], outcome_options[y_label]
             chart_rows = outcome_view.dropna(subset=[x_column, y_column]).copy()
             chart_rows["Season"] = chart_rows["season"].astype(str)
+            chart_rows["owner_label"] = chart_rows["owner"].map(owner_sample_label)
             spread = max(float(chart_rows[x_column].max() - chart_rows[x_column].min()), 1.0)
             rng = np.random.default_rng(2026)
             chart_rows["x_jitter"] = chart_rows[x_column] + rng.normal(0, spread * .018, len(chart_rows))
@@ -1646,8 +1789,8 @@ with tab_draft_room:
                 x="x_jitter",
                 y=y_column,
                 color="Season",
-                text="owner",
-                hover_name="owner",
+                text="owner_label",
+                hover_name="owner_label",
                 hover_data={"points_per_game": ":.1f", "finish_rank": ":.0f", "all_play_win_pct": ":.1%", "lineup_efficiency": ":.1%"},
                 title=f"{x_label} vs {y_label} · {len(chart_rows)} team-seasons",
                 labels={"x_jitter": x_label, y_column: y_label},
@@ -1674,26 +1817,27 @@ with tab_decisions:
         best = lineup_summary.iloc[0]
         regret = lineup_summary.nsmallest(1, "points_left").iloc[0]
         d1, d2, d3 = st.columns(3)
-        d1.metric("Best decision efficiency", pct(best.lineup_efficiency), best.owner)
-        d2.metric("Fewest points left", f"{regret.points_left / regret.weeks_observed:.1f}/wk", regret.owner)
+        d1.metric("Best decision efficiency", pct(best.lineup_efficiency), owner_sample_label(best.owner))
+        d2.metric("Fewest points left", f"{regret.points_left / regret.weeks_observed:.1f}/wk", owner_sample_label(regret.owner))
         d3.metric("Observed opportunities", f"{int(lineup_summary.weeks_observed.sum())}", "team-weeks")
 
         summary_chart = lineup_summary.copy()
         summary_chart["Points left / week"] = summary_chart["points_left"] / summary_chart["weeks_observed"]
         summary_chart["Efficiency"] = summary_chart["lineup_efficiency"]
+        summary_chart["owner_label"] = summary_chart["owner"].map(owner_sample_label)
         left, right = st.columns(2)
         with left:
             efficiency = px.bar(
                 summary_chart.sort_values("Efficiency"),
                 x="Efficiency",
-                y="owner",
+                y="owner_label",
                 orientation="h",
                 color="Efficiency",
                 color_continuous_scale=["#C05E85", "#E0B44C", "#6FB1FC"],
                 range_color=[max(0.7, summary_chart["Efficiency"].min()), 1],
                 text=summary_chart.sort_values("Efficiency")["Efficiency"].map(lambda value: f"{value:.1%}"),
                 title="Lineup efficiency",
-                labels={"owner": "Owner"},
+                labels={"owner_label": "Owner"},
             )
             efficiency.update_xaxes(tickformat=".0%")
             efficiency.update_layout(coloraxis_showscale=False)
@@ -1701,12 +1845,12 @@ with tab_decisions:
         with right:
             regret_chart = px.bar(
                 summary_chart.sort_values("Points left / week", ascending=False),
-                x="owner",
+                x="owner_label",
                 y="Points left / week",
                 color="Points left / week",
                 color_continuous_scale=["#6FB1FC", "#E0B44C", "#C05E85"],
                 title="Start / sit regret per observed week",
-                labels={"owner": "Owner"},
+                labels={"owner_label": "Owner"},
             )
             regret_chart.update_layout(coloraxis_showscale=False)
             render_plot(regret_chart, "regret_bar")
@@ -1717,6 +1861,7 @@ with tab_decisions:
             .groupby("owner")["points_left"].mean()
         )
         heat["Total"] = average_season_total
+        heat.index = [owner_sample_label(owner) for owner in heat.index]
         heat.columns = [str(column) for column in heat.columns]
         heat_color = heat.copy()
         heat_color["Total"] = heat_color["Total"] / 18
@@ -1753,13 +1898,14 @@ with tab_decisions:
                 expected_regret=("expected_regret", "mean"),
                 decision_residual=("decision_residual", "mean"),
             )
+            owner_decisions["owner_label"] = owner_decisions["owner"].map(owner_sample_label)
             decision_scatter = px.scatter(
                 owner_decisions,
                 x="bench_quality",
                 y="regret_per_week",
                 color="decision_residual",
                 size="weeks",
-                text="owner",
+                text="owner_label",
                 color_continuous_scale=["#6FB1FC", "#1C1F26", "#C05E85"],
                 color_continuous_midpoint=0,
                 labels={
@@ -1773,12 +1919,15 @@ with tab_decisions:
             add_linear_trend_with_ci(decision_scatter, owner_decisions, "bench_quality", "regret_per_week")
             render_plot(decision_scatter, "bench_quality_decisions")
             decision_table = owner_decisions.copy()
+            decision_table["Owner"] = decision_table["owner_label"]
             for column in ["bench_quality", "regret_per_week", "expected_regret", "decision_residual"]:
                 decision_table[column] = decision_table[column].round(1)
             st.dataframe(
-                decision_table.rename(
+                decision_table[
+                    ["Owner", "weeks", "bench_quality", "regret_per_week", "expected_regret", "decision_residual"]
+                ].rename(
                     columns={
-                        "owner": "Owner", "weeks": "Team-weeks", "bench_quality": "Bench pts vs median / wk",
+                        "weeks": "Team-weeks", "bench_quality": "Bench pts vs median / wk",
                         "regret_per_week": "Actual regret / wk", "expected_regret": "Expected from bench / wk",
                         "decision_residual": "Owner decision residual / wk",
                     }
@@ -1794,12 +1943,14 @@ with tab_decisions:
         )
         if not counterfactual.empty:
             cf = counterfactual.copy()
+            cf["Owner"] = cf["owner"].map(owner_sample_label)
             for column in ["actual_wins", "perfect_start_wins", "wins_added", "points_left"]:
                 cf[column] = cf[column].round(1)
             st.dataframe(
-                cf.rename(
+                cf[
+                    ["Owner", "comparable_weeks", "actual_wins", "perfect_start_wins", "wins_added", "points_left"]
+                ].rename(
                     columns={
-                        "owner": "Owner",
                         "comparable_weeks": "Comparable weeks",
                         "actual_wins": "Actual wins",
                         "perfect_start_wins": "Perfect-start wins",
@@ -1829,11 +1980,15 @@ with tab_draft:
         decay_owners = sorted(roster_weekly["owner"].unique(), key=str.casefold)
         default_decay_owner = decay_owners.index("McCade") if "McCade" in decay_owners else 0
         decay_filter_left, decay_filter_right = st.columns(2)
-        primary_decay_owner = decay_filter_left.selectbox("Primary owner", decay_owners, index=default_decay_owner, key="decay_primary_owner")
+        primary_decay_owner = decay_filter_left.selectbox(
+            "Primary owner", decay_owners, index=default_decay_owner,
+            format_func=owner_sample_label, key="decay_primary_owner"
+        )
         additional_decay_owners = decay_filter_right.multiselect(
             "Add owners",
             [owner for owner in decay_owners if owner != primary_decay_owner],
             default=[],
+            format_func=owner_sample_label,
             key="decay_additional_owners",
         )
         shown_decay_owners = [primary_decay_owner, *additional_decay_owners]
@@ -1846,15 +2001,16 @@ with tab_draft:
                 league_drafted_rostered=("league_drafted_rostered", "mean"),
             )
         )
+        decay_average["owner_label"] = decay_average["owner"].map(owner_sample_label)
         decay_count = px.line(
             decay_average,
             x="week",
             y="homegrown_rostered",
-            color="owner",
+            color="owner_label",
             markers=True,
             custom_data=["rostered_players", "league_drafted_rostered"],
             title="Average original draftees still rostered by week",
-            labels={"week": "Week", "homegrown_rostered": "Original players remaining", "owner": "Owner"},
+            labels={"week": "Week", "homegrown_rostered": "Original players remaining", "owner_label": "Owner"},
         )
         decay_count.update_traces(
             hovertemplate=(
@@ -1873,17 +2029,17 @@ with tab_draft:
         st.caption("When multiple league-seasons are selected, each owner-week is averaged across those selected drafts.")
 
         decay_display = decay_summary.copy()
+        decay_display["Owner"] = decay_display["owner"].map(owner_sample_label)
         decay_display["latest_homegrown_share"] = decay_display["latest_homegrown_share"].map(pct)
         st.dataframe(
             decay_display[
                 [
-                    "owner", "weeks_observed", "first_week", "latest_week", "homegrown_first",
+                    "Owner", "weeks_observed", "first_week", "latest_week", "homegrown_first",
                     "homegrown_latest", "players_replaced", "latest_homegrown_share",
                     "latest_league_drafted", "coverage_note",
                 ]
             ].rename(
                 columns={
-                    "owner": "Owner",
                     "weeks_observed": "Weeks observed",
                     "first_week": "First week",
                     "latest_week": "Latest week",
@@ -1911,31 +2067,33 @@ with tab_draft:
         shares = starters.groupby("owner", as_index=False).agg(
             homegrown=("drafted_by_owner", "mean"), league_drafted=("drafted_in_league", "mean"), starts=("player_name", "size")
         )
+        shares["owner_label"] = shares["owner"].map(owner_sample_label)
         shares_long = shares.melt(
-            id_vars=["owner", "starts"], value_vars=["homegrown", "league_drafted"], var_name="Measure", value_name="Share"
+            id_vars=["owner", "owner_label", "starts"], value_vars=["homegrown", "league_drafted"], var_name="Measure", value_name="Share"
         )
         shares_long["Measure"] = shares_long["Measure"].map(
             {"homegrown": "Drafted by current owner", "league_drafted": "Drafted somewhere in league"}
         )
         retention = px.bar(
             shares_long,
-            x="owner",
+            x="owner_label",
             y="Share",
             color="Measure",
             barmode="group",
             color_discrete_map={"Drafted by current owner": "#6FB1FC", "Drafted somewhere in league": "#73C3A6"},
             text=shares_long["Share"].map(lambda value: f"{value:.0%}"),
             title=f"Who was still starting drafted players? · {starter_week_choice}",
-            labels={"owner": "Owner"},
+            labels={"owner_label": "Owner"},
         )
         retention.update_yaxes(tickformat=".0%", range=[0, 1.05])
         render_plot(retention, "draft_retention")
 
         origin = starters.groupby(["owner", "player_origin"], as_index=False)["fan_points"].sum()
         origin["share"] = origin["fan_points"] / origin.groupby("owner")["fan_points"].transform("sum")
+        origin["owner_label"] = origin["owner"].map(owner_sample_label)
         origin_chart = px.bar(
             origin,
-            x="owner",
+            x="owner_label",
             y="share",
             color="player_origin",
             color_discrete_map={
@@ -1945,7 +2103,7 @@ with tab_draft:
             },
             text=origin["share"].map(lambda value: f"{value:.0%}" if value >= .05 else ""),
             title="Source of observed starter points",
-            labels={"owner": "Owner", "share": "Share of points", "player_origin": "Player origin"},
+            labels={"owner_label": "Owner", "share": "Share of points", "player_origin": "Player origin"},
         )
         origin_chart.update_yaxes(tickformat=".0%")
         render_plot(origin_chart, "origin_points")

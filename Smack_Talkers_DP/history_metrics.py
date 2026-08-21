@@ -51,11 +51,88 @@ PARQUET_COLUMNS = {
 
 POSITION_ORDER = ["QB", "RB", "WR", "TE", "K", "DST", "Unknown"]
 STARTER_SLOTS = {"QB": 1, "RB": 2, "FLEX": 3, "TE": 1, "K": 1, "DST": 1}
+STARTER_SLOT_ORDER = [
+    "QB1", "RB1", "RB2", "RB TOTAL", "WR1", "WR2", "WR3", "WR TOTAL",
+    "TE1", "K1", "DST1", "TOTAL",
+]
 
 
 def fantasy_weeks(season: int) -> int:
     """Yahoo fantasy scoring weeks: 17 through 2020, 18 beginning in 2021."""
     return 17 if int(season) <= 2020 else 18
+
+
+def starter_slot_rankings(lineups: pd.DataFrame) -> pd.DataFrame:
+    """Rank team-season scoring from each actual starting lineup slot.
+
+    RB and W/T starters are ordered by their weekly fantasy points to create
+    RB1/RB2 and WR1/WR2/WR3. A tight end used in W/T therefore contributes to
+    a WR slot; only the dedicated TE starter contributes to TE1.
+    """
+    columns = [
+        "season", "league_id", "draft_type", "team_id", "owner", "starter_slot",
+        "starter_points", "observed_weeks", "slot_rank", "league_teams",
+    ]
+    required = {
+        "season", "league_id", "draft_type", "team_id", "owner", "week",
+        "roster_slot", "is_starter", "fan_points",
+    }
+    if lineups.empty or not required.issubset(lineups.columns):
+        return pd.DataFrame(columns=columns)
+
+    keys = ["season", "league_id", "draft_type", "team_id", "owner", "week"]
+    work = lineups.loc[lineups["is_starter"]].copy()
+    work["fan_points"] = pd.to_numeric(work["fan_points"], errors="coerce").fillna(0.0)
+    work["slot_family"] = work["roster_slot"].map(
+        {"QB": "QB", "RB": "RB", "W/T": "WR", "TE": "TE", "K": "K", "DEF": "DST"}
+    )
+    work = work.loc[work["slot_family"].notna()].copy()
+    if work.empty:
+        return pd.DataFrame(columns=columns)
+
+    work = work.sort_values(
+        [*keys, "slot_family", "fan_points"],
+        ascending=[True] * (len(keys) + 1) + [False],
+        kind="stable",
+    )
+    work["slot_depth"] = work.groupby([*keys, "slot_family"], sort=False, dropna=False).cumcount().add(1)
+    slot_limits = {"QB": 1, "RB": 2, "WR": 3, "TE": 1, "K": 1, "DST": 1}
+    work = work.loc[work["slot_depth"].le(work["slot_family"].map(slot_limits))].copy()
+    work["starter_slot"] = work["slot_family"] + work["slot_depth"].astype(str)
+
+    season_keys = ["season", "league_id", "draft_type", "team_id", "owner", "starter_slot"]
+    result = work.groupby(season_keys, as_index=False, sort=False, dropna=False).agg(
+        starter_points=("fan_points", "sum"),
+        observed_weeks=("week", "nunique"),
+    )
+    total_keys = ["season", "league_id", "draft_type", "team_id", "owner"]
+    position_totals = (
+        work.loc[work["slot_family"].isin(["RB", "WR"])]
+        .groupby([*total_keys, "slot_family"], as_index=False, sort=False, dropna=False)
+        .agg(starter_points=("fan_points", "sum"), observed_weeks=("week", "nunique"))
+        .rename(columns={"slot_family": "starter_slot"})
+    )
+    position_totals["starter_slot"] = position_totals["starter_slot"] + " TOTAL"
+    totals = work.groupby(total_keys, as_index=False, sort=False, dropna=False).agg(
+        starter_points=("fan_points", "sum"),
+        observed_weeks=("week", "nunique"),
+    )
+    totals["starter_slot"] = "TOTAL"
+    result = pd.concat(
+        [result, position_totals[result.columns], totals[result.columns]], ignore_index=True
+    )
+    league_keys = ["season", "league_id", "starter_slot"]
+    result["slot_rank"] = result.groupby(league_keys, sort=False, dropna=False)["starter_points"].rank(
+        method="min", ascending=False
+    )
+    league_sizes = (
+        lineups[["season", "league_id", "team_id"]]
+        .drop_duplicates()
+        .groupby(["season", "league_id"], as_index=False)
+        .agg(league_teams=("team_id", "nunique"))
+    )
+    result = result.merge(league_sizes, on=["season", "league_id"], how="left", validate="many_to_one")
+    return result[columns]
 
 
 def normalize_name(value: object) -> str:
