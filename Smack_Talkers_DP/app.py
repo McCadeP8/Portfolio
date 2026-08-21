@@ -1273,6 +1273,85 @@ with tab_owner_history:
             )
             rivalry["margin_per_game"] = (rivalry["points_for"] - rivalry["points_against"]) / rivalry["games"]
             rivalry["record"] = rivalry.apply(lambda row: f"{row.wins}-{row.losses}-{row.ties}", axis=1)
+
+            season_comparison_base = standings[
+                ["season", "league_id", "team_id", "owner", "rank"]
+            ].drop_duplicates()
+            season_comparison_base = season_comparison_base.merge(
+                league_all_week_points[
+                    ["season", "league_id", "team_id", "all_season_points"]
+                ],
+                on=["season", "league_id", "team_id"],
+                how="left",
+                validate="one_to_one",
+            )
+            selected_owner_seasons = season_comparison_base.loc[
+                season_comparison_base["owner"].eq(history_owner),
+                ["season", "league_id", "rank", "all_season_points"],
+            ].rename(
+                columns={"rank": "owner_finish", "all_season_points": "owner_season_points"}
+            )
+            opponent_seasons = season_comparison_base.rename(
+                columns={
+                    "owner": "opponent",
+                    "rank": "opponent_finish",
+                    "all_season_points": "opponent_season_points",
+                }
+            )
+            shared_seasons = selected_owner_seasons.merge(
+                opponent_seasons[
+                    ["season", "league_id", "opponent", "opponent_finish", "opponent_season_points"]
+                ],
+                on=["season", "league_id"],
+                how="inner",
+                validate="one_to_many",
+            )
+            shared_seasons = shared_seasons.loc[shared_seasons["opponent"].ne(history_owner)].copy()
+            shared_seasons["finish_result"] = np.select(
+                [
+                    shared_seasons["owner_finish"].lt(shared_seasons["opponent_finish"]),
+                    shared_seasons["owner_finish"].gt(shared_seasons["opponent_finish"]),
+                ],
+                ["win", "loss"],
+                default="tie",
+            )
+            points_available = shared_seasons[
+                ["owner_season_points", "opponent_season_points"]
+            ].notna().all(axis=1)
+            shared_seasons["points_result"] = np.select(
+                [
+                    points_available
+                    & shared_seasons["owner_season_points"].gt(shared_seasons["opponent_season_points"]),
+                    points_available
+                    & shared_seasons["owner_season_points"].lt(shared_seasons["opponent_season_points"]),
+                    points_available,
+                ],
+                ["win", "loss", "tie"],
+                default="missing",
+            )
+            season_records = shared_seasons.groupby("opponent", as_index=False).agg(
+                finish_wins=("finish_result", lambda values: int(values.eq("win").sum())),
+                finish_losses=("finish_result", lambda values: int(values.eq("loss").sum())),
+                finish_ties=("finish_result", lambda values: int(values.eq("tie").sum())),
+                points_wins=("points_result", lambda values: int(values.eq("win").sum())),
+                points_losses=("points_result", lambda values: int(values.eq("loss").sum())),
+                points_ties=("points_result", lambda values: int(values.eq("tie").sum())),
+            )
+            season_records["finish_record"] = season_records.apply(
+                lambda row: f"{row.finish_wins}-{row.finish_losses}-{row.finish_ties}", axis=1
+            )
+            season_records["points_record"] = season_records.apply(
+                lambda row: f"{row.points_wins}-{row.points_losses}-{row.points_ties}", axis=1
+            )
+            rivalry = rivalry.merge(
+                season_records[["opponent", "finish_record", "points_record"]],
+                on="opponent",
+                how="left",
+                validate="one_to_one",
+            )
+            rivalry[["finish_record", "points_record"]] = rivalry[
+                ["finish_record", "points_record"]
+            ].fillna("—")
             rivalry["opponent_label"] = rivalry["opponent"].map(owner_sample_label)
             established = rivalry.loc[rivalry["games"].ge(3)]
             r1, r2 = st.columns(2)
@@ -1290,7 +1369,14 @@ with tab_owner_history:
                 text="record",
                 color_continuous_scale=["#C05E85", "#1C1F26", "#6FB1FC"],
                 color_continuous_midpoint=0,
-                hover_data={"games": True, "points_for": ":.1f", "points_against": ":.1f", "margin_per_game": ":+.1f"},
+                hover_data={
+                    "games": True,
+                    "finish_record": True,
+                    "points_record": True,
+                    "points_for": ":.1f",
+                    "points_against": ":.1f",
+                    "margin_per_game": ":+.1f",
+                },
                 title="Career regular-season H2H win rate",
                 labels={"win_pct": "Win rate", "opponent_label": "Opponent", "margin_per_game": "Margin / game"},
             )
@@ -1300,14 +1386,25 @@ with tab_owner_history:
             rivalry_display["Opponent"] = rivalry_display["opponent_label"]
             rivalry_display["Games"] = rivalry_display["games"]
             rivalry_display["Record"] = rivalry_display["record"]
+            rivalry_display["Finish record"] = rivalry_display["finish_record"]
+            rivalry_display["Points record"] = rivalry_display["points_record"]
             rivalry_display["Win %"] = rivalry_display["win_pct"].map(pct)
             rivalry_display["PF"] = rivalry_display["points_for"].round(1)
             rivalry_display["PA"] = rivalry_display["points_against"].round(1)
             rivalry_display["Margin / game"] = rivalry_display["margin_per_game"].round(1)
             st.dataframe(
-                rivalry_display[["Opponent", "Games", "Record", "Win %", "PF", "PA", "Margin / game"]],
+                rivalry_display[
+                    [
+                        "Opponent", "Games", "Record", "Win %", "Finish record",
+                        "Points record", "PF", "PA", "Margin / game",
+                    ]
+                ],
                 hide_index=True,
                 width="stretch",
+            )
+            st.caption(
+                "All records are W-L-T from the selected owner's perspective. Finish record compares final standings rank; "
+                "Points record compares total scoring across every captured week in each shared league-season."
             )
 
         section_title("Franchise players", "Who stayed on the roster—and who actually started")
