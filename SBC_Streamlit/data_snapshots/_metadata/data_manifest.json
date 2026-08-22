@@ -3,25 +3,25 @@
     {
       "bytes": 241748,
       "columns": 24,
-      "modified_at": "2026-08-21T09:54:01.980467+00:00",
+      "modified_at": "2026-08-22T09:44:22.595982+00:00",
       "path": "all_team_stats_history.parquet",
       "row_groups": 1,
       "rows": 8820,
-      "sha256": "502b342e156160086426c60e315acf1c8c755d5b3ed500c74a794882ca0c2f80"
+      "sha256": "9aecbdb0074068dd88367688b8f03208ae10449017ade6fd016c1d00820791bc"
     },
     {
-      "bytes": 320019,
+      "bytes": 319991,
       "columns": 7,
-      "modified_at": "2026-08-21T09:54:16.552610+00:00",
+      "modified_at": "2026-08-22T09:44:45.321045+00:00",
       "path": "all_time_rosters_history.parquet",
       "row_groups": 12,
       "rows": 552545,
-      "sha256": "b2abe7e543bc3dfcbc0ad9e8c5faf1e7680f6d75879aa8a5830e9111aea8aa83"
+      "sha256": "dbfb1a780d92d9d315e4402842c87c834a27a8a2ee31ea18ecb8d38a9c77c351"
     },
     {
       "bytes": 54867,
       "columns": 14,
-      "modified_at": "2026-08-21T09:54:26.489807+00:00",
+      "modified_at": "2026-08-22T09:44:54.833072+00:00",
       "path": "all_time_scores.parquet",
       "row_groups": 1,
       "rows": 7945,
@@ -30,7 +30,7 @@
     {
       "bytes": 33127,
       "columns": 9,
-      "modified_at": "2026-08-21T09:54:26.998812+00:00",
+      "modified_at": "2026-08-22T09:44:55.369074+00:00",
       "path": "all_time_standings.parquet",
       "row_groups": 1,
       "rows": 7770,
@@ -39,7 +39,7 @@
     {
       "bytes": 15511490,
       "columns": 9,
-      "modified_at": "2026-08-21T09:53:01.686093+00:00",
+      "modified_at": "2026-08-22T09:43:22.073840+00:00",
       "path": "data_snapshots/pbp/pbp_stat_events_202021.parquet",
       "row_groups": 1,
       "rows": 766814,
@@ -48,7 +48,7 @@
     {
       "bytes": 17677832,
       "columns": 9,
-      "modified_at": "2026-08-21T09:53:01.783093+00:00",
+      "modified_at": "2026-08-22T09:43:22.158841+00:00",
       "path": "data_snapshots/pbp/pbp_stat_events_202122.parquet",
       "row_groups": 1,
       "rows": 872686,
@@ -57,7 +57,7 @@
     {
       "bytes": 17843382,
       "columns": 9,
-      "modified_at": "2026-08-21T09:53:01.882094+00:00",
+      "modified_at": "2026-08-22T09:43:22.244841+00:00",
       "path": "data_snapshots/pbp/pbp_stat_events_202223.parquet",
       "row_groups": 1,
       "rows": 884971,
@@ -66,7 +66,7 @@
     {
       "bytes": 17846728,
       "columns": 9,
-      "modified_at": "2026-08-21T09:53:01.978094+00:00",
+      "modified_at": "2026-08-22T09:43:22.330842+00:00",
       "path": "data_snapshots/pbp/pbp_stat_events_202324.parquet",
       "row_groups": 1,
       "rows": 885114,
@@ -75,7 +75,7 @@
     {
       "bytes": 17948412,
       "columns": 9,
-      "modified_at": "2026-08-21T09:53:02.076094+00:00",
+      "modified_at": "2026-08-22T09:43:22.417842+00:00",
       "path": "data_snapshots/pbp/pbp_stat_events_202425.parquet",
       "row_groups": 1,
       "rows": 887185,
@@ -84,7 +84,7 @@
     {
       "bytes": 18641503,
       "columns": 9,
-      "modified_at": "2026-08-21T09:53:02.178095+00:00",
+      "modified_at": "2026-08-22T09:43:22.507842+00:00",
       "path": "data_snapshots/pbp/pbp_stat_events_202526.parquet",
       "row_groups": 1,
       "rows": 915437,
@@ -93,7 +93,7 @@
     {
       "bytes": 4796701,
       "columns": 14,
-      "modified_at": "2026-08-21T09:53:02.205095+00:00",
+      "modified_at": "2026-08-22T09:43:22.530842+00:00",
       "path": "data_snapshots/shots/nba_shots_202021.parquet",
       "row_groups": 1,
       "rows": 190968,
@@ -102,7 +102,7 @@
     {
       "bytes": 5461604,
       "columns": 14,
-      "modified_at": "2026-08-21T09:53:02.233095+00:00",
+      "modified_at": "2026-08-22T09:43:22.555842+00:00",
       "path": "data_snapshots/shots/nba_shots_202122.parquet",
       "row_groups": 1,
       "rows": 216715,
@@ -111,7 +111,7 @@
     {
       "bytes": 5467617,
       "columns": 14,
-      "modified_at": "2026-08-21T09:53:02.262095+00:00",
+      "modified_at": "2026-08-22T09:43:22.580842+00:00",
       "path": "data_snapshots/shots/nba_shots_202223.parquet",
       "row_groups": 1,
       "rows": 217159,
@@ -120,7 +120,7 @@
     {
       "bytes": 5528640,
       "columns": 14,
-      "modified_at": "2026-08-21T09:53:02.291095+00:00",
+      "modified_at": "2026-08-22T09:43:22.605842+00:00",
       "path": "data_snapshots/shots/nba_shots_202324.parquet",
       "row_groups": 1,
       "rows": 218687,
@@ -129,7 +129,7 @@
     {
       "bytes": 5566628,
       "columns": 14,
-      "modified_at": "2026-08-21T09:53:02.321095+00:00",
+      "modified_at": "2026-08-22T09:43:22.631843+00:00",
       "path": "data_snapshots/shots/nba_shots_202425.parquet",
       "row_groups": 1,
       "rows": 219527,
@@ -138,7 +138,7 @@
     {
       "bytes": 5673269,
       "columns": 14,
-      "modified_at": "2026-08-21T09:53:02.351095+00:00",
+      "modified_at": "2026-08-22T09:43:22.657843+00:00",
       "path": "data_snapshots/shots/nba_shots_202526.parquet",
       "row_groups": 1,
       "rows": 220268,
@@ -147,7 +147,7 @@
     {
       "bytes": 37986,
       "columns": 2,
-      "modified_at": "2026-08-21T09:53:02.351095+00:00",
+      "modified_at": "2026-08-22T09:43:22.657843+00:00",
       "path": "fantrax_players_snapshot.parquet",
       "row_groups": 1,
       "rows": 1814,
@@ -156,7 +156,7 @@
     {
       "bytes": 2763599,
       "columns": 34,
-      "modified_at": "2026-08-21T09:53:02.368095+00:00",
+      "modified_at": "2026-08-22T09:43:22.672843+00:00",
       "path": "nba_player_game_boxscores_2021_2026.parquet",
       "row_groups": 1,
       "rows": 154526,
@@ -165,17 +165,17 @@
     {
       "bytes": 2366381,
       "columns": 38,
-      "modified_at": "2026-08-21T09:54:31.587856+00:00",
+      "modified_at": "2026-08-22T09:45:00.355087+00:00",
       "path": "sbc_player_matchup_stats.parquet",
       "row_groups": 3,
       "rows": 119095,
       "sha256": "76c594e7edbac93458bd3c10159fdfa2debb79231601dfa93a9489d9664f70ef"
     }
   ],
-  "generated_at": "2026-08-21T09:54:32.057529+00:00",
+  "generated_at": "2026-08-22T09:45:00.786599+00:00",
   "schema_version": 1,
   "totals": {
-    "bytes": 143781533,
+    "bytes": 143781505,
     "files": 19,
     "rows": 7348046
   }
