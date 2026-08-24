@@ -48,6 +48,10 @@ NFL_TEAMS = [
 
 POSITION_COUNTS = {"QB": 32, "RB": 80, "WR": 96, "TE": 40, "K": 32, "DST": 32}
 
+# These legal picks are deliberately added only after the seeded player split.
+# They therefore cannot change any existing Alive/Dusted assignment.
+SPECIAL_UNRANKED_PLAYERS = {"Odell Beckham Jr.": "WR"}
+
 POSITION_STYLE = {
     "QB": ("#FF0000", "#FFFFFF"),
     "RB": ("#FF9900", "#000000"),
@@ -199,6 +203,10 @@ def live_draft_data() -> tuple[pd.DataFrame, bool]:
             for position, names in pools.items()
             for name in names
         }
+        position_by_player.update({
+            picture_key(name): position
+            for name, position in SPECIAL_UNRANKED_PLAYERS.items()
+        })
         frame["Position"] = frame["Player"].map(
             lambda player: position_by_player.get(picture_key(player), "")
             if pd.notna(player) else ""
@@ -484,8 +492,10 @@ def player_cards(
     animate: bool = False,
     source_order: list[str] | None = None,
     drafted_keys: set[str] | None = None,
+    rank_labels: dict[str, str] | None = None,
 ) -> str:
     drafted_keys = drafted_keys or set()
+    rank_labels = rank_labels or {}
     source = list(source_order or names)
     source_indices = {picture_key(name): index for index, name in enumerate(source)}
     last_source_index = max(len(source) - 1, 1)
@@ -498,25 +508,32 @@ def player_cards(
         start_y = (original_index - final_index) * 3.075 if animate else 0
         motion = "player-left" if animate and realm == "alive" else "player-right" if animate else ""
         taken_html = '<span class="taken-chip">Taken</span>' if is_drafted else ""
+        rank_label = rank_labels.get(picture_key(name), f"#{original_index + 1}")
         cards.append(
             f'<div class="player-card {motion} {"drafted-player" if is_drafted else ""}" '
             f'data-status="{"drafted" if is_drafted else "available"}" '
             f'style="background:{background};color:{foreground};'
             f'--start-y:{start_y:.3f}rem;animation-delay:{delay:.2f}s">'
-            f'<span class="player-rank">#{original_index + 1}</span>{html.escape(name)}{taken_html}</div>'
+            f'<span class="player-rank">{html.escape(rank_label)}</span>{html.escape(name)}{taken_html}</div>'
         )
     return f'<div class="player-list-shell"><div class="player-list">{"".join(cards)}</div></div>'
 
 
 def player_split_html(names: list[str], position: str, animate: bool, drafted_keys: set[str]) -> str:
     split = seeded_split(names, position)
+    special_names = [
+        name for name, special_position in SPECIAL_UNRANKED_PLAYERS.items()
+        if special_position == position
+    ]
+    special_rank_labels = {picture_key(name): "UR" for name in special_names}
     columns = []
     for realm, realm_names in (("alive", split.alive), ("dusted", split.dusted)):
         sorted_names = sorted_player_names(realm_names, drafted_keys, names)
+        display_names = [*sorted_names, *special_names]
         columns.append(
             f'<div class="realm-column"><div class="realm-head {realm}">'
             f'<div class="realm-title">{realm.upper()}</div></div>'
-            f'{player_cards(sorted_names, position, realm, animate, names, drafted_keys)}</div>'
+            f'{player_cards(display_names, position, realm, animate, names, drafted_keys, special_rank_labels)}</div>'
         )
     return f'<div class="split-stage"><div class="split-grid">{"".join(columns)}</div></div>'
 
@@ -537,6 +554,11 @@ def all_players_html(
             split = seeded_split(pools[position], position)
             realm_names = split.alive if realm == "alive" else split.dusted
             players.extend((name, position) for name in realm_names)
+        players.extend(
+            (name, position)
+            for name, position in SPECIAL_UNRANKED_PLAYERS.items()
+            if position in snapped_positions
+        )
         players.sort(
             key=lambda item: (
                 picture_key(item[0]) in drafted_keys,
@@ -547,14 +569,16 @@ def all_players_html(
         cards = []
         for name, position in players:
             is_drafted = picture_key(name) in drafted_keys
+            is_unranked = name in SPECIAL_UNRANKED_PLAYERS
             rank_number = rank_by_position[position].get(picture_key(name), 0) + 1
+            rank_label = "UR" if is_unranked else f"#{rank_number}"
             background, foreground = POSITION_SOFT_STYLE[position] if is_drafted else POSITION_STYLE[position]
             status_class = "drafted-player" if is_drafted else ""
             status = " - Taken" if is_drafted else ""
             cards.append(
                 f'<div class="all-player-card {status_class}" data-status="{"drafted" if is_drafted else "available"}" '
                 f'style="background:{background};color:{foreground}">'
-                f'<span class="all-rank">#{rank_number}</span>{html.escape(name)}'
+                f'<span class="all-rank">{rank_label}</span>{html.escape(name)}'
                 f'<span class="all-pos">{position}{status}</span></div>'
             )
         realm_columns.append(
@@ -864,6 +888,7 @@ def league_assignment_issues(draft: pd.DataFrame, pools: dict[str, list[str]]) -
         expected_realm.update({picture_key(name): "Dusted" for name in split.dusted})
 
     issues = []
+    legal_either_realm = {picture_key(name) for name in SPECIAL_UNRANKED_PLAYERS}
     for _, row in draft.iterrows():
         player = str(row.get("Player", "")).strip()
         if not player or player.casefold() in {"nan", "none", "<na>"}:
@@ -871,7 +896,10 @@ def league_assignment_issues(draft: pd.DataFrame, pools: dict[str, list[str]]) -
         expected = expected_realm.get(picture_key(player))
         actual_raw = str(row.get("Draft", "")).strip()
         actual = "Alive" if "alive" in actual_raw.casefold() else "Dusted" if "dust" in actual_raw.casefold() else ""
-        if expected is None:
+        if picture_key(player) in legal_either_realm:
+            if not actual:
+                issues.append(f"{player}: Draft must be Alive or Dusted (legal in either)")
+        elif expected is None:
             issues.append(f"{player}: not found in the player pools")
         elif not actual:
             issues.append(f"{player}: Draft must be Alive or Dusted (belongs in {expected})")
@@ -992,6 +1020,7 @@ def render_app() -> None:
         for player in draft_frame["Player"].dropna().astype(str).str.strip()
         if player and player.casefold() != "nan"
     }
+    drafted_keys.update(picture_key(name) for name in SPECIAL_UNRANKED_PLAYERS)
     just_snapped = st.session_state.just_snapped
     teams_split = seeded_split(teams, "teams")
     st.markdown('<div class="eyebrow">Thanos League · Year 8</div>', unsafe_allow_html=True)
