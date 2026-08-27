@@ -50,7 +50,10 @@ POSITION_COUNTS = {"QB": 32, "RB": 80, "WR": 96, "TE": 40, "K": 32, "DST": 32}
 
 # These legal picks are deliberately added only after the seeded player split.
 # They therefore cannot change any existing Alive/Dusted assignment.
-SPECIAL_UNRANKED_PLAYERS = {"Odell Beckham Jr.": "WR"}
+SPECIAL_UNRANKED_PLAYERS = {
+    "Odell Beckham Jr.": "WR",
+    "Darren Waller": "TE",
+}
 
 POSITION_STYLE = {
     "QB": ("#FF0000", "#FFFFFF"),

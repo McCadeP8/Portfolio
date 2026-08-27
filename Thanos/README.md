@@ -19,9 +19,9 @@ The app reads both public tabs directly and refreshes cached data every 15 secon
 - Randomization tab (`gid=1215542528`): `Type, Name`
 
 Additional Draft-tab columns are allowed and silently ignored. Odell Beckham Jr.
-is supported as a legal unranked WR in either draft; he is added only after the
-seeded split, appears as `UR · Taken` in both WR pools, and cannot affect any
-randomized assignment.
+(WR) and Darren Waller (TE) are supported as legal unranked players in either
+draft. They are added only after the seeded split, appear as `UR · Taken` in both
+of their positional pools, and cannot affect any randomized assignment.
 
 Use `Team` in the `Type` column for the 16 fantasy teams. Position types are `QB`, `RB`, `WR`, `TE`, `K`, and `DST`. Drafted-player positions are inferred by matching `Player` against this tab, and each drafting team is inferred from `Draft`, `Round`, and `Pick` using the seeded snake order.
 

@@ -24,6 +24,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageFont
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
 from sbc_backend import BackendSettings, get_repository
 from sbc_backend.network import CachedHttpClient
+from sbc_backend.storage import atomic_write_parquet
 
 APP_DIR = Path(__file__).resolve().parent
 BACKEND_SETTINGS = BackendSettings.from_env(APP_DIR)
@@ -172,11 +173,73 @@ def get_draft_picks() -> pd.DataFrame:
     df = df[df['Year'].between(current_year, current_year + 6)]
     return df
 
+OFFICIAL_2027_REGULAR_PERIODS = {
+    1: ("2026-10-20", "2026-10-23"),
+    2: ("2026-10-24", "2026-10-26"),
+    3: ("2026-10-27", "2026-10-29"),
+    4: ("2026-10-30", "2026-11-01"),
+    5: ("2026-11-02", "2026-11-05"),
+    6: ("2026-11-06", "2026-11-08"),
+    7: ("2026-11-09", "2026-11-11"),
+    8: ("2026-11-12", "2026-11-15"),
+    9: ("2026-11-16", "2026-11-18"),
+    10: ("2026-11-19", "2026-11-22"),
+    11: ("2026-11-23", "2026-11-25"),
+    12: ("2026-11-26", "2026-11-29"),
+    13: ("2026-11-30", "2026-12-02"),
+    14: ("2026-12-03", "2026-12-08"),
+    15: ("2026-12-09", "2026-12-13"),
+    16: ("2026-12-14", "2026-12-16"),
+    17: ("2026-12-17", "2026-12-19"),
+    18: ("2026-12-20", "2026-12-22"),
+    19: ("2026-12-23", "2026-12-26"),
+    20: ("2026-12-27", "2026-12-30"),
+    21: ("2026-12-31", "2027-01-02"),
+    22: ("2027-01-03", "2027-01-05"),
+    23: ("2027-01-06", "2027-01-08"),
+    24: ("2027-01-09", "2027-01-11"),
+    25: ("2027-01-12", "2027-01-15"),
+    26: ("2027-01-16", "2027-01-18"),
+    27: ("2027-01-19", "2027-01-21"),
+    28: ("2027-01-22", "2027-01-25"),
+    29: ("2027-01-26", "2027-01-28"),
+    30: ("2027-01-29", "2027-01-31"),
+    31: ("2027-02-01", "2027-02-03"),
+    32: ("2027-02-04", "2027-02-07"),
+    33: ("2027-02-08", "2027-02-10"),
+    34: ("2027-02-11", "2027-02-13"),
+    35: ("2027-02-14", "2027-02-16"),
+    36: ("2027-02-17", "2027-02-25"),
+}
+
+
+def _apply_official_2027_periods(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply the official 2026-27 regular-season periods without changing postseason."""
+    required = {"Year", "Date", "Period"}
+    if df is None or df.empty or not required.issubset(df.columns):
+        return df
+    result = df.copy()
+    years = pd.to_numeric(result["Year"], errors="coerce")
+    dates = pd.to_datetime(result["Date"], errors="coerce")
+    for period, (start, end) in OFFICIAL_2027_REGULAR_PERIODS.items():
+        mask = years.eq(2027) & dates.between(start, end)
+        result.loc[mask, "Period"] = period
+        if "Season" in result.columns:
+            result.loc[mask, "Season"] = "Regular"
+    return result
+
+
 @st.cache_data(ttl=60)
 def get_period_calendar() -> pd.DataFrame:
     refresh_key = int(pd.Timestamp.now().timestamp() // 60)
     csv_url = f"https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=698621872&refresh={refresh_key}"
     df = read_csv_snapshot("period_calendar", csv_url, ttl_seconds=0)
+    df = _apply_official_2027_periods(df)
+    atomic_write_parquet(
+        df,
+        SNAPSHOT_DIR / "period_calendar.parquet",
+        row_group_size=BACKEND_SETTINGS.parquet_row_group_size,
+    )
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     for col in ["Day", "Year", "Period"]:
