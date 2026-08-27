@@ -167,10 +167,25 @@ ARTICLE_DEFAULT_YEAR = 2026
 ARTICLE_PRESENTATIONS = {
     "Vegas Blackjack to Retire Chris Paul’s No. 3 on January 21 When Boise Comes to Town": {
         "kicker": "Jersey Retirement",
+        "display_headline": "Vegas to Retire Chris Paul’s No. 3",
         "teams": ["Vegas", "Boise"],
         "players": [("Chris Paul", "2779")],
         "badges": ["No. 3", "January 21", "First in franchise history"],
         "deck": "The first player in Blackjack history will become the first sent to the rafters—with Boise returning for a ceremony built around the shot that launched Vegas into the inaugural Finals.",
+        "facts": [
+            "No. 1 in assists, steals and plus-minus",
+            "23.73 PTS · 14.86 AST · 2.57 STL per matchup",
+            "47% FG · 36% 3PT · 87% FT",
+            "2022 All-Star · 2021 Week 13 Player of the Week",
+            "62 PTS · 43 AST · 18 REB · 9 STL in the 2021 WCF",
+        ],
+        "sections": [
+            ("Across 88 regular-season matchup periods", "A Franchise Standard"),
+            ("Paul’s individual honors", "Built for the Moment"),
+            ("At 12:33 a.m. Eastern", "The Shot After Midnight"),
+            ("There could not be a more appropriate opponent", "Why Boise"),
+            ("Paul’s Blackjack tenure ended", "The Number That Started It All"),
+        ],
     },
     "SBCFBL 2026-27 Schedule Released: Banner Nights, Holiday Heavyweights and Reunion Games": {
         "kicker": "2026-27 Schedule Release",
@@ -263,6 +278,11 @@ def front_article_slug(headline):
 
 def front_article_body_html(value):
     allowed_tags = {"p", "strong", "b", "em", "i", "br", "h2", "h3", "ul", "ol", "li", "blockquote"}
+    text = str(value or "").strip()
+
+    if text and not re.search(r"</?(?:p|h2|h3|ul|ol|li|blockquote|br)\b", text, flags=re.I):
+        paragraphs = [line.strip() for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n") if line.strip()]
+        return "".join(f"<p>{escape(paragraph)}</p>" for paragraph in paragraphs)
 
     def clean_tag(match):
         raw_tag = match.group(0)
@@ -276,7 +296,16 @@ def front_article_body_html(value):
             return "<br>"
         return f"</{tag_name}>" if closing else f"<{tag_name}>"
 
-    return re.sub(r"<[^>]*>", clean_tag, str(value or ""))
+    return re.sub(r"<[^>]*>", clean_tag, text)
+
+
+def front_article_add_sections(body_html, sections):
+    result = str(body_html or "")
+    for marker, heading in sections or []:
+        marker_html = f"<p>{escape(str(marker))}"
+        if marker_html in result:
+            result = result.replace(marker_html, f"<h2>{escape(str(heading))}</h2>{marker_html}", 1)
+    return result
 
 
 def front_article_plain_text(value):
@@ -20552,6 +20581,7 @@ if main_page == "Overview":
             presentation = ARTICLE_PRESENTATIONS.get(headline, {})
             display_headline = str(presentation.get("display_headline", headline)).strip()
             body_html = front_article_body_html(row.get("Body", ""))
+            body_html = front_article_add_sections(body_html, presentation.get("sections", []))
             body_plain = front_article_plain_text(body_html)
             configured_teams = [team for team in presentation.get("teams", []) if team in team_info]
             if not configured_teams:
@@ -20599,6 +20629,7 @@ if main_page == "Overview":
                 "deck": str(presentation.get("deck", fallback_deck)),
                 "kicker": str(presentation.get("kicker", "SBC League Report")),
                 "badges": [str(value) for value in presentation.get("badges", [])],
+                "facts": [str(value) for value in presentation.get("facts", [])],
                 "players": players,
                 "teams": team_assets,
                 "primary": primary_team,
@@ -20622,6 +20653,7 @@ if main_page == "Overview":
             "deck": placeholder["deck"],
             "kicker": "Coming Soon",
             "badges": ["Editorial placeholder"],
+            "facts": [],
             "players": [],
             "teams": [placeholder_team],
             "primary": placeholder_team,
@@ -20687,12 +20719,13 @@ if main_page == "Overview":
       .sbc-article-team-art{width:min(190px,42%);height:190px;object-fit:contain;margin:0 -.7rem;filter:drop-shadow(0 15px 18px rgba(0,0,0,.42))}
       .sbc-article-team-strip{position:absolute;right:1.25rem;bottom:1.05rem;z-index:5;display:flex;align-items:center;gap:.35rem;padding:.4rem .5rem;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(5,13,24,.52);backdrop-filter:blur(10px)}
       .sbc-article-team-strip img{width:30px;height:30px;object-fit:contain}
-      .sbc-article-copy{max-width:820px;margin:0 auto;padding:2rem .9rem 0}.sbc-article-copy p{margin:0 0 1.2rem;color:#263442;font-family:Georgia,'Times New Roman',serif;font-size:1.06rem;line-height:1.82}.sbc-article-copy>p:first-child{color:#152333;font-size:1.22rem;line-height:1.68}.sbc-article-copy strong{color:#101d2b;font-family:Inter,Arial,sans-serif;font-size:.93em;line-height:1.45}
+      .sbc-article-copy{max-width:820px;margin:0 auto;padding:2rem .9rem 0}.sbc-article-copy p{margin:0 0 1.2rem;color:#263442;font-family:Georgia,'Times New Roman',serif;font-size:1.06rem;line-height:1.82}.sbc-article-copy>p:first-of-type{color:#152333;font-size:1.22rem;line-height:1.68}.sbc-article-copy strong{color:#101d2b;font-family:Inter,Arial,sans-serif;font-size:.93em;line-height:1.45}
       .sbc-article-copy p:has(>strong:first-child){padding:1rem 1.05rem;border:1px solid #e0e6eb;border-left:4px solid var(--article-primary);border-radius:0 10px 10px 0;background:linear-gradient(90deg,color-mix(in srgb,var(--article-primary) 7%,#fff),#fff);box-shadow:0 6px 18px rgba(16,29,43,.045)}
-      .sbc-article-copy h2,.sbc-article-copy h3{font-family:'Bungee','Arial Black',sans-serif;line-height:1.1}.sbc-article-copy blockquote{margin:1.4rem 0;padding:1rem 1.2rem;border-left:4px solid #e22635;background:#f7f9fb;color:#354555;font:italic 1.1rem/1.65 Georgia,serif}
+      .sbc-article-copy h2,.sbc-article-copy h3{margin:2.25rem 0 .8rem;color:#132333;font-family:'Bungee','Arial Black',sans-serif;line-height:1.1}.sbc-article-copy blockquote{margin:1.4rem 0;padding:1rem 1.2rem;border-left:4px solid #e22635;background:#f7f9fb;color:#354555;font:italic 1.1rem/1.65 Georgia,serif}
+      .sbc-article-facts{margin:0 0 2rem;padding:1.1rem 1.2rem 1.15rem;border:1px solid color-mix(in srgb,var(--article-primary) 28%,#dce3e9);border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--article-primary) 8%,#fff),#fff);box-shadow:0 8px 24px rgba(16,29,43,.06)}.sbc-article-facts h2{margin:0 0 .75rem;font-size:1rem;letter-spacing:.04em;text-transform:uppercase}.sbc-article-facts ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem .9rem;margin:0;padding:0;list-style:none}.sbc-article-facts li{position:relative;padding:.65rem .7rem .65rem 1.55rem;border-radius:8px;background:#fff;color:#263442;font-size:.83rem;font-weight:800;line-height:1.4;box-shadow:0 2px 8px rgba(16,29,43,.05)}.sbc-article-facts li:before{content:'•';position:absolute;left:.65rem;color:var(--article-primary);font-size:1.15rem;line-height:1}
       .sbc-article-end{display:flex;align-items:center;justify-content:space-between;gap:1rem;max-width:820px;margin:1.5rem auto 0;padding:1.1rem .9rem 0;border-top:1px solid #dfe5ea;color:#697786;font-size:.7rem;font-weight:850;letter-spacing:.06em;text-transform:uppercase}.sbc-article-end img{width:42px;height:42px;object-fit:contain}
       @media(max-width:760px){.sbc-article-hero-inner{grid-template-columns:1fr;align-items:start;min-height:570px;padding:1.25rem 1.15rem 1rem}.sbc-article-hero h1{font-size:clamp(2rem,9vw,3rem)}.sbc-article-dek{font-size:.98rem}.sbc-article-media{position:absolute;right:0;bottom:0;left:0;z-index:-1;min-height:235px;opacity:.68}.sbc-article-player{height:235px}.sbc-article-team-strip{right:.85rem;bottom:.75rem}}
-      @media(max-width:640px){div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body){width:calc(100vw - .75rem)!important;max-width:calc(100vw - .75rem)!important;height:calc(100vh - 56px)!important;height:calc(100dvh - 56px)!important;max-height:calc(100vh - 56px)!important;max-height:calc(100dvh - 56px)!important;border-radius:12px!important}div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body)>div:has(>div[data-testid="stVerticalBlock"]){padding:.4rem .45rem 0!important;scrollbar-gutter:auto}.sbc-article-body{padding:.05rem 0 1.8rem}.sbc-article-hero{min-height:560px;border-radius:12px}.sbc-article-hero-inner{min-height:560px}.sbc-article-kicker{font-size:.59rem}.sbc-article-byline{font-size:.61rem;line-height:1.4}.sbc-article-badges span{font-size:.55rem}.sbc-article-copy{padding:1.25rem .55rem 0}.sbc-article-copy p{font-size:1rem;line-height:1.75}.sbc-article-copy>p:first-child{font-size:1.1rem}.sbc-article-copy p:has(>strong:first-child){padding:.85rem .8rem}.sbc-article-end{margin-top:1rem;padding:.9rem .55rem 0}}
+      @media(max-width:640px){div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body){width:calc(100vw - .75rem)!important;max-width:calc(100vw - .75rem)!important;height:calc(100vh - 56px)!important;height:calc(100dvh - 56px)!important;max-height:calc(100vh - 56px)!important;max-height:calc(100dvh - 56px)!important;border-radius:12px!important}div[data-testid="stDialog"] div[role="dialog"]:has(.sbc-article-body)>div:has(>div[data-testid="stVerticalBlock"]){padding:.4rem .45rem 0!important;scrollbar-gutter:auto}.sbc-article-body{padding:.05rem 0 1.8rem}.sbc-article-hero{min-height:560px;border-radius:12px}.sbc-article-hero-inner{min-height:560px}.sbc-article-kicker{font-size:.59rem}.sbc-article-byline{font-size:.61rem;line-height:1.4}.sbc-article-badges span{font-size:.55rem}.sbc-article-copy{padding:1.25rem .55rem 0}.sbc-article-copy p{font-size:1rem;line-height:1.75}.sbc-article-copy>p:first-of-type{font-size:1.1rem}.sbc-article-facts{padding:.9rem}.sbc-article-facts ul{grid-template-columns:1fr}.sbc-article-copy p:has(>strong:first-child){padding:.85rem .8rem}.sbc-article-end{margin-top:1rem;padding:.9rem .55rem 0}}
     </style>
     """)
 
@@ -20741,6 +20774,10 @@ if main_page == "Overview":
             @st.dialog("SBC League Desk", width="large")
             def render_front_article(story):
                 placeholder_note = " · Preview" if story["placeholder"] else ""
+                facts_html = ""
+                if story.get("facts"):
+                    fact_items = "".join(f"<li>{escape(fact)}</li>" for fact in story["facts"])
+                    facts_html = f'<section class="sbc-article-facts"><h2>Paul’s Vegas résumé</h2><ul>{fact_items}</ul></section>'
                 render_html(f"""
                 <article class="sbc-article-body" style="--article-primary:{escape(story['primary']['color'], quote=True)};--article-secondary:{escape(story['secondary_color'], quote=True)};">
                     <header class="sbc-article-hero">
@@ -20757,7 +20794,7 @@ if main_page == "Overview":
                         </div>
                         <div class="sbc-article-team-strip">{article_team_strip_html}</div>
                     </header>
-                    <main class="sbc-article-copy">{story['body']}</main>
+                    <main class="sbc-article-copy">{facts_html}{story['body']}</main>
                     <footer class="sbc-article-end">
                         <span>SBC League Desk · End of story</span>
                         <img src="{escape(story['primary']['logo'], quote=True)}" alt="{escape(story['primary']['name'], quote=True)} logo">
