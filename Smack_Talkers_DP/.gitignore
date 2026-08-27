@@ -23,6 +23,9 @@ data/context/*
 !data/processed/
 data/processed/*
 !data/processed/smack_talkers_2026_auction_values.csv
+!data/processed/smack_talkers_2026_draft_grades.csv
+!data/processed/smack_talkers_2026_draft_results_enriched.csv
+!data/processed/Smack_Talkers_2026_Draft_Report.md
 !data/processed/smack_talkers_draft_history.parquet
 !data/processed/draft_history_with_espn.parquet
 !data/processed/yahoo/

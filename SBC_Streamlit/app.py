@@ -165,6 +165,13 @@ def render_data_updated_at():
 
 ARTICLE_DEFAULT_YEAR = 2026
 ARTICLE_PRESENTATIONS = {
+    "Vegas Blackjack to Retire Chris Paul’s No. 3 on January 21 When Boise Comes to Town": {
+        "kicker": "Jersey Retirement",
+        "teams": ["Vegas", "Boise"],
+        "players": [("Chris Paul", "2779")],
+        "badges": ["No. 3", "January 21", "First in franchise history"],
+        "deck": "The first player in Blackjack history will become the first sent to the rafters—with Boise returning for a ceremony built around the shot that launched Vegas into the inaugural Finals.",
+    },
     "SBCFBL 2026-27 Schedule Released: Banner Nights, Holiday Heavyweights and Reunion Games": {
         "kicker": "2026-27 Schedule Release",
         "display_headline": "SBCFBL 2026-27 Schedule Release",

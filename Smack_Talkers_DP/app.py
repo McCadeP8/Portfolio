@@ -33,6 +33,9 @@ from history_metrics import (
 APP_DIR = Path(__file__).resolve().parent
 PROCESSED_DIR = APP_DIR / "data" / "processed"
 AUCTION_VALUES_PATH = PROCESSED_DIR / "smack_talkers_2026_auction_values.csv"
+RESULTS_2026_PATH = PROCESSED_DIR / "smack_talkers_2026_draft_results_enriched.csv"
+GRADES_2026_PATH = PROCESSED_DIR / "smack_talkers_2026_draft_grades.csv"
+REPORT_2026_PATH = PROCESSED_DIR / "Smack_Talkers_2026_Draft_Report.md"
 AUCTION_BUDGET = 2400
 TEAM_AUCTION_BUDGET = 200
 DRAFT_ROSTER_SIZE = 16
@@ -162,6 +165,27 @@ def get_auction_values() -> pd.DataFrame:
     projected_starter = values["projected_starter_pool"].astype(str).str.lower().eq("true")
     values.loc[~projected_starter, "total_starting_vorp"] = np.nan
     return values
+
+
+@st.cache_data(show_spinner=False)
+def get_2026_results() -> tuple[pd.DataFrame, pd.DataFrame, str]:
+    results = pd.read_csv(RESULTS_2026_PATH)
+    grades = pd.read_csv(GRADES_2026_PATH)
+    numeric_columns = [
+        "selection_number", "round", "pick_in_round", "amount", "auction_rank",
+        "auction_value", "projected_points", "model_value_delta",
+    ]
+    for column in numeric_columns:
+        results[column] = pd.to_numeric(results[column], errors="coerce")
+    grade_numeric_columns = [
+        "overall_rank", "grade_score", "starter_points", "roster_points", "bench_points",
+        "value_delta", "starter_qb_rank", "starter_rb_rank", "starter_wrte_rank",
+        "starter_k_rank", "starter_dst_rank",
+    ]
+    for column in grade_numeric_columns:
+        grades[column] = pd.to_numeric(grades[column], errors="coerce")
+    report = REPORT_2026_PATH.read_text(encoding="utf-8")
+    return results, grades, report
 
 
 @st.cache_data(show_spinner=False)
@@ -460,9 +484,109 @@ m2.metric("Matchups observed", len(matchups))
 m3.metric("Lineup decisions", f"{lineup_team_weeks:,}", f"{coverage_rate:.0%} coverage")
 m4.metric("Player-week rows", f"{len(lineups):,}")
 
-tab_live_auction, tab_pulse, tab_owner_history, tab_position, tab_draft_room, tab_decisions, tab_draft, tab_coverage = st.tabs(
-    ["2026 Draft Board", "League pulse", "Owner history", "Position build", "Draft room", "Lineup decisions", "Drafted vs acquired", "Data coverage"]
+tab_results_2026, tab_live_auction, tab_pulse, tab_owner_history, tab_position, tab_draft_room, tab_decisions, tab_draft, tab_coverage = st.tabs(
+    ["2026 Draft Results", "2026 Draft Board", "League pulse", "Owner history", "Position build", "Draft room", "Lineup decisions", "Drafted vs acquired", "Data coverage"]
 )
+
+with tab_results_2026:
+    results_2026, grades_2026, report_2026 = get_2026_results()
+    section_title(
+        "Post-draft audit",
+        "The 2026 drafts are in",
+        "Preseason process grades use projected legal-starter strength (55%), full-roster depth (20%), and model value efficiency (25%).",
+    )
+    result_format = st.segmented_control(
+        "Draft format",
+        ["Snake", "Auction"],
+        default="Snake",
+        selection_mode="single",
+        key="results_2026_format",
+    ) or "Snake"
+    result_key = result_format.casefold()
+    format_grades = grades_2026.loc[grades_2026["draft_type"].eq(result_key)].sort_values("overall_rank").copy()
+    format_results = results_2026.loc[results_2026["draft_type"].eq(result_key)].copy()
+    winner = format_grades.iloc[0]
+    value_winner = format_grades.nlargest(1, "value_delta").iloc[0]
+    r1, r2, r3, r4 = st.columns(4)
+    r1.metric("Top process grade", str(winner["letter_grade"]), str(winner["team_name"]))
+    r2.metric("Best projected starters", format_grades.nlargest(1, "starter_points").iloc[0]["team_name"], f"{format_grades.starter_points.max():,.1f}")
+    r3.metric(
+        "Best model value",
+        str(value_winner["team_name"]),
+        f"${value_winner.value_delta:+.0f}" if result_key == "auction" else f"{value_winner.value_delta:+.0f} slots",
+    )
+    r4.metric("Selections loaded", f"{len(format_results):,}", f"{format_results.team_name.nunique()} complete teams")
+
+    grade_chart = px.bar(
+        format_grades.sort_values("grade_score"),
+        x="grade_score",
+        y="team_name",
+        orientation="h",
+        color="grade_score",
+        color_continuous_scale=["#C05E85", "#E0B44C", "#6FB1FC"],
+        text="letter_grade",
+        title=f"{result_format} draft process grades",
+        labels={"grade_score": "Grade score", "team_name": "Team"},
+    )
+    grade_chart.update_layout(coloraxis_showscale=False)
+    grade_chart.update_xaxes(range=[65, 98])
+    grade_chart.update_traces(textposition="outside")
+    render_plot(grade_chart, f"results_2026_grade_chart_{result_key}")
+
+    team_names = format_grades["team_name"].tolist()
+    result_team = st.selectbox("Team report card", team_names, key=f"results_2026_team_{result_key}")
+    team_grade = format_grades.loc[format_grades["team_name"].eq(result_team)].iloc[0]
+    team_picks = format_results.loc[format_results["team_name"].eq(result_team)].sort_values("selection_number").copy()
+    t1, t2, t3, t4 = st.columns(4)
+    t1.metric("Letter grade", str(team_grade.letter_grade), f"#{int(team_grade.overall_rank)} of 12")
+    t2.metric("Projected starters", f"{team_grade.starter_points:,.1f}")
+    t3.metric("Full roster", f"{team_grade.roster_points:,.1f}")
+    t4.metric(
+        "Model value",
+        f"${team_grade.value_delta:+.0f}" if result_key == "auction" else f"{team_grade.value_delta:+.0f} slots",
+    )
+    unit_cols = ["QB", "RB", "WR/TE", "K", "DST"]
+    unit_ranks = [
+        int(team_grade.starter_qb_rank), int(team_grade.starter_rb_rank), int(team_grade.starter_wrte_rank),
+        int(team_grade.starter_k_rank), int(team_grade.starter_dst_rank),
+    ]
+    st.caption("Projected starting-unit ranks · " + " · ".join(f"{unit} #{rank}" for unit, rank in zip(unit_cols, unit_ranks, strict=True)))
+
+    team_picks["Draft cost"] = np.where(
+        team_picks["draft_type"].eq("auction"),
+        "$" + team_picks["amount"].fillna(0).astype(int).astype(str),
+        team_picks["round_pick"].astype(str),
+    )
+    team_picks["Model value"] = np.where(
+        team_picks["draft_type"].eq("auction"),
+        "$" + team_picks["auction_value"].fillna(0).round().astype(int).astype(str),
+        "#" + team_picks["auction_rank"].fillna(0).round().astype(int).astype(str),
+    )
+    team_picks["Value gap"] = team_picks["model_value_delta"].map(
+        lambda value: f"{value:+.0f}" if pd.notna(value) else "—"
+    )
+    team_picks["Projected points"] = team_picks["projected_points"].round(1)
+    st.dataframe(
+        team_picks[["Draft cost", "player_name", "position", "Projected points", "Model value", "Value gap"]].rename(
+            columns={"player_name": "Player", "position": "Pos"}
+        ),
+        hide_index=True,
+        width="stretch",
+    )
+    st.caption(
+        "Positive value gap means a discount: dollars saved in auction or model-rank slots gained in snake. "
+        "Players outside the 192-player board use the broader 2026 projection pool and a $1 / post-board fallback."
+    )
+
+    with st.expander("Read the full 2026 draft report", expanded=False):
+        st.markdown(report_2026)
+    st.download_button(
+        "Download detailed 2026 report",
+        report_2026,
+        file_name="Smack_Talkers_2026_Draft_Report.md",
+        mime="text/markdown",
+        key="download_2026_draft_report",
+    )
 
 with tab_live_auction:
     if "live_draft_ledgers" not in st.session_state:
@@ -1213,26 +1337,28 @@ with tab_owner_history:
                 .sort_values(["season", "draft_type"])["entry"]
                 .tolist()
             )
-            rank_history = owner_slot_history.pivot(index="entry", columns="starter_slot", values="slot_rank").reindex(
+            rank_history = owner_slot_history.pivot(index="entry", columns="starter_slot", values="ten_team_rank").reindex(
                 index=entry_order, columns=STARTER_SLOT_ORDER
             )
+            raw_rank_history = owner_slot_history.pivot(
+                index="entry", columns="starter_slot", values="slot_rank"
+            ).reindex(index=entry_order, columns=STARTER_SLOT_ORDER)
             point_history = owner_slot_history.pivot(
                 index="entry", columns="starter_slot", values="starter_points"
             ).reindex(index=entry_order, columns=STARTER_SLOT_ORDER)
-            rank_limit = max(float(owner_slot_history["league_teams"].max()), 2.0)
             history_heatmap = px.imshow(
                 rank_history,
                 aspect="auto",
-                text_auto=".0f",
+                text_auto=".2f",
                 color_continuous_scale=["#6FB1FC", "#1C1F26", "#C05E85"],
                 zmin=1,
-                zmax=rank_limit,
-                labels=dict(x="Starting slot", y="League entry", color="League rank"),
+                zmax=10,
+                labels=dict(x="Starting slot", y="League entry", color="10-team rank"),
                 title=f"{history_owner_label}: starter-point rank by league-season",
             )
             history_heatmap.update_traces(
-                customdata=point_history.to_numpy(),
-                hovertemplate="Entry: %{y}<br>Slot: %{x}<br>Rank: %{z:.0f}<br>Starter points: %{customdata:.1f}<extra></extra>",
+                customdata=np.dstack([raw_rank_history.to_numpy(), point_history.to_numpy()]),
+                hovertemplate="Entry: %{y}<br>Slot: %{x}<br>10-team rank: %{z:.2f}<br>Original league rank: %{customdata[0]:.0f}<br>Starter points: %{customdata[1]:.1f}<extra></extra>",
             )
             polish(history_heatmap, height=max(390, 34 * len(rank_history.index) + 170))
             st.plotly_chart(
@@ -1241,7 +1367,7 @@ with tab_owner_history:
                 config={"displaylogo": False},
                 key="owner_history_slot_ranks",
             )
-            st.caption("1 is best. RB TOTAL, WR TOTAL, and TOTAL rank the combined starter points in those groups. Weekly RB and W/T starters are ordered by fantasy points before their slot totals are accumulated.")
+            st.caption("Ranks are normalized to a 10-team scale: 1.00 is best and 10.00 is worst. RB TOTAL, WR TOTAL, and TOTAL rank the combined starter points in those groups.")
 
         section_title("Rivalry book", "Head-to-head record against every owner")
         opponent_lookup = selected(team_map)[["season", "league_id", "yahoo_team_id", "owner"]].drop_duplicates().rename(
@@ -1599,7 +1725,8 @@ with tab_position:
                 slot_summary["starter_points"] / slot_summary["observed_weeks"].replace(0, np.nan)
             )
             slot_summary = slot_summary.groupby(["owner", "starter_slot"], as_index=False).agg(
-                average_rank=("slot_rank", "mean"),
+                average_rank=("ten_team_rank", "mean"),
+                average_raw_rank=("slot_rank", "mean"),
                 points_per_week=("points_per_week", "mean"),
                 team_seasons=("season", "size"),
             )
@@ -1610,22 +1737,25 @@ with tab_position:
             scoring_grid = slot_summary.pivot(
                 index="owner", columns="starter_slot", values="points_per_week"
             ).reindex(index=rank_grid.index, columns=STARTER_SLOT_ORDER)
+            raw_rank_grid = slot_summary.pivot(
+                index="owner", columns="starter_slot", values="average_raw_rank"
+            ).reindex(index=rank_grid.index, columns=STARTER_SLOT_ORDER)
             rank_grid.index = [owner_sample_label(owner) for owner in rank_grid.index]
             scoring_grid.index = rank_grid.index
-            rank_limit = max(float(slot_rankings["league_teams"].max()), 2.0)
+            raw_rank_grid.index = rank_grid.index
             slot_heatmap = px.imshow(
                 rank_grid,
                 aspect="auto",
-                text_auto=".1f" if slot_rankings[["season", "league_id"]].drop_duplicates().shape[0] > 1 else ".0f",
+                text_auto=".2f",
                 color_continuous_scale=["#6FB1FC", "#1C1F26", "#C05E85"],
                 zmin=1,
-                zmax=rank_limit,
-                labels=dict(x="Starting slot", y="Owner", color="League rank"),
-                title="Starter-point rank by lineup slot",
+                zmax=10,
+                labels=dict(x="Starting slot", y="Owner", color="10-team rank"),
+                title="Starter-point rank by lineup slot · normalized to 10 teams",
             )
             slot_heatmap.update_traces(
-                customdata=scoring_grid.to_numpy(),
-                hovertemplate="Owner: %{y}<br>Slot: %{x}<br>Rank: %{z:.1f}<br>Points / observed week: %{customdata:.1f}<extra></extra>",
+                customdata=np.dstack([raw_rank_grid.to_numpy(), scoring_grid.to_numpy()]),
+                hovertemplate="Owner: %{y}<br>Slot: %{x}<br>10-team rank: %{z:.2f}<br>Average original rank: %{customdata[0]:.2f}<br>Points / observed week: %{customdata[1]:.1f}<extra></extra>",
             )
             polish(slot_heatmap, height=max(500, 29 * len(rank_grid.index) + 175))
             st.plotly_chart(
@@ -1635,7 +1765,7 @@ with tab_position:
                 key="position_slot_rankings",
             )
             st.caption(
-                "1 is best. RB TOTAL, WR TOTAL, and TOTAL rank combined starter points. RB1/RB2 and WR1/WR2/WR3 are assigned by weekly starter scoring; a TE used at W/T counts as a WR-slot performance."
+                "All ranks use a 10-team scale: 1.00 is best and 10.00 is worst. RB TOTAL, WR TOTAL, and TOTAL rank combined starter points; a TE used at W/T counts as a WR-slot performance."
             )
 
         position_table = (

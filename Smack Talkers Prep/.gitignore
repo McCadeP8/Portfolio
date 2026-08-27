@@ -9,6 +9,12 @@ __pycache__/
 tmp/
 *.log
 
+# Installed JavaScript dependencies and package-manager caches
+node_modules/
+.npm/
+.pnpm-store/
+*.tsbuildinfo
+
 # Development files not needed to run the app
 test_game.py
 

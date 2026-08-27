@@ -71,7 +71,7 @@ def starter_slot_rankings(lineups: pd.DataFrame) -> pd.DataFrame:
     """
     columns = [
         "season", "league_id", "draft_type", "team_id", "owner", "starter_slot",
-        "starter_points", "observed_weeks", "slot_rank", "league_teams",
+        "starter_points", "observed_weeks", "slot_rank", "ten_team_rank", "league_teams",
     ]
     required = {
         "season", "league_id", "draft_type", "team_id", "owner", "week",
@@ -132,6 +132,11 @@ def starter_slot_rankings(lineups: pd.DataFrame) -> pd.DataFrame:
         .agg(league_teams=("team_id", "nunique"))
     )
     result = result.merge(league_sizes, on=["season", "league_id"], how="left", validate="many_to_one")
+    result["ten_team_rank"] = np.where(
+        result["league_teams"].gt(1),
+        1.0 + (result["slot_rank"] - 1.0) * 9.0 / (result["league_teams"] - 1.0),
+        1.0,
+    )
     return result[columns]
 
 
@@ -737,7 +742,9 @@ def attach_draft_outcomes(
         / max(sum(map(int, str(value).split("-"))), 1)
     )
     outcome = outcome[["season", "draft_type", "team_id", "points_for", "points_per_game", "finish_rank", "win_pct"]]
-    result = result.merge(outcome, on=["season", "draft_type", "team_id"], how="left", validate="one_to_one")
+    # Future drafts can exist before Yahoo team IDs are available. Their missing
+    # IDs intentionally repeat, while every populated outcome key remains unique.
+    result = result.merge(outcome, on=["season", "draft_type", "team_id"], how="left", validate="many_to_one")
 
     if not scores.empty:
         all_play_weekly, _ = all_play_summary(scores)
