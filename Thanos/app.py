@@ -53,6 +53,7 @@ POSITION_COUNTS = {"QB": 32, "RB": 80, "WR": 96, "TE": 40, "K": 32, "DST": 32}
 SPECIAL_UNRANKED_PLAYERS = {
     "Odell Beckham Jr.": "WR",
     "Darren Waller": "TE",
+    "Keenan Allen": "WR",
 }
 
 POSITION_STYLE = {
