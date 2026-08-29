@@ -524,7 +524,14 @@ def player_cards(
     return f'<div class="player-list-shell"><div class="player-list">{"".join(cards)}</div></div>'
 
 
-def player_split_html(names: list[str], position: str, animate: bool, drafted_keys: set[str]) -> str:
+def player_split_html(
+    names: list[str],
+    position: str,
+    animate: bool,
+    drafted_keys: set[str],
+    completed_realms: set[str] | None = None,
+) -> str:
+    completed_realms = completed_realms or set()
     split = seeded_split(names, position)
     special_names = [
         name for name, special_position in SPECIAL_UNRANKED_PLAYERS.items()
@@ -533,12 +540,15 @@ def player_split_html(names: list[str], position: str, animate: bool, drafted_ke
     special_rank_labels = {picture_key(name): "UR" for name in special_names}
     columns = []
     for realm, realm_names in (("alive", split.alive), ("dusted", split.dusted)):
-        sorted_names = sorted_player_names(realm_names, drafted_keys, names)
+        realm_drafted_keys = set(drafted_keys)
+        if realm in completed_realms:
+            realm_drafted_keys.update(picture_key(name) for name in realm_names)
+        sorted_names = sorted_player_names(realm_names, realm_drafted_keys, names)
         display_names = [*sorted_names, *special_names]
         columns.append(
             f'<div class="realm-column"><div class="realm-head {realm}">'
             f'<div class="realm-title">{realm.upper()}</div></div>'
-            f'{player_cards(display_names, position, realm, animate, names, drafted_keys, special_rank_labels)}</div>'
+            f'{player_cards(display_names, position, realm, animate, names, realm_drafted_keys, special_rank_labels)}</div>'
         )
     return f'<div class="split-stage"><div class="split-grid">{"".join(columns)}</div></div>'
 
@@ -547,7 +557,9 @@ def all_players_html(
     pools: dict[str, list[str]],
     drafted_keys: set[str],
     snapped_positions: list[str],
+    completed_realms: set[str] | None = None,
 ) -> str:
+    completed_realms = completed_realms or set()
     rank_by_position = {
         position: {picture_key(name): index for index, name in enumerate(pools[position])}
         for position in snapped_positions
@@ -564,16 +576,19 @@ def all_players_html(
             for name, position in SPECIAL_UNRANKED_PLAYERS.items()
             if position in snapped_positions
         )
+        realm_drafted_keys = set(drafted_keys)
+        if realm in completed_realms:
+            realm_drafted_keys.update(picture_key(name) for name, _ in players)
         players.sort(
             key=lambda item: (
-                picture_key(item[0]) in drafted_keys,
+                picture_key(item[0]) in realm_drafted_keys,
                 rank_by_position[item[1]].get(picture_key(item[0]), len(pools[item[1]])),
                 POSITION_SEQUENCE.index(item[1]),
             )
         )
         cards = []
         for name, position in players:
-            is_drafted = picture_key(name) in drafted_keys
+            is_drafted = picture_key(name) in realm_drafted_keys
             is_unranked = name in SPECIAL_UNRANKED_PLAYERS
             rank_number = rank_by_position[position].get(picture_key(name), 0) + 1
             rank_label = "UR" if is_unranked else f"#{rank_number}"
@@ -599,7 +614,9 @@ def position_tabs(
     pools: dict[str, list[str]],
     just_snapped: str | None,
     drafted_keys: set[str],
+    completed_realms: set[str] | None = None,
 ) -> None:
+    completed_realms = completed_realms or set()
     tabs = st.tabs([*POSITION_SEQUENCE, "All"])
     for index, (tab, position) in enumerate(zip(tabs[:-1], POSITION_SEQUENCE)):
         stage_number = index + 2
@@ -609,7 +626,13 @@ def position_tabs(
         with tab:
             if count >= stage_number:
                 st.markdown(
-                    player_split_html(pool_names, position, animate=just_snapped == position, drafted_keys=drafted_keys),
+                    player_split_html(
+                        pool_names,
+                        position,
+                        animate=just_snapped == position,
+                        drafted_keys=drafted_keys,
+                        completed_realms=completed_realms,
+                    ),
                     unsafe_allow_html=True,
                 )
             elif count == stage_number - 1:
@@ -649,7 +672,7 @@ def position_tabs(
                 unsafe_allow_html=True,
             )
             st.markdown(
-                all_players_html(pools, drafted_keys, snapped_positions),
+                all_players_html(pools, drafted_keys, snapped_positions, completed_realms),
                 unsafe_allow_html=True,
             )
 
@@ -807,6 +830,17 @@ def draft_rows_for_realm(draft: pd.DataFrame, realm: str, teams: list[str]) -> p
     if explicit.eq(realm.casefold()).any():
         return draft[explicit == realm.casefold()].copy()
     return draft[draft["Team"].isin(teams)].copy()
+
+
+def completed_draft_realms(draft: pd.DataFrame, teams_split: Split) -> set[str]:
+    completed: set[str] = set()
+    for realm, teams in (("alive", teams_split.alive), ("dusted", teams_split.dusted)):
+        realm_draft = draft_rows_for_realm(draft, realm, teams)
+        players = realm_draft["Player"].dropna().astype(str).str.strip()
+        pick_count = int((~players.str.casefold().isin(["", "nan", "none", "<na>"])).sum())
+        if pick_count >= 128:
+            completed.add(realm)
+    return completed
 
 
 def board_player_html(record: dict[str, str] | None) -> str:
@@ -1028,13 +1062,14 @@ def render_app() -> None:
     drafted_keys.update(picture_key(name) for name in SPECIAL_UNRANKED_PLAYERS)
     just_snapped = st.session_state.just_snapped
     teams_split = seeded_split(teams, "teams")
+    completed_realms = completed_draft_realms(draft_frame, teams_split)
     st.markdown('<div class="eyebrow">Thanos League · Year 8</div>', unsafe_allow_html=True)
     st.markdown("# LIVE DRAFT COMMAND CENTER")
     render_draft_boards(teams_split)
 
     st.markdown("## AVAILABLE PLAYER POOLS")
     st.markdown('<div class="section-rule"></div>', unsafe_allow_html=True)
-    position_tabs(8, pools, None, drafted_keys)
+    position_tabs(8, pools, None, drafted_keys, completed_realms)
 
     st.markdown("## THANOS SNAP RANDOMIZATION")
     st.markdown('<div class="section-rule"></div>', unsafe_allow_html=True)
@@ -1068,7 +1103,7 @@ def render_app() -> None:
             )
 
         st.markdown("### POSITION SNAP REPLAY")
-        position_tabs(count, pools, just_snapped, drafted_keys)
+        position_tabs(count, pools, just_snapped, drafted_keys, completed_realms)
         if count == 7:
             st.markdown(
                 '<div class="order-wait">Alive and Dusted teams are ready · Snap Team Order to assign draft slots 1–8</div>',
