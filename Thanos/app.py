@@ -54,6 +54,7 @@ SPECIAL_UNRANKED_PLAYERS = {
     "Odell Beckham Jr.": "WR",
     "Darren Waller": "TE",
     "Keenan Allen": "WR",
+    "Dontayvion Wicks": "WR",
 }
 
 POSITION_STYLE = {
