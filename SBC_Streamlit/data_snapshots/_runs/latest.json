@@ -1,15 +1,15 @@
 {
-  "finished_at": "2026-08-29T14:31:00.160981+00:00",
+  "finished_at": "2026-08-30T14:27:27.429577+00:00",
   "live_mode": "shadow",
   "results": [
     {
       "details": {
         "message": "Google Sheet snapshots refreshed with stale-cache fallback"
       },
-      "duration_seconds": 13.622,
-      "finished_at": "2026-08-29T14:30:06.424277+00:00",
+      "duration_seconds": 9.013,
+      "finished_at": "2026-08-30T14:26:34.062254+00:00",
       "name": "sheets",
-      "started_at": "2026-08-29T14:29:52.802701+00:00",
+      "started_at": "2026-08-30T14:26:25.049554+00:00",
       "status": "ok"
     },
     {
@@ -21,10 +21,10 @@
           "get_all_time_standings"
         ]
       },
-      "duration_seconds": 28.076,
-      "finished_at": "2026-08-29T14:30:34.500840+00:00",
+      "duration_seconds": 25.357,
+      "finished_at": "2026-08-30T14:26:59.418985+00:00",
       "name": "league",
-      "started_at": "2026-08-29T14:30:06.424364+00:00",
+      "started_at": "2026-08-30T14:26:34.062338+00:00",
       "status": "ok"
     },
     {
@@ -32,9 +32,9 @@
         "message": "outside the NBA regular-season refresh window"
       },
       "duration_seconds": 0.0,
-      "finished_at": "2026-08-29T14:30:34.500969+00:00",
+      "finished_at": "2026-08-30T14:26:59.419096+00:00",
       "name": "espn_boxscores",
-      "started_at": "2026-08-29T14:30:34.500960+00:00",
+      "started_at": "2026-08-30T14:26:59.419086+00:00",
       "status": "skipped"
     },
     {
@@ -42,9 +42,9 @@
         "message": "outside the NBA regular-season refresh window"
       },
       "duration_seconds": 0.0,
-      "finished_at": "2026-08-29T14:30:34.500996+00:00",
+      "finished_at": "2026-08-30T14:26:59.419124+00:00",
       "name": "shots",
-      "started_at": "2026-08-29T14:30:34.500993+00:00",
+      "started_at": "2026-08-30T14:26:59.419121+00:00",
       "status": "skipped"
     },
     {
@@ -52,9 +52,9 @@
         "message": "outside the NBA regular-season refresh window"
       },
       "duration_seconds": 0.0,
-      "finished_at": "2026-08-29T14:30:34.501015+00:00",
+      "finished_at": "2026-08-30T14:26:59.419153+00:00",
       "name": "pbp",
-      "started_at": "2026-08-29T14:30:34.501013+00:00",
+      "started_at": "2026-08-30T14:26:59.419148+00:00",
       "status": "skipped"
     },
     {
@@ -62,10 +62,10 @@
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/sbc_player_matchup_stats.parquet",
         "rows": 119095
       },
-      "duration_seconds": 6.029,
-      "finished_at": "2026-08-29T14:30:40.529511+00:00",
+      "duration_seconds": 6.176,
+      "finished_at": "2026-08-30T14:27:05.595106+00:00",
       "name": "matchups",
-      "started_at": "2026-08-29T14:30:34.501040+00:00",
+      "started_at": "2026-08-30T14:26:59.419187+00:00",
       "status": "ok"
     },
     {
@@ -75,23 +75,23 @@
         "player_rows": 0,
         "published": false
       },
-      "duration_seconds": 0.104,
-      "finished_at": "2026-08-29T14:30:40.633538+00:00",
+      "duration_seconds": 0.078,
+      "finished_at": "2026-08-30T14:27:05.673026+00:00",
       "name": "live_shadow",
-      "started_at": "2026-08-29T14:30:40.529637+00:00",
+      "started_at": "2026-08-30T14:27:05.595204+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "bytes": 143781499,
+        "bytes": 143781534,
         "datasets": 19,
         "rows": 7348046,
         "warnings": 0
       },
-      "duration_seconds": 0.166,
-      "finished_at": "2026-08-29T14:30:40.799366+00:00",
+      "duration_seconds": 0.148,
+      "finished_at": "2026-08-30T14:27:05.820954+00:00",
       "name": "validate",
-      "started_at": "2026-08-29T14:30:40.633617+00:00",
+      "started_at": "2026-08-30T14:27:05.673076+00:00",
       "status": "ok"
     },
     {
@@ -103,64 +103,69 @@
         "planned": [],
         "published": [
           {
-            "bytes": 79788,
+            "bytes": 80125,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-overnight-scores-2026-p40.png",
             "kind": "overnight_scores"
           },
           {
-            "bytes": 78836,
+            "bytes": 78903,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-overnight-scores-2026-p40.png",
             "kind": "mobile_overnight_scores"
           },
           {
-            "bytes": 439631,
+            "bytes": 433911,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-matchup-recap-2026_1163.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 551597,
+            "bytes": 558380,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-matchup-recap-2026_1163.png",
             "kind": "mobile_matchup_recap"
           },
           {
-            "bytes": 457270,
+            "bytes": 457439,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-matchup-recap-2026_1165.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 555757,
+            "bytes": 557209,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-matchup-recap-2026_1165.png",
             "kind": "mobile_matchup_recap"
+          },
+          {
+            "bytes": 377980,
+            "delivered": 1,
+            "destinations": 1,
+            "filename": "sbcfbl-record-pittsburgh-to-jalen-brunson.png",
+            "kind": "record_leader"
           }
         ],
-        "publishing_date": "2026-03-14",
-        "skipped": [
-          "record_leader:no-new-record"
-        ],
+        "publishing_date": "2026-03-15",
+        "skipped": [],
         "slot": "opening",
         "year": 2026
       },
-      "duration_seconds": 19.361,
-      "finished_at": "2026-08-29T14:31:00.160578+00:00",
+      "duration_seconds": 21.608,
+      "finished_at": "2026-08-30T14:27:27.429300+00:00",
       "name": "fantrax_rotation",
-      "started_at": "2026-08-29T14:30:40.799456+00:00",
+      "started_at": "2026-08-30T14:27:05.821011+00:00",
       "status": "ok"
     }
   ],
   "schema_version": 1,
-  "started_at": "2026-08-29T14:29:52.802530+00:00",
+  "started_at": "2026-08-30T14:26:25.049389+00:00",
   "status": "ok",
-  "target_date": "2026-08-29"
+  "target_date": "2026-08-30"
 }
