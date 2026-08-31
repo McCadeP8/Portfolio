@@ -55,6 +55,8 @@ SPECIAL_UNRANKED_PLAYERS = {
     "Darren Waller": "TE",
     "Keenan Allen": "WR",
     "Dontayvion Wicks": "WR",
+    "Devaughn Vele": "WR",
+    "Kaleb Johnson": "RB",
 }
 
 POSITION_STYLE = {
