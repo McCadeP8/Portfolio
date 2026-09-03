@@ -57,6 +57,7 @@ SPECIAL_UNRANKED_PLAYERS = {
     "Dontayvion Wicks": "WR",
     "Devaughn Vele": "WR",
     "Kaleb Johnson": "RB",
+    "Cyrus Allen": "WR",
 }
 
 POSITION_STYLE = {
