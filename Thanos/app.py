@@ -58,6 +58,7 @@ SPECIAL_UNRANKED_PLAYERS = {
     "Devaughn Vele": "WR",
     "Kaleb Johnson": "RB",
     "Cyrus Allen": "WR",
+    "Najee Harris": "RB",
 }
 
 POSITION_STYLE = {
