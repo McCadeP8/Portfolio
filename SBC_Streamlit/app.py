@@ -65,6 +65,7 @@ from jersey_rotation import select_game_uniforms
 from sbc_backend import BackendSettings, get_repository
 from sbc_backend.awards import build_award_count_tables
 from sbc_backend.player_stats import prepare_matchup_archive_rows
+import scorebug_creator as highlight_scorebug
 
 
 if not hasattr(st, "_sbc_native_metric"):
@@ -1592,6 +1593,100 @@ def build_pbp_all_category_leads(events, team_a, team_b):
     return pd.DataFrame(rows), pd.DataFrame(chart_rows)
 
 
+SCOREBUG_CATEGORY_KEYS = {
+    "MP": "MP",
+    "TS%": "TS%",
+    "2PT%": "2P%",
+    "3PT%": "3P%",
+    "FT%": "FT%",
+    "PTS": "PTS",
+    "OREB": "OREB",
+    "DREB": "DREB",
+    "AST": "AST",
+    "ST": "STL",
+    "BLK": "BLK",
+    "TO": "TOV",
+    "+/-": "+/-",
+}
+
+
+def scorebug_owner(winner, team_a, team_b):
+    if winner == team_a:
+        return "A"
+    if winner == team_b:
+        return "B"
+    return "TIE"
+
+
+def scorebug_category_snapshot(states, team_a, team_b):
+    return {
+        SCOREBUG_CATEGORY_KEYS[category]: scorebug_owner(
+            pbp_winner(states[category], category, team_a, team_b),
+            team_a,
+            team_b,
+        )
+        for category in BOX_SCORE_CATEGORY_ORDER
+    }
+
+
+def build_pbp_highlight_moments(events, team_a, team_b):
+    """Return real plays that changed one or more fantasy category leaders."""
+    if events is None or events.empty:
+        return []
+    work = events.copy()
+    work = work[work.get("game_id", "").astype(str) != "matchup_adjustment"].copy()
+    if work.empty:
+        return []
+    work["wallclock"] = pd.to_datetime(work["wallclock"], errors="coerce", utc=True)
+    work = work.dropna(subset=["wallclock"]).sort_values(["wallclock", "game_id", "description", "stat", "player"])
+    if work.empty:
+        return []
+
+    states = empty_pbp_category_states(team_a, team_b)
+    group_columns = ["wallclock", "game_id", "description"]
+    play_groups = list(work.groupby(group_columns, sort=False, dropna=False))
+    moments = []
+    for play_index, ((wallclock, game_id, description), play_rows) in enumerate(play_groups):
+        before_categories = scorebug_category_snapshot(states, team_a, team_b)
+        contributing_categories = set()
+        contributing_teams = set()
+        for _, event_row in play_rows.iterrows():
+            sbc_team = str(event_row.get("sbc_team", ""))
+            if sbc_team not in [team_a, team_b]:
+                continue
+            contributing_teams.add(sbc_team)
+            for category in pbp_categories_for_event(event_row):
+                contributing_categories.add(category)
+                delta = pbp_category_delta(event_row, category)
+                for key, amount in delta.items():
+                    states[category][sbc_team][key] = states[category][sbc_team].get(key, 0) + amount
+
+        after_categories = scorebug_category_snapshot(states, team_a, team_b)
+        changes = {
+            category: after_categories[category]
+            for category in highlight_scorebug.CATEGORY_ORDER
+            if before_categories.get(category) != after_categories.get(category)
+        }
+        if not changes:
+            continue
+        score_a, score_b = highlight_scorebug.calculate_score(before_categories)
+        changed_labels = [highlight_scorebug.CATEGORY_PILL_LABELS[category] for category in changes]
+        moments.append({
+            "wallclock": wallclock,
+            "game_id": str(game_id),
+            "description": str(description),
+            "teams": sorted(contributing_teams),
+            "contributing_categories": sorted(contributing_categories),
+            "before_categories": before_categories,
+            "changes": changes,
+            "score_a": score_a,
+            "score_b": score_b,
+            "progress": round(100 * (play_index + 1) / max(1, len(play_groups))),
+            "changed_labels": changed_labels,
+        })
+    return moments
+
+
 def build_pbp_category_chart_data(events, team_a, team_b):
     if events.empty:
         return pd.DataFrame()
@@ -2133,8 +2228,8 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
         st.altair_chart(chart, use_container_width=True)
 
 
-def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=None, expected_score_b=None):
-    events = matchup_pbp_events(rows, team_a, team_b)
+def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=None, expected_score_b=None, events=None):
+    events = matchup_pbp_events(rows, team_a, team_b) if events is None else events
     if events.empty:
         render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet. The current PBP sample only covers the first 2024-25 matchup period.</div>')
         return
@@ -2294,6 +2389,142 @@ def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=No
             </div>
         </section>
     """)
+
+
+def matchup_scorebug_rank(matchup_row, team_side):
+    for key in [f"{team_side}_rank", f"{team_side}Rank", f"{team_side}_seed", f"{team_side}Seed"]:
+        value = pd.to_numeric(matchup_row.get(key), errors="coerce")
+        if pd.notna(value) and value > 0:
+            return int(value)
+    return None
+
+
+def render_matchup_highlight_tab(events, matchup_row, team_a, team_b, key_prefix):
+    render_html("""
+        <section class="sbc-box-panel" style="padding:18px 20px;margin-bottom:16px;">
+            <div class="sbc-box-panel-head"><span>Create Highlight</span><em>play + clip → finished MP4</em></div>
+            <p style="margin:10px 0 0;color:#64748b;font-size:.86rem;font-weight:650;line-height:1.5;">
+                Choose a category-changing play from this matchup. The scorebug automatically includes every category
+                leader changed by that play, then animates those pills and the weighted score over your uploaded clip.
+            </p>
+        </section>
+    """)
+    moments = build_pbp_highlight_moments(events, team_a, team_b)
+    if not moments:
+        render_html('<div class="sbc-empty-state">No category-changing plays are available for this matchup yet.</div>')
+        return
+
+    ordered_moments = list(reversed(moments))
+
+    def moment_label(moment):
+        categories = ", ".join(moment["changed_labels"])
+        description = re.sub(r"\s+", " ", moment["description"]).strip()
+        if len(description) > 112:
+            description = description[:109].rstrip() + "…"
+        return f'{format_pbp_wallclock(moment["wallclock"])} · {categories} · {description}'
+
+    selected_index = st.selectbox(
+        "Play",
+        options=range(len(ordered_moments)),
+        format_func=lambda index: moment_label(ordered_moments[index]),
+        key=f"{key_prefix}_highlight_play",
+    )
+    moment = ordered_moments[selected_index]
+    before = highlight_scorebug.ScorebugData(
+        team_a=highlight_scorebug.team_display(
+            team_a,
+            str(matchup_row.get("TeamA_record", "—")),
+            matchup_scorebug_rank(matchup_row, "TeamA"),
+        ),
+        team_b=highlight_scorebug.team_display(
+            team_b,
+            str(matchup_row.get("TeamB_record", "—")),
+            matchup_scorebug_rank(matchup_row, "TeamB"),
+        ),
+        categories=moment["before_categories"],
+        score_a=moment["score_a"],
+        score_b=moment["score_b"],
+        matchup_progress=moment["progress"],
+        label="SBCFBL MATCHUP",
+        status="IN PROGRESS",
+    )
+
+    change_text = []
+    for category, new_owner in moment["changes"].items():
+        old_owner = moment["before_categories"][category]
+        owner_names = {"A": team_a, "B": team_b, "TIE": "Tie"}
+        change_text.append(
+            f'{highlight_scorebug.CATEGORY_PILL_LABELS[category]}: {owner_names[old_owner]} → {owner_names[new_owner]}'
+        )
+    st.info("Category changes: " + "  •  ".join(change_text))
+    preview = highlight_scorebug.render_scorebug(before, scale=1)
+    st.image(preview, use_container_width=True)
+
+    uploaded_video = st.file_uploader(
+        "Upload MP4",
+        type=["mp4"],
+        accept_multiple_files=False,
+        key=f"{key_prefix}_highlight_video",
+    )
+    with st.expander("Video placement", expanded=False):
+        change_percent = st.slider(
+            "Animate the play at",
+            min_value=50,
+            max_value=95,
+            value=75,
+            step=1,
+            format="%d%%",
+            key=f"{key_prefix}_highlight_change_percent",
+        )
+        overlay_percent = st.slider(
+            "Scorebug width",
+            min_value=35,
+            max_value=75,
+            value=52,
+            step=1,
+            format="%d%%",
+            key=f"{key_prefix}_highlight_overlay_percent",
+        )
+
+    result_key = f"{key_prefix}_highlight_result"
+    create_disabled = uploaded_video is None
+    if st.button(
+        "Create new MP4",
+        type="primary",
+        use_container_width=True,
+        disabled=create_disabled,
+        key=f"{key_prefix}_highlight_create",
+    ):
+        with st.spinner("Building the highlight and preserving the original audio…"):
+            try:
+                video_bytes = highlight_scorebug.render_video_with_scorebug(
+                    uploaded_video.getvalue(),
+                    before,
+                    moment["changes"],
+                    change_at=change_percent / 100,
+                    overlay_scale=overlay_percent / 100,
+                )
+                st.session_state[result_key] = {
+                    "video": video_bytes,
+                    "play": moment_label(moment),
+                    "filename": f"{team_a.lower()}_{team_b.lower()}_highlight.mp4".replace(" ", "_"),
+                }
+            except Exception as exc:
+                st.session_state.pop(result_key, None)
+                st.error(f"Could not create the highlight: {exc}")
+
+    result = st.session_state.get(result_key)
+    if result and result.get("play") == moment_label(moment):
+        st.success("Highlight ready.")
+        st.video(result["video"], format="video/mp4")
+        st.download_button(
+            "Download new MP4",
+            data=result["video"],
+            file_name=result["filename"],
+            mime="video/mp4",
+            use_container_width=True,
+            key=f"{key_prefix}_highlight_download",
+        )
 
 
 @st.dialog("SBCFBL Box Score", width="large")
@@ -2799,7 +3030,10 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     if not show_players:
         return
 
-    box_tab, details_tab, pbp_tab = st.tabs(["Box Score", "Game Details", "Play-by-Play"])
+    pbp_events = matchup_pbp_events(rows, team_a, team_b)
+    box_tab, pbp_tab, details_tab, highlight_tab = st.tabs(
+        ["Box Score", "Play-by-Play", "Game Details", "Create Highlight"]
+    )
     with box_tab:
         view_mode = st.radio(
             "Box score view",
@@ -2810,10 +3044,6 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
         )
         aggregate = view_mode == "Aggregate players"
         render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
-    with details_tab:
-        render_matchup_visuals(rows, team_a, team_b)
-        render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b)
-        render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri, road_edition, home_edition, clash_adjusted)
     with pbp_tab:
         render_matchup_pbp_tab(
             rows,
@@ -2822,6 +3052,19 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
             key_prefix=f"{key_prefix}_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}_{team_a}_{team_b}",
             expected_score_a=score_numeric(score_a),
             expected_score_b=score_numeric(score_b),
+            events=pbp_events,
+        )
+    with details_tab:
+        render_matchup_visuals(rows, team_a, team_b)
+        render_starting_lineups(rows, matchup_row, rosters_df, team_a, team_b)
+        render_matchup_jerseys(team_a, team_b, road_jersey_uri, home_jersey_uri, road_edition, home_edition, clash_adjusted)
+    with highlight_tab:
+        render_matchup_highlight_tab(
+            pbp_events,
+            matchup_row,
+            team_a,
+            team_b,
+            key_prefix=f"{key_prefix}_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}_{team_a}_{team_b}",
         )
 
 

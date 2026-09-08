@@ -1,0 +1,4 @@
+.artifact_work/node_modules/
+.artifact_work/*.png
+.artifact_work/results*.json
+.artifact_work/input_cache.json

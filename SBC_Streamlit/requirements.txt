@@ -8,3 +8,4 @@ requests==2.32.4
 altair==5.5.0
 matplotlib==3.10.3
 pillow==11.3.0
+imageio-ffmpeg==0.6.0
