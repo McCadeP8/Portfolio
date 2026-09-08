@@ -121,6 +121,7 @@ class ScorebugData:
     matchup_progress: int = 50
     label: str = "SBCFBL MATCHUP"
     status: str = "FINAL"
+    play_description: str = ""
 
 
 def team_display(team: str, record: str, rank: int | None) -> TeamDisplay:
@@ -376,12 +377,14 @@ def render_scorebug(
     animation_progress: float = 1.0,
 ) -> Image.Image:
     """Render a transparent, tightly cropped scorebug PNG."""
-    width, height = 940, 172
+    width = 940
+    height = 206 if data.play_description else 172
     image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
 
     shadow = Image.new("RGBA", image.size, (0, 0, 0, 0))
     shadow_draw = ImageDraw.Draw(shadow)
-    shadow_draw.rounded_rectangle((18, 15, width - 18, 145), radius=22, fill=(0, 0, 0, 185))
+    shadow_bottom = 197 if data.play_description else 145
+    shadow_draw.rounded_rectangle((18, 15, width - 18, shadow_bottom), radius=22, fill=(0, 0, 0, 185))
     shadow = shadow.filter(ImageFilter.GaussianBlur(9))
     image.alpha_composite(shadow)
     draw = ImageDraw.Draw(image)
@@ -535,6 +538,18 @@ def render_scorebug(
             _paint_category_pill(image, (x1, pill_top, x2, pill_bottom), category, winner, data.team_a.color, data.team_b.color)
         x += pill_width + gap
 
+    if data.play_description:
+        description_box = (74, 164, width - 74, 195)
+        draw.rounded_rectangle(description_box, radius=14, fill=(3, 10, 23, 238), outline=SBC_GREEN, width=1)
+        description_font = _fit_font(draw, data.play_description, description_box[2] - description_box[0] - 28, 14, 9)
+        draw.text(
+            (width // 2, 179),
+            data.play_description,
+            font=description_font,
+            fill="#ffffff",
+            anchor="mm",
+        )
+
     if scale != 1:
         image = image.resize((width * scale, height * scale), Image.Resampling.LANCZOS)
     return image
@@ -571,8 +586,6 @@ def _render_transition_frames(
         if category not in CATEGORY_ORDER:
             raise ValueError(f"Unknown category: {category}")
         source = before.categories.get(category, "TIE")
-        if source == target:
-            raise ValueError(f"{category} must change to a different result.")
         transitions[category] = (source, target)
 
     after_categories = dict(before.categories)
@@ -600,6 +613,7 @@ def _render_transition_frames(
             matchup_progress=before.matchup_progress,
             label=before.label,
             status=before.status,
+            play_description=before.play_description,
         )
         frame = render_scorebug(
             frame_data,
@@ -650,6 +664,7 @@ def _changed_scorebug(before: ScorebugData, changes: Mapping[str, Winner]) -> Sc
         matchup_progress=before.matchup_progress,
         label=before.label,
         status=before.status,
+        play_description=before.play_description,
     )
 
 
@@ -684,9 +699,6 @@ def render_video_with_scorebug(
     """Burn the scorebug into an MP4 and trigger its animation partway through."""
     if not video_bytes:
         raise ValueError("Upload an MP4 before rendering.")
-    if not changes:
-        raise ValueError("Select at least one category change before rendering.")
-
     with tempfile.TemporaryDirectory(prefix="sbc_scorebug_") as directory:
         work = Path(directory)
         input_path = work / "input.mp4"
@@ -705,44 +717,45 @@ def render_video_with_scorebug(
         # This avoids a transparent tail when the highlight ends mid-animation.
         gif_end = min(duration, gif_start + ANIMATION_HOLD_BEFORE + ANIMATION_TRANSITION)
 
-        before_path.write_bytes(image_bytes(render_scorebug(before)))
-        for frame_index, frame in enumerate(_render_transition_frames(before, changes)):
-            frame.save(work / f"transition_{frame_index:04d}.png", format="PNG", compress_level=1)
-        after_path.write_bytes(image_bytes(render_scorebug(_changed_scorebug(before, changes))))
+        before_image = render_scorebug(before)
+        before_path.write_bytes(image_bytes(before_image))
+        if changes:
+            for frame_index, frame in enumerate(_render_transition_frames(before, changes)):
+                frame.save(work / f"transition_{frame_index:04d}.png", format="PNG", compress_level=1)
+            after_path.write_bytes(image_bytes(render_scorebug(_changed_scorebug(before, changes))))
 
         overlay_scale = max(0.25, min(0.90, float(overlay_scale)))
         overlay_width = min(1880, max(240, round(video_width * overlay_scale)))
-        overlay_height = round(344 * overlay_width / 1880)
+        overlay_height = round(before_image.height * overlay_width / before_image.width)
         overlay_x = max(0, (video_width - overlay_width) // 2)
         overlay_y = max(0, video_height - overlay_height - max(18, round(video_height * 0.035)))
-        filter_graph = (
-            f"[1:v]scale={overlay_width}:-1[before];"
-            f"[2:v]scale={overlay_width}:-1[transition];"
-            f"[3:v]scale={overlay_width}:-1[after];"
-            f"[0:v][before]overlay={overlay_x}:{overlay_y}:enable=lt(t\\,{gif_start:.3f}):eof_action=pass[v1];"
-            f"[v1][transition]overlay={overlay_x}:{overlay_y}:enable=between(t\\,{gif_start:.3f}\\,{gif_end:.3f}):eof_action=pass[v2];"
-            f"[v2][after]overlay={overlay_x}:{overlay_y}:enable=gte(t\\,{gif_end:.3f}):eof_action=pass[vout]"
-        )
+        if changes:
+            filter_graph = (
+                f"[1:v]scale={overlay_width}:-1[before];"
+                f"[2:v]scale={overlay_width}:-1[transition];"
+                f"[3:v]scale={overlay_width}:-1[after];"
+                f"[0:v][before]overlay={overlay_x}:{overlay_y}:enable=lt(t\\,{gif_start:.3f}):eof_action=pass[v1];"
+                f"[v1][transition]overlay={overlay_x}:{overlay_y}:enable=between(t\\,{gif_start:.3f}\\,{gif_end:.3f}):eof_action=pass[v2];"
+                f"[v2][after]overlay={overlay_x}:{overlay_y}:enable=gte(t\\,{gif_end:.3f}):eof_action=pass[vout]"
+            )
+            overlay_inputs = [
+                "-loop", "1", "-i", str(before_path),
+                "-itsoffset", f"{gif_start:.3f}", "-framerate", "20", "-i", str(transition_pattern),
+                "-loop", "1", "-i", str(after_path),
+            ]
+        else:
+            filter_graph = (
+                f"[1:v]scale={overlay_width}:-1[scorebug];"
+                f"[0:v][scorebug]overlay={overlay_x}:{overlay_y}:eof_action=pass[vout]"
+            )
+            overlay_inputs = ["-loop", "1", "-i", str(before_path)]
         ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
         command = [
             ffmpeg,
             "-y",
             "-i",
             str(input_path),
-            "-loop",
-            "1",
-            "-i",
-            str(before_path),
-            "-itsoffset",
-            f"{gif_start:.3f}",
-            "-framerate",
-            "20",
-            "-i",
-            str(transition_pattern),
-            "-loop",
-            "1",
-            "-i",
-            str(after_path),
+            *overlay_inputs,
             "-filter_complex",
             filter_graph,
             "-map",

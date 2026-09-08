@@ -1630,7 +1630,7 @@ def scorebug_category_snapshot(states, team_a, team_b):
 
 
 def build_pbp_highlight_moments(events, team_a, team_b):
-    """Return real plays that changed one or more fantasy category leaders."""
+    """Return every fantasy-relevant real play and its scorebug state."""
     if events is None or events.empty:
         return []
     work = events.copy()
@@ -1662,15 +1662,45 @@ def build_pbp_highlight_moments(events, team_a, team_b):
                     states[category][sbc_team][key] = states[category][sbc_team].get(key, 0) + amount
 
         after_categories = scorebug_category_snapshot(states, team_a, team_b)
-        changes = {
+        leader_changes = {
             category: after_categories[category]
             for category in highlight_scorebug.CATEGORY_ORDER
             if before_categories.get(category) != after_categories.get(category)
         }
-        if not changes:
+        contributing_scorebug_categories = [
+            category
+            for category in highlight_scorebug.CATEGORY_ORDER
+            if category in {SCOREBUG_CATEGORY_KEYS[item] for item in contributing_categories}
+        ]
+        if not contributing_scorebug_categories:
             continue
         score_a, score_b = highlight_scorebug.calculate_score(before_categories)
-        changed_labels = [highlight_scorebug.CATEGORY_PILL_LABELS[category] for category in changes]
+        stat_priority = [
+            "free-throw make", "free-throw miss",
+            "three-point make", "three-point miss",
+            "two-point make", "two-point miss",
+            "points", "assist", "offensive_rebound", "defensive_rebound",
+            "steal", "block", "turnover", "+/-", "minutes played",
+        ]
+        primary_row = None
+        for preferred_stat in stat_priority:
+            preferred_rows = play_rows[play_rows["stat"].astype(str) == preferred_stat]
+            if not preferred_rows.empty:
+                primary_row = preferred_rows.iloc[0]
+                break
+        if primary_row is None:
+            primary_row = play_rows.iloc[0]
+        primary_categories = pbp_categories_for_event(primary_row)
+        primary_category = SCOREBUG_CATEGORY_KEYS[primary_categories[0]] if primary_categories else contributing_scorebug_categories[0]
+        category_totals = {
+            SCOREBUG_CATEGORY_KEYS[category]: {
+                "A": pbp_running_display(states[category][team_a], category),
+                "B": pbp_running_display(states[category][team_b], category),
+            }
+            for category in contributing_categories
+        }
+        changed_labels = [highlight_scorebug.CATEGORY_PILL_LABELS[category] for category in leader_changes]
+        contribution_labels = [highlight_scorebug.CATEGORY_PILL_LABELS[category] for category in contributing_scorebug_categories]
         moments.append({
             "wallclock": wallclock,
             "game_id": str(game_id),
@@ -1678,11 +1708,20 @@ def build_pbp_highlight_moments(events, team_a, team_b):
             "teams": sorted(contributing_teams),
             "contributing_categories": sorted(contributing_categories),
             "before_categories": before_categories,
-            "changes": changes,
+            "changes": leader_changes,
+            "leader_changes": leader_changes,
             "score_a": score_a,
             "score_b": score_b,
             "progress": round(100 * (play_index + 1) / max(1, len(play_groups))),
             "changed_labels": changed_labels,
+            "contribution_labels": contribution_labels,
+            "players": sorted(set(play_rows.get("display_player", play_rows.get("player", pd.Series(dtype=str))).dropna().astype(str))),
+            "sequence": play_index + 1,
+            "primary_category": primary_category,
+            "primary_stat": str(primary_row.get("stat", "")),
+            "primary_team": str(primary_row.get("sbc_team", "")),
+            "primary_player": str(primary_row.get("display_player", primary_row.get("player", ""))),
+            "category_totals": category_totals,
         })
     return moments
 
@@ -2399,29 +2438,160 @@ def matchup_scorebug_rank(matchup_row, team_side):
     return None
 
 
+def matchup_start_standing(matchup_row, team, team_side):
+    """Return the team's conference rank and record when the matchup opened."""
+    fallback_record = str(matchup_row.get(f"{team_side}_record", "—") or "—")
+    fallback_rank = matchup_scorebug_rank(matchup_row, team_side)
+    if standings is None or standings.empty:
+        return fallback_record, fallback_rank
+    year = pd.to_numeric(matchup_row.get("Year"), errors="coerce")
+    matchup_period = pd.to_numeric(matchup_row.get("Period"), errors="coerce")
+    if pd.isna(year) or pd.isna(matchup_period):
+        return fallback_record, fallback_rank
+    year = int(year)
+    matchup_period = int(matchup_period)
+    year_rows = standings[pd.to_numeric(standings.get("Year"), errors="coerce") == year].copy()
+    available_periods = pd.to_numeric(year_rows.get("Period"), errors="coerce")
+    if (available_periods == matchup_period).any():
+        snapshot_period = matchup_period
+    else:
+        prior_periods = available_periods[(available_periods < matchup_period) & (available_periods != 99)].dropna()
+        if prior_periods.empty:
+            return fallback_record, fallback_rank
+        snapshot_period = int(prior_periods.max())
+    table = year_rows[available_periods == snapshot_period].copy()
+    if table.empty or team not in set(table.get("Team", pd.Series(dtype=str)).astype(str)):
+        return fallback_record, fallback_rank
+    table["Conference"] = table["Team"].map(lambda value: team_info.get(value, {}).get("conf", ""))
+    table["Division"] = table["Team"].map(lambda value: team_info.get(value, {}).get("div", ""))
+    table[["wins", "losses"]] = table["Record"].apply(lambda value: pd.Series(parse_record_value(value)))
+    table["WinPctRaw"] = table["wins"] / (table["wins"] + table["losses"]).replace(0, pd.NA)
+    table["WinPctRaw"] = table["WinPctRaw"].fillna(0)
+    pre_matchup_games = team_game_rows(all_time_schedule, year, matchup_period - 1, ["Regular Season"])
+    table = nba_style_rank_table(table, pre_matchup_games)
+    conference = str(team_info.get(team, {}).get("conf", ""))
+    conference_table = table[table["Conference"].astype(str) == conference].reset_index(drop=True)
+    team_rows = conference_table[conference_table["Team"].astype(str) == str(team)]
+    if team_rows.empty:
+        return fallback_record, fallback_rank
+    team_index = int(team_rows.index[0])
+    record = str(team_rows.iloc[0].get("Record", fallback_record) or fallback_record)
+    return record, team_index + 1
+
+
+def matchup_highlight_filename(matchup_row, moment, team_a, team_b):
+    year = pd.to_numeric(matchup_row.get("Year"), errors="coerce")
+    matchup_period = pd.to_numeric(matchup_row.get("Period"), errors="coerce")
+    year_text = str(int(year)) if pd.notna(year) else "SBC"
+    period_text = f"P{int(matchup_period):02d}" if pd.notna(matchup_period) else "PXX"
+    matchup_text = f"{team_abbrev_for_name(team_a)}-{team_abbrev_for_name(team_b)}"
+    category_labels = moment["changed_labels"] or moment["contribution_labels"]
+    category_text = "-".join(category_labels[:4]) or "PLAY"
+    raw_name = f'{year_text}_{period_text}_{matchup_text}_{int(moment["sequence"]):04d}_{category_text}.mp4'
+    return re.sub(r"[^A-Za-z0-9_.+%-]+", "-", raw_name)
+
+
+def highlight_short_player_name(value):
+    parts = [part for part in str(value or "").strip().split() if part]
+    if not parts:
+        return "Team"
+    if len(parts) == 1:
+        return parts[0]
+    suffixes = {"jr.", "sr.", "ii", "iii", "iv", "v"}
+    suffix = f" {parts[-1]}" if parts[-1].casefold() in suffixes else ""
+    last_name = parts[-2] if suffix else parts[-1]
+    return f"{parts[0][0].upper()}. {last_name}{suffix}"
+
+
+def highlight_play_description(moment, team_a, team_b):
+    player = str(moment.get("primary_player", "")).strip()
+    short_player = highlight_short_player_name(player)
+    stat = str(moment.get("primary_stat", ""))
+    description = re.sub(r"\s*\([^)]*\)", "", str(moment.get("description", ""))).strip()
+    description = re.sub(r"\bfree throw\s+\d+\s+of\s+\d+\b", "free throw", description, flags=re.IGNORECASE)
+    if player and description.casefold().startswith(player.casefold()):
+        action = description[len(player):].strip()
+    elif stat == "assist":
+        action = "records assist"
+    else:
+        action = description
+    actor_team = str(moment.get("primary_team", ""))
+    actor_abbrev = team_abbrev_for_name(actor_team) if actor_team else "SBC"
+    play_text = " ".join(f"{actor_abbrev} {short_player} {action}".split())
+    primary_category = moment.get("primary_category")
+    totals = moment.get("category_totals", {}).get(primary_category, {})
+    total_parts = []
+    if totals:
+        total_parts = [
+            f"{team_abbrev_for_name(team_a)} {totals.get('A', '—')}",
+            f"{team_abbrev_for_name(team_b)} {totals.get('B', '—')}",
+        ]
+    return "  ·  ".join([play_text, *total_parts])
+
+
 def render_matchup_highlight_tab(events, matchup_row, team_a, team_b, key_prefix):
     render_html("""
         <section class="sbc-box-panel" style="padding:18px 20px;margin-bottom:16px;">
             <div class="sbc-box-panel-head"><span>Create Highlight</span><em>play + clip → finished MP4</em></div>
             <p style="margin:10px 0 0;color:#64748b;font-size:.86rem;font-weight:650;line-height:1.5;">
-                Choose a category-changing play from this matchup. The scorebug automatically includes every category
-                leader changed by that play, then animates those pills and the weighted score over your uploaded clip.
+                Choose any play from this matchup. The scorebug automatically includes every category touched by that
+                play, animates those pills, and updates the weighted score whenever category ownership changes.
             </p>
         </section>
     """)
     moments = build_pbp_highlight_moments(events, team_a, team_b)
     if not moments:
-        render_html('<div class="sbc-empty-state">No category-changing plays are available for this matchup yet.</div>')
+        render_html('<div class="sbc-empty-state">No fantasy-relevant plays are available for this matchup yet.</div>')
         return
 
-    ordered_moments = list(reversed(moments))
+    filter_col, category_col = st.columns(2)
+    with filter_col:
+        play_scope = st.selectbox(
+            "Show",
+            options=["All plays", "Category leader changes"],
+            key=f"{key_prefix}_highlight_scope",
+        )
+    with category_col:
+        category_filter = st.selectbox(
+            "Category filter",
+            options=["ALL"] + list(highlight_scorebug.CATEGORY_ORDER),
+            format_func=lambda category: "All categories" if category == "ALL" else highlight_scorebug.CATEGORY_PILL_LABELS[category],
+            key=f"{key_prefix}_highlight_category_filter",
+        )
+    search_text = st.text_input(
+        "Find a play",
+        placeholder="Player, description, or category…",
+        key=f"{key_prefix}_highlight_search",
+    ).strip().casefold()
+
+    filtered_moments = moments
+    if play_scope == "Category leader changes":
+        filtered_moments = [moment for moment in filtered_moments if moment["leader_changes"]]
+    if category_filter != "ALL":
+        category_label = highlight_scorebug.CATEGORY_PILL_LABELS[category_filter]
+        filtered_moments = [moment for moment in filtered_moments if category_label in moment["contribution_labels"]]
+    if search_text:
+        filtered_moments = [
+            moment for moment in filtered_moments
+            if search_text in " ".join([
+                moment["description"],
+                *moment["players"],
+                *moment["contribution_labels"],
+                *moment["changed_labels"],
+            ]).casefold()
+        ]
+    ordered_moments = list(reversed(filtered_moments))
+    if not ordered_moments:
+        st.warning("No plays match those filters.")
+        return
 
     def moment_label(moment):
-        categories = ", ".join(moment["changed_labels"])
+        categories = ", ".join(moment["changed_labels"] or moment["contribution_labels"])
+        change_label = categories if moment["leader_changes"] else f"No score change · {categories}"
         description = re.sub(r"\s+", " ", moment["description"]).strip()
         if len(description) > 112:
             description = description[:109].rstrip() + "…"
-        return f'{format_pbp_wallclock(moment["wallclock"])} · {categories} · {description}'
+        return f'{format_pbp_wallclock(moment["wallclock"])} · {change_label} · {description}'
 
     selected_index = st.selectbox(
         "Play",
@@ -2430,16 +2600,18 @@ def render_matchup_highlight_tab(events, matchup_row, team_a, team_b, key_prefix
         key=f"{key_prefix}_highlight_play",
     )
     moment = ordered_moments[selected_index]
+    record_a, rank_a = matchup_start_standing(matchup_row, team_a, "TeamA")
+    record_b, rank_b = matchup_start_standing(matchup_row, team_b, "TeamB")
     before = highlight_scorebug.ScorebugData(
         team_a=highlight_scorebug.team_display(
             team_a,
-            str(matchup_row.get("TeamA_record", "—")),
-            matchup_scorebug_rank(matchup_row, "TeamA"),
+            record_a,
+            rank_a,
         ),
         team_b=highlight_scorebug.team_display(
             team_b,
-            str(matchup_row.get("TeamB_record", "—")),
-            matchup_scorebug_rank(matchup_row, "TeamB"),
+            record_b,
+            rank_b,
         ),
         categories=moment["before_categories"],
         score_a=moment["score_a"],
@@ -2447,19 +2619,47 @@ def render_matchup_highlight_tab(events, matchup_row, team_a, team_b, key_prefix
         matchup_progress=moment["progress"],
         label="SBCFBL MATCHUP",
         status="IN PROGRESS",
+        play_description=highlight_play_description(moment, team_a, team_b),
     )
 
     change_text = []
-    for category, new_owner in moment["changes"].items():
+    for category, new_owner in moment["leader_changes"].items():
         old_owner = moment["before_categories"][category]
         owner_names = {"A": team_a, "B": team_b, "TIE": "Tie"}
         change_text.append(
             f'{highlight_scorebug.CATEGORY_PILL_LABELS[category]}: {owner_names[old_owner]} → {owner_names[new_owner]}'
         )
-    st.info("Category changes: " + "  •  ".join(change_text))
+    if change_text:
+        st.info("Category changes: " + "  •  ".join(change_text))
+    else:
+        st.info("Score unchanged. The scorebug will remain static while the play description and running category totals stay visible.")
     preview = highlight_scorebug.render_scorebug(before, scale=1)
     st.image(preview, use_container_width=True)
 
+    st.markdown("""
+        <style>
+        div[data-testid="stFileUploader"] section {
+            background:#f8fafc !important;
+            border-color:#94a3b8 !important;
+        }
+        div[data-testid="stFileUploader"] section div,
+        div[data-testid="stFileUploader"] section span,
+        div[data-testid="stFileUploader"] section small,
+        div[data-testid="stFileUploader"] [data-testid="stFileUploaderFileName"],
+        div[data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] {
+            color:#0f172a !important;
+        }
+        div[data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] {
+            background:#eef2f7 !important;
+            border-radius:8px !important;
+        }
+        div[data-testid="stFileUploader"] button {
+            background:#ffffff !important;
+            color:#0f172a !important;
+            border-color:#64748b !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     uploaded_video = st.file_uploader(
         "Upload MP4",
         type=["mp4"],
@@ -2507,7 +2707,7 @@ def render_matchup_highlight_tab(events, matchup_row, team_a, team_b, key_prefix
                 st.session_state[result_key] = {
                     "video": video_bytes,
                     "play": moment_label(moment),
-                    "filename": f"{team_a.lower()}_{team_b.lower()}_highlight.mp4".replace(" ", "_"),
+                    "filename": matchup_highlight_filename(matchup_row, moment, team_a, team_b),
                 }
             except Exception as exc:
                 st.session_state.pop(result_key, None)
@@ -4109,7 +4309,7 @@ need_exceptions = need_landing or need_team_data or need_trade_data or need_fa_d
 need_base_cap = need_landing or need_team_data or need_trade_data or need_checks_data or need_league_overview
 need_dp = (requested_main_page == "Team Hub" and requested_team_page == "Picks") or need_trade_data or need_checks_data or need_league_picks
 need_ft = need_checks_data
-need_standings = need_landing or need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft or need_team_history
+need_standings = need_landing or need_league_overview or need_league_standings or need_league_scoreboard or need_history_stats or need_history_draft or need_team_history or (requested_main_page == "Team Hub" and requested_team_page == "Schedule")
 need_dh = need_history_draft
 need_all_time_team_stats = need_team_history or need_history_stats or need_award_detail_assets
 need_boxscore_data = (requested_main_page == "Team Hub" and requested_team_page in ["Schedule", "History"]) or need_league_scoreboard or (need_history and requested_history_page == "Scoreboard")
