@@ -1,15 +1,15 @@
 {
-  "finished_at": "2026-09-08T13:40:44.715698+00:00",
+  "finished_at": "2026-09-09T13:46:30.203186+00:00",
   "live_mode": "shadow",
   "results": [
     {
       "details": {
         "message": "Google Sheet snapshots refreshed with stale-cache fallback"
       },
-      "duration_seconds": 9.65,
-      "finished_at": "2026-09-08T13:39:49.999071+00:00",
+      "duration_seconds": 11.08,
+      "finished_at": "2026-09-09T13:45:14.748048+00:00",
       "name": "sheets",
-      "started_at": "2026-09-08T13:39:40.349495+00:00",
+      "started_at": "2026-09-09T13:45:03.668057+00:00",
       "status": "ok"
     },
     {
@@ -21,10 +21,10 @@
           "get_all_time_standings"
         ]
       },
-      "duration_seconds": 29.044,
-      "finished_at": "2026-09-08T13:40:19.043210+00:00",
+      "duration_seconds": 46.856,
+      "finished_at": "2026-09-09T13:46:01.603611+00:00",
       "name": "league",
-      "started_at": "2026-09-08T13:39:49.999149+00:00",
+      "started_at": "2026-09-09T13:45:14.748121+00:00",
       "status": "ok"
     },
     {
@@ -32,9 +32,9 @@
         "message": "outside the NBA regular-season refresh window"
       },
       "duration_seconds": 0.0,
-      "finished_at": "2026-09-08T13:40:19.043326+00:00",
+      "finished_at": "2026-09-09T13:46:01.603720+00:00",
       "name": "espn_boxscores",
-      "started_at": "2026-09-08T13:40:19.043317+00:00",
+      "started_at": "2026-09-09T13:46:01.603710+00:00",
       "status": "skipped"
     },
     {
@@ -42,9 +42,9 @@
         "message": "outside the NBA regular-season refresh window"
       },
       "duration_seconds": 0.0,
-      "finished_at": "2026-09-08T13:40:19.043353+00:00",
+      "finished_at": "2026-09-09T13:46:01.603748+00:00",
       "name": "shots",
-      "started_at": "2026-09-08T13:40:19.043350+00:00",
+      "started_at": "2026-09-09T13:46:01.603745+00:00",
       "status": "skipped"
     },
     {
@@ -52,9 +52,9 @@
         "message": "outside the NBA regular-season refresh window"
       },
       "duration_seconds": 0.0,
-      "finished_at": "2026-09-08T13:40:19.043384+00:00",
+      "finished_at": "2026-09-09T13:46:01.603774+00:00",
       "name": "pbp",
-      "started_at": "2026-09-08T13:40:19.043381+00:00",
+      "started_at": "2026-09-09T13:46:01.603766+00:00",
       "status": "skipped"
     },
     {
@@ -62,10 +62,10 @@
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/sbc_player_matchup_stats.parquet",
         "rows": 119095
       },
-      "duration_seconds": 5.976,
-      "finished_at": "2026-09-08T13:40:25.019504+00:00",
+      "duration_seconds": 6.246,
+      "finished_at": "2026-09-09T13:46:07.850011+00:00",
       "name": "matchups",
-      "started_at": "2026-09-08T13:40:19.043407+00:00",
+      "started_at": "2026-09-09T13:46:01.603837+00:00",
       "status": "ok"
     },
     {
@@ -75,23 +75,23 @@
         "player_rows": 0,
         "published": false
       },
-      "duration_seconds": 0.079,
-      "finished_at": "2026-09-08T13:40:25.098996+00:00",
+      "duration_seconds": 0.037,
+      "finished_at": "2026-09-09T13:46:07.886743+00:00",
       "name": "live_shadow",
-      "started_at": "2026-09-08T13:40:25.019630+00:00",
+      "started_at": "2026-09-09T13:46:07.850118+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "bytes": 143781529,
+        "bytes": 143781501,
         "datasets": 19,
         "rows": 7348046,
         "warnings": 0
       },
-      "duration_seconds": 0.163,
-      "finished_at": "2026-09-08T13:40:25.262075+00:00",
+      "duration_seconds": 0.154,
+      "finished_at": "2026-09-09T13:46:08.040711+00:00",
       "name": "validate",
-      "started_at": "2026-09-08T13:40:25.099068+00:00",
+      "started_at": "2026-09-09T13:46:07.886846+00:00",
       "status": "ok"
     },
     {
@@ -103,64 +103,64 @@
         "planned": [],
         "published": [
           {
-            "bytes": 54592,
+            "bytes": 54040,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-overnight-scores-2026-p41.png",
             "kind": "overnight_scores"
           },
           {
-            "bytes": 49428,
+            "bytes": 48567,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-overnight-scores-2026-p41.png",
             "kind": "mobile_overnight_scores"
           },
           {
-            "bytes": 443394,
+            "bytes": 454073,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-matchup-recap-2026_1167.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 562672,
+            "bytes": 572812,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-matchup-recap-2026_1167.png",
             "kind": "mobile_matchup_recap"
           },
           {
-            "bytes": 442429,
+            "bytes": 454726,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-matchup-recap-2026_1166.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 537228,
+            "bytes": 566846,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-matchup-recap-2026_1166.png",
             "kind": "mobile_matchup_recap"
           }
         ],
-        "publishing_date": "2026-03-24",
+        "publishing_date": "2026-03-25",
         "skipped": [
           "record_leader:no-new-record"
         ],
         "slot": "opening",
         "year": 2026
       },
-      "duration_seconds": 19.453,
-      "finished_at": "2026-09-08T13:40:44.715329+00:00",
+      "duration_seconds": 22.162,
+      "finished_at": "2026-09-09T13:46:30.202874+00:00",
       "name": "fantrax_rotation",
-      "started_at": "2026-09-08T13:40:25.262135+00:00",
+      "started_at": "2026-09-09T13:46:08.040769+00:00",
       "status": "ok"
     }
   ],
   "schema_version": 1,
-  "started_at": "2026-09-08T13:39:40.349325+00:00",
+  "started_at": "2026-09-09T13:45:03.667889+00:00",
   "status": "ok",
-  "target_date": "2026-09-08"
+  "target_date": "2026-09-09"
 }
