@@ -9,6 +9,11 @@ __pycache__/
 tmp/
 *.log
 
+# Volatile Yahoo API cache (configuration remains tracked)
+data/yahoo_2026/raw/*.json
+data/yahoo_2026/raw/*/*.json
+data/yahoo_2026/processed/*.parquet
+
 # Installed JavaScript dependencies and package-manager caches
 node_modules/
 .npm/

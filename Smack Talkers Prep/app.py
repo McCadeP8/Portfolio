@@ -4,8 +4,11 @@ import random
 import ast
 import re
 from collections import Counter
+from pathlib import Path
 
 import streamlit as st
+
+from yahoo_2026 import load_cached_yahoo_2026
 
 from game import (
     POWER_UPS,
@@ -251,6 +254,72 @@ with st.sidebar:
         st.subheader("Score trail")
         for event in g["history"]:
             st.caption(f"{event['stage']}: {fmt(event['before'])} → {fmt(event['after'])}")
+
+with st.expander("YAHOO 2026 · Tuesday league updates", expanded=False):
+    st.caption("Run `python refresh_yahoo_2026.py` from this project each Tuesday, then reload this page.")
+    yahoo_cache = load_cached_yahoo_2026(Path(__file__).resolve().parent)
+    yahoo_status = yahoo_cache["status"]
+    if yahoo_status.empty:
+        st.info("No Yahoo cache is available yet. Run the Tuesday updater to create it.")
+    else:
+        status_view = yahoo_status.copy()
+        status_view["Result"] = status_view["success"].map({True: "✓ Success", False: "✕ Failed"})
+        st.dataframe(
+            status_view.rename(columns={
+                "league_label": "League", "league_key": "Yahoo league key",
+                "current_week": "Week", "team_count": "Teams",
+                "fetched_at_utc": "Updated (UTC)", "error": "Error",
+            }),
+            column_order=["League", "Result", "Yahoo league key", "Week", "Teams", "Updated (UTC)", "Error"],
+            hide_index=True,
+            use_container_width=True,
+        )
+        yahoo_tabs = st.tabs(status_view["league_label"].astype(str).tolist())
+        for tab, (_, league_status) in zip(yahoo_tabs, status_view.iterrows()):
+            with tab:
+                league_key = str(league_status["league_key"])
+                league_teams = yahoo_cache["teams"].loc[
+                    yahoo_cache["teams"]["league_key"].astype(str).eq(league_key)
+                ].copy()
+                league_matchups = yahoo_cache["matchups"].loc[
+                    yahoo_cache["matchups"]["league_key"].astype(str).eq(league_key)
+                ].copy()
+                if not bool(league_status["success"]):
+                    st.error(str(league_status["error"]))
+                    st.caption("The last successful teams and matchups remain cached below when available.")
+                st.markdown("#### Teams")
+                if league_teams.empty:
+                    st.warning("No cached teams for this league.")
+                else:
+                    st.dataframe(
+                        league_teams.rename(columns={
+                            "team_id": "ID", "team_name": "Team", "manager_nickname": "Manager",
+                            "number_of_moves": "Moves", "number_of_trades": "Trades",
+                            "previous_season_team_rank": "2025 rank", "draft_grade": "Yahoo draft grade",
+                        }),
+                        column_order=["ID", "Team", "Manager", "Moves", "Trades", "2025 rank", "Yahoo draft grade"],
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+                st.markdown("#### Current matchups")
+                if league_matchups.empty:
+                    st.warning("No cached current-week matchups for this league.")
+                else:
+                    st.dataframe(
+                        league_matchups.rename(columns={
+                            "week": "Week", "status": "Status", "team_1_name": "Team 1",
+                            "team_1_points": "Score 1", "team_1_projected_points": "Projected 1",
+                            "team_1_win_probability": "Win % 1", "team_2_name": "Team 2",
+                            "team_2_points": "Score 2", "team_2_projected_points": "Projected 2",
+                            "team_2_win_probability": "Win % 2",
+                        }),
+                        column_order=[
+                            "Week", "Status", "Team 1", "Score 1", "Projected 1", "Win % 1",
+                            "Team 2", "Score 2", "Projected 2", "Win % 2",
+                        ],
+                        hide_index=True,
+                        use_container_width=True,
+                    )
 
 score_text = fmt(g["score"])
 st.markdown(f'<div class="score-ribbon"><div><span>Current score</span><br><strong>{score_text}</strong></div><div style="text-align:right"><span>Progress</span><br><strong>{len(g["completed"])} / 7</strong></div></div>', unsafe_allow_html=True)
