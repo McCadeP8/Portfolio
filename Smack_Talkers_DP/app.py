@@ -13,6 +13,7 @@ from yahoo_2026 import load_cached_yahoo_2026
 from history_metrics import (
     POSITION_ORDER,
     all_play_summary,
+    annotate_lineups,
     attach_draft_outcomes,
     combined_draft_role_summary,
     coverage_summary,
@@ -121,9 +122,76 @@ footer { visibility:hidden; }
 )
 
 
-@st.cache_data(show_spinner="Building the league-history model…")
+@st.cache_data(show_spinner="Building the league-history model…", ttl=60)
 def get_data() -> dict[str, pd.DataFrame]:
     history = load_history_data(PROCESSED_DIR)
+    live = load_cached_yahoo_2026(APP_DIR)
+    live_to_history = {
+        "team_map": "team_map",
+        "standings": "standings",
+        "scores": "scores",
+        "history_matchups": "matchups",
+        "lineup_scores": "lineup_scores",
+        "lineups": "lineups",
+    }
+    for live_name, history_name in live_to_history.items():
+        incoming = live[live_name].copy()
+        if incoming.empty:
+            continue
+        existing = history[history_name].loc[history[history_name]["season"].ne(2026)].copy()
+        history[history_name] = pd.concat([existing, incoming], ignore_index=True, sort=False)
+
+    live_status = live["status"].loc[live["status"]["success"].eq(True)].copy()
+    if not live_status.empty:
+        inventory_rows = []
+        for row in live_status.itertuples(index=False):
+            league_id = int(row.league_id)
+            roster_pages = len(
+                live["lineup_scores"].loc[live["lineup_scores"]["league_id"].eq(league_id)]
+            )
+            inventory_rows.append({
+                "season": 2026,
+                "league_id": league_id,
+                "draft_type": row.draft_type,
+                "team_count": int(row.team_count),
+                "standings_rows": int(row.team_count),
+                "schedule_teams": int(row.team_count),
+                "week1_teams": int(row.team_count),
+                "detailed_lineup_pages": roster_pages,
+                "status": f"live_through_week_{int(row.current_week)}",
+                "source_url": row.league_url,
+                "notes": f"Tuesday updater active through Yahoo Week {int(row.current_week)}",
+            })
+        historical_inventory = history["inventory"].loc[history["inventory"]["season"].ne(2026)]
+        history["inventory"] = pd.concat(
+            [historical_inventory, pd.DataFrame(inventory_rows)], ignore_index=True, sort=False
+        )
+
+    results_2026 = pd.read_csv(RESULTS_2026_PATH)
+    results_2026.insert(0, "season", 2026)
+    results_2026["team_count"] = 12
+    results_2026["espn_overall_rank"] = pd.NA
+    results_2026["espn_auction_value"] = pd.NA
+    enriched_columns = history["drafts_enriched"].columns
+    for column in enriched_columns.difference(results_2026.columns):
+        results_2026[column] = pd.NA
+    historical_enriched = history["drafts_enriched"].loc[history["drafts_enriched"]["season"].ne(2026)]
+    history["drafts_enriched"] = pd.concat(
+        [historical_enriched, results_2026[enriched_columns]], ignore_index=True, sort=False
+    )
+    draft_columns = history["drafts"].columns
+    historical_drafts = history["drafts"].loc[history["drafts"]["season"].ne(2026)]
+    history["drafts"] = pd.concat(
+        [historical_drafts, results_2026[draft_columns]], ignore_index=True, sort=False
+    )
+    annotation_columns = [
+        "draft_team_name", "drafted_in_league", "drafted_by_owner", "draft_position",
+        "observed_position", "actual_position", "position_group", "lineup_role", "player_origin",
+    ]
+    history["lineups"] = history["lineups"].drop(
+        columns=[column for column in annotation_columns if column in history["lineups"].columns]
+    )
+    history["lineups"] = annotate_lineups(history["lineups"], history["drafts"], history["team_map"])
     result_columns = history["scores"][["season", "league_id", "team_id", "week", "result", "opponent_score"]].drop_duplicates()
     history["scoring_history"] = history["lineup_scores"].merge(
         result_columns,
@@ -396,7 +464,7 @@ auction_values["confidence_adjusted_total_starting_vorp"] = (
     auction_values["total_starting_vorp"] * auction_values["position_confidence"]
 )
 team_map = data["team_map"].copy()
-available_seasons = sorted(team_map["season"].unique().tolist())
+available_seasons = sorted(set(team_map["season"].unique().tolist()) | {2026})
 
 with st.sidebar:
     st.markdown("### LEAGUE LAB")
@@ -486,11 +554,11 @@ m2.metric("Matchups observed", len(matchups))
 m3.metric("Lineup decisions", f"{lineup_team_weeks:,}", f"{coverage_rate:.0%} coverage")
 m4.metric("Player-week rows", f"{len(lineups):,}")
 
-tab_yahoo_2026, tab_pulse, tab_owner_history, tab_position, tab_draft_room, tab_decisions, tab_draft, tab_coverage = st.tabs(
-    ["2026 Yahoo", "League pulse", "Owner history", "Position build", "Draft room", "Lineup decisions", "Drafted vs acquired", "Data coverage"]
+tab_pulse, tab_owner_history, tab_position, tab_draft_room, tab_decisions, tab_draft, tab_coverage = st.tabs(
+    ["League pulse", "Owner history", "Position build", "Draft room", "Lineup decisions", "Drafted vs acquired", "Data coverage"]
 )
 
-with tab_yahoo_2026:
+if False:  # The 2026 cache now feeds every existing analysis tab directly.
     section_title(
         "Tuesday update",
         "2026 Yahoo leagues",
