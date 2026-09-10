@@ -8,6 +8,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from yahoo_2026 import load_cached_yahoo_2026
+
 from history_metrics import (
     POSITION_ORDER,
     all_play_summary,
@@ -484,11 +486,84 @@ m2.metric("Matchups observed", len(matchups))
 m3.metric("Lineup decisions", f"{lineup_team_weeks:,}", f"{coverage_rate:.0%} coverage")
 m4.metric("Player-week rows", f"{len(lineups):,}")
 
-tab_results_2026, tab_live_auction, tab_pulse, tab_owner_history, tab_position, tab_draft_room, tab_decisions, tab_draft, tab_coverage = st.tabs(
-    ["2026 Draft Results", "2026 Draft Board", "League pulse", "Owner history", "Position build", "Draft room", "Lineup decisions", "Drafted vs acquired", "Data coverage"]
+tab_yahoo_2026, tab_pulse, tab_owner_history, tab_position, tab_draft_room, tab_decisions, tab_draft, tab_coverage = st.tabs(
+    ["2026 Yahoo", "League pulse", "Owner history", "Position build", "Draft room", "Lineup decisions", "Drafted vs acquired", "Data coverage"]
 )
 
-with tab_results_2026:
+with tab_yahoo_2026:
+    section_title(
+        "Tuesday update",
+        "2026 Yahoo leagues",
+        "Current teams and matchups from the latest cached Yahoo refresh.",
+    )
+    st.caption("Run `python refresh_yahoo_2026.py` each Tuesday, then reload this page.")
+    yahoo_cache = load_cached_yahoo_2026(APP_DIR)
+    yahoo_status = yahoo_cache["status"]
+    if yahoo_status.empty:
+        st.info("No Yahoo cache is available yet. Run the Tuesday updater to create it.")
+    else:
+        status_view = yahoo_status.copy()
+        status_view["Result"] = status_view["success"].map({True: "Success", False: "Failed"})
+        st.dataframe(
+            status_view.rename(columns={
+                "league_label": "League", "league_key": "Yahoo league key",
+                "current_week": "Week", "team_count": "Teams",
+                "fetched_at_utc": "Updated (UTC)", "error": "Error",
+            }),
+            column_order=["League", "Result", "Yahoo league key", "Week", "Teams", "Updated (UTC)", "Error"],
+            hide_index=True,
+            width="stretch",
+        )
+        yahoo_tabs = st.tabs(status_view["league_label"].astype(str).tolist())
+        for yahoo_tab, (_, league_status) in zip(yahoo_tabs, status_view.iterrows()):
+            with yahoo_tab:
+                league_key = str(league_status["league_key"])
+                league_teams = yahoo_cache["teams"].loc[
+                    yahoo_cache["teams"]["league_key"].astype(str).eq(league_key)
+                ].copy()
+                league_matchups = yahoo_cache["matchups"].loc[
+                    yahoo_cache["matchups"]["league_key"].astype(str).eq(league_key)
+                ].copy()
+                if not bool(league_status["success"]):
+                    st.error(str(league_status["error"]))
+                    st.caption("The last successful teams and matchups remain cached below when available.")
+
+                st.markdown("### Teams")
+                if league_teams.empty:
+                    st.warning("No cached teams for this league.")
+                else:
+                    st.dataframe(
+                        league_teams.rename(columns={
+                            "team_id": "ID", "team_name": "Team", "manager_nickname": "Manager",
+                            "number_of_moves": "Moves", "number_of_trades": "Trades",
+                            "previous_season_team_rank": "2025 rank", "draft_grade": "Yahoo draft grade",
+                        }),
+                        column_order=["ID", "Team", "Manager", "Moves", "Trades", "2025 rank", "Yahoo draft grade"],
+                        hide_index=True,
+                        width="stretch",
+                    )
+
+                st.markdown("### Current matchups")
+                if league_matchups.empty:
+                    st.warning("No cached current-week matchups for this league.")
+                else:
+                    st.dataframe(
+                        league_matchups.rename(columns={
+                            "week": "Week", "status": "Status", "team_1_name": "Team 1",
+                            "team_1_points": "Score 1", "team_1_projected_points": "Projected 1",
+                            "team_1_win_probability": "Win % 1", "team_2_name": "Team 2",
+                            "team_2_points": "Score 2", "team_2_projected_points": "Projected 2",
+                            "team_2_win_probability": "Win % 2",
+                        }),
+                        column_order=[
+                            "Week", "Status", "Team 1", "Score 1", "Projected 1", "Win % 1",
+                            "Team 2", "Score 2", "Projected 2", "Win % 2",
+                        ],
+                        hide_index=True,
+                        width="stretch",
+                    )
+
+if False:  # Retained temporarily for historical reference; hidden after draft season.
     results_2026, grades_2026, report_2026 = get_2026_results()
     section_title(
         "Post-draft audit",
@@ -588,7 +663,7 @@ with tab_results_2026:
         key="download_2026_draft_report",
     )
 
-with tab_live_auction:
+if False:  # Retained temporarily for historical reference; hidden after draft season.
     if "live_draft_ledgers" not in st.session_state:
         legacy_players = list(st.session_state.get("live_auction_drafted", []))
         legacy_prices = dict(st.session_state.get("live_auction_prices", {}))
