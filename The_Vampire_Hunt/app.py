@@ -323,26 +323,27 @@ def fantrax_player_directory() -> dict:
     return fetch_player_directory()
 
 
-def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict) -> list[dict]:
+def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict, team_name: str | None = None) -> list[dict]:
     """Overlay the selected Google Sheet column onto the Vampire roster."""
+    team_name = team_name or active_vampire_name
     if not vampire_sheet_rows:
-        return [dict(row, team=active_vampire_name if row.get("team") == "The Vampire" else row.get("team")) for row in base_rows]
+        return [dict(row, team=team_name if row.get("team") == "The Vampire" else row.get("team")) for row in base_rows]
     week_rows = [row for row in vampire_sheet_rows if str(row.get("Week", "")) == str(int(week))]
     if not week_rows:
         return base_rows
     slots = []
     for row in week_rows:
         slot = str(row.get("Slot", "")).strip()
-        player_name = str(row.get(active_vampire_name, "")).strip()
+        player_name = str(row.get(team_name, "")).strip()
         if not slot or slot.lower() == "stolen" or not player_name:
             continue
         if slot == "K1" and any(existing_slot == "K1" for existing_slot, _ in slots):
             slot = "K2"
         slots.append((slot, player_name))
     if not slots:
-        return [dict(row, team=active_vampire_name if row.get("team") == "The Vampire" else row.get("team")) for row in base_rows]
+        return [dict(row, team=team_name if row.get("team") == "The Vampire" else row.get("team")) for row in base_rows]
 
-    base_vampire = [row for row in base_rows if row.get("team") == "The Vampire" or row.get("team") == active_vampire_name]
+    base_vampire = [row for row in base_rows if row.get("team") == "The Vampire" or row.get("team") == team_name]
     lives = next((row.get("lives_remaining") for row in base_vampire if row.get("lives_remaining") is not None), None)
     by_name = {str(row.get("player", "")).strip().lower(): row for row in base_vampire}
     by_directory_name = {}
@@ -364,7 +365,7 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict) -> list[
         rebuilt.append({
             "week": int(week),
             "team_id": str(existing.get("team_id", "vampire-sheet")),
-            "team": active_vampire_name,
+            "team": team_name,
             "lives_remaining": lives,
             "player_id": player_id,
             "player": clean_name,
@@ -374,7 +375,7 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict) -> list[
             "score": None,
             "slot": slot,
         })
-    return [row for row in base_rows if row.get("team") not in {"The Vampire", active_vampire_name}] + rebuilt
+    return [row for row in base_rows if row.get("team") not in {"The Vampire", team_name}] + rebuilt
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -389,6 +390,17 @@ def fantrax_roster_for_week(week: int) -> tuple[list[dict], str]:
     snapshot = load_snapshot()
     rows = snapshot.get("rosters", {}).get(str(int(week)), [])
     return sheet_vampire_rows(int(week), rows, {}), "snapshot"
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def vampire_world_rosters(week: int) -> dict[str, list[dict]]:
+    """Build one sheet-backed Vampire roster per universe from the shared Fantrax pool."""
+    players = fantrax_player_directory()
+    try:
+        raw = fetch_roster_week(int(week), players)
+    except Exception:
+        raw = load_snapshot().get("rosters", {}).get(str(int(week)), [])
+    return {name: sheet_vampire_rows(int(week), raw, players, name) for name in vampire_sheet_teams}
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -1217,7 +1229,7 @@ st.markdown(
 st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
 
 overview_tab, teams_tab, scoreboard_tab, realm_summary_tab, available_tab, about_tab = st.tabs(
-    ["Overview", "Teams", "Scoreboard", "Realm Summary", "Submit Lineup", "About"]
+    ["Overview", "Creatures", "Scoreboard", "Realm Summary", "Submit Lineup", "About"]
 )
 
 with overview_tab:
@@ -1290,16 +1302,13 @@ with teams_tab:
     is_vampire = selected_name == active_vampire_name
     snapshot = load_snapshot()
     active_week = max(1, min(18, int(snapshot.get("current_week", 1))))
-    if is_vampire:
-        selected_week = st.select_slider(
-            "Vampire roster week",
-            options=list(range(1, 19)),
-            value=active_week,
-            format_func=lambda week: f"Week {week}",
-            help="The Vampire's roster can change after every successful hunt.",
-        )
-    else:
-        selected_week = active_week
+    selected_week = st.select_slider(
+        "Roster week",
+        options=list(range(1, 19)),
+        value=active_week,
+        format_func=lambda week: f"Week {week}",
+        help="Review the roster and life timeline for any week. Vampire rosters can change after each hunt.",
+    )
 
     roster_rows, roster_source = fantrax_roster_for_week(selected_week)
     roster_rows = enrich_roster_rows(roster_rows)
@@ -1679,47 +1688,32 @@ with realm_summary_tab:
         <p>A private-universe recap of Week {scoreboard_week}: your Vampire against every creature, with the lives, consequences, and stolen tribute that carry forward.</p></div>''',
         unsafe_allow_html=True,
     )
-    vampire_total = adjusted_scores.get(active_vampire_name)
-    stolen_this_week = next(
-        (
-            str(row.get(active_vampire_name, "")).strip()
-            for row in vampire_sheet_rows
-            if str(row.get("Week", "")) == str(scoreboard_week) and str(row.get("Slot", "")).strip().lower() == "stolen"
-        ),
-        "",
-    )
+    world_rosters = vampire_world_rosters(scoreboard_week)
+    world_scores = {}
+    for world_name, world_roster in world_rosters.items():
+        scored_roster, _ = add_fantrax_player_scores(world_roster, scoreboard_week)
+        world_lineup = best_ball_lineup(scored_roster)
+        world_scores[world_name] = sum(float(row.get("score", 0)) for row in world_lineup if isinstance(row.get("score"), (int, float))) if scoreboard_week <= active_week else None
     summary_rows = []
-    for team in ALL_TEAMS:
-        name = team["name"]
-        score = adjusted_scores.get(name)
-        roster = rosters_by_team.get(name, [])
-        lives = next((row.get("lives_remaining") for row in roster if row.get("lives_remaining") is not None), None)
-        if name == active_vampire_name:
-            lives_text = "Hunting"
-            beat_text = ", ".join(
-                other["name"] for other in CREATURES
-                if isinstance(vampire_total, (int, float)) and isinstance(adjusted_scores.get(other["name"]), (int, float))
-                and vampire_total > adjusted_scores[other["name"]]
-            ) or "—"
-            stolen_text = stolen_this_week or "None recorded"
-        else:
-            lives_text = str(lives) if lives is not None else str(team["lives"])
-            beat_text = active_vampire_label if isinstance(score, (int, float)) and isinstance(vampire_total, (int, float)) and score > vampire_total else "—"
-            stolen_text = "—"
-        score_text = f"{float(score):.2f}" if isinstance(score, (int, float)) else "—"
+    for world_name in vampire_sheet_teams:
+        score = world_scores.get(world_name)
+        stolen_text = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(scoreboard_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") or "—"
+        facing = "The eleven creatures"
+        score_text = f"{float(score):.2f}" if isinstance(score, (int, float)) else "Scheduled"
+        team = VAMPIRE_TEAM if world_name == active_vampire_name else {"emoji": "🧛", "logo": VAMPIRE_LOGO, "accent": "#6e2638"}
         summary_rows.append(
-            f'''<div class="realm-row {'vampire' if name == active_vampire_name else ''}" style="--realm-accent:{team['accent']}">
-                <img src="{team['logo']}" alt="{escape(name)} logo">
-                <div class="realm-team"><strong>{team['emoji']} {escape(team_label(name))}</strong><span>{'The hunter' if name == active_vampire_name else 'Creature'}</span></div>
+            f'''<div class="realm-row {'vampire' if world_name == active_vampire_name else ''}" style="--realm-accent:{team['accent']}">
+                <img src="{team['logo']}" alt="{escape(world_name)} logo">
+                <div class="realm-team"><strong>🧛 {escape(team_label(world_name))}</strong><span>{'Your universe' if world_name == active_vampire_name else 'Cross-realm Vampire'}</span></div>
                 <div class="realm-score">{score_text}</div>
-                <div class="realm-cell">◆ {escape(lives_text)}</div>
-                <div class="realm-cell">{escape(beat_text)}</div>
+                <div class="realm-cell">{escape(facing)}</div>
+                <div class="realm-cell">{escape('Roster submitted' if world_name in world_rosters else 'No roster')}</div>
                 <div class="realm-cell">{escape(stolen_text)}</div>
             </div>'''
         )
     st.markdown(
         f'''<div class="realm-table">
-            <div class="realm-row header"><div></div><div>Team</div><div>Week {scoreboard_week}</div><div>Lives left</div><div>Monsters beaten</div><div>Player stolen</div></div>
+            <div class="realm-row header"><div></div><div>Vampire</div><div>Week {scoreboard_week}</div><div>Opponent</div><div>Lineup status</div><div>Player stolen</div></div>
             {''.join(summary_rows)}
         </div>''',
         unsafe_allow_html=True,
