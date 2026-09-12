@@ -20,7 +20,64 @@ try:
     from fantrax_data import fetch_player_scores
 except ImportError:
     def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
-        return {}
+        import re
+        import requests
+
+        def score_value(cell):
+            if isinstance(cell, (int, float)) and not isinstance(cell, bool):
+                return float(cell)
+            if isinstance(cell, str):
+                value = cell.strip().replace(",", "")
+                return float(value) if re.fullmatch(r"-?\d+(?:\.\d+)?", value) else None
+            if isinstance(cell, dict):
+                for key in ("value", "rawValue", "content", "text", "displayValue", "score"):
+                    if key in cell:
+                        value = score_value(cell[key])
+                        if value is not None:
+                            return value
+            return None
+
+        request_data = {
+            "view": "STATS",
+            "positionOrGroup": "ALL",
+            "seasonOrProjection": "SEASON_23l_BY_PERIOD",
+            "timeframeTypeCode": "BY_PERIOD",
+            "transactionPeriod": str(int(week)),
+            "statusOrTeamFilter": "ALL_TAKEN",
+            "sortType": "SCORE",
+            "sortReversed": False,
+            "maxResultsPerPage": "500",
+            "pageNumber": "1",
+        }
+        response = requests.post(
+            "https://www.fantrax.com/fxpa/req",
+            params={"leagueId": "et040dehmtxkchmx"},
+            json={"msgs": [{"method": "getPlayerStats", "data": request_data}]},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; VampireHunt/1.0)"},
+            timeout=20,
+        )
+        response.raise_for_status()
+        data = response.json()["responses"][0]["data"]
+        headers = data.get("tableHeader", {}).get("cells", [])
+        score_index = next(
+            index for index, header in enumerate(headers)
+            if str(header.get("key", "")).lower() == "fpts"
+            or str(header.get("sortKey", "")).upper() == "SCORE"
+        )
+        scores = {}
+        for row in data.get("statsTable", []):
+            scorer = row.get("scorer") or {}
+            cells = row.get("cells") or []
+            scorer_id = str(scorer.get("scorerId", "")).strip()
+            if not scorer_id or score_index >= len(cells):
+                continue
+            value = score_value(cells[score_index])
+            if value is None:
+                continue
+            scores[scorer_id] = value
+            if scorer.get("team") and scorer.get("teamId") is not None:
+                scores[str(scorer["teamId"])] = value
+        return scores
 
 
 ASSET_DIR = Path(__file__).parent / "assets"
