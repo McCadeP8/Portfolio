@@ -300,6 +300,67 @@ def fetch_available_players(week: int) -> list[dict[str, Any]]:
     return players
 
 
+def fetch_fantasypros_weekly_rankings(week: int) -> list[dict[str, Any]]:
+    """Fetch FantasyPros expert-consensus weekly ranking projections, not actuals."""
+    # The league awards one point per reception, so use FantasyPros' PPR
+    # weekly projection pages (not the post-game leaders/actuals pages).
+    position_pages = {position: f"https://www.fantasypros.com/nfl/rankings/ppr-{position.lower()}.php" for position in ("QB", "RB", "WR", "TE", "K", "DST")}
+    players: list[dict[str, Any]] = []
+    for position, url in position_pages.items():
+        try:
+            response = requests.get(
+                url,
+                params={"week": int(week)},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; VampireHunt/1.0)"},
+                timeout=20,
+            )
+            response.raise_for_status()
+        except requests.RequestException:
+            # Keep other positions available if FantasyPros briefly blocks or
+            # times out on one ranking page.
+            continue
+        # FantasyPros renders the ranking table from an embedded ecrData JSON
+        # object.  Reading that object keeps this on ranking projections (not
+        # post-game actuals) and gives us the full player pool for each spot.
+        marker = response.text.find("var ecrData =")
+        if marker < 0:
+            continue
+        json_start = response.text.find("{", marker)
+        json_end = response.text.find("};", json_start)
+        if json_start < 0 or json_end < 0:
+            continue
+        try:
+            payload = json.loads(response.text[json_start : json_end + 1])
+        except json.JSONDecodeError:
+            continue
+        for item in payload.get("players", []):
+            try:
+                rank = int(item.get("rank_ecr"))
+            except (TypeError, ValueError):
+                continue
+            player_id = item.get("player_id")
+            name = str(item.get("player_name") or "").strip()
+            if not player_id or not name:
+                continue
+            projection = item.get("r2p_pts")
+            try:
+                projection = float(projection)
+            except (TypeError, ValueError):
+                projection = None
+            players.append(
+                {
+                    "player_id": f"fantasypros-{player_id}",
+                    "player": name,
+                    "position": position,
+                    "nfl_team": str(item.get("player_team_id") or "FA"),
+                    "rank": rank,
+                    "projection": projection,
+                    "score": None,
+                }
+            )
+    return players
+
+
 def current_week(info: dict[str, Any] | None = None, now: datetime | None = None) -> int:
     periods = (info or {}).get("rosterPeriods", [])
     current = now or datetime.now().astimezone()

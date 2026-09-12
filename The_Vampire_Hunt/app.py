@@ -88,6 +88,12 @@ except ImportError:
     def fetch_available_players(week: int) -> list[dict]:
         return []
 
+try:
+    from fantrax_data import fetch_fantasypros_weekly_rankings
+except ImportError:
+    def fetch_fantasypros_weekly_rankings(week: int) -> list[dict]:
+        return []
+
 
 ASSET_DIR = Path(__file__).parent / "assets"
 
@@ -277,6 +283,19 @@ TEAM_LORE = {
 }
 
 ALL_TEAMS = [VAMPIRE_TEAM, *CREATURES]
+CREATURE_LABELS = {
+    "The King": "Aurelian the King",
+    "The Juggernaut": "Brakk the Juggernaut",
+    "The Hydra": "Vesper the Hydra",
+    "The Oracle": "Sibyl the Oracle",
+    "The Knight": "Roland the Knight",
+    "The Wizard": "Eldrin the Wizard",
+    "The Guardian": "Aegis the Guardian",
+    "The Hunter": "Garrick the Hunter",
+    "The Gambler": "Rook the Gambler",
+    "The Alpha": "Fenrir the Alpha",
+    "The Mortal": "Elias the Mortal",
+}
 BASE_ROSTER = [("QB", 2), ("RB", 6), ("WR", 6), ("TE", 2), ("DST", 2), ("K", 2)]
 VAMPIRE_ROSTER = BASE_ROSTER
 VAMPIRE_SHEET_ID = "15PuUSykO7h835WDMpThGmdWPNkckEUpiBW05pFO8NAs"
@@ -391,6 +410,11 @@ def fantrax_player_scores(week: int) -> dict[str, float]:
 @st.cache_data(ttl=60, show_spinner=False)
 def fantrax_available_players(week: int) -> list[dict]:
     return fetch_available_players(int(week))
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def fantasypros_weekly_rankings(week: int) -> list[dict]:
+    return fetch_fantasypros_weekly_rankings(int(week))
 
 
 def add_fantrax_player_scores(rows: list[dict], week: int) -> tuple[list[dict], str]:
@@ -525,6 +549,11 @@ if st.session_state.get("_last_active_vampire") != active_vampire_name:
     fantrax_standings.clear()
     st.session_state["_last_active_vampire"] = active_vampire_name
 VAMPIRE_TEAM["name"] = active_vampire_name
+active_vampire_label = f"{active_vampire_name} the Vampire"
+def team_label(name: str) -> str:
+    return active_vampire_label if name == active_vampire_name else CREATURE_LABELS.get(name, name)
+# Stable per-universe seed for all hidden season power schedules.
+world_seed = hashlib.sha256(f"vampire-hunt-season-2026:{active_vampire_name}".encode()).hexdigest()
 
 
 st.markdown(
@@ -1133,6 +1162,18 @@ st.markdown(
     .pool-rank { color:var(--pool-accent); font:700 .72rem 'Inter',sans-serif; }
     .pool-player { color:#ddd3cc; font:600 .79rem 'Inter',sans-serif; }
     .pool-team { overflow:hidden; color:#807879; font:500 .66rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
+    .realm-intro { margin:.35rem 0 1rem; padding:1.15rem 1.3rem; background:linear-gradient(115deg,#251117,#111012 72%); border:1px solid #64303b; border-radius:6px; }
+    .realm-intro h2 { margin:0; color:#f0e3db; font:700 2rem 'Cormorant Garamond',serif; }
+    .realm-intro p { margin:.25rem 0 0; color:#988f8d; font:500 .76rem/1.5 'Inter',sans-serif; }
+    .realm-table { overflow:hidden; background:#111012; border:1px solid #3d2b31; border-radius:6px; }
+    .realm-row { display:grid; grid-template-columns:48px minmax(180px,1.2fr) 100px 110px minmax(170px,1fr) minmax(150px,1fr); gap:.55rem; align-items:center; min-height:65px; padding:.35rem .8rem; border-bottom:1px solid #292428; }
+    .realm-row:last-child { border-bottom:0; }
+    .realm-row.header { min-height:34px; color:#756d6e; font:700 .56rem 'Inter',sans-serif; letter-spacing:.1em; text-transform:uppercase; }
+    .realm-row img { width:44px; height:44px; object-fit:cover; border-radius:4px; border:1px solid var(--realm-accent); }
+    .realm-team strong { display:block; color:#e6dcd5; font:700 .9rem 'Inter',sans-serif; }
+    .realm-team span,.realm-cell { color:#948a89; font:500 .67rem 'Inter',sans-serif; }
+    .realm-score { color:#f0e5dc; font:700 1rem 'Inter',sans-serif; }
+    .realm-row.vampire { background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:inset 3px 0 #cf4058; }
 
     @media (max-width: 760px) {
         .block-container { padding-top: 2rem; }
@@ -1175,8 +1216,8 @@ st.markdown(
 )
 st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
 
-overview_tab, teams_tab, scoreboard_tab, available_tab, about_tab = st.tabs(
-    ["Overview", "Teams", "Scoreboard", "Submit Lineup", "About"]
+overview_tab, teams_tab, scoreboard_tab, realm_summary_tab, available_tab, about_tab = st.tabs(
+    ["Overview", "Teams", "Scoreboard", "Realm Summary", "Submit Lineup", "About"]
 )
 
 with overview_tab:
@@ -1185,7 +1226,7 @@ with overview_tab:
             <img src="{VAMPIRE_LOGO}" alt="The Vampire logo">
             <div>
                 <div class="ability-name">You are the monster in the dark</div>
-                <div class="creature-name"><span class="emoji">🧛</span>{escape(active_vampire_name)}</div>
+                <div class="creature-name"><span class="emoji">🧛</span>{escape(active_vampire_label)}</div>
                 <div class="creature-rule">Hunt every creature. Your roster evolves whenever you take a life and claim a player from the fallen.</div>
             </div>
             <div class="roster-mark"><strong>STANDARD ROSTER</strong><br>2 QB · 6 RB · 6 WR<br>2 TE · 2 DST · 2 K</div>
@@ -1227,7 +1268,7 @@ with overview_tab:
             f"""<div class="monster-card" data-sigil="{creature['emoji']}" style="--card-accent:{creature['accent']}">
                 <div class="lives">{creature['lives']} lives <span class="life-pips">{hearts}</span></div>
                 <img src="{creature_logo}" alt="{creature['name']} logo">
-                <div><div class="creature-name"><span class="emoji">{creature['emoji']}</span>{creature['name']}</div>
+                <div><div class="creature-name"><span class="emoji">{creature['emoji']}</span>{escape(team_label(creature['name']))}</div>
                 <div class="ability-line"><strong>{creature['ability']}</strong> — {creature['rule']}</div></div>
             </div>""",
             unsafe_allow_html=True,
@@ -1243,7 +1284,7 @@ with teams_tab:
     selected_name = st.selectbox(
         "Choose a team",
         team_names,
-        format_func=lambda name: f"{next(team['emoji'] for team in all_teams if team['name'] == name)}  {name}",
+        format_func=lambda name: f"{next(team['emoji'] for team in all_teams if team['name'] == name)}  {team_label(name)}",
     )
     selected_team = next(team for team in all_teams if team["name"] == selected_name)
     is_vampire = selected_name == active_vampire_name
@@ -1327,7 +1368,7 @@ with teams_tab:
 
     # A deterministic season timeline keeps special-week markers stable between reruns.
     oracle_weeks = sorted(
-        sorted(range(5, 16), key=lambda week: hashlib.sha256(f"oracle:{active_vampire_name}:{week}".encode()).digest())[:3]
+        sorted(range(5, 16), key=lambda week: hashlib.sha256(f"oracle:{world_seed}:{week}".encode()).digest())[:3]
     )
     active_vampire_rows = [row for row in roster_rows if row.get("team") == active_vampire_name]
     active_vampire_lineup = best_ball_lineup(active_vampire_rows)
@@ -1357,14 +1398,15 @@ with teams_tab:
             elif week == active_week:
                 status, status_class, symbol = "Current week", "unknown", "?"
         if selected_name == "The Gambler" and week <= active_week:
-            gambler_outcome = seeded_pick(week, "gambler-flip", [12, -8], active_vampire_name)
+            gambler_outcome = seeded_pick(week, "gambler-flip", [12, -8], world_seed)
             status = f"Gambler {gambler_outcome:+d}"
             status_class = f"{status_class} gambler-positive" if gambler_outcome > 0 else f"{status_class} gambler-negative"
         if selected_name == "The Oracle" and week <= active_week and week in oracle_weeks:
             status = f"Oracle +20 week · {status}"
             status_class = f"{status_class} oracle-bonus"
         timeline_bits.append(f'<span class="hunt-week {status_class}" title="Week {week}: {status}">{symbol}</span>')
-    timeline_html = f'''<div class="hunt-timeline"><div class="hunt-timeline-title">Season life timeline · {selected_name}</div>
+    selected_display_name = team_label(selected_name)
+    timeline_html = f'''<div class="hunt-timeline"><div class="hunt-timeline-title">Season life timeline · {escape(selected_display_name)}</div>
         <div class="hunt-weeks">{''.join(timeline_bits)}</div>
     </div>'''
     timeline_fragment = timeline_html if not is_vampire else '<div class="timeline-slot"></div>'
@@ -1372,10 +1414,10 @@ with teams_tab:
     st.markdown(
         f"""<div style="--team-accent:{selected_team['accent']}">
             <div class="team-hero" data-sigil="{selected_team['emoji']}">
-                <img src="{selected_team['logo']}" alt="{selected_name} logo">
+                <img src="{selected_team['logo']}" alt="{selected_display_name} logo">
                 <div>
                     <div class="dossier-label">Official creature dossier</div>
-                    <div class="team-name">{selected_team['emoji']} {selected_name}</div>
+                    <div class="team-name">{selected_team['emoji']} {escape(selected_display_name)}</div>
                     <div class="team-power"><strong>{selected_team['ability']}</strong> — {selected_team['rule']}</div>
                     <div class="dossier-stats">
                         <div class="dossier-stat"><b>{condition_display}</b><span>Current condition</span></div>
@@ -1420,44 +1462,32 @@ with scoreboard_tab:
             st.rerun()
 
     if st.session_state.pop("fantrax_refresh_notice", False):
-        st.success("Fantrax team totals, rosters, and official player FPts refreshed.", icon="✅")
+        st.success("Fantrax rosters and official player FPts refreshed; team scores are calculated here from players.", icon="✅")
 
     score_rosters, score_roster_source = fantrax_roster_for_week(scoreboard_week)
     score_rosters = enrich_roster_rows(score_rosters)
     score_rosters, score_player_source = add_fantrax_player_scores(score_rosters, scoreboard_week)
-    current_standings, score_standing_source = fantrax_standings()
     scores_revealed = scoreboard_week <= active_week
-    if scoreboard_week == active_week:
-        score_rows = current_standings
-    elif scores_revealed:
-        score_rows = snapshot.get("weekly_scores", {}).get(str(scoreboard_week), [])
-    else:
-        score_rows = []
-    base_scores = {
-        row.get("team"): row.get("score")
-        for row in score_rows
-        if isinstance(row.get("score"), (int, float))
-    }
 
     rosters_by_team = {
         team["name"]: [row for row in score_rosters if row.get("team") == team["name"]]
         for team in ALL_TEAMS
     }
     lineups = {name: best_ball_lineup(rows) for name, rows in rosters_by_team.items()}
-    selected_vampire_score = sum(
-        float(row.get("score", 0))
-        for row in lineups.get(active_vampire_name, [])
-        if isinstance(row.get("score"), (int, float))
-    )
-    if lineups.get(active_vampire_name):
-        base_scores[active_vampire_name] = selected_vampire_score
+    # Fantrax team totals are intentionally ignored. Every score is rebuilt
+    # from the nine best-ball starters' individual weekly player FPts.
+    base_scores = {}
+    if scores_revealed:
+        for name, lineup in lineups.items():
+            scored_players = [row.get("score") for row in lineup if isinstance(row.get("score"), (int, float))]
+            base_scores[name] = sum(float(score) for score in scored_players)
 
     vampire_lineup = lineups[active_vampire_name]
     wizard_target = None
     wizard_replacement = None
     wizard_bonus = 0.0
     if vampire_lineup:
-        wizard_target = seeded_pick(scoreboard_week, "wizard-hex", vampire_lineup, active_vampire_name)
+        wizard_target = seeded_pick(scoreboard_week, "wizard-hex", vampire_lineup, world_seed)
         target_slot = wizard_target.get("slot")
         eligible_positions = {"RB", "WR", "TE"} if target_slot == "RWT FLEX" else {wizard_target.get("position")}
         chosen_ids = {row.get("player_id") for row in vampire_lineup}
@@ -1487,7 +1517,7 @@ with scoreboard_tab:
     bonus_by_team["The Knight"] = float((4 - knight_lives) * 5)
     bonus_notes["The Knight"] = f"Last Stand · {knight_lives} lives"
 
-    gambler_bonus = float(seeded_pick(scoreboard_week, "gambler-flip", [12, -8], active_vampire_name)) if scores_revealed else 0.0
+    gambler_bonus = float(seeded_pick(scoreboard_week, "gambler-flip", [12, -8], world_seed)) if scores_revealed else 0.0
     bonus_by_team["The Gambler"] = gambler_bonus
     bonus_notes["The Gambler"] = ("Fate's draw · +12" if gambler_bonus > 0 else "Fate's draw · −8") if scores_revealed else "Fate's draw · revealed at kickoff"
 
@@ -1523,6 +1553,7 @@ with scoreboard_tab:
     }
 
     def lineup_html(team: dict, role: str, include_head: bool = True) -> str:
+        display_name = active_vampire_label if team["name"] == active_vampire_name else team["name"]
         rows = lineups.get(team["name"], [])
         by_slot: dict[str, list[dict]] = {}
         for row in rows:
@@ -1553,8 +1584,8 @@ with scoreboard_tab:
         )
         total = adjusted_scores.get(team["name"])
         total_text = f"{total:.2f}" if isinstance(total, (int, float)) else "—"
-        head_html = f'''<div class="score-card-head"><img src="{team['logo']}" alt="{team['name']} logo">
-            <div><span>{role} · Week {scoreboard_week}</span><h3>{team['emoji']} {team['name']}</h3></div></div>''' if include_head else ""
+        head_html = f'''<div class="score-card-head"><img src="{team['logo']}" alt="{display_name} logo">
+            <div><span>{role} · Week {scoreboard_week}</span><h3>{team['emoji']} {display_name}</h3></div></div>''' if include_head else ""
         return f'''<div class="score-card {'vampire-side' if team['name'] == active_vampire_name else ''}" data-sigil="{team['emoji']}" style="--score-accent:{team['accent']}">
             {head_html}<div class="lineup-list">{''.join(rendered_rows)}</div>
         </div>'''
@@ -1601,7 +1632,7 @@ with scoreboard_tab:
         rank_rows.append(
             f'''<div class="rank-tile {'vampire-rank' if team['name'] == active_vampire_name else ''}" style="--rank-accent:{team['accent']}">
                 <div class="rank-number">{rank}</div>
-                <div class="rank-team"><strong>{team['emoji']} {team['name']}</strong>{status_html}<span>{detail}</span></div>
+                <div class="rank-team"><strong>{team['emoji']} {escape(team_label(team['name']))}</strong>{status_html}<span>{detail}</span></div>
                 <div class="rank-score">{total_text}</div>
             </div>'''
         )
@@ -1617,7 +1648,7 @@ with scoreboard_tab:
             with picker_cols[0]:
                 st.image(VAMPIRE_TEAM["logo"], width=96)
             with picker_cols[1]:
-                st.markdown(f'<div style="padding-top:1.1rem;color:#f5e9e2;font:600 1.35rem Cormorant Garamond,serif;">{VAMPIRE_TEAM["emoji"]} {VAMPIRE_TEAM["name"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="padding-top:1.1rem;color:#f5e9e2;font:600 1.35rem Cormorant Garamond,serif;">{VAMPIRE_TEAM["emoji"]} {active_vampire_label}</div>', unsafe_allow_html=True)
         st.markdown(lineup_html(VAMPIRE_TEAM, "THE HUNTER", include_head=False), unsafe_allow_html=True)
         st.markdown(bench_html(VAMPIRE_TEAM), unsafe_allow_html=True)
     with board_cols[1]:
@@ -1632,7 +1663,7 @@ with scoreboard_tab:
                 opponent_name = st.selectbox(
                     "Opponent",
                     [team["name"] for team in CREATURES],
-                    format_func=lambda name: f"{next(team['emoji'] for team in CREATURES if team['name'] == name)}  {name}",
+                    format_func=lambda name: f"{next(team['emoji'] for team in CREATURES if team['name'] == name)}  {team_label(name)}",
                     key="scoreboard_opponent",
                     label_visibility="collapsed",
                 )
@@ -1642,6 +1673,58 @@ with scoreboard_tab:
     with board_cols[2]:
         st.markdown(league_board, unsafe_allow_html=True)
 
+with realm_summary_tab:
+    st.markdown(
+        f'''<div class="realm-intro"><h2>Realm Summary · {escape(active_vampire_label)}</h2>
+        <p>A private-universe recap of Week {scoreboard_week}: your Vampire against every creature, with the lives, consequences, and stolen tribute that carry forward.</p></div>''',
+        unsafe_allow_html=True,
+    )
+    vampire_total = adjusted_scores.get(active_vampire_name)
+    stolen_this_week = next(
+        (
+            str(row.get(active_vampire_name, "")).strip()
+            for row in vampire_sheet_rows
+            if str(row.get("Week", "")) == str(scoreboard_week) and str(row.get("Slot", "")).strip().lower() == "stolen"
+        ),
+        "",
+    )
+    summary_rows = []
+    for team in ALL_TEAMS:
+        name = team["name"]
+        score = adjusted_scores.get(name)
+        roster = rosters_by_team.get(name, [])
+        lives = next((row.get("lives_remaining") for row in roster if row.get("lives_remaining") is not None), None)
+        if name == active_vampire_name:
+            lives_text = "Hunting"
+            beat_text = ", ".join(
+                other["name"] for other in CREATURES
+                if isinstance(vampire_total, (int, float)) and isinstance(adjusted_scores.get(other["name"]), (int, float))
+                and vampire_total > adjusted_scores[other["name"]]
+            ) or "—"
+            stolen_text = stolen_this_week or "None recorded"
+        else:
+            lives_text = str(lives) if lives is not None else str(team["lives"])
+            beat_text = active_vampire_label if isinstance(score, (int, float)) and isinstance(vampire_total, (int, float)) and score > vampire_total else "—"
+            stolen_text = "—"
+        score_text = f"{float(score):.2f}" if isinstance(score, (int, float)) else "—"
+        summary_rows.append(
+            f'''<div class="realm-row {'vampire' if name == active_vampire_name else ''}" style="--realm-accent:{team['accent']}">
+                <img src="{team['logo']}" alt="{escape(name)} logo">
+                <div class="realm-team"><strong>{team['emoji']} {escape(team_label(name))}</strong><span>{'The hunter' if name == active_vampire_name else 'Creature'}</span></div>
+                <div class="realm-score">{score_text}</div>
+                <div class="realm-cell">◆ {escape(lives_text)}</div>
+                <div class="realm-cell">{escape(beat_text)}</div>
+                <div class="realm-cell">{escape(stolen_text)}</div>
+            </div>'''
+        )
+    st.markdown(
+        f'''<div class="realm-table">
+            <div class="realm-row header"><div></div><div>Team</div><div>Week {scoreboard_week}</div><div>Lives left</div><div>Monsters beaten</div><div>Player stolen</div></div>
+            {''.join(summary_rows)}
+        </div>''',
+        unsafe_allow_html=True,
+    )
+
 with available_tab:
     available_snapshot = load_snapshot()
     available_week = max(1, min(18, int(available_snapshot.get("current_week", 1))))
@@ -1649,7 +1732,7 @@ with available_tab:
         f'''<div class="available-intro">
             <div><h2>Build Your Vampire</h2>
             <p>Choose a complete 20-player roster from the highest-scoring players who are not owned by any of the eleven creatures. Current Vampire players remain available to owners entering a new version of the hunt.</p></div>
-            <div class="available-week">Week {available_week} · Live Fantrax scoring</div>
+            <div class="available-week">Week {available_week} · FantasyPros projections</div>
         </div>''',
         unsafe_allow_html=True,
     )
@@ -1659,7 +1742,7 @@ with available_tab:
     opponent_ids = {str(row.get("player_id", "")) for row in opponent_rows}
     opponent_names = {str(row.get("player", "")).strip().lower() for row in opponent_rows}
     try:
-        player_pool = fantrax_available_players(available_week)
+        player_pool = fantasypros_weekly_rankings(available_week)
     except Exception:
         player_pool = []
 
@@ -1678,15 +1761,14 @@ with available_tab:
     }
 
     if not player_pool:
-        st.info("The available-player board is waiting for Fantrax. Refresh the page in a moment.")
+        st.info("FantasyPros Week 1 ranking projections are temporarily unavailable. Refresh the page in a moment.")
     else:
         position_options = {}
         position_lookup = {}
         for position, (player_count, _, _) in pool_settings.items():
             rows = sorted(
                 [row for row in player_pool if row.get("position") == position],
-                key=lambda row: float(row.get("score", 0)),
-                reverse=True,
+                key=lambda row: int(row.get("rank", 9999)),
             )[:player_count]
             position_options[position] = [
                 f'''{row.get("player", "—")} — {row.get("nfl_team", "FA")}''' for row in rows
@@ -1696,9 +1778,11 @@ with available_tab:
         selected_by_position = {}
         other_by_position = {}
         with st.form("new_vampire_lineup"):
-            team_name = st.text_input(
-                "Your Vampire team name",
-                placeholder="Enter the name of your Vampire team",
+            team_name = st.selectbox(
+                "Vampire team name",
+                vampire_sheet_teams,
+                index=vampire_sheet_teams.index(active_vampire_name) if active_vampire_name in vampire_sheet_teams else 0,
+                key="submission_vampire_team_name",
             )
             for left_position, right_position in (("QB", "TE"), ("RB", "WR"), ("K", "DST")):
                 pair_columns = st.columns(2)
@@ -1755,8 +1839,6 @@ with available_tab:
                 lineup[position] = [*selected_players, *other_players]
                 if len(lineup[position]) != required:
                     errors.append(f"{position}: select {required} total")
-            if not team_name.strip():
-                errors.insert(0, "Enter your Vampire team name")
             if errors:
                 st.error("Lineup incomplete — " + " · ".join(errors))
             else:
