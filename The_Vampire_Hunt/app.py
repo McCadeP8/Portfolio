@@ -1204,6 +1204,7 @@ st.markdown(
     .realm-cross tbody tr.active { background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:inset 3px 0 #cf4058; }
     .realm-cross td { color:#cbbfba; font-weight:700; }
     .realm-cross td.stolen { color:#e6b86a; font-weight:600; min-width:150px; }
+    .realm-cross td.life-dots { color:#d45a68; letter-spacing:.16em; font-size:.95rem; }
 
     @media (max-width: 760px) {
         .block-container { padding-top: 2rem; }
@@ -1379,10 +1380,7 @@ with teams_tab:
     if not roster_rows_html:
         roster_rows_html = '<div class="roster-empty"><div><strong>Roster unavailable</strong><br>The last Fantrax snapshot did not contain this team.</div></div>'
     source_label = "Live from Fantrax" if roster_source == "live" else "Saved Fantrax snapshot"
-    if player_score_source == "live":
-        roster_note = "Official weekly FPts pulled directly from Fantrax."
-    else:
-        roster_note = "Fantrax's player FPts feed is temporarily unavailable; rosters and team totals remain connected."
+    roster_note = ""
     roster_table = f'''<div class="roster-header">
         <div><div class="dossier-label">The active ledger</div><h3>Week {selected_week} roster</h3></div>
         <span class="data-status {roster_source}">{source_label}</span>
@@ -1476,7 +1474,7 @@ with scoreboard_tab:
         )
     with live_score_col:
         if st.button(
-            "↻  Pull live scores from Fantrax",
+            "↻  Check in on the battle",
             key="refresh_fantrax_scores",
             width="stretch",
             type="primary",
@@ -1652,7 +1650,7 @@ with scoreboard_tab:
         elif rank < vampire_rank:
             status_label, status_class = "Safe", "safe"
         elif rank > vampire_rank:
-            status_label, status_class = "On pace to lose a life", "danger"
+            status_label, status_class = ("On pace to take a hit", "danger") if team["name"] == "The Hydra" else ("On pace to lose a life", "danger")
         else:
             status_label, status_class = "Status pending", "unknown"
         status_html = f'<span class="rank-status {status_class}">{status_label}</span>' if status_label else ""
@@ -1701,23 +1699,24 @@ with scoreboard_tab:
         st.markdown(league_board, unsafe_allow_html=True)
 
 with realm_summary_tab:
-    st.markdown(f"<div class='realm-intro'><h2>Cross-Realm Summary · Week {scoreboard_week}</h2><p>Compare every Vampire universe against the eleven creatures. Scores and stolen tribute are revealed week by week.</p></div>", unsafe_allow_html=True)
-    world_rosters = vampire_world_rosters(scoreboard_week)
+    realm_week = st.selectbox("Summary week", list(range(1, 19)), index=active_week - 1, format_func=lambda week: f"Week {week}", key="realm_summary_week")
+    st.markdown(f"<div class='realm-intro'><h2>Cross-Realm Summary · Week {realm_week}</h2><p>Compare every Vampire universe against the eleven creatures. Scores and stolen tribute are revealed week by week.</p></div>", unsafe_allow_html=True)
+    world_rosters = vampire_world_rosters(realm_week)
     world_scores = {}
     for world_name, world_roster in world_rosters.items():
-        scored_roster, _ = add_fantrax_player_scores(world_roster, scoreboard_week)
+        scored_roster, _ = add_fantrax_player_scores(world_roster, realm_week)
         lineup = best_ball_lineup(scored_roster)
-        world_scores[world_name] = sum(float(row.get("score", 0)) for row in lineup if isinstance(row.get("score"), (int, float))) if scoreboard_week <= active_week else None
+        world_scores[world_name] = sum(float(row.get("score", 0)) for row in lineup if isinstance(row.get("score"), (int, float))) if realm_week <= active_week else None
     standings_rows, _ = fantrax_standings()
     lives_by_creature = {row.get("team"): row.get("lives_remaining") for row in standings_rows}
     header_cells = "".join(f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>" for creature in CREATURES)
     body_rows = []
     for world_name in vampire_sheet_teams:
         score = world_scores.get(world_name)
-        stolen = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(scoreboard_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") or "—"
-        cells = "".join(f"<td>{escape(str(lives_by_creature.get(creature['name'], creature['lives'])))}</td>" for creature in CREATURES)
+        stolen = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(realm_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") or "—"
+        cells = "".join(f"<td class='life-dots' title='{lives_by_creature.get(creature['name'], creature['lives'])} lives'>{'●' * max(0, int(lives_by_creature.get(creature['name'], creature['lives']) or 0))}</td>" for creature in CREATURES)
         body_rows.append(f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th><td class='realm-score'>{f'{score:.2f}' if isinstance(score, (int, float)) else 'Scheduled'}</td>{cells}<td class='stolen'>{escape(stolen)}</td></tr>")
-    st.markdown(f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th><th>Week {scoreboard_week}</th>{header_cells}<th>Player stolen</th></tr></thead><tbody>{''.join(body_rows)}</tbody></table></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th><th>Week {realm_week}</th>{header_cells}<th>Player stolen</th></tr></thead><tbody>{''.join(body_rows)}</tbody></table></div>", unsafe_allow_html=True)
 
 with available_tab:
     available_snapshot = load_snapshot()
