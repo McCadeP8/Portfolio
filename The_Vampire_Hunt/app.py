@@ -358,7 +358,7 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict) -> list[
     return [row for row in base_rows if row.get("team") not in {"The Vampire", active_vampire_name}] + rebuilt
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=30, show_spinner=False)
 def fantrax_roster_for_week(week: int) -> tuple[list[dict], str]:
     try:
         players = fantrax_player_directory()
