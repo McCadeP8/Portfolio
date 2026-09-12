@@ -331,6 +331,46 @@ def add_fantrax_player_scores(rows: list[dict], week: int) -> tuple[list[dict], 
     return scored_rows, "live"
 
 
+def send_lineup_to_discord(submission: dict) -> None:
+    """Post a completed Vampire roster without storing the webhook in code."""
+    import requests
+
+    webhook_url = str(st.secrets.get("DISCORD_WEBHOOK_URL", "")).strip()
+    if not webhook_url:
+        raise RuntimeError("DISCORD_WEBHOOK_URL is missing from Streamlit Secrets.")
+
+    position_order = ("QB", "RB", "WR", "TE", "K", "DST")
+    fields = []
+    for position in position_order:
+        players = submission["lineup"].get(position, [])
+        player_lines = [
+            f'''{index}. {player.get("player", "—")} ({player.get("nfl_team", "Other")})'''
+            for index, player in enumerate(players, 1)
+        ]
+        fields.append(
+            {
+                "name": position,
+                "value": "\n".join(player_lines) or "—",
+                "inline": position not in {"RB", "WR"},
+            }
+        )
+
+    payload = {
+        "username": "The Vampire Hunt",
+        "embeds": [
+            {
+                "title": f'''🧛 New Vampire: {submission["team_name"]}''',
+                "description": f'''A new roster has entered the Week {submission["week"]} hunt.''',
+                "color": 10430009,
+                "fields": fields,
+                "footer": {"text": "20-player roster · Submitted through The Vampire Hunt"},
+            }
+        ],
+    }
+    response = requests.post(webhook_url, json=payload, timeout=15)
+    response.raise_for_status()
+
+
 LINEUP_SLOTS = ["QB", "RB", "RB", "WR", "WR", "TE", "RWT FLEX", "DST", "K"]
 
 
@@ -1608,12 +1648,38 @@ with available_tab:
             if errors:
                 st.error("Lineup incomplete — " + " · ".join(errors))
             else:
-                st.session_state["submitted_vampire_lineup"] = {
+                submission = {
                     "team_name": team_name.strip(),
                     "week": available_week,
                     "lineup": lineup,
                 }
-                st.success(f"{team_name.strip()} is ready for the hunt. All 20 roster spots are filled.")
+                st.session_state["submitted_vampire_lineup"] = submission
+                try:
+                    send_lineup_to_discord(submission)
+                except Exception as exc:
+                    st.error(f"The lineup is complete, but Discord could not receive it: {exc}")
+                else:
+                    st.success(f"{team_name.strip()} is ready for the hunt. The 20-player roster was sent to Discord.")
+
+        saved_submission = st.session_state.get("submitted_vampire_lineup")
+        if saved_submission and saved_submission.get("week") == available_week:
+            st.markdown(
+                f'''<div class="roster-header"><div><div class="section-kicker">Submitted roster</div>
+                <h3>{escape(str(saved_submission.get("team_name") or "Your Vampire"))}</h3></div>
+                <div class="data-status live">Week {available_week} · 20 players</div></div>''',
+                unsafe_allow_html=True,
+            )
+            submitted_rows = []
+            for position in ("QB", "RB", "WR", "TE", "K", "DST"):
+                for player in saved_submission.get("lineup", {}).get(position, []):
+                    submitted_rows.append(
+                        {
+                            "Position": position,
+                            "Player": player.get("player", "—"),
+                            "NFL": player.get("nfl_team", "Other"),
+                        }
+                    )
+            st.dataframe(submitted_rows, hide_index=True, width="stretch")
 
 with about_tab:
     st.header("About The Vampire Hunt")
