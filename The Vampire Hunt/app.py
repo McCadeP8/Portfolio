@@ -812,12 +812,12 @@ st.markdown(
     .rank-tile.vampire-rank { border-color:#cf4058; background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:0 0 15px rgba(190,40,64,.25); }
     .rank-tile.vampire-rank:after { content:none; }
     .rank-tile.vampire-rank { min-height:75px; grid-template-columns:28px 1fr auto; padding:.55rem .62rem; }
-    .rank-tile.vampire-rank .rank-team strong { color:#fff0e9; font-size:.82rem; }
+    .rank-tile.vampire-rank .rank-team strong { color:#fff0e9; font-size:.98rem; }
     .rank-tile.vampire-rank .rank-team span { color:#e28b98; }
     .rank-tile.vampire-rank .rank-number { font-size:.82rem; }
     .rank-tile.vampire-rank .rank-score { color:#ffb5bd; font-size:1.05rem; }
     .rank-number { color:var(--rank-accent); font:700 .76rem 'Inter',sans-serif; text-align:center; }
-    .rank-team strong { display:block; overflow:hidden; color:#ddd3cc; font:600 .72rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
+    .rank-team strong { display:block; overflow:hidden; color:#ddd3cc; font:600 .86rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
     .rank-team span { display:block; overflow:hidden; color:#746c6e; font:500 .55rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
     .rank-team span.rank-status { font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
     .rank-status.safe { color:#7fc39a; }
@@ -1252,17 +1252,18 @@ with scoreboard_tab:
         bonus = bonus_by_team.get(team["name"], 0.0)
         detail = f"Bonus {bonus:+.1f}" if bonus else "No bonus"
         if team["name"] == "The Vampire":
-            status_label, status_class = "The hunter", "hunter"
+            status_label, status_class = "", "hunter"
         elif rank < vampire_rank:
             status_label, status_class = "Safe", "safe"
         elif rank > vampire_rank:
             status_label, status_class = "On pace to lose a life", "danger"
         else:
             status_label, status_class = "Status pending", "unknown"
+        status_html = f'<span class="rank-status {status_class}">{status_label}</span>' if status_label else ""
         rank_rows.append(
             f'''<div class="rank-tile {'vampire-rank' if team['name'] == 'The Vampire' else ''}" style="--rank-accent:{team['accent']}">
                 <div class="rank-number">{rank}</div>
-                <div class="rank-team"><strong>{team['emoji']} {team['name']}</strong><span class="rank-status {status_class}">{status_label}</span><span>{detail}</span></div>
+                <div class="rank-team"><strong>{team['emoji']} {team['name']}</strong>{status_html}<span>{detail}</span></div>
                 <div class="rank-score">{total_text}</div>
             </div>'''
         )
