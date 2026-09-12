@@ -571,6 +571,7 @@ def player_match_key(name: str) -> str:
     value = str(name or "").lower().replace("’", "'")
     # Common short-name variants used by different fantasy data providers.
     value = re.sub(r"\bcam(?=\s+skattebo\b)", "cameron", value)
+    value = re.sub(r"\bkenny(?=\s+gainwell\b)", "kenneth", value)
     value = re.sub(r"\b(jr|sr|ii|iii|iv|v)\.?\b", "", value)
     value = re.sub(r"[^a-z0-9]", "", value)
     return value
