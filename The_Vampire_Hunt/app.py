@@ -988,13 +988,12 @@ st.markdown(
     .pool-heading { display:flex; justify-content:space-between; align-items:center; padding:.8rem 1rem; background:linear-gradient(100deg,color-mix(in srgb,var(--pool-accent) 22%,#191519),#121012 74%); border-bottom:1px solid color-mix(in srgb,var(--pool-accent) 36%,#302a2f); }
     .pool-heading strong { color:#f1e5dd; font:700 1.45rem 'Cormorant Garamond',serif; }
     .pool-heading span { color:var(--pool-accent); font:700 .68rem 'Inter',sans-serif; letter-spacing:.13em; text-transform:uppercase; }
-    .pool-row { display:grid; grid-template-columns:42px minmax(210px,1fr) 90px minmax(170px,.65fr) 85px; gap:.5rem; align-items:center; min-height:44px; padding:0 .9rem; border-bottom:1px solid #292428; }
+    .pool-row { display:grid; grid-template-columns:42px minmax(150px,1fr) 65px; gap:.5rem; align-items:center; min-height:42px; padding:0 .9rem; border-bottom:1px solid #292428; }
     .pool-row:last-child { border-bottom:0; }
     .pool-row.header { min-height:31px; color:#746d6e; font:700 .55rem 'Inter',sans-serif; letter-spacing:.12em; text-transform:uppercase; }
     .pool-rank { color:var(--pool-accent); font:700 .72rem 'Inter',sans-serif; }
     .pool-player { color:#ddd3cc; font:600 .79rem 'Inter',sans-serif; }
-    .pool-team,.pool-owner { overflow:hidden; color:#807879; font:500 .66rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
-    .pool-points { color:#f0e4dc; font:700 .86rem 'Inter',sans-serif; text-align:right; }
+    .pool-team { overflow:hidden; color:#807879; font:500 .66rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
 
     @media (max-width: 760px) {
         .block-container { padding-top: 2rem; }
@@ -1017,7 +1016,6 @@ st.markdown(
         .roster-row > div:nth-child(4), .roster-row > div:nth-child(5) { display:none; }
         .available-intro { align-items:start; flex-direction:column; }
         .pool-row { grid-template-columns:32px 1fr 62px; }
-        .pool-owner,.pool-row.header div:nth-child(4) { display:none; }
     }
 
     footer { visibility: hidden; }
@@ -1498,16 +1496,16 @@ with available_tab:
     st.markdown(
         f'''<div class="available-intro">
             <div><h2>Build Your Vampire</h2>
-            <p>The highest-scoring players outside the current Vampire roster, ranked by official Fantrax points. Use this board when a new owner enters another version of the hunt.</p></div>
+            <p>Choose a complete 20-player roster from the highest-scoring players who are not owned by any of the eleven creatures. Current Vampire players remain available to owners entering a new version of the hunt.</p></div>
             <div class="available-week">Week {available_week} · Live Fantrax scoring</div>
         </div>''',
         unsafe_allow_html=True,
     )
 
     available_rosters, _ = fantrax_roster_for_week(available_week)
-    vampire_rows = [row for row in available_rosters if row.get("team") == "The Vampire"]
-    vampire_ids = {str(row.get("player_id", "")) for row in vampire_rows}
-    vampire_names = {str(row.get("player", "")).strip().lower() for row in vampire_rows}
+    opponent_rows = [row for row in available_rosters if row.get("team") != "The Vampire"]
+    opponent_ids = {str(row.get("player_id", "")) for row in opponent_rows}
+    opponent_names = {str(row.get("player", "")).strip().lower() for row in opponent_rows}
     try:
         player_pool = fantrax_available_players(available_week)
     except Exception:
@@ -1515,47 +1513,107 @@ with available_tab:
 
     player_pool = [
         row for row in player_pool
-        if str(row.get("player_id", "")) not in vampire_ids
-        and str(row.get("player", "")).strip().lower() not in vampire_names
+        if str(row.get("player_id", "")) not in opponent_ids
+        and str(row.get("player", "")).strip().lower() not in opponent_names
     ]
-    pool_settings = [
-        ("QB", 8, 2, "#b94a5e"),
-        ("RB", 20, 6, "#d2783d"),
-        ("WR", 20, 6, "#8b70d1"),
-        ("TE", 8, 2, "#349b8d"),
-        ("K", 8, 2, "#c89b43"),
-        ("DST", 8, 2, "#4d88b7"),
-    ]
+    pool_settings = {
+        "QB": (8, 2, "#b94a5e"),
+        "TE": (8, 2, "#349b8d"),
+        "RB": (20, 6, "#d2783d"),
+        "WR": (20, 6, "#8b70d1"),
+        "K": (8, 2, "#c89b43"),
+        "DST": (8, 2, "#4d88b7"),
+    }
 
     if not player_pool:
         st.info("The available-player board is waiting for Fantrax. Refresh the page in a moment.")
     else:
-        for position, player_count, select_count, accent in pool_settings:
-            position_players = sorted(
+        position_options = {}
+        position_lookup = {}
+        for position, (player_count, _, _) in pool_settings.items():
+            rows = sorted(
                 [row for row in player_pool if row.get("position") == position],
                 key=lambda row: float(row.get("score", 0)),
                 reverse=True,
             )[:player_count]
-            player_rows = []
-            for rank, row in enumerate(position_players, 1):
-                owner = str(row.get("roster_status") or "Free agent").split(" (", 1)[0]
-                player_rows.append(
-                    f'''<div class="pool-row">
-                        <div class="pool-rank">{rank:02d}</div>
-                        <div class="pool-player">{escape(str(row.get("player") or "—"))}</div>
-                        <div class="pool-team">{escape(str(row.get("nfl_team") or "FA"))}</div>
-                        <div class="pool-owner">{escape(owner)}</div>
-                        <div class="pool-points">{float(row.get("score", 0)):.2f}</div>
-                    </div>'''
-                )
-            st.markdown(
-                f'''<div class="pool-section" style="--pool-accent:{accent}">
-                    <div class="pool-heading"><strong>{position}</strong><span>Select {select_count} · Top {player_count}</span></div>
-                    <div class="pool-row header"><div>#</div><div>Player</div><div>NFL</div><div>Current home</div><div style="text-align:right">Week {available_week}</div></div>
-                    {''.join(player_rows)}
-                </div>''',
-                unsafe_allow_html=True,
+            position_options[position] = [
+                f'''{row.get("player", "—")} — {row.get("nfl_team", "FA")}''' for row in rows
+            ]
+            position_lookup[position] = dict(zip(position_options[position], rows))
+
+        selected_by_position = {}
+        other_by_position = {}
+        with st.form("new_vampire_lineup"):
+            team_name = st.text_input(
+                "Your Vampire team name",
+                placeholder="Enter the name of your Vampire team",
             )
+            for left_position, right_position in (("QB", "TE"), ("RB", "WR"), ("K", "DST")):
+                pair_columns = st.columns(2)
+                for column, position in zip(pair_columns, (left_position, right_position)):
+                    player_count, select_count, accent = pool_settings[position]
+                    rows = [position_lookup[position][option] for option in position_options[position]]
+                    table_rows = "".join(
+                        f'''<div class="pool-row">
+                            <div class="pool-rank">{rank:02d}</div>
+                            <div class="pool-player">{escape(str(row.get("player") or "—"))}</div>
+                            <div class="pool-team">{escape(str(row.get("nfl_team") or "FA"))}</div>
+                        </div>'''
+                        for rank, row in enumerate(rows, 1)
+                    )
+                    with column:
+                        st.markdown(
+                            f'''<div class="pool-section" style="--pool-accent:{accent}">
+                                <div class="pool-heading"><strong>{position}</strong><span>Select {select_count} · Top {player_count}</span></div>
+                                <div class="pool-row header"><div>#</div><div>Player</div><div>NFL</div></div>
+                                {table_rows}
+                            </div>''',
+                            unsafe_allow_html=True,
+                        )
+                        selected_by_position[position] = st.multiselect(
+                            f"Select {select_count} {position}",
+                            position_options[position],
+                            max_selections=select_count,
+                            key=f"available_{position.lower()}_selections",
+                            placeholder=f"Choose up to {select_count}",
+                        )
+                        other_by_position[position] = st.text_input(
+                            f"Other {position}",
+                            key=f"available_{position.lower()}_other",
+                            placeholder="Type another player; separate multiple names with commas",
+                        )
+            submitted = st.form_submit_button("Submit Lineup", type="primary", width="stretch")
+
+        if submitted:
+            lineup = {}
+            errors = []
+            for position, (_, required, _) in pool_settings.items():
+                selected_players = [
+                    {
+                        "player": position_lookup[position][option].get("player"),
+                        "nfl_team": position_lookup[position][option].get("nfl_team"),
+                    }
+                    for option in selected_by_position[position]
+                ]
+                other_players = [
+                    {"player": name.strip(), "nfl_team": "Other"}
+                    for name in other_by_position[position].split(",")
+                    if name.strip()
+                ]
+                lineup[position] = [*selected_players, *other_players]
+                if len(lineup[position]) != required:
+                    errors.append(f"{position}: select {required} total")
+            if not team_name.strip():
+                errors.insert(0, "Enter your Vampire team name")
+            if errors:
+                st.error("Lineup incomplete — " + " · ".join(errors))
+            else:
+                st.session_state["submitted_vampire_lineup"] = {
+                    "team_name": team_name.strip(),
+                    "week": available_week,
+                    "lineup": lineup,
+                }
+                st.success(f"{team_name.strip()} is ready for the hunt. All 20 roster spots are filled.")
 
 with about_tab:
     st.header("About The Vampire Hunt")
