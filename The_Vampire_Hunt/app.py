@@ -345,18 +345,18 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict, team_nam
 
     base_vampire = [row for row in base_rows if row.get("team") == "The Vampire" or row.get("team") == team_name]
     lives = next((row.get("lives_remaining") for row in base_vampire if row.get("lives_remaining") is not None), None)
-    by_name = {str(row.get("player", "")).strip().lower(): row for row in base_vampire}
+    by_name = {player_match_key(row.get("player", "")): row for row in base_vampire}
     by_directory_name = {}
     for player_id, player in players.items():
         name = str(player.get("name", "")).strip()
         if name:
-            by_directory_name[name.lower()] = (str(player_id), player)
+            by_directory_name[player_match_key(name)] = (str(player_id), player)
 
     rebuilt = []
     for slot, player_name in slots:
         clean_name = re.sub(r"\s*\([^)]*\)\s*$", "", player_name).strip()
-        existing = by_name.get(clean_name.lower(), {})
-        directory_entry = by_directory_name.get(clean_name.lower())
+        existing = by_name.get(player_match_key(clean_name), {})
+        directory_entry = by_directory_name.get(player_match_key(clean_name))
         player_id = str(existing.get("player_id", ""))
         player_info = {}
         if directory_entry:
@@ -564,6 +564,14 @@ VAMPIRE_TEAM["name"] = active_vampire_name
 active_vampire_label = f"{active_vampire_name} the Vampire"
 def team_label(name: str) -> str:
     return active_vampire_label if name == active_vampire_name else CREATURE_LABELS.get(name, name)
+
+
+def player_match_key(name: str) -> str:
+    """Normalize punctuation and generational suffixes for cross-source matching."""
+    value = str(name or "").lower().replace("’", "'")
+    value = re.sub(r"\b(jr|sr|ii|iii|iv|v)\.?\b", "", value)
+    value = re.sub(r"[^a-z0-9]", "", value)
+    return value
 # Stable per-universe seed for all hidden season power schedules.
 world_seed = hashlib.sha256(f"vampire-hunt-season-2026:{active_vampire_name}".encode()).hexdigest()
 
@@ -1186,6 +1194,16 @@ st.markdown(
     .realm-team span,.realm-cell { color:#948a89; font:500 .67rem 'Inter',sans-serif; }
     .realm-score { color:#f0e5dc; font:700 1rem 'Inter',sans-serif; }
     .realm-row.vampire { background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:inset 3px 0 #cf4058; }
+    .realm-cross-wrap { overflow-x:auto; background:#111012; border:1px solid #3d2b31; border-radius:6px; }
+    .realm-cross { width:100%; min-width:1080px; border-collapse:collapse; color:#eee; font-family:'Inter',sans-serif; }
+    .realm-cross th,.realm-cross td { padding:.55rem .45rem; text-align:center; border-bottom:1px solid #292428; font-size:.7rem; }
+    .realm-cross thead th { color:#a99b99; font-size:.58rem; text-transform:uppercase; letter-spacing:.06em; background:#1b1518; }
+    .realm-cross thead th img { display:block; width:34px; height:34px; margin:0 auto .25rem; object-fit:cover; border-radius:50%; }
+    .realm-cross tbody th { text-align:left; white-space:nowrap; color:#f0e5dc; font-size:.82rem; }
+    .realm-cross tbody th small { display:block; color:#8f8182; font-size:.58rem; font-weight:500; }
+    .realm-cross tbody tr.active { background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:inset 3px 0 #cf4058; }
+    .realm-cross td { color:#cbbfba; font-weight:700; }
+    .realm-cross td.stolen { color:#e6b86a; font-weight:600; min-width:150px; }
 
     @media (max-width: 760px) {
         .block-container { padding-top: 2rem; }
@@ -1683,41 +1701,23 @@ with scoreboard_tab:
         st.markdown(league_board, unsafe_allow_html=True)
 
 with realm_summary_tab:
-    st.markdown(
-        f'''<div class="realm-intro"><h2>Realm Summary · {escape(active_vampire_label)}</h2>
-        <p>A private-universe recap of Week {scoreboard_week}: your Vampire against every creature, with the lives, consequences, and stolen tribute that carry forward.</p></div>''',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<div class='realm-intro'><h2>Cross-Realm Summary · Week {scoreboard_week}</h2><p>Compare every Vampire universe against the eleven creatures. Scores and stolen tribute are revealed week by week.</p></div>", unsafe_allow_html=True)
     world_rosters = vampire_world_rosters(scoreboard_week)
     world_scores = {}
     for world_name, world_roster in world_rosters.items():
         scored_roster, _ = add_fantrax_player_scores(world_roster, scoreboard_week)
-        world_lineup = best_ball_lineup(scored_roster)
-        world_scores[world_name] = sum(float(row.get("score", 0)) for row in world_lineup if isinstance(row.get("score"), (int, float))) if scoreboard_week <= active_week else None
-    summary_rows = []
+        lineup = best_ball_lineup(scored_roster)
+        world_scores[world_name] = sum(float(row.get("score", 0)) for row in lineup if isinstance(row.get("score"), (int, float))) if scoreboard_week <= active_week else None
+    standings_rows, _ = fantrax_standings()
+    lives_by_creature = {row.get("team"): row.get("lives_remaining") for row in standings_rows}
+    header_cells = "".join(f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>" for creature in CREATURES)
+    body_rows = []
     for world_name in vampire_sheet_teams:
         score = world_scores.get(world_name)
-        stolen_text = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(scoreboard_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") or "—"
-        facing = "The eleven creatures"
-        score_text = f"{float(score):.2f}" if isinstance(score, (int, float)) else "Scheduled"
-        team = VAMPIRE_TEAM if world_name == active_vampire_name else {"emoji": "🧛", "logo": VAMPIRE_LOGO, "accent": "#6e2638"}
-        summary_rows.append(
-            f'''<div class="realm-row {'vampire' if world_name == active_vampire_name else ''}" style="--realm-accent:{team['accent']}">
-                <img src="{team['logo']}" alt="{escape(world_name)} logo">
-                <div class="realm-team"><strong>🧛 {escape(team_label(world_name))}</strong><span>{'Your universe' if world_name == active_vampire_name else 'Cross-realm Vampire'}</span></div>
-                <div class="realm-score">{score_text}</div>
-                <div class="realm-cell">{escape(facing)}</div>
-                <div class="realm-cell">{escape('Roster submitted' if world_name in world_rosters else 'No roster')}</div>
-                <div class="realm-cell">{escape(stolen_text)}</div>
-            </div>'''
-        )
-    st.markdown(
-        f'''<div class="realm-table">
-            <div class="realm-row header"><div></div><div>Vampire</div><div>Week {scoreboard_week}</div><div>Opponent</div><div>Lineup status</div><div>Player stolen</div></div>
-            {''.join(summary_rows)}
-        </div>''',
-        unsafe_allow_html=True,
-    )
+        stolen = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(scoreboard_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") or "—"
+        cells = "".join(f"<td>{escape(str(lives_by_creature.get(creature['name'], creature['lives'])))}</td>" for creature in CREATURES)
+        body_rows.append(f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th><td class='realm-score'>{f'{score:.2f}' if isinstance(score, (int, float)) else 'Scheduled'}</td>{cells}<td class='stolen'>{escape(stolen)}</td></tr>")
+    st.markdown(f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th><th>Week {scoreboard_week}</th>{header_cells}<th>Player stolen</th></tr></thead><tbody>{''.join(body_rows)}</tbody></table></div>", unsafe_allow_html=True)
 
 with available_tab:
     available_snapshot = load_snapshot()
@@ -1734,7 +1734,7 @@ with available_tab:
     available_rosters, _ = fantrax_roster_for_week(available_week)
     opponent_rows = [row for row in available_rosters if row.get("team") != active_vampire_name]
     opponent_ids = {str(row.get("player_id", "")) for row in opponent_rows}
-    opponent_names = {str(row.get("player", "")).strip().lower() for row in opponent_rows}
+    opponent_names = {player_match_key(row.get("player", "")) for row in opponent_rows}
     try:
         player_pool = fantasypros_weekly_rankings(available_week)
     except Exception:
@@ -1743,7 +1743,7 @@ with available_tab:
     player_pool = [
         row for row in player_pool
         if str(row.get("player_id", "")) not in opponent_ids
-        and str(row.get("player", "")).strip().lower() not in opponent_names
+        and player_match_key(row.get("player", "")) not in opponent_names
     ]
     pool_settings = {
         "QB": (8, 2, "#b94a5e"),

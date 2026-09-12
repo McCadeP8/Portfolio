@@ -334,6 +334,10 @@ def fetch_fantasypros_weekly_rankings(week: int) -> list[dict[str, Any]]:
         except json.JSONDecodeError:
             continue
         for item in payload.get("players", []):
+            source_position = str(item.get("player_position_id") or "").upper().replace("D/", "")
+            requested_position = position.upper().replace("D/", "")
+            if source_position and source_position != requested_position:
+                continue
             try:
                 rank = int(item.get("rank_ecr"))
             except (TypeError, ValueError):
