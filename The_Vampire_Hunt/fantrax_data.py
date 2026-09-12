@@ -11,32 +11,41 @@ import requests
 
 LEAGUE_ID = "et040dehmtxkchmx"
 BASE_URL = "https://www.fantrax.com/fxea/general"
+PRIVATE_API_URL = "https://www.fantrax.com/fxpa/req"
 SNAPSHOT_PATH = Path(__file__).parent / "data" / "fantrax_snapshot.json"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; VampireHunt/1.0)"}
 
 DEFENSE_TEAMS = {
     "20010": ("Buffalo", "BUF"),
-    "20030": ("Atlanta", "ATL"),
-    "20050": ("Tampa Bay", "TB"),
-    "20070": ("LA Rams", "LAR"),
+    "20020": ("Miami", "MIA"),
+    "20030": ("New England", "NE"),
+    "20040": ("NY Jets", "NYJ"),
+    "20050": ("Baltimore", "BAL"),
+    "20060": ("Cincinnati", "CIN"),
+    "20070": ("Cleveland", "CLE"),
     "20080": ("Pittsburgh", "PIT"),
     "20090": ("Houston", "HOU"),
+    "20100": ("Indianapolis", "IND"),
     "20110": ("Jacksonville", "JAX"),
     "20120": ("Tennessee", "TEN"),
-    "20130": ("Detroit", "DET"),
+    "20130": ("Denver", "DEN"),
     "20140": ("Kansas City", "KC"),
     "20151": ("Las Vegas", "LV"),
     "20161": ("LA Chargers", "LAC"),
-    "20170": ("Philadelphia", "PHI"),
-    "20190": ("Dallas", "DAL"),
+    "20170": ("Dallas", "DAL"),
+    "20180": ("NY Giants", "NYG"),
+    "20190": ("Philadelphia", "PHI"),
+    "20200": ("Washington", "WAS"),
     "20210": ("Chicago", "CHI"),
-    "20220": ("Denver", "DEN"),
-    "20230": ("Minnesota", "MIN"),
-    "20240": ("Green Bay", "GB"),
-    "20250": ("New England", "NE"),
+    "20220": ("Detroit", "DET"),
+    "20230": ("Green Bay", "GB"),
+    "20240": ("Minnesota", "MIN"),
+    "20250": ("Atlanta", "ATL"),
+    "20260": ("Carolina", "CAR"),
     "20270": ("New Orleans", "NO"),
-    "20280": ("Baltimore", "BAL"),
-    "20295": ("Cleveland", "CLE"),
+    "20280": ("Tampa Bay", "TB"),
+    "20290": ("Arizona", "ARI"),
+    "20295": ("LA Rams", "LAR"),
     "20310": ("San Francisco", "SF"),
     "20320": ("Seattle", "SEA"),
 }
@@ -143,6 +152,100 @@ def fetch_standings() -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def _score_from_cell(cell: Any) -> float | None:
+    if isinstance(cell, (int, float)) and not isinstance(cell, bool):
+        return float(cell)
+    if isinstance(cell, str):
+        value = cell.strip().replace(",", "")
+        if re.fullmatch(r"-?\d+(?:\.\d+)?", value):
+            return float(value)
+        return None
+    if isinstance(cell, dict):
+        for key in ("value", "rawValue", "content", "text", "displayValue", "score"):
+            if key in cell:
+                value = _score_from_cell(cell[key])
+                if value is not None:
+                    return value
+    return None
+
+
+def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
+    """Fetch Fantrax's official weekly FPts for every rostered player."""
+    cookie_header = str(auth_cookie).strip()
+    if cookie_header and "=" not in cookie_header:
+        cookie_header = f"JSESSIONID={cookie_header}"
+    params = {
+        "view": "STATS",
+        "positionOrGroup": "ALL",
+        "seasonOrProjection": "SEASON_23l_BY_PERIOD",
+        "timeframeTypeCode": "BY_PERIOD",
+        "transactionPeriod": str(int(week)),
+        "statusOrTeamFilter": "ALL_TAKEN",
+        "sortType": "SCORE",
+        "sortReversed": False,
+        "maxResultsPerPage": "500",
+        "pageNumber": "1",
+    }
+    request_headers = dict(HEADERS)
+    if cookie_header:
+        request_headers["Cookie"] = cookie_header
+    response = requests.post(
+        PRIVATE_API_URL,
+        params={"leagueId": LEAGUE_ID},
+        json={"msgs": [{"method": "getPlayerStats", "data": params}]},
+        headers=request_headers,
+        timeout=20,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    page_error = payload.get("pageError")
+    if page_error:
+        code = page_error.get("code", page_error) if isinstance(page_error, dict) else page_error
+        raise FantraxUnavailable(f"Fantrax player scores unavailable: {code}")
+    try:
+        data = payload["responses"][0]["data"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise FantraxUnavailable("Fantrax returned an unexpected player-score response.") from exc
+
+    header_cells = data.get("tableHeader", {}).get("cells", [])
+    score_index = None
+    for index, header in enumerate(header_cells):
+        if str(header.get("key", "")).lower() == "fpts" or str(header.get("sortKey", "")).upper() == "SCORE":
+            score_index = index
+            break
+    if score_index is None:
+        for index, header in enumerate(header_cells):
+            if str(header.get("shortName", "")).lower() == "fpts":
+                score_index = index
+                break
+    if score_index is None:
+        for index, header in enumerate(header_cells):
+            searchable = " ".join(
+                str(header.get(key, "")) for key in ("key", "name", "shortName", "sortKey")
+            ).lower()
+            if "fantasy point" in searchable:
+                score_index = index
+                break
+    if score_index is None:
+        raise FantraxUnavailable("Fantrax's FPts column was not found.")
+
+    scores: dict[str, float] = {}
+    for row in data.get("statsTable", []):
+        scorer = row.get("scorer") or {}
+        scorer_id = str(scorer.get("scorerId", "")).strip()
+        cells = row.get("cells") or []
+        if not scorer_id or score_index >= len(cells):
+            continue
+        score = _score_from_cell(cells[score_index])
+        if score is not None:
+            scores[scorer_id] = score
+            # Roster payloads identify DST units by NFL team ID, while the
+            # Players table gives them a separate scorer ID.
+            if scorer.get("team") and scorer.get("teamId") is not None:
+                scores[str(scorer["teamId"])] = score
+    return scores
 
 
 def current_week(info: dict[str, Any] | None = None, now: datetime | None = None) -> int:

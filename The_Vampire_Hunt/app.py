@@ -7,6 +7,7 @@ import streamlit as st
 
 from fantrax_data import (
     fetch_player_directory,
+    fetch_player_scores,
     fetch_roster_week,
     fetch_standings,
     enrich_roster_rows,
@@ -234,6 +235,26 @@ def fantrax_standings() -> tuple[list[dict], str]:
     return load_snapshot().get("standings", []), "snapshot"
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def fantrax_player_scores(week: int) -> dict[str, float]:
+    return fetch_player_scores(int(week))
+
+
+def add_fantrax_player_scores(rows: list[dict], week: int) -> tuple[list[dict], str]:
+    try:
+        scores = fantrax_player_scores(int(week))
+    except Exception:
+        return rows, "unavailable"
+    scored_rows = []
+    for original in rows:
+        row = dict(original)
+        player_id = str(row.get("player_id", ""))
+        if player_id in scores:
+            row["score"] = scores[player_id]
+        scored_rows.append(row)
+    return scored_rows, "live"
+
+
 LINEUP_SLOTS = ["QB", "RB", "RB", "WR", "WR", "TE", "RWT FLEX", "DST", "K"]
 
 
@@ -369,18 +390,64 @@ st.markdown(
     }
 
     .stTabs [data-baseweb="tab-list"] {
-        gap: 2.5rem;
+        gap: 3.2rem;
         border-bottom: 1px solid #30292e;
     }
 
     .stTabs [data-baseweb="tab"] {
-        height: 3.25rem;
-        padding: 0 .2rem;
+        height: 4.15rem;
+        padding: 0 .35rem;
         color: #8f8788;
         background: transparent;
-        font: 600 .73rem/1 'Inter', sans-serif;
-        letter-spacing: .17em;
+        font: 700 1.35rem/1 'Inter', sans-serif !important;
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        letter-spacing: .12em;
         text-transform: uppercase;
+    }
+
+    /* Streamlit renders each label inside a nested button/span; keep the
+       typography large at every level so the visible label cannot shrink. */
+    .stTabs [data-baseweb="tab"] *,
+    .stTabs [data-baseweb="tab"] button,
+    .stTabs [data-baseweb="tab"] span {
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    /* Current Streamlit tab markup uses the stTab test id rather than
+       BaseWeb's older data attribute. */
+    .stTabs [data-testid="stTab"],
+    .stTabs [data-testid="stTab"] *,
+    .stTabs [data-testid="stTab"] p {
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+    [data-testid="stTabs"] [data-testid="stTab"],
+    [data-testid="stTabs"] [data-testid="stTab"] *,
+    [data-testid="stTabs"] [data-testid="stTab"] p {
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+    [data-testid="stTab"] {
+        min-height: 4.2rem !important;
+    }
+    [data-testid="stTab"] p,
+    [data-testid="stTab"] [data-testid="stMarkdownContainer"] {
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+        letter-spacing: .04em !important;
+    }
+    [role="tab"] p,
+    [role="tab"] [data-testid="stMarkdownContainer"],
+    [role="tab"] {
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
     }
 
     .stTabs [aria-selected="true"] { color: #f0e5dd !important; }
@@ -844,7 +911,7 @@ st.markdown(
         .vampire-card img { width: 72px; height: 72px; }
         .roster-mark { grid-column: 1 / -1; border-left: 0; border-top: 1px solid #603140; padding: .8rem 0 0; }
         .rules-strip { grid-template-columns: repeat(2, 1fr); }
-        .stTabs [data-baseweb="tab-list"] { gap: 1.1rem; }
+        .stTabs [data-baseweb="tab-list"] { gap: 1.4rem; }
         .monster-card:after { display: none; }
         .ability-line { padding-right: 0; }
         .lives { position: static; grid-column: 2; grid-row: 2; margin-top: .4rem; }
@@ -961,6 +1028,7 @@ with teams_tab:
 
     roster_rows, roster_source = fantrax_roster_for_week(selected_week)
     roster_rows = enrich_roster_rows(roster_rows)
+    roster_rows, player_score_source = add_fantrax_player_scores(roster_rows, selected_week)
     team_roster = [row for row in roster_rows if row.get("team") == selected_name]
     standings, _ = fantrax_standings()
     standing = next((row for row in standings if row.get("team") == selected_name), {})
@@ -1009,6 +1077,10 @@ with teams_tab:
     if not roster_rows_html:
         roster_rows_html = '<div class="roster-empty"><div><strong>Roster unavailable</strong><br>The last Fantrax snapshot did not contain this team.</div></div>'
     source_label = "Live from Fantrax" if roster_source == "live" else "Saved Fantrax snapshot"
+    if player_score_source == "live":
+        roster_note = "Official weekly FPts pulled directly from Fantrax."
+    else:
+        roster_note = "Fantrax's player FPts feed is temporarily unavailable; rosters and team totals remain connected."
     roster_table = f'''<div class="roster-header">
         <div><div class="dossier-label">The active ledger</div><h3>Week {selected_week} roster</h3></div>
         <span class="data-status {roster_source}">{source_label}</span>
@@ -1017,7 +1089,7 @@ with teams_tab:
         <div class="roster-row header"><div>#</div><div>Player</div><div>Position</div><div>NFL team</div><div>Week score</div></div>
         {roster_rows_html}
     </div>
-    <div class="roster-note">Player scores require an authenticated Fantrax session; roster names, positions, NFL teams, and current league points are connected.</div>'''
+    <div class="roster-note">{roster_note}</div>'''
 
     # A deterministic season timeline keeps special-week markers stable between reruns.
     oracle_weeks = sorted(
@@ -1084,16 +1156,35 @@ with teams_tab:
         unsafe_allow_html=True,
     )
 with scoreboard_tab:
-    scoreboard_week = st.selectbox(
-        "Scoring week",
-        list(range(1, 19)),
-        index=active_week - 1,
-        format_func=lambda week: f"Week {week}",
-        key="scoreboard_week",
-    )
+    week_filter_col, live_score_col = st.columns([3, 2], vertical_alignment="bottom")
+    with week_filter_col:
+        scoreboard_week = st.selectbox(
+            "Scoring week",
+            list(range(1, 19)),
+            index=active_week - 1,
+            format_func=lambda week: f"Week {week}",
+            key="scoreboard_week",
+        )
+    with live_score_col:
+        if st.button(
+            "↻  Pull live scores from Fantrax",
+            key="refresh_fantrax_scores",
+            width="stretch",
+            type="primary",
+        ):
+            fantrax_roster_for_week.clear()
+            fantrax_standings.clear()
+            fantrax_player_directory.clear()
+            fantrax_player_scores.clear()
+            st.session_state["fantrax_refresh_notice"] = True
+            st.rerun()
+
+    if st.session_state.pop("fantrax_refresh_notice", False):
+        st.success("Fantrax team totals, rosters, and official player FPts refreshed.", icon="✅")
 
     score_rosters, score_roster_source = fantrax_roster_for_week(scoreboard_week)
     score_rosters = enrich_roster_rows(score_rosters)
+    score_rosters, score_player_source = add_fantrax_player_scores(score_rosters, scoreboard_week)
     current_standings, score_standing_source = fantrax_standings()
     scores_revealed = scoreboard_week <= active_week
     if scoreboard_week == active_week:

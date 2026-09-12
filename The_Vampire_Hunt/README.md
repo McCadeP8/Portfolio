@@ -9,4 +9,8 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-The starting shell contains three intentionally empty sections: Overview, Teams, and Scoreboard.
+## Fantrax player scores
+
+Because the league is publicly viewable, the app pulls rosters, team totals, and
+official weekly player FPts directly from Fantrax without login credentials. Player
+scores are refreshed every minute or immediately with the Scoreboard refresh button.
