@@ -79,6 +79,12 @@ except ImportError:
                 scores[str(scorer["teamId"])] = value
         return scores
 
+try:
+    from fantrax_data import fetch_available_players
+except ImportError:
+    def fetch_available_players(week: int) -> list[dict]:
+        return []
+
 
 ASSET_DIR = Path(__file__).parent / "assets"
 
@@ -303,6 +309,11 @@ def fantrax_standings() -> tuple[list[dict], str]:
 @st.cache_data(ttl=60, show_spinner=False)
 def fantrax_player_scores(week: int) -> dict[str, float]:
     return fetch_player_scores(int(week))
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def fantrax_available_players(week: int) -> list[dict]:
+    return fetch_available_players(int(week))
 
 
 def add_fantrax_player_scores(rows: list[dict], week: int) -> tuple[list[dict], str]:
@@ -969,6 +980,22 @@ st.markdown(
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.opponent-picker-title) [data-baseweb="select"] > div { min-height:62px; background:rgba(65,25,34,.92); border:1px solid #a34b60; color:#f5e9e2; font:600 1rem 'Cormorant Garamond',serif; box-shadow:0 0 18px rgba(159,38,57,.16); }
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.opponent-picker-title) [data-baseweb="select"] svg { color:#e3a5ad; }
 
+    .available-intro { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin:.35rem 0 1.1rem; padding:1.15rem 1.3rem; background:linear-gradient(120deg,#251117,#111012 72%); border:1px solid #64303b; border-radius:6px; }
+    .available-intro h2 { margin:0; color:#f0e3db; font:700 2rem 'Cormorant Garamond',serif; }
+    .available-intro p { max-width:690px; margin:.25rem 0 0; color:#988f8d; font:500 .76rem/1.55 'Inter',sans-serif; }
+    .available-week { flex:0 0 auto; color:#df8795; font:700 .7rem 'Inter',sans-serif; letter-spacing:.13em; text-transform:uppercase; }
+    .pool-section { --pool-accent:#a82e43; margin:0 0 1.05rem; overflow:hidden; background:#111012; border:1px solid color-mix(in srgb,var(--pool-accent) 42%,#302a2f); border-radius:6px; }
+    .pool-heading { display:flex; justify-content:space-between; align-items:center; padding:.8rem 1rem; background:linear-gradient(100deg,color-mix(in srgb,var(--pool-accent) 22%,#191519),#121012 74%); border-bottom:1px solid color-mix(in srgb,var(--pool-accent) 36%,#302a2f); }
+    .pool-heading strong { color:#f1e5dd; font:700 1.45rem 'Cormorant Garamond',serif; }
+    .pool-heading span { color:var(--pool-accent); font:700 .68rem 'Inter',sans-serif; letter-spacing:.13em; text-transform:uppercase; }
+    .pool-row { display:grid; grid-template-columns:42px minmax(210px,1fr) 90px minmax(170px,.65fr) 85px; gap:.5rem; align-items:center; min-height:44px; padding:0 .9rem; border-bottom:1px solid #292428; }
+    .pool-row:last-child { border-bottom:0; }
+    .pool-row.header { min-height:31px; color:#746d6e; font:700 .55rem 'Inter',sans-serif; letter-spacing:.12em; text-transform:uppercase; }
+    .pool-rank { color:var(--pool-accent); font:700 .72rem 'Inter',sans-serif; }
+    .pool-player { color:#ddd3cc; font:600 .79rem 'Inter',sans-serif; }
+    .pool-team,.pool-owner { overflow:hidden; color:#807879; font:500 .66rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
+    .pool-points { color:#f0e4dc; font:700 .86rem 'Inter',sans-serif; text-align:right; }
+
     @media (max-width: 760px) {
         .block-container { padding-top: 2rem; }
         .league-crest { width: 64px; height: 64px; }
@@ -988,6 +1015,9 @@ st.markdown(
         .rank-tiles { height:auto; grid-template-rows:none; }
         .roster-row { grid-template-columns:52px 1fr 70px; }
         .roster-row > div:nth-child(4), .roster-row > div:nth-child(5) { display:none; }
+        .available-intro { align-items:start; flex-direction:column; }
+        .pool-row { grid-template-columns:32px 1fr 62px; }
+        .pool-owner,.pool-row.header div:nth-child(4) { display:none; }
     }
 
     footer { visibility: hidden; }
@@ -1008,7 +1038,9 @@ st.markdown(
 )
 st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
 
-overview_tab, teams_tab, scoreboard_tab, about_tab = st.tabs(["Overview", "Teams", "Scoreboard", "About"])
+overview_tab, teams_tab, scoreboard_tab, available_tab, about_tab = st.tabs(
+    ["Overview", "Teams", "Scoreboard", "Available Players", "About"]
+)
 
 with overview_tab:
     st.markdown(
@@ -1459,6 +1491,71 @@ with scoreboard_tab:
         st.markdown(bench_html(opponent_team), unsafe_allow_html=True)
     with board_cols[2]:
         st.markdown(league_board, unsafe_allow_html=True)
+
+with available_tab:
+    available_snapshot = load_snapshot()
+    available_week = max(1, min(18, int(available_snapshot.get("current_week", 1))))
+    st.markdown(
+        f'''<div class="available-intro">
+            <div><h2>Build Your Vampire</h2>
+            <p>The highest-scoring players outside the current Vampire roster, ranked by official Fantrax points. Use this board when a new owner enters another version of the hunt.</p></div>
+            <div class="available-week">Week {available_week} · Live Fantrax scoring</div>
+        </div>''',
+        unsafe_allow_html=True,
+    )
+
+    available_rosters, _ = fantrax_roster_for_week(available_week)
+    vampire_rows = [row for row in available_rosters if row.get("team") == "The Vampire"]
+    vampire_ids = {str(row.get("player_id", "")) for row in vampire_rows}
+    vampire_names = {str(row.get("player", "")).strip().lower() for row in vampire_rows}
+    try:
+        player_pool = fantrax_available_players(available_week)
+    except Exception:
+        player_pool = []
+
+    player_pool = [
+        row for row in player_pool
+        if str(row.get("player_id", "")) not in vampire_ids
+        and str(row.get("player", "")).strip().lower() not in vampire_names
+    ]
+    pool_settings = [
+        ("QB", 8, 2, "#b94a5e"),
+        ("RB", 20, 6, "#d2783d"),
+        ("WR", 20, 6, "#8b70d1"),
+        ("TE", 8, 2, "#349b8d"),
+        ("K", 8, 2, "#c89b43"),
+        ("DST", 8, 2, "#4d88b7"),
+    ]
+
+    if not player_pool:
+        st.info("The available-player board is waiting for Fantrax. Refresh the page in a moment.")
+    else:
+        for position, player_count, select_count, accent in pool_settings:
+            position_players = sorted(
+                [row for row in player_pool if row.get("position") == position],
+                key=lambda row: float(row.get("score", 0)),
+                reverse=True,
+            )[:player_count]
+            player_rows = []
+            for rank, row in enumerate(position_players, 1):
+                owner = str(row.get("roster_status") or "Free agent").split(" (", 1)[0]
+                player_rows.append(
+                    f'''<div class="pool-row">
+                        <div class="pool-rank">{rank:02d}</div>
+                        <div class="pool-player">{escape(str(row.get("player") or "—"))}</div>
+                        <div class="pool-team">{escape(str(row.get("nfl_team") or "FA"))}</div>
+                        <div class="pool-owner">{escape(owner)}</div>
+                        <div class="pool-points">{float(row.get("score", 0)):.2f}</div>
+                    </div>'''
+                )
+            st.markdown(
+                f'''<div class="pool-section" style="--pool-accent:{accent}">
+                    <div class="pool-heading"><strong>{position}</strong><span>Select {select_count} · Top {player_count}</span></div>
+                    <div class="pool-row header"><div>#</div><div>Player</div><div>NFL</div><div>Current home</div><div style="text-align:right">Week {available_week}</div></div>
+                    {''.join(player_rows)}
+                </div>''',
+                unsafe_allow_html=True,
+            )
 
 with about_tab:
     st.header("About The Vampire Hunt")

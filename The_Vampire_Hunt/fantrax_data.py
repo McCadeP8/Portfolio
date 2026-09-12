@@ -171,31 +171,25 @@ def _score_from_cell(cell: Any) -> float | None:
     return None
 
 
-def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
-    """Fetch Fantrax's official weekly FPts for every rostered player."""
-    cookie_header = str(auth_cookie).strip()
-    if cookie_header and "=" not in cookie_header:
-        cookie_header = f"JSESSIONID={cookie_header}"
+def _fetch_player_stats(week: int, status_filter: str) -> dict[str, Any]:
+    """Fetch one weekly Fantrax player table using this league's scoring."""
     params = {
         "view": "STATS",
         "positionOrGroup": "ALL",
         "seasonOrProjection": "SEASON_23l_BY_PERIOD",
         "timeframeTypeCode": "BY_PERIOD",
         "transactionPeriod": str(int(week)),
-        "statusOrTeamFilter": "ALL_TAKEN",
+        "statusOrTeamFilter": status_filter,
         "sortType": "SCORE",
         "sortReversed": False,
         "maxResultsPerPage": "500",
         "pageNumber": "1",
     }
-    request_headers = dict(HEADERS)
-    if cookie_header:
-        request_headers["Cookie"] = cookie_header
     response = requests.post(
         PRIVATE_API_URL,
         params={"leagueId": LEAGUE_ID},
         json={"msgs": [{"method": "getPlayerStats", "data": params}]},
-        headers=request_headers,
+        headers=HEADERS,
         timeout=20,
     )
     response.raise_for_status()
@@ -205,9 +199,26 @@ def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
         code = page_error.get("code", page_error) if isinstance(page_error, dict) else page_error
         raise FantraxUnavailable(f"Fantrax player scores unavailable: {code}")
     try:
-        data = payload["responses"][0]["data"]
+        return payload["responses"][0]["data"]
     except (KeyError, IndexError, TypeError) as exc:
         raise FantraxUnavailable("Fantrax returned an unexpected player-score response.") from exc
+
+
+def _stat_column(data: dict[str, Any], key: str, sort_key: str = "") -> int | None:
+    for index, header in enumerate(data.get("tableHeader", {}).get("cells", [])):
+        if str(header.get("key", "")).lower() == key.lower():
+            return index
+        if sort_key and str(header.get("sortKey", "")).upper() == sort_key.upper():
+            return index
+    return None
+
+
+def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
+    """Fetch Fantrax's official weekly FPts for every rostered player."""
+    cookie_header = str(auth_cookie).strip()
+    if cookie_header and "=" not in cookie_header:
+        cookie_header = f"JSESSIONID={cookie_header}"
+    data = _fetch_player_stats(week, "ALL_TAKEN")
 
     header_cells = data.get("tableHeader", {}).get("cells", [])
     score_index = None
@@ -246,6 +257,47 @@ def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
             if scorer.get("team") and scorer.get("teamId") is not None:
                 scores[str(scorer["teamId"])] = score
     return scores
+
+
+def fetch_available_players(week: int) -> list[dict[str, Any]]:
+    """Return the top weekly scorers across Fantrax's complete NFL player pool."""
+    data = _fetch_player_stats(week, "ALL")
+    score_index = _stat_column(data, "fpts", "SCORE")
+    status_index = _stat_column(data, "status", "STATUS")
+    if score_index is None:
+        raise FantraxUnavailable("Fantrax's FPts column was not found.")
+
+    players = []
+    for row in data.get("statsTable", []):
+        scorer = row.get("scorer") or {}
+        cells = row.get("cells") or []
+        player_id = str(scorer.get("scorerId", "")).strip()
+        if not player_id or score_index >= len(cells):
+            continue
+        score = _score_from_cell(cells[score_index])
+        if score is None:
+            continue
+        name = str(scorer.get("name") or scorer.get("shortName") or player_id).strip()
+        position = str(scorer.get("posShortNames") or "").split(",", 1)[0].strip()
+        position = LEAGUE_POSITION_OVERRIDES.get(name.lower(), position)
+        if position not in {"QB", "RB", "WR", "TE", "K", "DST"}:
+            continue
+        roster_status = ""
+        if status_index is not None and status_index < len(cells):
+            status_cell = cells[status_index]
+            if isinstance(status_cell, dict):
+                roster_status = str(status_cell.get("toolTip") or status_cell.get("content") or "")
+        players.append(
+            {
+                "player_id": player_id,
+                "player": name,
+                "position": position,
+                "nfl_team": str(scorer.get("teamShortName") or "FA"),
+                "score": score,
+                "roster_status": roster_status,
+            }
+        )
+    return players
 
 
 def current_week(info: dict[str, Any] | None = None, now: datetime | None = None) -> int:
