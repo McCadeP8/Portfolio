@@ -569,6 +569,8 @@ def team_label(name: str) -> str:
 def player_match_key(name: str) -> str:
     """Normalize punctuation and generational suffixes for cross-source matching."""
     value = str(name or "").lower().replace("’", "'")
+    # Common short-name variants used by different fantasy data providers.
+    value = re.sub(r"\bcam(?=\s+skattebo\b)", "cameron", value)
     value = re.sub(r"\b(jr|sr|ii|iii|iv|v)\.?\b", "", value)
     value = re.sub(r"[^a-z0-9]", "", value)
     return value
@@ -1270,10 +1272,11 @@ with overview_tab:
     st.markdown(
         """<div class="lore">
             <p>Every eighteen years, when the season turns and the stadium lights burn against the early dark, twelve creatures answer the same invitation. Eleven arrive believing they have been summoned to compete. The twelfth arrives hungry. This year, that creature is you: The Vampire.</p>
-            <p>Your prey is not found in crypts or moonlit forests, but across a fantasy-football scoreboard. Each week you are matched against one of the eleven creatures. You submit a 20-player following, then the best-ball lineup is scored automatically: the highest scorer at QB, two RBs, two WRs, one TE, one FLX, one DST, and one K.</p>
+            <p>Your prey is not found in crypts or moonlit forests, but in eleven rival realms bound to the same cursed season. Every week, you face all eleven creatures at once, while the league's best performances quietly determine who grows weaker and who survives another night.</p>
             <p>The rule of blood is simple: if your weekly score is higher, your opponent loses one life. Ties go against you—the Vampire must outscore the creature to claim the kill. Every creature begins with a different number of lives and a different supernatural advantage, so every matchup carries its own danger.</p>
-            <p>Whenever you defeat an opponent and take a life, you may claim one player from that opponent's roster as tribute. That victory also unlocks your next weekly choice: once each week, you may select a fresh 20-player following from your roster, your stolen players, and any other eligible choices. The eleven creatures cannot change their rosters this way; only the Vampire hunts and adapts from week to week.</p>
+            <p>Whenever you defeat an opponent and take a life, you may steal one player from one team you beat that week. That victory unlocks your next weekly choice: once each week, you may select a fresh 20-player following from your roster, your stolen players, and any other eligible choices. The eleven creatures cannot change their rosters this way; only the Vampire hunts and adapts from week to week.</p>
             <p>You have eighteen weeks to extinguish all eleven bloodlines. Study each creature's curse, decide which battle to pick, and build the strongest possible following before the next kickoff. By the final whistle, either every realm has fallen to your hunger—or dawn finds the Vampire with no lives left to claim.</p>
+            <p><strong>Hunt wisely, feed completely, and leave no realm alive.</strong></p>
         </div>""",
         unsafe_allow_html=True,
     )
@@ -1282,7 +1285,7 @@ with overview_tab:
             <div class="rule-stat"><b>12</b><span>Teams enter</span></div>
             <div class="rule-stat"><b>18</b><span>Weeks to hunt</span></div>
             <div class="rule-stat"><b>1 life</b><span>Lost when outscored</span></div>
-            <div class="rule-stat"><b>1 player</b><span>Stolen after a group of kills</span></div>
+            <div class="rule-stat"><b>1 follower</b><span>Stolen after a group of kills</span></div>
         </div>""",
         unsafe_allow_html=True,
     )
@@ -1388,7 +1391,7 @@ with teams_tab:
         <span class="data-status {roster_source}">{source_label}</span>
     </div>
     <div class="roster-table">
-        <div class="roster-row header"><div>#</div><div>Player</div><div>Position</div><div>NFL team</div><div>Week score</div></div>
+        <div class="roster-row header"><div>#</div><div>Follower</div><div>Position</div><div>NFL team</div><div>Week score</div></div>
         {roster_rows_html}
     </div>
     <div class="roster-note">{roster_note}</div>'''
@@ -1729,9 +1732,9 @@ with available_tab:
     available_week = max(1, min(18, int(available_snapshot.get("current_week", 1))))
     st.markdown(
         f'''<div class="available-intro">
-            <div><h2>Build Your Vampire</h2>
-            <p>Choose a complete 20-player roster from the highest-scoring players who are not owned by any of the eleven creatures. Current Vampire players remain available to owners entering a new version of the hunt.</p></div>
-            <div class="available-week">Week {available_week} · FantasyPros projections</div>
+            <div><h2>Choose Your Followers</h2>
+            <p>Choose your followers: a complete 20-follower roster from the highest-ranked followers who are not owned by any of the eleven creatures. Current Vampire followers remain available to owners entering a new version of the hunt.</p></div>
+            <div class="available-week">Week {available_week} · Recommendations</div>
         </div>''',
         unsafe_allow_html=True,
     )
@@ -1760,7 +1763,7 @@ with available_tab:
     }
 
     if not player_pool:
-        st.info("FantasyPros Week 1 ranking projections are temporarily unavailable. Refresh the page in a moment.")
+        st.info("Recommendations are temporarily unavailable. Refresh the page in a moment.")
     else:
         position_options = {}
         position_lookup = {}
@@ -1799,8 +1802,8 @@ with available_tab:
                     with column:
                         st.markdown(
                             f'''<div class="pool-section" style="--pool-accent:{accent}">
-                                <div class="pool-heading"><strong>{position}</strong><span>Select {select_count} · Top {player_count}</span></div>
-                                <div class="pool-row header"><div>#</div><div>Player</div><div>NFL</div></div>
+            <div class="pool-heading"><strong>{position}</strong><span>Select {select_count} followers · Top {player_count}</span></div>
+                            <div class="pool-row header"><div>#</div><div>Follower</div><div>NFL</div></div>
                                 {table_rows}
                             </div>''',
                             unsafe_allow_html=True,
@@ -1815,7 +1818,7 @@ with available_tab:
                         other_by_position[position] = st.text_input(
                             f"Other {position}",
                             key=f"available_{position.lower()}_other",
-                            placeholder="Type another player; separate multiple names with commas",
+                            placeholder="Type another follower; separate multiple names with commas",
                         )
             submitted = st.form_submit_button("Submit Lineup", type="primary", width="stretch")
 
@@ -1852,14 +1855,14 @@ with available_tab:
                 except Exception as exc:
                     st.error(f"The lineup is complete, but Discord could not receive it: {exc}")
                 else:
-                    st.success(f"{team_name.strip()} is ready for the hunt. The 20-player roster was sent to Discord.")
+                    st.success(f"{team_name.strip()} is ready for the hunt. The 20-follower roster was sent to Discord.")
 
         saved_submission = st.session_state.get("submitted_vampire_lineup")
         if saved_submission and saved_submission.get("week") == available_week:
             st.markdown(
                 f'''<div class="roster-header"><div><div class="section-kicker">Submitted roster</div>
                 <h3>{escape(str(saved_submission.get("team_name") or "Your Vampire"))}</h3></div>
-                <div class="data-status live">Week {available_week} · 20 players</div></div>''',
+                <div class="data-status live">Week {available_week} · 20 followers</div></div>''',
                 unsafe_allow_html=True,
             )
             submitted_rows = []
@@ -1885,7 +1888,7 @@ with about_tab:
         - The season runs for 18 scoring weeks.
         - Each week, teams are compared by their fantasy football score.
         - When The Vampire outscores an opponent, that opponent loses one life.
-        - After a successful hunt, The Vampire may steal one player from that opponent's roster.
+        - After a successful hunt, The Vampire may steal one follower from that opponent's roster.
         - The Vampire may set a different starting lineup every week. Other teams use their standard roster and best-ball scoring.
         """
     )
@@ -1906,7 +1909,7 @@ with about_tab:
 
         QB, RB, RB, WR, WR, TE, FLX, DST, K, plus a Bonus slot when a team has a weekly league bonus.
 
-        Best ball takes the highest-scoring eligible players at each position first, then fills the flex with the best remaining eligible player.
+        Best ball takes the highest-scoring eligible followers at each position first, then fills the flex with the best remaining eligible follower.
         """
     )
 
