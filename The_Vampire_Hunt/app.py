@@ -1269,9 +1269,11 @@ with overview_tab:
     st.markdown('<div class="section-title">Twelve entered. One must feed.</div>', unsafe_allow_html=True)
     st.markdown(
         """<div class="lore">
-            <p>Every eighteen years, when the season turns and the stadium lights burn against the early dark, twelve creatures answer the same invitation. Eleven arrive believing they have been summoned to compete. The twelfth arrives hungry. This year, that creature is you.</p>
-            <p>Your prey will not be found in crypts or moonlit forests, but across the weekly ledger of fantasy football. Outscore the creature opposite you and it loses one of its lives. With that life comes tribute: once each week you defeat an opponent and draw blood, you may steal one player from its roster and make that player your own.</p>
-            <p>You have eighteen weeks to extinguish all eleven bloodlines. Each creature carries a different curse, gift, or cruel protection—and each begins with only so many lives. Learn what guards them. Choose where to strike. By the final whistle, either the league belongs to The Vampire… or dawn finds you starving.</p>
+            <p>Every eighteen years, when the season turns and the stadium lights burn against the early dark, twelve creatures answer the same invitation. Eleven arrive believing they have been summoned to compete. The twelfth arrives hungry. This year, that creature is you: The Vampire.</p>
+            <p>Your prey is not found in crypts or moonlit forests, but across a fantasy-football scoreboard. Each week you are matched against one of the eleven creatures. You submit a 20-player following, then the best-ball lineup is scored automatically: the highest scorer at QB, two RBs, two WRs, one TE, one FLX, one DST, and one K.</p>
+            <p>The rule of blood is simple: if your weekly score is higher, your opponent loses one life. Ties go against you—the Vampire must outscore the creature to claim the kill. Every creature begins with a different number of lives and a different supernatural advantage, so every matchup carries its own danger.</p>
+            <p>Whenever you defeat an opponent and take a life, you may claim one player from that opponent's roster as tribute. That victory also unlocks your next weekly choice: once each week, you may select a fresh 20-player following from your roster, your stolen players, and any other eligible choices. The eleven creatures cannot change their rosters this way; only the Vampire hunts and adapts from week to week.</p>
+            <p>You have eighteen weeks to extinguish all eleven bloodlines. Study each creature's curse, decide which battle to pick, and build the strongest possible following before the next kickoff. By the final whistle, either every realm has fallen to your hunger—or dawn finds the Vampire with no lives left to claim.</p>
         </div>""",
         unsafe_allow_html=True,
     )
@@ -1707,6 +1709,10 @@ with realm_summary_tab:
         scored_roster, _ = add_fantrax_player_scores(world_roster, realm_week)
         lineup = best_ball_lineup(scored_roster)
         world_scores[world_name] = sum(float(row.get("score", 0)) for row in lineup if isinstance(row.get("score"), (int, float))) if realm_week <= active_week else None
+    # Keep the currently selected universe perfectly aligned with the main
+    # Scoreboard, which is the canonical nine-starter calculation for this page.
+    if realm_week == scoreboard_week and realm_week <= active_week:
+        world_scores[active_vampire_name] = adjusted_scores.get(active_vampire_name)
     standings_rows, _ = fantrax_standings()
     lives_by_creature = {row.get("team"): row.get("lives_remaining") for row in standings_rows}
     header_cells = "".join(f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>" for creature in CREATURES)
