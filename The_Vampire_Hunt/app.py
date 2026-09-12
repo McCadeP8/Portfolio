@@ -7,12 +7,20 @@ import streamlit as st
 
 from fantrax_data import (
     fetch_player_directory,
-    fetch_player_scores,
     fetch_roster_week,
     fetch_standings,
     enrich_roster_rows,
     load_snapshot,
 )
+
+# Keep the app bootable while Streamlit Cloud rolls from an older data module.
+# Player scores become available automatically as soon as the updated helper is
+# present; until then the existing team-score and roster views still work.
+try:
+    from fantrax_data import fetch_player_scores
+except ImportError:
+    def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
+        return {}
 
 
 ASSET_DIR = Path(__file__).parent / "assets"
