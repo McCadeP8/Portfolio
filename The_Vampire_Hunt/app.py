@@ -530,10 +530,20 @@ def _scored_first(row: dict) -> tuple[bool, float, str]:
 
 def best_ball_lineup(roster: list[dict]) -> list[dict]:
     """Choose eligible best-ball starters, filling the flex after fixed slots."""
+    eligible = []
+    seen_followers = set()
+    for row in roster:
+        if row.get("stolen"):
+            continue
+        follower_id = str(row.get("player_id") or "").strip() or str(row.get("player") or "").strip().casefold()
+        if follower_id in seen_followers:
+            continue
+        seen_followers.add(follower_id)
+        eligible.append(row)
     pools: dict[str, list[dict]] = {}
     for position in ("QB", "RB", "WR", "TE", "DST", "K"):
         pools[position] = sorted(
-            [dict(row) for row in roster if row.get("position") == position and not row.get("stolen")],
+            [dict(row) for row in eligible if row.get("position") == position],
             key=_scored_first,
             reverse=True,
         )
@@ -628,6 +638,23 @@ def stolen_followers_before(week: int, realm_name: str | None = None) -> dict[st
         if key:
             stolen[key] = claimed_week
     return stolen
+
+
+def claimed_followers_for_owner(realm_name: str) -> list[tuple[str, int]]:
+    """Keep the claimed name as written in the sheet for the lineup picker."""
+    claims = {}
+    for sheet_row in vampire_sheet_rows:
+        if str(sheet_row.get("Slot", "")).strip().lower() != "stolen":
+            continue
+        try:
+            claimed_week = int(str(sheet_row.get("Week", "")).strip())
+        except (TypeError, ValueError):
+            continue
+        name = re.sub(r"\s*\([^)]*\)\s*$", "", str(sheet_row.get(realm_name, "")).strip())
+        key = player_match_key(name)
+        if key:
+            claims[key] = (name, claimed_week)
+    return sorted(claims.values(), key=lambda item: (item[1], item[0]))
 
 
 def mark_stolen_creature_followers(rows: list[dict], week: int, realm_name: str | None = None) -> list[dict]:
@@ -778,6 +805,87 @@ try:
     week_one_preview = mccade_week_one_preview()
 except Exception:
     week_one_preview = None
+
+
+def calculate_realm_battle(
+    week: int,
+    realm_name: str,
+    vampire_roster: list[dict],
+    creature_roster: list[dict],
+    lives_before: dict[str, int],
+    hydra_hit_before: bool,
+    hunter_bonus_before: float,
+) -> dict | None:
+    """Score one universe from its own followers and resolve all eleven battles."""
+    if len(vampire_roster) != 20:
+        return None
+    rosters = {realm_name: vampire_roster}
+    rosters.update({creature["name"]: [row for row in creature_roster if row.get("team") == creature["name"]] for creature in CREATURES})
+    lineups = {name: best_ball_lineup(roster) for name, roster in rosters.items()}
+    if len(lineups[realm_name]) != 9 or not any(isinstance(row.get("score"), (int, float)) for row in vampire_roster):
+        return None
+    base = {
+        name: sum(float(row["score"]) for row in lineup if isinstance(row.get("score"), (int, float)))
+        for name, lineup in lineups.items() if len(lineup) == 9
+    }
+    seed = hashlib.sha256(f"vampire-hunt-season-2026:{realm_name}".encode()).hexdigest()
+    bonus = {name: 0.0 for name in rosters}
+    bonus["The Knight"] = float((4 - max(1, lives_before["The Knight"])) * 5)
+    bonus["The Gambler"] = float(seeded_pick(week, "gambler-flip", [12, -8], seed))
+    bonus["The Hunter"] = hunter_bonus_before
+    oracle_weeks = sorted(range(5, 16), key=lambda number: hashlib.sha256(f"oracle:{seed}:{number}".encode()).digest())[:3]
+    if week in oracle_weeks:
+        bonus["The Oracle"] = 20.0
+
+    vampire_lineup = lineups[realm_name]
+    hex_target = seeded_pick(week, "wizard-hex", vampire_lineup, seed)
+    hex_positions = {"RB", "WR", "TE"} if hex_target.get("slot") == "RWT FLEX" else {hex_target.get("position")}
+    starter_ids = {row.get("player_id") for row in vampire_lineup}
+    replacements = sorted(
+        [row for row in vampire_roster if row.get("player_id") not in starter_ids and row.get("position") in hex_positions],
+        key=_scored_first,
+        reverse=True,
+    )
+    target_score = hex_target.get("score")
+    replacement_score = replacements[0].get("score") if replacements else None
+    if isinstance(target_score, (int, float)) and isinstance(replacement_score, (int, float)):
+        bonus["The Wizard"] = max(0.0, float(target_score) - float(replacement_score))
+
+    preliminary = {name: score + bonus[name] for name, score in base.items()}
+    if "The Juggernaut" in base:
+        bonus["The Juggernaut"] = float(2 * sum(
+            total < base["The Juggernaut"] for name, total in preliminary.items() if name != "The Juggernaut"
+        ))
+    scores = {name: score + bonus[name] for name, score in base.items()}
+    vampire_score = scores[realm_name]
+    lives_after = dict(lives_before)
+    outcomes = {}
+    hydra_hit_after = False
+    hunter_bonus_after = hunter_bonus_before
+    for creature in CREATURES:
+        name = creature["name"]
+        creature_score = scores.get(name)
+        if creature_score is None:
+            outcomes[name] = "pending"
+            continue
+        if vampire_score > creature_score:
+            if name == "The Hydra" and not hydra_hit_before:
+                outcomes[name] = "hit"
+                hydra_hit_after = True
+            else:
+                outcomes[name] = "lost"
+                lives_after[name] = max(0, lives_after[name] - 1)
+        else:
+            outcomes[name] = "survived"
+            if name == "The Hunter" and creature_score > vampire_score:
+                hunter_bonus_after += 2.0
+    return {
+        "scores": scores,
+        "outcomes": outcomes,
+        "remaining": lives_after,
+        "hydra_hit": hydra_hit_after,
+        "hunter_bonus": hunter_bonus_after,
+    }
 
 
 st.markdown(
@@ -1425,6 +1533,11 @@ st.markdown(
     .realm-cross td { color:#cbbfba; font-weight:700; }
     .realm-cross td.stolen { color:#e6b86a; font-weight:600; min-width:150px; }
     .realm-cross td.life-diamonds { color:#d45a68; letter-spacing:.12em; font-size:1rem; white-space:nowrap; }
+    .realm-cross td.life-diamonds small { display:block; margin-top:.2rem; font:700 .52rem 'Inter',sans-serif; letter-spacing:.08em; }
+    .realm-cross td.life-diamonds small.beat { color:#f6a7a9; }
+    .realm-cross td.life-diamonds small.safe { color:#8fb4a4; }
+    .realm-cross td.life-diamonds small.hit { color:#e7bb70; }
+    .realm-cross td.realm-score small { display:block; margin-top:.18rem; color:#998e8b; font:.55rem 'Inter',sans-serif; }
 
     @media (max-width: 760px) {
         .block-container { padding-top: 2rem; }
@@ -1521,7 +1634,7 @@ with overview_tab:
         creature_logo = creature.get("logo", DEFAULT_LOGO)
         st.markdown(
             f"""<div class="monster-card" data-sigil="{creature['emoji']}" style="--card-accent:{creature['accent']}">
-                <div class="lives">{lives_left} lives <span class="life-pips" title="{lives_left} of {creature['lives']} lives remain">{hearts}</span></div>
+                <div class="lives">{lives_left} {'life' if lives_left == 1 else 'lives'} <span class="life-pips" title="{lives_left} of {creature['lives']} lives remain">{hearts}</span></div>
                 <img src="{creature_logo}" alt="{creature['name']} logo">
                 <div><div class="creature-name"><span class="emoji">{creature['emoji']}</span>{escape(team_label(creature['name']))}</div>
                 <div class="ability-line"><strong>{creature['ability']}</strong> — {creature['rule']}</div></div>
@@ -1615,11 +1728,9 @@ with teams_tab:
     roster_rows_html = "".join(roster_html_parts)
     if not roster_rows_html:
         roster_rows_html = '<div class="roster-empty"><div><strong>Roster unavailable</strong><br>The last Fantrax snapshot did not contain this team.</div></div>'
-    source_label = "Live from Fantrax" if roster_source == "live" else "Saved Fantrax snapshot"
     roster_note = "Stolen followers remain visible here but score 0 FPts in this realm." if any(row.get("stolen") for row in team_roster) else ""
     roster_table = f'''<div class="roster-header">
         <div><div class="dossier-label">The active ledger</div><h3>Week {selected_week} roster</h3></div>
-        <span class="data-status {roster_source}">{source_label}</span>
     </div>
     <div class="roster-table">
         <div class="roster-row header"><div>#</div><div>Follower</div><div>Position</div><div>NFL team</div><div>Week score</div></div>
@@ -2089,40 +2200,64 @@ with scoreboard_tab:
 
 with realm_summary_tab:
     realm_week = st.selectbox("Summary week", list(range(1, 19)), index=active_week - 1, format_func=lambda week: f"Week {week}", key="realm_summary_week")
-    st.markdown(f"<div class='realm-intro'><h2>Cross-Realm Summary · Week {realm_week}</h2><p>Compare every Vampire universe against the eleven creatures. Scores and stolen tribute are revealed week by week.</p></div>", unsafe_allow_html=True)
-    world_rosters = vampire_world_rosters(realm_week)
-    world_scores = {}
-    for world_name, world_roster in world_rosters.items():
-        if len(world_roster) != 20 or realm_week > active_week:
-            world_scores[world_name] = None
-            continue
-        scored_roster, _ = add_fantrax_player_scores(world_roster, realm_week)
-        lineup = best_ball_lineup(scored_roster)
-        world_scores[world_name] = sum(float(row.get("score", 0)) for row in lineup if isinstance(row.get("score"), (int, float)))
-    if week_one_preview and realm_week == 1:
-        world_scores[active_vampire_name] = week_one_preview["scores"].get(active_vampire_name)
-    # Keep the currently selected universe perfectly aligned with the main
-    # Scoreboard, which is the canonical nine-starter calculation for this page.
-    if realm_week == scoreboard_week and len(world_rosters.get(active_vampire_name, [])) == 20 and realm_week <= active_week:
-        world_scores[active_vampire_name] = adjusted_scores.get(active_vampire_name)
-    standings_rows, _ = fantrax_standings()
-    lives_by_creature = {row.get("team"): row.get("lives_remaining") for row in standings_rows}
+    st.markdown(f"<div class='realm-intro'><h2>Cross-Realm Summary · Week {realm_week}</h2><p>Each Vampire faces all eleven creatures every week. The result below comes from that realm's lineup, whether or not a follower was stolen.</p></div>", unsafe_allow_html=True)
+    realm_states = {
+        name: {
+            "remaining": {creature["name"]: creature["lives"] for creature in CREATURES},
+            "hydra_hit": False,
+            "hunter_bonus": 0.0,
+            "weeks": {},
+        }
+        for name in vampire_sheet_teams
+    }
+    selected_world_rosters = None
+    for battle_week in range(1, min(realm_week, active_week) + 1):
+        weekly_world_rosters = vampire_world_rosters(battle_week)
+        if battle_week == realm_week:
+            selected_world_rosters = weekly_world_rosters
+        weekly_creatures, _ = fantrax_roster_for_week(battle_week)
+        weekly_creatures = enrich_roster_rows(weekly_creatures)
+        weekly_creatures, _ = add_fantrax_player_scores(weekly_creatures, battle_week)
+        for world_name, state in realm_states.items():
+            world_roster = weekly_world_rosters.get(world_name, [])
+            world_roster, _ = add_fantrax_player_scores(world_roster, battle_week)
+            creature_roster = mark_stolen_creature_followers(weekly_creatures, battle_week, world_name)
+            battle = calculate_realm_battle(
+                battle_week, world_name, world_roster, creature_roster,
+                state["remaining"], state["hydra_hit"], state["hunter_bonus"],
+            )
+            if battle is not None:
+                state["remaining"] = battle["remaining"]
+                state["hydra_hit"] = battle["hydra_hit"]
+                state["hunter_bonus"] = battle["hunter_bonus"]
+                state["weeks"][battle_week] = battle
+            else:
+                state["hydra_hit"] = False
+    if selected_world_rosters is None:
+        selected_world_rosters = vampire_world_rosters(realm_week)
     header_cells = "".join(f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>" for creature in CREATURES)
     body_rows = []
     for world_name in vampire_sheet_teams:
-        score = world_scores.get(world_name)
+        state = realm_states[world_name]
+        battle = state["weeks"].get(realm_week)
+        score = battle["scores"].get(world_name) if battle else None
         stolen = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(realm_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") or "—"
         cells = ""
         for creature in CREATURES:
             starting = creature["lives"]
-            if world_name == "McCade" and week_one_preview and realm_week >= 1:
-                remaining = week_one_preview["remaining"].get(creature["name"], starting)
-            else:
-                reported = lives_by_creature.get(creature["name"])
-                remaining = starting if reported is None else max(0, min(starting, int(reported)))
-            cells += f"<td class='life-diamonds' title='{remaining} of {starting} lives remaining'>{life_diamonds(starting, remaining)}</td>"
-        roster_count = len(world_rosters.get(world_name, []))
+            remaining = state["remaining"][creature["name"]]
+            outcome = battle["outcomes"].get(creature["name"], "pending") if battle else "pending"
+            result_text, result_class = {
+                "lost": ("BEAT", "beat"),
+                "hit": ("HIT", "hit"),
+                "survived": ("SAFE", "safe"),
+                "pending": ("—", "pending"),
+            }[outcome]
+            cells += f"<td class='life-diamonds' title='Week {realm_week}: {result_text.lower()} · {remaining} of {starting} lives remaining'>{life_diamonds(starting, remaining)}<small class='{result_class}'>{result_text}</small></td>"
+        roster_count = len(selected_world_rosters.get(world_name, []))
         score_text = f"{score:.2f}" if isinstance(score, (int, float)) else ("No lineup" if roster_count == 0 else "Lineup incomplete" if roster_count < 20 else "Scheduled")
+        if score == 0:
+            score_text += "<small>No FPts yet</small>"
         body_rows.append(f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th><td class='realm-score'>{score_text}</td>{cells}<td class='stolen'>{escape(stolen)}</td></tr>")
     st.markdown(f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th><th>Week {realm_week}</th>{header_cells}<th>Player stolen</th></tr></thead><tbody>{''.join(body_rows)}</tbody></table></div>", unsafe_allow_html=True)
 
