@@ -101,7 +101,7 @@ def followers_left(roster: list[dict], games: list[dict]) -> int:
         team for game in games if not str(game.get("state", "")).startswith("FINAL")
         for team in game["teams"]
     }
-    return sum(team_code(row.get("nfl_team", "")) in pending_teams for row in roster)
+    return sum(not row.get("stolen") and team_code(row.get("nfl_team", "")) in pending_teams for row in roster)
 
 
 def game_marker(game: dict | None) -> tuple[str, str]:

@@ -610,6 +610,63 @@ def player_match_key(name: str) -> str:
     return value
 
 
+def stolen_followers_before(week: int, realm_name: str | None = None) -> dict[str, int]:
+    """Map stolen follower names to their claim week in one Vampire realm."""
+    realm_name = realm_name or active_vampire_name
+    stolen = {}
+    for sheet_row in vampire_sheet_rows:
+        if str(sheet_row.get("Slot", "")).strip().lower() != "stolen":
+            continue
+        try:
+            claimed_week = int(str(sheet_row.get("Week", "")).strip())
+        except (TypeError, ValueError):
+            continue
+        if claimed_week >= int(week):
+            continue
+        name = re.sub(r"\s*\([^)]*\)\s*$", "", str(sheet_row.get(realm_name, "")).strip())
+        key = player_match_key(name)
+        if key:
+            stolen[key] = claimed_week
+    return stolen
+
+
+def mark_stolen_creature_followers(rows: list[dict], week: int, realm_name: str | None = None) -> list[dict]:
+    """Keep stolen followers visible on creature rosters, but score them at zero."""
+    stolen = stolen_followers_before(week, realm_name)
+    if not stolen:
+        return rows
+    creature_names = {creature["name"] for creature in CREATURES}
+    marked = []
+    seen_stolen = set()
+    for original in rows:
+        row = dict(original)
+        follower_key = player_match_key(row.get("player", ""))
+        claimed_week = stolen.get(follower_key)
+        if row.get("team") in creature_names and claimed_week is not None:
+            row["stolen"] = True
+            row["stolen_week"] = claimed_week
+            row["score"] = 0.0
+            seen_stolen.add(follower_key)
+        marked.append(row)
+    # A Fantrax transaction must not erase the historical creature slot.
+    # The original Week 1 roster identifies which creature the follower came from.
+    missing_stolen = set(stolen) - seen_stolen
+    if missing_stolen:
+        original_roster = enrich_roster_rows(load_snapshot().get("rosters", {}).get("1", []))
+        for original in original_roster:
+            follower_key = player_match_key(original.get("player", ""))
+            if original.get("team") not in creature_names or follower_key not in missing_stolen:
+                continue
+            row = dict(original)
+            row["week"] = int(week)
+            row["stolen"] = True
+            row["stolen_week"] = stolen[follower_key]
+            row["score"] = 0.0
+            marked.append(row)
+            missing_stolen.remove(follower_key)
+    return marked
+
+
 def nfl_team_match_key(code: str) -> str:
     """Match the few NFL abbreviations Fantrax and FantasyPros spell differently."""
     value = str(code or "").upper().strip()
@@ -642,6 +699,85 @@ def complete_defense_recommendations(pool: list[dict], taken_teams: set[str]) ->
 
 # Stable per-universe seed for all hidden season power schedules.
 world_seed = hashlib.sha256(f"vampire-hunt-season-2026:{active_vampire_name}".encode()).hexdigest()
+
+
+def life_diamonds(starting_lives: int, remaining_lives: int) -> str:
+    """Keep every starting life visible, hollowing diamonds lost in this realm."""
+    starting = max(0, int(starting_lives))
+    remaining = max(0, min(starting, int(remaining_lives)))
+    return "◆" * remaining + "◇" * (starting - remaining)
+
+
+def mccade_week_one_preview() -> dict | None:
+    """Treat current Week 1 Fantrax FPts as McCade's provisional final result."""
+    if active_vampire_name != "McCade":
+        return None
+    rows, _ = fantrax_roster_for_week(1)
+    rows = enrich_roster_rows(rows)
+    rows, score_source = add_fantrax_player_scores(rows, 1)
+    if score_source != "live":
+        return None
+    rosters = {
+        name: [row for row in rows if row.get("team") == name]
+        for name in [active_vampire_name] + [creature["name"] for creature in CREATURES]
+    }
+    lineups = {name: best_ball_lineup(roster) for name, roster in rosters.items()}
+    if len(rosters[active_vampire_name]) != 20 or len(lineups[active_vampire_name]) != 9:
+        return None
+    base = {
+        name: sum(float(row["score"]) for row in lineup if isinstance(row.get("score"), (int, float)))
+        for name, lineup in lineups.items() if lineup
+    }
+    bonus = {name: 0.0 for name in rosters}
+    knight_lives = next(
+        (row.get("lives_remaining") for row in rosters["The Knight"] if row.get("lives_remaining") is not None),
+        4,
+    )
+    bonus["The Knight"] = float((4 - max(1, min(4, int(knight_lives)))) * 5)
+    bonus["The Gambler"] = float(seeded_pick(1, "gambler-flip", [12, -8], world_seed))
+    vampire_lineup = lineups[active_vampire_name]
+    wizard_target = seeded_pick(1, "wizard-hex", vampire_lineup, world_seed)
+    eligible_positions = {"RB", "WR", "TE"} if wizard_target.get("slot") == "RWT FLEX" else {wizard_target.get("position")}
+    chosen_ids = {row.get("player_id") for row in vampire_lineup}
+    replacements = sorted(
+        [row for row in rosters[active_vampire_name] if row.get("player_id") not in chosen_ids and row.get("position") in eligible_positions],
+        key=_scored_first,
+        reverse=True,
+    )
+    replacement_score = replacements[0].get("score") if replacements else None
+    target_score = wizard_target.get("score")
+    if isinstance(target_score, (int, float)) and isinstance(replacement_score, (int, float)):
+        bonus["The Wizard"] = max(0.0, float(target_score) - float(replacement_score))
+    preliminary = {name: score + bonus[name] for name, score in base.items()}
+    if "The Juggernaut" in base:
+        below = sum(
+            1 for name, total in preliminary.items()
+            if name != "The Juggernaut" and total < base["The Juggernaut"]
+        )
+        bonus["The Juggernaut"] = float(below * 2)
+    scores = {name: score + bonus[name] for name, score in base.items()}
+    vampire_score = scores.get(active_vampire_name)
+    if vampire_score is None:
+        return None
+    outcomes = {}
+    remaining = {}
+    for creature in CREATURES:
+        name = creature["name"]
+        creature_score = scores.get(name)
+        if creature_score is None:
+            outcomes[name] = "pending"
+        elif vampire_score > creature_score:
+            outcomes[name] = "hit" if name == "The Hydra" else "lost"
+        else:
+            outcomes[name] = "survived"
+        remaining[name] = creature["lives"] - (1 if outcomes[name] == "lost" else 0)
+    return {"scores": scores, "outcomes": outcomes, "remaining": remaining}
+
+
+try:
+    week_one_preview = mccade_week_one_preview()
+except Exception:
+    week_one_preview = None
 
 
 st.markdown(
@@ -1156,6 +1292,11 @@ st.markdown(
     .roster-row { display:grid; grid-template-columns:58px minmax(180px,1fr) 100px 110px 90px; align-items:center; min-height:47px; border-bottom:1px solid #272226; }
     .roster-row:last-child { border-bottom:0; }
     .roster-row > div { padding:.62rem .82rem; }
+    .roster-row.stolen-following { background:linear-gradient(90deg,rgba(172,46,68,.25),rgba(38,19,25,.55)); box-shadow:inset 3px 0 #d4546a; }
+    .roster-row.stolen-following .player strong { color:#ffd9df; }
+    .stolen-badge { display:inline-block; margin-left:.6rem; padding:.17rem .4rem; border:1px solid #b74b60; border-radius:3px; background:#521d2b; color:#ffd7dc; font:700 .55rem 'Inter',sans-serif; letter-spacing:.05em; text-transform:uppercase; }
+    .stolen-score-name { color:#ffb6c1 !important; }
+    .stolen-origin { display:block; margin-top:.1rem; color:#a96875; font:500 .57rem 'Inter',sans-serif; }
     .roster-row.header { min-height:34px; background:color-mix(in srgb,var(--team-accent) 12%,#171418); color:#827a7b; font:600 .59rem 'Inter',sans-serif; letter-spacing:.12em; text-transform:uppercase; }
     .roster-player { color:#ddd4cd; font:500 .82rem 'Inter',sans-serif; }
     .roster-meta,.roster-score { color:#807879; font:500 .7rem 'Inter',sans-serif; }
@@ -1193,9 +1334,11 @@ st.markdown(
     .lineup-list { padding:.35rem .8rem; }
     .lineup-row { display:grid; grid-template-columns:68px 1fr 72px; gap:.55rem; align-items:center; min-height:43px; border-bottom:1px solid #292428; }
     .lineup-row:last-child { border-bottom:0; }
+    .lineup-row.stolen-following, .bench-row.stolen-following { background:linear-gradient(90deg,rgba(155,38,60,.22),rgba(30,17,22,.44)); }
     .lineup-slot { color:var(--score-accent); font:700 .58rem 'Inter',sans-serif; letter-spacing:.08em; }
     .lineup-player strong { display:block; color:#dcd3cc; font:500 .78rem 'Inter',sans-serif; }
     .lineup-player span { color:#746d6e; font:500 .59rem 'Inter',sans-serif; }
+    .lineup-player .stolen-origin { color:#bd7d89; }
     .lineup-player .game-meta { display:flex; align-items:center; flex-wrap:wrap; gap:.35rem; margin-top:.12rem; }
     .game-marker { display:inline-flex; align-items:center; padding:.12rem .35rem; border:1px solid #4b4145; border-radius:3px; color:#b9aaa8; background:#211b1e; font:700 .54rem 'Inter',sans-serif; font-style:normal; white-space:nowrap; }
     .game-marker.scheduled { color:#e0bb78; border-color:#70522f; background:#2b2118; }
@@ -1281,7 +1424,7 @@ st.markdown(
     .realm-cross tbody tr.active { background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:inset 3px 0 #cf4058; }
     .realm-cross td { color:#cbbfba; font-weight:700; }
     .realm-cross td.stolen { color:#e6b86a; font-weight:600; min-width:150px; }
-    .realm-cross td.life-dots { color:#d45a68; letter-spacing:.16em; font-size:.95rem; }
+    .realm-cross td.life-diamonds { color:#d45a68; letter-spacing:.12em; font-size:1rem; white-space:nowrap; }
 
     @media (max-width: 760px) {
         .block-container { padding-top: 2rem; }
@@ -1373,11 +1516,12 @@ with overview_tab:
     )
 
     for creature in CREATURES:
-        hearts = "◆" * creature["lives"]
+        lives_left = week_one_preview["remaining"].get(creature["name"], creature["lives"]) if week_one_preview else creature["lives"]
+        hearts = life_diamonds(creature["lives"], lives_left)
         creature_logo = creature.get("logo", DEFAULT_LOGO)
         st.markdown(
             f"""<div class="monster-card" data-sigil="{creature['emoji']}" style="--card-accent:{creature['accent']}">
-                <div class="lives">{creature['lives']} lives <span class="life-pips">{hearts}</span></div>
+                <div class="lives">{lives_left} lives <span class="life-pips" title="{lives_left} of {creature['lives']} lives remain">{hearts}</span></div>
                 <img src="{creature_logo}" alt="{creature['name']} logo">
                 <div><div class="creature-name"><span class="emoji">{creature['emoji']}</span>{escape(team_label(creature['name']))}</div>
                 <div class="ability-line"><strong>{creature['ability']}</strong> — {creature['rule']}</div></div>
@@ -1412,6 +1556,7 @@ with teams_tab:
     roster_rows, roster_source = fantrax_roster_for_week(selected_week)
     roster_rows = enrich_roster_rows(roster_rows)
     roster_rows, player_score_source = add_fantrax_player_scores(roster_rows, selected_week)
+    roster_rows = mark_stolen_creature_followers(roster_rows, selected_week)
     team_roster = [row for row in roster_rows if row.get("team") == selected_name]
     standings, _ = fantrax_standings()
     standing = next((row for row in standings if row.get("team") == selected_name), {})
@@ -1421,11 +1566,13 @@ with teams_tab:
     )
     if is_vampire:
         lives_display = "—"
+    elif week_one_preview and selected_week >= 1:
+        lives_display = str(week_one_preview["remaining"].get(selected_name, selected_team["lives"]))
     elif reported_lives is None:
         lives_display = str(selected_team["lives"])
     else:
         lives_display = str(min(int(reported_lives), int(selected_team["lives"])))
-    condition_display = "HUNTING" if is_vampire else "◆" * int(lives_display)
+    condition_display = "HUNTING" if is_vampire else life_diamonds(selected_team["lives"], int(lives_display))
 
     previous_week = active_week - 1
     weekly_scores = snapshot.get("weekly_scores", {}).get(str(previous_week), []) if previous_week > 0 else []
@@ -1440,6 +1587,11 @@ with teams_tab:
         last_week_detail = "No prior week"
     else:
         last_week_detail = "Awaiting Fantrax score"
+    if week_one_preview and active_week == 1 and selected_name in week_one_preview["scores"]:
+        last_week_display = f'{week_one_preview["scores"][selected_name]:.1f}'
+        rank = 1 + sum(score > week_one_preview["scores"][selected_name] for score in week_one_preview["scores"].values())
+        suffix = "th" if 10 <= rank % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(rank % 10, "th")
+        last_week_detail = f"Week 1 · {rank}{suffix} finish"
     position_order = {position: index for index, (position, _) in enumerate(BASE_ROSTER)}
     team_roster.sort(
         key=lambda row: (
@@ -1447,20 +1599,24 @@ with teams_tab:
             str(row.get("player", "")),
         )
     )
-    roster_rows_html = "".join(
-        f'''<div class="roster-row">
-            <div>{index}</div>
-            <div class="player"><strong>{escape(str(row.get("player") or "Unknown player"))}</strong></div>
-            <div><span class="pos-pill">{escape(str(row.get("position") or "—"))}</span></div>
-            <div>{escape(str(row.get("nfl_team") or "FA"))}</div>
-            <div class="score">{f'{row["score"]:.1f}' if isinstance(row.get("score"), (int, float)) else '—'}</div>
-        </div>'''
-        for index, row in enumerate(team_roster, start=1)
-    )
+    roster_html_parts = []
+    for index, row in enumerate(team_roster, start=1):
+        stolen_badge = f'<span class="stolen-badge">Stolen after Week {row["stolen_week"]}</span>' if row.get("stolen") else ""
+        score_text = f'{row["score"]:.1f}' if isinstance(row.get("score"), (int, float)) else '—'
+        roster_html_parts.append(
+            f'''<div class="roster-row {'stolen-following' if row.get('stolen') else ''}">
+                <div>{index}</div>
+                <div class="player"><strong>{escape(str(row.get("player") or "Unknown follower"))}</strong>{stolen_badge}</div>
+                <div><span class="pos-pill">{escape(str(row.get("position") or "—"))}</span></div>
+                <div>{escape(str(row.get("nfl_team") or "FA"))}</div>
+                <div class="score">{score_text}</div>
+            </div>'''
+        )
+    roster_rows_html = "".join(roster_html_parts)
     if not roster_rows_html:
         roster_rows_html = '<div class="roster-empty"><div><strong>Roster unavailable</strong><br>The last Fantrax snapshot did not contain this team.</div></div>'
     source_label = "Live from Fantrax" if roster_source == "live" else "Saved Fantrax snapshot"
-    roster_note = ""
+    roster_note = "Stolen followers remain visible here but score 0 FPts in this realm." if any(row.get("stolen") for row in team_roster) else ""
     roster_table = f'''<div class="roster-header">
         <div><div class="dossier-label">The active ledger</div><h3>Week {selected_week} roster</h3></div>
         <span class="data-status {roster_source}">{source_label}</span>
@@ -1482,7 +1638,13 @@ with teams_tab:
         for row in active_vampire_lineup
         if isinstance(row.get("score"), (int, float))
     ) or next((row.get("score") for row in standings if row.get("team") == active_vampire_name), None)
-    stolen_weeks: set[int] = set()
+    stolen_through_selected_week = stolen_followers_before(selected_week + 1)
+    stolen_weeks = {
+        stolen_through_selected_week[player_match_key(row.get("player", ""))]
+        for row in team_roster
+        if player_match_key(row.get("player", "")) in stolen_through_selected_week
+        and not is_vampire
+    }
     timeline_bits = []
     for week in range(1, 19):
         status, status_class, symbol = "Scheduled", "scheduled", "·"
@@ -1498,10 +1660,18 @@ with teams_tab:
                     status, status_class, symbol = "Lost a life", "lost", "✕"
                     if selected_name == "The Hydra" and week == active_week:
                         status, status_class, symbol = "Danger: first loss", "danger", "⚠"
-                if week in stolen_weeks:
-                    status, status_class, symbol = "Lost a life and player stolen", "stolen", "☠"
             elif week == active_week:
                 status, status_class, symbol = "Current week", "unknown", "?"
+            if week == 1 and week_one_preview and not is_vampire:
+                outcome = week_one_preview["outcomes"].get(selected_name, "pending")
+                status, status_class, symbol = {
+                    "survived": ("Survived", "survived", "✓"),
+                    "lost": ("Lost a life", "lost", "✕"),
+                    "hit": ("Hydra took a hit; no life lost", "danger", "⚠"),
+                    "pending": ("Score pending", "unknown", "?"),
+                }[outcome]
+            if week in stolen_weeks:
+                status, status_class, symbol = "Lost a life and follower stolen", "stolen", "☠"
         if selected_name == "The Gambler" and week <= active_week:
             gambler_outcome = seeded_pick(week, "gambler-flip", [12, -8], world_seed)
             status = f"Gambler {gambler_outcome:+d}"
@@ -1573,6 +1743,7 @@ with scoreboard_tab:
     score_rosters, score_roster_source = fantrax_roster_for_week(scoreboard_week)
     score_rosters = enrich_roster_rows(score_rosters)
     score_rosters, score_player_source = add_fantrax_player_scores(score_rosters, scoreboard_week)
+    score_rosters = mark_stolen_creature_followers(score_rosters, scoreboard_week)
     scores_revealed = scoreboard_week <= active_week
     nfl_season = int(snapshot.get("season") or 2026)
     try:
@@ -1626,6 +1797,8 @@ with scoreboard_tab:
         (row.get("lives_remaining") for row in knight_roster if row.get("lives_remaining") is not None),
         4,
     )
+    if week_one_preview and scoreboard_week > 1:
+        knight_reported_lives = week_one_preview["remaining"]["The Knight"]
     knight_lives = max(1, min(4, int(knight_reported_lives)))
     bonus_by_team["The Knight"] = float((4 - knight_lives) * 5)
     bonus_notes["The Knight"] = f"Last Stand · {knight_lives} lives"
@@ -1691,14 +1864,18 @@ with scoreboard_tab:
             candidates = by_slot.get(slot, [])
             row = candidates[slot_index] if slot_index < len(candidates) else {}
             used_by_slot[slot] = slot_index + 1
-            player = escape(str(row.get("player") or "Awaiting roster"))
+            if row.get("stolen"):
+                original_name = escape(str(row.get("player") or "Unknown follower"))
+                player_markup = f'<strong class="stolen-score-name">Stolen Player</strong><span class="stolen-origin">{original_name} · taken after Week {row["stolen_week"]}</span>'
+            else:
+                player_markup = f'<strong>{escape(str(row.get("player") or "Awaiting roster"))}</strong>'
             nfl_team = escape(str(row.get("nfl_team") or "—"))
             score = row.get("score")
             score_text = f"{score:.1f}" if isinstance(score, (int, float)) else "—"
             display_slot = "FLX" if slot == "RWT FLEX" else slot
             rendered_rows.append(
-                f'''<div class="lineup-row"><div class="lineup-slot">{display_slot}</div>
-                <div class="lineup-player"><strong>{player}</strong><span class="game-meta">{nfl_team} {game_marker_html(str(row.get('nfl_team') or ''))}</span></div>
+                f'''<div class="lineup-row {'stolen-following' if row.get('stolen') else ''}"><div class="lineup-slot">{display_slot}</div>
+                <div class="lineup-player">{player_markup}<span class="game-meta">{nfl_team} {'' if row.get('stolen') else game_marker_html(str(row.get('nfl_team') or ''))}</span></div>
                 <div class="lineup-points">{score_text}</div></div>'''
             )
         bonus = bonus_by_team.get(team["name"], 0.0)
@@ -1723,11 +1900,17 @@ with scoreboard_tab:
             [row for row in rosters_by_team.get(team["name"], []) if row.get("player_id") not in starters],
             key=lambda row: (position_order.get(row.get("position"), 99), str(row.get("player", ""))),
         )
-        rows = "".join(
-            f'''<div class="bench-row"><span>{escape(str(row.get("position") or "—"))}</span>
-            <strong>{escape(str(row.get("player") or "Awaiting roster"))}<small class="bench-meta">{escape(str(row.get("nfl_team") or "—"))} {game_marker_html(str(row.get('nfl_team') or ''))}</small></strong><b>{f'{row["score"]:.1f}' if isinstance(row.get("score"), (int, float)) else '—'}</b></div>'''
-            for row in bench
-        )
+        bench_rows = []
+        for row in bench:
+            original_name = escape(str(row.get("player") or "Awaiting roster"))
+            stolen_origin = f'<small class="stolen-origin">{original_name} · taken after Week {row["stolen_week"]}</small>' if row.get("stolen") else ""
+            display_name = "Stolen Player" if row.get("stolen") else original_name
+            score_text = f'{row["score"]:.1f}' if isinstance(row.get("score"), (int, float)) else '—'
+            bench_rows.append(
+                f'''<div class="bench-row {'stolen-following' if row.get('stolen') else ''}"><span>{escape(str(row.get("position") or "—"))}</span>
+                <strong class="{'stolen-score-name' if row.get('stolen') else ''}">{display_name}{stolen_origin}<small class="bench-meta">{escape(str(row.get("nfl_team") or "—"))} {'' if row.get('stolen') else game_marker_html(str(row.get('nfl_team') or ''))}</small></strong><b>{score_text}</b></div>'''
+            )
+        rows = "".join(bench_rows)
         empty = "<div class='score-note'>No bench data available.</div>"
         return f'<div class="bench-list"><div class="bench-title">Bench · {len(bench)} players</div>{rows or empty}</div>'
 
@@ -1752,6 +1935,13 @@ with scoreboard_tab:
             pending_html = f'<div class="rank-pending" title="{remaining} followers with an NFL game not final" aria-label="{remaining} followers with an NFL game not final">{remaining}</div>'
         if team["name"] == active_vampire_name:
             status_label, status_class = "", "hunter"
+        elif week_one_preview and scoreboard_week == 1:
+            status_label, status_class = {
+                "survived": ("Survived", "safe"),
+                "lost": ("Lost a life", "danger"),
+                "hit": ("Took a hit", "danger"),
+                "pending": ("Status pending", "unknown"),
+            }[week_one_preview["outcomes"].get(team["name"], "pending")]
         elif rank < vampire_rank:
             status_label, status_class = "Safe", "safe"
         elif rank > vampire_rank:
@@ -1857,13 +2047,13 @@ with scoreboard_tab:
                 if creature_name == "The Guardian":
                     protected_indices = {
                         index for index, _ in sorted(
-                            enumerate(following),
+                            ((index, row) for index, row in enumerate(following) if not row.get("stolen")),
                             key=lambda indexed: _scored_first(indexed[1]),
                             reverse=True,
                         )[:2]
                     }
                 for index, row in enumerate(following):
-                    if index in protected_indices or not row.get("player"):
+                    if row.get("stolen") or index in protected_indices or not row.get("player"):
                         continue
                     option_key = (creature_name, str(row.get("player_id") or row["player"]))
                     claim_options[option_key] = row
@@ -1909,6 +2099,8 @@ with realm_summary_tab:
         scored_roster, _ = add_fantrax_player_scores(world_roster, realm_week)
         lineup = best_ball_lineup(scored_roster)
         world_scores[world_name] = sum(float(row.get("score", 0)) for row in lineup if isinstance(row.get("score"), (int, float)))
+    if week_one_preview and realm_week == 1:
+        world_scores[active_vampire_name] = week_one_preview["scores"].get(active_vampire_name)
     # Keep the currently selected universe perfectly aligned with the main
     # Scoreboard, which is the canonical nine-starter calculation for this page.
     if realm_week == scoreboard_week and len(world_rosters.get(active_vampire_name, [])) == 20 and realm_week <= active_week:
@@ -1920,7 +2112,15 @@ with realm_summary_tab:
     for world_name in vampire_sheet_teams:
         score = world_scores.get(world_name)
         stolen = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(realm_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") or "—"
-        cells = "".join(f"<td class='life-dots' title='{lives_by_creature.get(creature['name'], creature['lives'])} lives'>{'●' * max(0, int(lives_by_creature.get(creature['name'], creature['lives']) or 0))}</td>" for creature in CREATURES)
+        cells = ""
+        for creature in CREATURES:
+            starting = creature["lives"]
+            if world_name == "McCade" and week_one_preview and realm_week >= 1:
+                remaining = week_one_preview["remaining"].get(creature["name"], starting)
+            else:
+                reported = lives_by_creature.get(creature["name"])
+                remaining = starting if reported is None else max(0, min(starting, int(reported)))
+            cells += f"<td class='life-diamonds' title='{remaining} of {starting} lives remaining'>{life_diamonds(starting, remaining)}</td>"
         roster_count = len(world_rosters.get(world_name, []))
         score_text = f"{score:.2f}" if isinstance(score, (int, float)) else ("No lineup" if roster_count == 0 else "Lineup incomplete" if roster_count < 20 else "Scheduled")
         body_rows.append(f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th><td class='realm-score'>{score_text}</td>{cells}<td class='stolen'>{escape(stolen)}</td></tr>")
@@ -1939,6 +2139,7 @@ with available_tab:
     )
 
     available_rosters, _ = fantrax_roster_for_week(available_week)
+    available_rosters = mark_stolen_creature_followers(available_rosters, available_week)
     opponent_rows = [row for row in available_rosters if row.get("team") != active_vampire_name]
     creature_roster_members = {creature["name"]: set() for creature in CREATURES}
     for row in opponent_rows:
@@ -1965,11 +2166,12 @@ with available_tab:
             + ". Recommendations may include followers who are already taken.",
             icon="⚠️",
         )
-    opponent_ids = {str(row.get("player_id", "")) for row in opponent_rows}
-    opponent_names = {player_match_key(row.get("player", "")) for row in opponent_rows}
+    still_owned_opponents = [row for row in opponent_rows if not row.get("stolen")]
+    opponent_ids = {str(row.get("player_id", "")) for row in still_owned_opponents}
+    opponent_names = {player_match_key(row.get("player", "")) for row in still_owned_opponents}
     opponent_dst_teams = {
         nfl_team_match_key(row.get("nfl_team", ""))
-        for row in opponent_rows if row.get("position") == "DST"
+        for row in still_owned_opponents if row.get("position") == "DST"
     }
     try:
         player_pool = fantasypros_weekly_rankings(available_week)
