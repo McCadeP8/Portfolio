@@ -1799,11 +1799,17 @@ with available_tab:
         selected_by_position = {}
         other_by_position = {}
         with st.form("new_vampire_lineup"):
-            team_name = st.selectbox(
-                "Vampire team name",
+            existing_owner = st.selectbox(
+                "Existing owner",
                 vampire_sheet_teams,
                 index=vampire_sheet_teams.index(active_vampire_name) if active_vampire_name in vampire_sheet_teams else 0,
                 key="submission_vampire_team_name",
+            )
+            new_owner_name = st.text_input(
+                "New owner name (if you aren't listed above)",
+                max_chars=40,
+                placeholder="Enter your name to join the hunt",
+                help="A name entered here will be used for this lineup instead of the existing-owner selection.",
             )
             for left_position, right_position in (("QB", "TE"), ("RB", "WR"), ("K", "DST")):
                 pair_columns = st.columns(2)
@@ -1842,6 +1848,7 @@ with available_tab:
             submitted = st.form_submit_button("Submit Lineup", type="primary", width="stretch")
 
         if submitted:
+            team_name = new_owner_name.strip() or existing_owner
             lineup = {}
             errors = []
             for position, (_, required, _) in pool_settings.items():
