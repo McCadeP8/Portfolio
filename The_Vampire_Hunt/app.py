@@ -1575,6 +1575,7 @@ st.markdown(
     .realm-cross td.life-diamonds small.beat { color:#f6a7a9; }
     .realm-cross td.life-diamonds small.safe { color:#8fb4a4; }
     .realm-cross td.life-diamonds small.hit { color:#e7bb70; }
+    .realm-cross td.life-diamonds small.live { color:#b5a8a0; }
     .realm-cross td.realm-score small { display:block; margin-top:.18rem; color:#998e8b; font:.55rem 'Inter',sans-serif; }
 
     @media (max-width: 760px) {
@@ -2247,7 +2248,7 @@ with scoreboard_tab:
 
 with realm_summary_tab:
     realm_week = st.selectbox("Summary week", list(range(1, 19)), index=active_week - 1, format_func=lambda week: f"Week {week}", key="realm_summary_week")
-    st.markdown(f"<div class='realm-intro'><h2>Cross-Realm Summary · Week {realm_week}</h2><p>Each Vampire faces all eleven creatures every week. The result below comes from that realm's lineup, whether or not a follower was stolen.</p></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='realm-intro'><h2>Cross-Realm Summary · Week {realm_week}</h2><p>Each Vampire faces all eleven creatures every week. Scores update live; lives and results settle only after every NFL game is final.</p></div>", unsafe_allow_html=True)
     realm_states = {
         name: {
             "remaining": {creature["name"]: creature["lives"] for creature in CREATURES},
@@ -2258,7 +2259,18 @@ with realm_summary_tab:
         for name in vampire_sheet_teams
     }
     selected_world_rosters = None
+    week_final_by_week = {}
+    prior_weeks_verified = True
     for battle_week in range(1, min(realm_week, active_week) + 1):
+        if battle_week == scoreboard_week:
+            weekly_games = week_games
+        else:
+            try:
+                weekly_games = nfl_week_games(nfl_season, battle_week)
+            except Exception:
+                weekly_games = None
+        week_is_final = games_are_final(weekly_games or []) and prior_weeks_verified
+        week_final_by_week[battle_week] = week_is_final
         weekly_world_rosters = vampire_world_rosters(battle_week)
         if battle_week == realm_week:
             selected_world_rosters = weekly_world_rosters
@@ -2274,37 +2286,45 @@ with realm_summary_tab:
                 state["remaining"], state["hydra_hit"], state["hunter_bonus"],
             )
             if battle is not None:
-                state["remaining"] = battle["remaining"]
-                state["hydra_hit"] = battle["hydra_hit"]
-                state["hunter_bonus"] = battle["hunter_bonus"]
+                if week_is_final:
+                    state["remaining"] = battle["remaining"]
+                    state["hydra_hit"] = battle["hydra_hit"]
+                    state["hunter_bonus"] = battle["hunter_bonus"]
                 state["weeks"][battle_week] = battle
-            else:
+            elif week_is_final:
                 state["hydra_hit"] = False
+        prior_weeks_verified = week_is_final
     if selected_world_rosters is None:
         selected_world_rosters = vampire_world_rosters(realm_week)
+    selected_week_final = week_final_by_week.get(realm_week, False)
     header_cells = "".join(f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>" for creature in CREATURES)
     body_rows = []
     for world_name in vampire_sheet_teams:
         state = realm_states[world_name]
         battle = state["weeks"].get(realm_week)
         score = battle["scores"].get(world_name) if battle else None
-        stolen = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(realm_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") or "—"
+        stolen = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(realm_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") if selected_week_final else ""
+        stolen = stolen or "—"
         cells = ""
         for creature in CREATURES:
             starting = creature["lives"]
             remaining = state["remaining"][creature["name"]]
-            outcome = battle["outcomes"].get(creature["name"], "pending") if battle else "pending"
+            outcome = battle["outcomes"].get(creature["name"], "pending") if battle and selected_week_final else "pending"
             result_text, result_class = {
                 "lost": ("BEAT", "beat"),
                 "hit": ("HIT", "hit"),
                 "survived": ("SAFE", "safe"),
                 "pending": ("—", "pending"),
             }[outcome]
+            if battle and not selected_week_final:
+                result_text, result_class = "LIVE", "live"
             cells += f"<td class='life-diamonds' title='Week {realm_week}: {result_text.lower()} · {remaining} of {starting} lives remaining'>{life_diamonds(starting, remaining)}<small class='{result_class}'>{result_text}</small></td>"
         roster_count = len(selected_world_rosters.get(world_name, []))
         score_text = f"{score:.2f}" if isinstance(score, (int, float)) else ("No lineup" if roster_count == 0 else "Lineup incomplete" if roster_count < 20 else "Scheduled")
         if score == 0:
             score_text += "<small>No FPts yet</small>"
+        elif isinstance(score, (int, float)) and not selected_week_final:
+            score_text += "<small>Live score</small>"
         body_rows.append(f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th><td class='realm-score'>{score_text}</td>{cells}<td class='stolen'>{escape(stolen)}</td></tr>")
     st.markdown(f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th><th>Week {realm_week}</th>{header_cells}<th>Player stolen</th></tr></thead><tbody>{''.join(body_rows)}</tbody></table></div>", unsafe_allow_html=True)
 
