@@ -529,11 +529,11 @@ def _scored_first(row: dict) -> tuple[bool, float, str]:
 
 
 def best_ball_lineup(roster: list[dict]) -> list[dict]:
-    """Choose the nine best-ball starters, filling the flex after fixed slots."""
+    """Choose eligible best-ball starters, filling the flex after fixed slots."""
     pools: dict[str, list[dict]] = {}
     for position in ("QB", "RB", "WR", "TE", "DST", "K"):
         pools[position] = sorted(
-            [dict(row) for row in roster if row.get("position") == position],
+            [dict(row) for row in roster if row.get("position") == position and not row.get("stolen")],
             key=_scored_first,
             reverse=True,
         )
@@ -1897,7 +1897,7 @@ with scoreboard_tab:
         starters = {row.get("player_id") for row in lineups.get(team["name"], [])}
         position_order = {position: index for index, (position, _) in enumerate(BASE_ROSTER)}
         bench = sorted(
-            [row for row in rosters_by_team.get(team["name"], []) if row.get("player_id") not in starters],
+            [row for row in rosters_by_team.get(team["name"], []) if row.get("stolen") or row.get("player_id") not in starters],
             key=lambda row: (position_order.get(row.get("position"), 99), str(row.get("player", ""))),
         )
         bench_rows = []
