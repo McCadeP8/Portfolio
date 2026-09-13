@@ -801,10 +801,9 @@ def mccade_week_one_preview() -> dict | None:
     return {"scores": scores, "outcomes": outcomes, "remaining": remaining}
 
 
-try:
-    week_one_preview = mccade_week_one_preview()
-except Exception:
-    week_one_preview = None
+# Week 1 is live again. Results and life changes stay pending until the normal
+# weekly reveal; keep the preview helper available for a future finalization.
+week_one_preview = None
 
 
 def calculate_realm_battle(
