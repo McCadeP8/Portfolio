@@ -887,6 +887,45 @@ def calculate_realm_battle(
     }
 
 
+def hydra_life_due_after(prior_wins: list[bool]) -> bool:
+    """A first consecutive win is a hit; the second removes one Hydra life."""
+    hit_pending = False
+    lives_left = 2
+    for win in prior_wins:
+        if not win:
+            hit_pending = False
+        elif hit_pending:
+            lives_left -= 1
+            hit_pending = False
+        else:
+            hit_pending = True
+    return hit_pending and lives_left > 0
+
+
+def hydra_life_due_this_week(week: int, realm_name: str) -> bool:
+    """Verify the selected realm's earlier Fantrax results before unlocking Hydra tribute."""
+    if week <= 1:
+        return False
+    prior_wins = []
+    for prior_week in range(1, week):
+        rows, _ = fantrax_roster_for_week(prior_week)
+        rows = enrich_roster_rows(rows)
+        rows, score_source = add_fantrax_player_scores(rows, prior_week)
+        if score_source != "live":
+            return False
+        rows = mark_stolen_creature_followers(rows, prior_week, realm_name)
+        vampire_roster = [row for row in rows if row.get("team") == realm_name]
+        hydra_roster = [row for row in rows if row.get("team") == "The Hydra"]
+        vampire_lineup = best_ball_lineup(vampire_roster)
+        hydra_lineup = best_ball_lineup(hydra_roster)
+        if len(vampire_roster) != 20 or len(vampire_lineup) != 9 or len(hydra_lineup) != 9:
+            return False
+        vampire_score = sum(float(row["score"]) for row in vampire_lineup if isinstance(row.get("score"), (int, float)))
+        hydra_score = sum(float(row["score"]) for row in hydra_lineup if isinstance(row.get("score"), (int, float)))
+        prior_wins.append(vampire_score > hydra_score)
+    return hydra_life_due_after(prior_wins)
+
+
 st.markdown(
     """
     <style>
@@ -2104,8 +2143,12 @@ with scoreboard_tab:
     with board_cols[2]:
         st.markdown(league_board, unsafe_allow_html=True)
 
-    st.divider()
-    st.subheader("Claim your tribute")
+    # Keep the entire tribute interface hidden until the full NFL week is final.
+    # Missing/incomplete NFL data must never unlock a claim.
+    tribute_ready = games_are_final(week_games or [])
+    if tribute_ready:
+        st.divider()
+        st.subheader("Claim your tribute")
     recorded_tribute = next(
         (
             str(row.get(active_vampire_name, "")).strip()
@@ -2118,7 +2161,9 @@ with scoreboard_tab:
     )
     tribute_key = f"tribute:{active_vampire_name}:{scoreboard_week}"
     claim_lock = None
-    if recorded_tribute:
+    if not tribute_ready:
+        claim_lock = "pending"
+    elif recorded_tribute:
         st.success(f"Week {scoreboard_week} tribute recorded: {recorded_tribute}")
         claim_lock = "recorded"
     elif st.session_state.get(tribute_key):
@@ -2131,12 +2176,14 @@ with scoreboard_tab:
     elif score_player_source != "live" or len(lineups.get(active_vampire_name, [])) != 9:
         claim_lock = "Fantrax follower scores are unavailable. The claim stays locked until scores can be verified."
 
-    if claim_lock and claim_lock not in {"recorded", "sent"}:
+    if claim_lock and claim_lock not in {"recorded", "sent", "pending"}:
         st.info(claim_lock)
     elif not claim_lock:
-        if week_games is None or not games_are_final(week_games):
-            st.caption("Early tribute preview · This uses the scores right now, even though NFL games are not all final. The standings may change.")
         vampire_total = adjusted_scores.get(active_vampire_name)
+        try:
+            hydra_claimable = hydra_life_due_this_week(scoreboard_week, active_vampire_name)
+        except Exception:
+            hydra_claimable = False
         eligible_creatures = [
             creature for creature in CREATURES
             if isinstance(vampire_total, (int, float))
@@ -2144,11 +2191,12 @@ with scoreboard_tab:
             and vampire_total > adjusted_scores[creature["name"]]
             and len(lineups.get(creature["name"], [])) == 9
             and rosters_by_team.get(creature["name"])
+            and (creature["name"] != "The Hydra" or hydra_claimable)
         ]
         if not eligible_creatures:
-            st.info("This Vampire does not currently outscore a creature, so there is no tribute to claim yet.")
+            st.info("No creature lost a life to this Vampire this week, so there is no tribute to claim.")
         else:
-            st.caption("Every creature you currently outscore is in the list. Followers are sorted by this week's Fantrax FPts; the Guardian's top two scorers are protected.")
+            st.caption("Choose from creatures that lost a life this week. A first hit on Hydra does not unlock its followers; the Guardian's top two scorers are protected.")
             claim_options = {}
             for creature in eligible_creatures:
                 creature_name = creature["name"]
