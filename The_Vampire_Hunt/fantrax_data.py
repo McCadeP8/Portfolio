@@ -304,7 +304,10 @@ def fetch_fantasypros_weekly_rankings(week: int) -> list[dict[str, Any]]:
     """Fetch FantasyPros expert-consensus weekly ranking projections, not actuals."""
     # The league awards one point per reception, so use FantasyPros' PPR
     # weekly projection pages (not the post-game leaders/actuals pages).
-    position_pages = {position: f"https://www.fantasypros.com/nfl/rankings/ppr-{position.lower()}.php" for position in ("QB", "RB", "WR", "TE", "K", "DST")}
+    position_pages = {
+        position: f"https://www.fantasypros.com/nfl/rankings/{'ppr-' if position in {'RB', 'WR', 'TE'} else ''}{position.lower()}.php"
+        for position in ("QB", "RB", "WR", "TE", "K", "DST")
+    }
     players: list[dict[str, Any]] = []
     for position, url in position_pages.items():
         try:

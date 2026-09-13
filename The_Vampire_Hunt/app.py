@@ -586,6 +586,12 @@ def player_match_key(name: str) -> str:
     value = re.sub(r"\b(jr|sr|ii|iii|iv|v)\.?\b", "", value)
     value = re.sub(r"[^a-z0-9]", "", value)
     return value
+
+
+def nfl_team_match_key(code: str) -> str:
+    """Match the few NFL abbreviations Fantrax and FantasyPros spell differently."""
+    value = str(code or "").upper().strip()
+    return {"JAC": "JAX"}.get(value, value)
 # Stable per-universe seed for all hidden season power schedules.
 world_seed = hashlib.sha256(f"vampire-hunt-season-2026:{active_vampire_name}".encode()).hexdigest()
 
@@ -1760,8 +1766,37 @@ with available_tab:
 
     available_rosters, _ = fantrax_roster_for_week(available_week)
     opponent_rows = [row for row in available_rosters if row.get("team") != active_vampire_name]
+    creature_roster_members = {creature["name"]: set() for creature in CREATURES}
+    for row in opponent_rows:
+        team_name = row.get("team")
+        if team_name in creature_roster_members:
+            follower_id = str(row.get("player_id") or player_match_key(row.get("player", "")))
+            if follower_id:
+                creature_roster_members[team_name].add(follower_id)
+    changed_rosters = [
+        f"{team_label(name)} ({len(members)} followers)"
+        for name, members in creature_roster_members.items()
+        if members and len(members) != 20
+    ]
+    if changed_rosters:
+        st.warning(
+            "Creature roster alert: " + ", ".join(changed_rosters)
+            + ". Each creature should have 20 followers; check these rosters before choosing your lineup.",
+            icon="⚠️",
+        )
+    missing_rosters = [team_label(name) for name, members in creature_roster_members.items() if not members]
+    if missing_rosters:
+        st.warning(
+            "Could not verify the roster for " + ", ".join(missing_rosters)
+            + ". Recommendations may include followers who are already taken.",
+            icon="⚠️",
+        )
     opponent_ids = {str(row.get("player_id", "")) for row in opponent_rows}
     opponent_names = {player_match_key(row.get("player", "")) for row in opponent_rows}
+    opponent_dst_teams = {
+        nfl_team_match_key(row.get("nfl_team", ""))
+        for row in opponent_rows if row.get("position") == "DST"
+    }
     try:
         player_pool = fantasypros_weekly_rankings(available_week)
     except Exception:
@@ -1771,14 +1806,15 @@ with available_tab:
         row for row in player_pool
         if str(row.get("player_id", "")) not in opponent_ids
         and player_match_key(row.get("player", "")) not in opponent_names
+        and not (row.get("position") == "DST" and nfl_team_match_key(row.get("nfl_team", "")) in opponent_dst_teams)
     ]
     pool_settings = {
         "QB": (8, 2, "#b94a5e"),
         "TE": (8, 2, "#349b8d"),
         "RB": (20, 6, "#d2783d"),
         "WR": (20, 6, "#8b70d1"),
-        "K": (8, 2, "#c89b43"),
-        "DST": (8, 2, "#4d88b7"),
+        "K": (10, 2, "#c89b43"),
+        "DST": (10, 2, "#4d88b7"),
     }
 
     if not player_pool:
