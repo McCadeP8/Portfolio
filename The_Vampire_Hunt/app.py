@@ -17,7 +17,7 @@ from fantrax_data import (
     enrich_roster_rows,
     load_snapshot,
 )
-from nfl_games import fetch_week_games, followers_left, games_are_final
+from nfl_games import fetch_week_games, followers_left, game_marker, games_are_final, team_code
 
 # Keep the app bootable while Streamlit Cloud rolls from an older data module.
 # Player scores become available automatically as soon as the updated helper is
@@ -1196,6 +1196,12 @@ st.markdown(
     .lineup-slot { color:var(--score-accent); font:700 .58rem 'Inter',sans-serif; letter-spacing:.08em; }
     .lineup-player strong { display:block; color:#dcd3cc; font:500 .78rem 'Inter',sans-serif; }
     .lineup-player span { color:#746d6e; font:500 .59rem 'Inter',sans-serif; }
+    .lineup-player .game-meta { display:flex; align-items:center; flex-wrap:wrap; gap:.35rem; margin-top:.12rem; }
+    .game-marker { display:inline-flex; align-items:center; padding:.12rem .35rem; border:1px solid #4b4145; border-radius:3px; color:#b9aaa8; background:#211b1e; font:700 .54rem 'Inter',sans-serif; font-style:normal; white-space:nowrap; }
+    .game-marker.scheduled { color:#e0bb78; border-color:#70522f; background:#2b2118; }
+    .game-marker.live { color:#a8e8ba; border-color:#417950; background:#1a2a1e; }
+    .game-marker.final { color:#9e9798; border-color:#484245; background:#1d1a1d; }
+    .game-marker.bye { color:#777073; border-color:#393438; background:#171518; }
     .lineup-points { color:#e9dfd6; font:600 .86rem 'Inter',sans-serif; text-align:right; padding-right:.28rem; }
     .lineup-row.bonus { margin-top:.35rem; background:color-mix(in srgb,var(--score-accent) 8%,#151215); border-top:1px solid color-mix(in srgb,var(--score-accent) 42%,#302a2e); }
     .score-total { display:flex; align-items:end; justify-content:space-between; padding:1rem; background:#0c0b0d; border-top:1px solid #332c31; }
@@ -1229,6 +1235,7 @@ st.markdown(
     .bench-row { display:grid; grid-template-columns:52px 1fr 52px; gap:.5rem; align-items:center; min-height:35px; border-top:1px solid #282327; }
     .bench-row span { color:#756e6f; font:600 .55rem 'Inter',sans-serif; }
     .bench-row strong { color:#c8bfb9; font:500 .68rem 'Inter',sans-serif; }
+    .bench-row .bench-meta { display:inline-flex; align-items:center; gap:.28rem; margin-left:.35rem; color:#777071; font:500 .55rem 'Inter',sans-serif; }
     .bench-row b { color:#a49b97; font:600 .67rem 'Inter',sans-serif; text-align:right; }
     .opponent-picker-title { color:#d9c9c0; font:600 .62rem 'Inter',sans-serif; letter-spacing:.14em; text-transform:uppercase; margin-bottom:.35rem; }
     div[data-testid="stVerticalBlockBorderWrapper"]:has(.opponent-picker-title) { min-height:108px; box-sizing:border-box; background:linear-gradient(145deg,#24151b,#130f12); border:1px solid #8f3a4c; border-radius:6px; padding:.55rem .7rem .7rem; box-shadow:0 0 22px rgba(159,38,57,.18); }
@@ -1568,15 +1575,8 @@ with scoreboard_tab:
     nfl_season = int(snapshot.get("season") or 2026)
     try:
         week_games = nfl_week_games(nfl_season, scoreboard_week)
-        nfl_status_error = None
     except Exception:
         week_games = None
-        nfl_status_error = "NFL game status is temporarily unavailable. Tribute claims remain locked."
-    if week_games is not None:
-        final_games = sum(str(game.get("state", "")).startswith("FINAL") for game in week_games)
-        st.caption(f"NFL game watch · {final_games} of {len(week_games)} games final · game status only; scores remain from Fantrax")
-    else:
-        st.warning(nfl_status_error)
 
     rosters_by_team = {
         team["name"]: [row for row in score_rosters if row.get("team") == team["name"]]
@@ -1663,6 +1663,19 @@ with scoreboard_tab:
         for team in ALL_TEAMS
     }
 
+    game_by_team = {
+        team_code(nfl_team): game
+        for game in (week_games or [])
+        for nfl_team in game["teams"]
+    }
+
+    def game_marker_html(nfl_team: str) -> str:
+        code = team_code(nfl_team)
+        if week_games is None or code in {"", "FA", "—"}:
+            return ""
+        label, status_class = game_marker(game_by_team.get(code))
+        return f'<em class="game-marker {status_class}">{escape(label)}</em>'
+
     def lineup_html(team: dict, role: str, include_head: bool = True) -> str:
         display_name = active_vampire_label if team["name"] == active_vampire_name else team["name"]
         rows = lineups.get(team["name"], [])
@@ -1683,7 +1696,7 @@ with scoreboard_tab:
             display_slot = "FLX" if slot == "RWT FLEX" else slot
             rendered_rows.append(
                 f'''<div class="lineup-row"><div class="lineup-slot">{display_slot}</div>
-                <div class="lineup-player"><strong>{player}</strong><span>{nfl_team}</span></div>
+                <div class="lineup-player"><strong>{player}</strong><span class="game-meta">{nfl_team} {game_marker_html(str(row.get('nfl_team') or ''))}</span></div>
                 <div class="lineup-points">{score_text}</div></div>'''
             )
         bonus = bonus_by_team.get(team["name"], 0.0)
@@ -1710,7 +1723,7 @@ with scoreboard_tab:
         )
         rows = "".join(
             f'''<div class="bench-row"><span>{escape(str(row.get("position") or "—"))}</span>
-            <strong>{escape(str(row.get("player") or "Awaiting roster"))}</strong><b>{f'{row["score"]:.1f}' if isinstance(row.get("score"), (int, float)) else '—'}</b></div>'''
+            <strong>{escape(str(row.get("player") or "Awaiting roster"))}<small class="bench-meta">{escape(str(row.get("nfl_team") or "—"))} {game_marker_html(str(row.get('nfl_team') or ''))}</small></strong><b>{f'{row["score"]:.1f}' if isinstance(row.get("score"), (int, float)) else '—'}</b></div>'''
             for row in bench
         )
         empty = "<div class='score-note'>No bench data available.</div>"
@@ -1729,16 +1742,13 @@ with scoreboard_tab:
     for rank, team in enumerate(ranked_teams, start=1):
         total = adjusted_scores.get(team["name"])
         total_text = f"{total:.2f}" if isinstance(total, (int, float)) else "—"
-        bonus = bonus_by_team.get(team["name"], 0.0)
         if week_games is None:
             detail = "NFL status unavailable"
         elif not rosters_by_team.get(team["name"]):
             detail = "No following submitted" if team["name"] == active_vampire_name else "Roster unavailable"
         else:
             remaining = followers_left(rosters_by_team[team["name"]], week_games)
-            detail = f"{remaining} follower{'s' if remaining != 1 else ''} left to play"
-            if bonus:
-                detail += f" · bonus {bonus:+.1f}"
+            detail = f"{remaining} follower{'s' if remaining != 1 else ''} not final"
         if team["name"] == active_vampire_name:
             status_label, status_class = "", "hunter"
         elif rank < vampire_rank:
@@ -1762,9 +1772,7 @@ with scoreboard_tab:
     board_cols = st.columns([1.8, 1.8, 1.4], gap="medium")
     with board_cols[0]:
         with st.container(border=True):
-            vampire_left = followers_left(rosters_by_team[active_vampire_name], week_games) if week_games is not None else None
-            vampire_left_text = f" · {vampire_left} followers left" if vampire_left is not None and rosters_by_team[active_vampire_name] else ""
-            st.markdown(f'<div class="opponent-picker-title">Week {scoreboard_week}{vampire_left_text}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="opponent-picker-title">Week {scoreboard_week}</div>', unsafe_allow_html=True)
             picker_cols = st.columns([.38, .62], gap="small")
             with picker_cols[0]:
                 st.image(VAMPIRE_TEAM["logo"], width=96)
@@ -1776,9 +1784,7 @@ with scoreboard_tab:
         opponent_name = st.session_state.get("scoreboard_opponent", "The King")
         opponent_team = next(team for team in CREATURES if team["name"] == opponent_name)
         with st.container(border=True):
-            opponent_left = followers_left(rosters_by_team[opponent_name], week_games) if week_games is not None else None
-            opponent_left_text = f" · {opponent_left} followers left" if opponent_left is not None and rosters_by_team[opponent_name] else ""
-            st.markdown(f'<div class="opponent-picker-title">Choose your prey{opponent_left_text}</div>', unsafe_allow_html=True)
+            st.markdown('<div class="opponent-picker-title">Choose your prey</div>', unsafe_allow_html=True)
             picker_cols = st.columns([.38, .62], gap="small")
             with picker_cols[0]:
                 st.image(opponent_team["logo"], width=96)

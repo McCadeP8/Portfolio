@@ -1,8 +1,10 @@
 """Read game status, but never fantasy scoring, from the official NFL scoreboard."""
 
+from datetime import datetime
 from html.parser import HTMLParser
 import json
 import re
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
 
@@ -30,7 +32,7 @@ class _ScoreboardParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "li":
             if self.card is None:
-                self.card = {"teams": []}
+                self.card = {"teams": [], "text_parts": []}
                 self.depth = 1
             else:
                 self.depth += 1
@@ -38,6 +40,8 @@ class _ScoreboardParser(HTMLParser):
         if self.card is None:
             return
         attributes = dict(attrs)
+        if tag == "time" and attributes.get("datetime"):
+            self.card["kickoff"] = str(attributes["datetime"])
         if tag == "a" and attributes.get("data-analytics"):
             try:
                 analytics = json.loads(attributes["data-analytics"] or "{}")
@@ -54,6 +58,10 @@ class _ScoreboardParser(HTMLParser):
                 code = team_code(match.group(1))
                 if code not in self.card["teams"]:
                     self.card["teams"].append(code)
+
+    def handle_data(self, data: str) -> None:
+        if self.card is not None and data.strip():
+            self.card["text_parts"].append(data.strip())
 
     def handle_endtag(self, tag: str) -> None:
         if tag != "li" or self.card is None:
@@ -94,3 +102,32 @@ def followers_left(roster: list[dict], games: list[dict]) -> int:
         for team in game["teams"]
     }
     return sum(team_code(row.get("nfl_team", "")) in pending_teams for row in roster)
+
+
+def game_marker(game: dict | None) -> tuple[str, str]:
+    """Return a short, human-readable status and styling key for an NFL game."""
+    if not game:
+        return "Bye", "bye"
+    state = str(game.get("state") or "").upper()
+    if state.startswith("FINAL"):
+        return "Final", "final"
+    if state in {"SCHEDULED", "PREGAME", "PRE"}:
+        kickoff = game.get("kickoff")
+        if kickoff:
+            try:
+                eastern = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00")).astimezone(ZoneInfo("America/New_York"))
+                hour = eastern.hour % 12 or 12
+                time_text = f"{hour}:{eastern.minute:02d}" if eastern.minute else str(hour)
+                meridiem = "AM" if eastern.hour < 12 else "PM"
+                return f"{eastern:%a} {time_text} {meridiem} ET", "scheduled"
+            except (ValueError, TypeError, KeyError, ZoneInfoNotFoundError):
+                pass
+        return "Scheduled", "scheduled"
+    if "HALF" in state:
+        return "Halftime", "live"
+    parts = [str(part).upper() for part in game.get("text_parts", [])]
+    for index, part in enumerate(parts):
+        if re.fullmatch(r"Q[1-4]|OT", part):
+            clock = next((piece for piece in parts[index + 1:index + 5] if re.fullmatch(r"\d{1,2}:\d{2}", piece)), None)
+            return (f"{part} {clock}" if clock else part), "live"
+    return "Live", "live"
