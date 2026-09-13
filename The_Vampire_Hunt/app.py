@@ -512,8 +512,8 @@ def send_tribute_to_discord(owner: str, week: int, creature: str, follower: str)
     if not webhook_url:
         raise RuntimeError("The Discord webhook is not configured.")
     message = (
-        f"🩸 **Week {week} tribute — {owner} the Vampire**\n"
-        f"Claimed **{follower}** from **{team_label(creature)}**.\n"
+        f"🩸 **{owner} the Vampire has stolen {follower} from {team_label(creature)}!**\n"
+        f"Week {week} · Tribute claimed using the current scoreboard.\n"
         f"Sheet entry: `{owner}` · Week `{week}` · `Stolen` → `{follower}`"
     )
     response = requests.post(webhook_url, json={"username": "The Vampire Hunt", "content": message}, timeout=15)
@@ -1211,17 +1211,19 @@ st.markdown(
     .league-board { --score-accent:#9f2639; min-height:1035px; box-sizing:border-box; padding:.7rem; background:linear-gradient(160deg,#241117,#0e0d0f 68%); }
     .league-board-title { color:#f0e2d9; font:700 1.8rem 'Cormorant Garamond',serif; margin:.15rem .25rem .7rem; }
     .rank-tiles { display:grid; height:calc(100% - 3rem); grid-template-rows:repeat(12,minmax(0,1fr)); gap:.45rem; }
-    .rank-tile { position:relative; display:grid; grid-template-columns:26px 1fr auto; gap:.5rem; align-items:center; min-height:55px; padding:.48rem .58rem; overflow:hidden; background:linear-gradient(100deg,color-mix(in srgb,var(--rank-accent) 20%,#171418),#111012 75%); border:1px solid color-mix(in srgb,var(--rank-accent) 35%,#2d282c); border-radius:5px; }
+    .rank-tile { position:relative; display:grid; grid-template-columns:26px minmax(0,1fr) 28px auto; gap:.45rem; align-items:center; min-height:55px; padding:.48rem .58rem; overflow:hidden; background:linear-gradient(100deg,color-mix(in srgb,var(--rank-accent) 20%,#171418),#111012 75%); border:1px solid color-mix(in srgb,var(--rank-accent) 35%,#2d282c); border-radius:5px; }
     .rank-team { min-width:0; }
-    .rank-score { white-space:nowrap; }
+    .rank-score { grid-column:4; white-space:nowrap; }
     .rank-tile.vampire-rank { border-color:#cf4058; background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:0 0 15px rgba(190,40,64,.25); }
     .rank-tile.vampire-rank:after { content:none; }
-    .rank-tile.vampire-rank { min-height:75px; grid-template-columns:28px 1fr auto; padding:.55rem .62rem; }
+    .rank-tile.vampire-rank { min-height:75px; grid-template-columns:28px minmax(0,1fr) 30px auto; padding:.55rem .62rem; }
     .rank-tile.vampire-rank .rank-team strong { color:#fff0e9; font-size:.98rem; }
     .rank-tile.vampire-rank .rank-team span { color:#e28b98; }
     .rank-tile.vampire-rank .rank-number { font-size:.82rem; }
     .rank-tile.vampire-rank .rank-score { color:#ffb5bd; font-size:1.05rem; }
     .rank-number { color:var(--rank-accent); font:700 .76rem 'Inter',sans-serif; text-align:center; }
+    .rank-pending { display:grid; place-items:center; width:27px; height:27px; border:1px solid color-mix(in srgb,var(--rank-accent) 66%,#4b4145); border-radius:99px; color:#f4e9e2; background:color-mix(in srgb,var(--rank-accent) 28%,#1b1619); font:700 .72rem 'Inter',sans-serif; box-shadow:0 0 11px color-mix(in srgb,var(--rank-accent) 16%,transparent); }
+    .rank-tile.vampire-rank .rank-pending { width:29px; height:29px; color:#fff; border-color:#e05268; background:#802338; box-shadow:0 0 14px rgba(224,82,104,.38); }
     .rank-team strong { display:block; overflow:hidden; color:#ddd3cc; font:600 .86rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
     .rank-team span { display:block; overflow:hidden; color:#746c6e; font:500 .55rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
     .rank-team span.rank-status { font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
@@ -1742,13 +1744,12 @@ with scoreboard_tab:
     for rank, team in enumerate(ranked_teams, start=1):
         total = adjusted_scores.get(team["name"])
         total_text = f"{total:.2f}" if isinstance(total, (int, float)) else "—"
-        if week_games is None:
-            detail = "NFL status unavailable"
-        elif not rosters_by_team.get(team["name"]):
-            detail = "No following submitted" if team["name"] == active_vampire_name else "Roster unavailable"
-        else:
+        bonus = bonus_by_team.get(team["name"], 0.0)
+        detail = f"Bonus {bonus:+.1f}" if bonus else "No bonus"
+        pending_html = ""
+        if week_games is not None and rosters_by_team.get(team["name"]):
             remaining = followers_left(rosters_by_team[team["name"]], week_games)
-            detail = f"{remaining} follower{'s' if remaining != 1 else ''} not final"
+            pending_html = f'<div class="rank-pending" title="{remaining} followers with an NFL game not final" aria-label="{remaining} followers with an NFL game not final">{remaining}</div>'
         if team["name"] == active_vampire_name:
             status_label, status_class = "", "hunter"
         elif rank < vampire_rank:
@@ -1762,6 +1763,7 @@ with scoreboard_tab:
             f'''<div class="rank-tile {'vampire-rank' if team['name'] == active_vampire_name else ''}" style="--rank-accent:{team['accent']}">
                 <div class="rank-number">{rank}</div>
                 <div class="rank-team"><strong>{team['emoji']} {escape(team_label(team['name']))}</strong>{status_html}<span>{detail}</span></div>
+                {pending_html}
                 <div class="rank-score">{total_text}</div>
             </div>'''
         )
@@ -1822,24 +1824,18 @@ with scoreboard_tab:
     elif st.session_state.get(tribute_key):
         st.success(f"Tribute sent: {st.session_state[tribute_key]}. It will appear here after the realm sheet is updated.")
         claim_lock = "sent"
-    elif week_games is None:
-        claim_lock = "NFL game status cannot be verified right now. The claim stays locked."
-    elif not games_are_final(week_games):
-        claim_lock = f"The hunt is still underway. Wait until all {len(week_games)} NFL games in Week {scoreboard_week} are final."
     elif scoreboard_week > active_week:
         claim_lock = "This week has not begun."
     elif len(rosters_by_team.get(active_vampire_name, [])) != 20:
         claim_lock = "A complete 20-follower Vampire lineup is needed before claiming tribute."
-    elif (
-        score_player_source != "live"
-        or len(lineups.get(active_vampire_name, [])) != 9
-        or not all(isinstance(row.get("score"), (int, float)) for row in lineups[active_vampire_name])
-    ):
+    elif score_player_source != "live" or len(lineups.get(active_vampire_name, [])) != 9:
         claim_lock = "Fantrax follower scores are unavailable. The claim stays locked until scores can be verified."
 
     if claim_lock and claim_lock not in {"recorded", "sent"}:
         st.info(claim_lock)
     elif not claim_lock:
+        if week_games is None or not games_are_final(week_games):
+            st.caption("Early tribute preview · This uses the scores right now, even though NFL games are not all final. The standings may change.")
         vampire_total = adjusted_scores.get(active_vampire_name)
         eligible_creatures = [
             creature for creature in CREATURES
@@ -1847,73 +1843,59 @@ with scoreboard_tab:
             and isinstance(adjusted_scores.get(creature["name"]), (int, float))
             and vampire_total > adjusted_scores[creature["name"]]
             and len(lineups.get(creature["name"], [])) == 9
-            and all(isinstance(row.get("score"), (int, float)) for row in lineups[creature["name"]])
             and rosters_by_team.get(creature["name"])
         ]
-        # Hydra's first defeat only wounds it. Its following opens to tribute
-        # only when this week's defeat follows another defeat immediately.
-        hydra = next((team for team in eligible_creatures if team["name"] == "The Hydra"), None)
-        if hydra:
-            hydra_vulnerable = False
-            if scoreboard_week > 1:
-                previous_rows, _ = fantrax_roster_for_week(scoreboard_week - 1)
-                previous_rows = enrich_roster_rows(previous_rows)
-                previous_rows, previous_scores_source = add_fantrax_player_scores(previous_rows, scoreboard_week - 1)
-                prior_vampire = [row for row in previous_rows if row.get("team") == active_vampire_name]
-                prior_hydra = [row for row in previous_rows if row.get("team") == "The Hydra"]
-                prior_vampire_lineup = best_ball_lineup(prior_vampire)
-                prior_hydra_lineup = best_ball_lineup(prior_hydra)
-                if (
-                    previous_scores_source == "live"
-                    and len(prior_vampire) == 20
-                    and len(prior_vampire_lineup) == 9
-                    and len(prior_hydra_lineup) == 9
-                    and all(isinstance(row.get("score"), (int, float)) for row in prior_vampire_lineup + prior_hydra_lineup)
-                ):
-                    hydra_vulnerable = sum(float(row["score"]) for row in prior_vampire_lineup) > sum(float(row["score"]) for row in prior_hydra_lineup)
-            if not hydra_vulnerable:
-                eligible_creatures.remove(hydra)
-
         if not eligible_creatures:
-            st.info("No creature has lost a life to this Vampire this week, so there is no tribute to claim.")
+            st.info("This Vampire does not currently outscore a creature, so there is no tribute to claim yet.")
         else:
-            st.caption("Choose one follower from one creature you defeated. The Guardian's two highest scorers are protected.")
-            claim_creature = st.selectbox(
-                "Creature to claim from",
-                [creature["name"] for creature in eligible_creatures],
-                format_func=team_label,
-                key=f"claim_creature:{active_vampire_name}:{scoreboard_week}",
+            st.caption("Every creature you currently outscore is in the list. Followers are sorted by this week's Fantrax FPts; the Guardian's top two scorers are protected.")
+            claim_options = {}
+            for creature in eligible_creatures:
+                creature_name = creature["name"]
+                following = rosters_by_team[creature_name]
+                protected_indices = set()
+                if creature_name == "The Guardian":
+                    protected_indices = {
+                        index for index, _ in sorted(
+                            enumerate(following),
+                            key=lambda indexed: _scored_first(indexed[1]),
+                            reverse=True,
+                        )[:2]
+                    }
+                for index, row in enumerate(following):
+                    if index in protected_indices or not row.get("player"):
+                        continue
+                    option_key = (creature_name, str(row.get("player_id") or row["player"]))
+                    claim_options[option_key] = row
+            choices = sorted(
+                claim_options,
+                key=lambda option: _scored_first(claim_options[option]),
+                reverse=True,
             )
-            creature_following = rosters_by_team[claim_creature]
-            protected_indices = set()
-            if claim_creature == "The Guardian":
-                protected_indices = {
-                    index for index, _ in sorted(
-                        enumerate(creature_following),
-                        key=lambda indexed: _scored_first(indexed[1]),
-                        reverse=True,
-                    )[:2]
-                }
-            choices = [index for index, row in enumerate(creature_following) if index not in protected_indices and row.get("player")]
+
+            def claim_option_label(option: tuple[str, str]) -> str:
+                creature_name, _ = option
+                row = claim_options[option]
+                score = row.get("score")
+                score_label = f"{score:.2f} FPts" if isinstance(score, (int, float)) else "— FPts"
+                return f'{score_label} · {row["player"]} ({row.get("position", "—")} · {row.get("nfl_team", "—")}) · {team_label(creature_name)}'
+
             with st.form(f"tribute_form:{active_vampire_name}:{scoreboard_week}"):
-                chosen_index = st.selectbox(
+                chosen_follower = st.selectbox(
                     "Follower to steal",
                     choices,
-                    format_func=lambda index: f'{creature_following[index].get("player")} · {creature_following[index].get("position", "—")} · {creature_following[index].get("nfl_team", "—")}',
+                    format_func=claim_option_label,
                 ) if choices else None
-                claim_submitted = st.form_submit_button("Claim this follower", type="primary", disabled=not choices)
-            if claim_submitted and chosen_index is not None:
+                claim_submitted = st.form_submit_button("Steal this follower", type="primary", disabled=not choices)
+            if claim_submitted and chosen_follower is not None:
                 try:
-                    fresh_games = fetch_week_games(nfl_season, scoreboard_week)
-                    if not games_are_final(fresh_games):
-                        st.error("An NFL game is not final yet. Your tribute was not sent.")
-                    else:
-                        follower_name = str(creature_following[chosen_index]["player"])
-                        send_tribute_to_discord(active_vampire_name, scoreboard_week, claim_creature, follower_name)
-                        st.session_state[tribute_key] = follower_name
-                        st.rerun()
+                    creature_name = chosen_follower[0]
+                    follower_name = str(claim_options[chosen_follower]["player"])
+                    send_tribute_to_discord(active_vampire_name, scoreboard_week, creature_name, follower_name)
+                    st.session_state[tribute_key] = follower_name
+                    st.rerun()
                 except Exception:
-                    st.error("Could not verify or send this tribute. Please try again; nothing was recorded.")
+                    st.error("Could not send this tribute to Discord. Please try again; nothing was recorded.")
 
 with realm_summary_tab:
     realm_week = st.selectbox("Summary week", list(range(1, 19)), index=active_week - 1, format_func=lambda week: f"Week {week}", key="realm_summary_week")
