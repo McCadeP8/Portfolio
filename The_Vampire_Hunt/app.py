@@ -136,7 +136,7 @@ CREATURES = [
         "emoji": "🦾",
         "lives": 6,
         "ability": "Unstoppable Force",
-        "rule": "Gains +2 for every team left beneath its score each week.",
+        "rule": "Gains +2 for every opponent left beneath its score each week.",
         "accent": "#b75645",
         "logo": JUGGERNAUT_LOGO,
     },
@@ -1513,6 +1513,7 @@ st.markdown(
     .rank-number { color:var(--rank-accent); font:700 .76rem 'Inter',sans-serif; text-align:center; }
     .rank-pending { display:grid; place-items:center; width:27px; height:27px; border:1px solid color-mix(in srgb,var(--rank-accent) 66%,#4b4145); border-radius:99px; color:#f4e9e2; background:color-mix(in srgb,var(--rank-accent) 28%,#1b1619); font:700 .72rem 'Inter',sans-serif; box-shadow:0 0 11px color-mix(in srgb,var(--rank-accent) 16%,transparent); }
     .rank-tile.vampire-rank .rank-pending { width:29px; height:29px; color:#fff; border-color:#e05268; background:#802338; box-shadow:0 0 14px rgba(224,82,104,.38); }
+    .rank-pending.final, .rank-tile.vampire-rank .rank-pending.final { color:#fff; background:#080808; border-color:#6e696b; box-shadow:none; }
     .rank-team strong { display:block; overflow:hidden; color:#ddd3cc; font:600 .86rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
     .rank-team span { display:block; overflow:hidden; color:#746c6e; font:500 .55rem 'Inter',sans-serif; white-space:nowrap; text-overflow:ellipsis; }
     .rank-team span.rank-status { font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
@@ -1644,7 +1645,7 @@ with overview_tab:
             <p>Every eighteen years, when the season turns and the stadium lights burn against the early dark, twelve creatures answer the same invitation. Eleven arrive believing they have been summoned to compete. The twelfth arrives hungry. This year, that creature is you: The Vampire.</p>
             <p>Your prey is not found in crypts or moonlit forests, but in eleven rival realms bound to the same cursed season. Every week, you face all eleven creatures at once, while the league's best performances quietly determine who grows weaker and who survives another night.</p>
             <p>The rule of blood is simple: if your weekly score is higher, your opponent loses one life. Ties go against you—the Vampire must outscore the creature to claim the kill. Every creature begins with a different number of lives and a different supernatural advantage, so every matchup carries its own danger.</p>
-            <p>Whenever you defeat an opponent and take a life, you may steal one player from one team you beat that week. That victory unlocks your next weekly choice: once each week, you may select a fresh 20-player following from your roster, your stolen players, and any other eligible choices. The eleven creatures cannot change their rosters this way; only the Vampire hunts and adapts from week to week.</p>
+            <p>Whenever you defeat an opponent and take a life, you may steal one player from one creature you beat that week. That victory unlocks your next weekly choice: once each week, you may select a fresh 20-player following from your roster, your stolen players, and any other eligible choices. The eleven creatures cannot change their rosters this way; only the Vampire hunts and adapts from week to week.</p>
             <p>You have eighteen weeks to extinguish all eleven bloodlines. Study each creature's curse, decide which battle to pick, and build the strongest possible following before the next kickoff. By the final whistle, either every realm has fallen to your hunger—or dawn finds the Vampire with no lives left to claim.</p>
             <p><strong>Hunt wisely, feed completely, and leave no realm alive.</strong></p>
         </div>""",
@@ -1652,7 +1653,7 @@ with overview_tab:
     )
     st.markdown(
         """<div class="rules-strip">
-            <div class="rule-stat"><b>12</b><span>Teams enter</span></div>
+            <div class="rule-stat"><b>12</b><span>Creatures enter</span></div>
             <div class="rule-stat"><b>18</b><span>Weeks to hunt</span></div>
             <div class="rule-stat"><b>1 life</b><span>Lost when outscored</span></div>
             <div class="rule-stat"><b>1 follower</b><span>Stolen after a group of kills</span></div>
@@ -1731,7 +1732,7 @@ with teams_tab:
     last_week_entry = next((row for row in weekly_scores if row.get("team") == selected_name), {})
     last_week_score = last_week_entry.get("score")
     last_week_finish = last_week_entry.get("finish")
-    last_week_display = f"{last_week_score:.1f}" if isinstance(last_week_score, (int, float)) else "—"
+    last_week_display = f"{last_week_score:.2f}" if isinstance(last_week_score, (int, float)) else "—"
     if isinstance(last_week_finish, int):
         suffix = "th" if 10 <= last_week_finish % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(last_week_finish % 10, "th")
         last_week_detail = f"{last_week_finish}{suffix} finish"
@@ -1740,7 +1741,7 @@ with teams_tab:
     else:
         last_week_detail = "Awaiting Fantrax score"
     if week_one_preview and active_week == 1 and selected_name in week_one_preview["scores"]:
-        last_week_display = f'{week_one_preview["scores"][selected_name]:.1f}'
+        last_week_display = f'{week_one_preview["scores"][selected_name]:.2f}'
         rank = 1 + sum(score > week_one_preview["scores"][selected_name] for score in week_one_preview["scores"].values())
         suffix = "th" if 10 <= rank % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(rank % 10, "th")
         last_week_detail = f"Week 1 · {rank}{suffix} finish"
@@ -1754,7 +1755,7 @@ with teams_tab:
     roster_html_parts = []
     for index, row in enumerate(team_roster, start=1):
         stolen_badge = f'<span class="stolen-badge">Stolen after Week {row["stolen_week"]}</span>' if row.get("stolen") else ""
-        score_text = f'{row["score"]:.1f}' if isinstance(row.get("score"), (int, float)) else '—'
+        score_text = f'{row["score"]:.2f}' if isinstance(row.get("score"), (int, float)) else '—'
         roster_html_parts.append(
             f'''<div class="roster-row {'stolen-following' if row.get('stolen') else ''}">
                 <div>{index}</div>
@@ -2021,7 +2022,7 @@ with scoreboard_tab:
                 player_markup = f'<strong>{escape(str(row.get("player") or "Awaiting roster"))}</strong>'
             nfl_team = escape(str(row.get("nfl_team") or "—"))
             score = row.get("score")
-            score_text = f"{score:.1f}" if isinstance(score, (int, float)) else "—"
+            score_text = f"{score:.2f}" if isinstance(score, (int, float)) else "—"
             display_slot = "FLX" if slot == "RWT FLEX" else slot
             rendered_rows.append(
                 f'''<div class="lineup-row {'stolen-following' if row.get('stolen') else ''}"><div class="lineup-slot">{display_slot}</div>
@@ -2029,7 +2030,7 @@ with scoreboard_tab:
                 <div class="lineup-points">{score_text}</div></div>'''
             )
         bonus = bonus_by_team.get(team["name"], 0.0)
-        bonus_text = f"{bonus:+.1f}" if bonus else "0.0"
+        bonus_text = f"{bonus:+.2f}" if bonus else "0.00"
         rendered_rows.append(
             f'''<div class="lineup-row bonus"><div class="lineup-slot">BONUS</div>
             <div class="lineup-player"><strong>{escape(bonus_notes.get(team['name'], 'No weekly score bonus'))}</strong></div>
@@ -2048,14 +2049,18 @@ with scoreboard_tab:
         position_order = {position: index for index, (position, _) in enumerate(BASE_ROSTER)}
         bench = sorted(
             [row for row in rosters_by_team.get(team["name"], []) if row.get("stolen") or row.get("player_id") not in starters],
-            key=lambda row: (position_order.get(row.get("position"), 99), str(row.get("player", ""))),
+            key=lambda row: (
+                position_order.get(row.get("position"), 99),
+                -float(row["score"]) if isinstance(row.get("score"), (int, float)) else float("inf"),
+                str(row.get("player", "")).casefold(),
+            ),
         )
         bench_rows = []
         for row in bench:
             original_name = escape(str(row.get("player") or "Awaiting roster"))
             stolen_origin = f'<small class="stolen-origin">{original_name} · taken after Week {row["stolen_week"]}</small>' if row.get("stolen") else ""
             display_name = "Stolen Player" if row.get("stolen") else original_name
-            score_text = f'{row["score"]:.1f}' if isinstance(row.get("score"), (int, float)) else '—'
+            score_text = f'{row["score"]:.2f}' if isinstance(row.get("score"), (int, float)) else '—'
             bench_rows.append(
                 f'''<div class="bench-row {'stolen-following' if row.get('stolen') else ''}"><span>{escape(str(row.get("position") or "—"))}</span>
                 <strong class="{'stolen-score-name' if row.get('stolen') else ''}">{display_name}{stolen_origin}<small class="bench-meta">{escape(str(row.get("nfl_team") or "—"))} {'' if row.get('stolen') else game_marker_html(str(row.get('nfl_team') or ''))}</small></strong><b>{score_text}</b></div>'''
@@ -2078,11 +2083,15 @@ with scoreboard_tab:
         total = adjusted_scores.get(team["name"])
         total_text = f"{total:.2f}" if isinstance(total, (int, float)) else "—"
         bonus = bonus_by_team.get(team["name"], 0.0)
-        detail = f"Bonus {bonus:+.1f}" if bonus else "No bonus"
+        detail = f"Bonus {bonus:+.2f}" if bonus else "No bonus"
         pending_html = ""
         if week_games is not None and rosters_by_team.get(team["name"]):
             remaining = followers_left(rosters_by_team[team["name"]], week_games)
-            pending_html = f'<div class="rank-pending" title="{remaining} followers with an NFL game not final" aria-label="{remaining} followers with an NFL game not final">{remaining}</div>'
+            pending_html = (
+                '<div class="rank-pending final" title="All follower games final" aria-label="All follower games final">F</div>'
+                if remaining == 0 else
+                f'<div class="rank-pending" title="{remaining} followers with an NFL game not final" aria-label="{remaining} followers with an NFL game not final">{remaining}</div>'
+            )
         if team["name"] == active_vampire_name:
             status_label, status_class = "", "hunter"
         elif week_one_preview and scoreboard_week == 1:
@@ -2107,7 +2116,7 @@ with scoreboard_tab:
                 <div class="rank-score">{total_text}</div>
             </div>'''
         )
-    league_board = f'''<div class="league-board"><div class="league-board-title">Week {scoreboard_week} standings</div>
+    league_board = f'''<div class="league-board"><div class="league-board-title">Week {scoreboard_week} Scoreboard</div>
         <div class="rank-tiles">{''.join(rank_rows)}</div>
     </div>'''
 
