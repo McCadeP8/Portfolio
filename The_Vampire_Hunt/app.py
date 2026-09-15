@@ -952,6 +952,44 @@ def hydra_life_due_this_week(week: int, realm_name: str) -> bool:
     return hydra_life_due_after(prior_wins)
 
 
+def realm_state_entering_week(week: int, realm_name: str) -> dict:
+    """Carry realm-specific lives and permanent powers through finalized weeks."""
+    state = {
+        "remaining": {creature["name"]: creature["lives"] for creature in CREATURES},
+        "hydra_hit": False,
+        "hunter_bonus": 0.0,
+    }
+    for prior_week in range(1, int(week)):
+        try:
+            if not games_are_final(nfl_week_games(nfl_season, prior_week)):
+                break
+            world_roster = vampire_world_rosters(prior_week).get(realm_name, [])
+            world_roster, world_score_source = add_fantrax_player_scores(world_roster, prior_week)
+            creature_roster, _ = fantrax_roster_for_week(prior_week)
+            creature_roster = enrich_roster_rows(creature_roster)
+            creature_roster, creature_score_source = add_fantrax_player_scores(creature_roster, prior_week)
+            creature_roster = mark_stolen_creature_followers(creature_roster, prior_week, realm_name)
+            if world_score_source != "live" or creature_score_source != "live":
+                break
+            battle = calculate_realm_battle(
+                prior_week,
+                realm_name,
+                world_roster,
+                creature_roster,
+                state["remaining"],
+                state["hydra_hit"],
+                state["hunter_bonus"],
+            )
+            if battle is None:
+                break
+            state["remaining"] = battle["remaining"]
+            state["hydra_hit"] = battle["hydra_hit"]
+            state["hunter_bonus"] = battle["hunter_bonus"]
+        except Exception:
+            break
+    return state
+
+
 st.markdown(
     """
     <style>
@@ -1523,7 +1561,7 @@ st.markdown(
     .score-total span { color:#777071; font:600 .6rem 'Inter',sans-serif; letter-spacing:.12em; text-transform:uppercase; }
     .score-total b { color:var(--score-accent); font:700 2rem 'Cormorant Garamond',serif; }
 
-    .league-board { --score-accent:#9f2639; min-height:1035px; box-sizing:border-box; padding:.7rem; background:linear-gradient(160deg,#241117,#0e0d0f 68%); }
+    .league-board { --score-accent:#9f2639; height:1035px; min-height:0; box-sizing:border-box; padding:.7rem; background:linear-gradient(160deg,#241117,#0e0d0f 68%); }
     .league-board-title { color:#f0e2d9; font:700 1.8rem 'Cormorant Garamond',serif; margin:.15rem .25rem .7rem; }
     .rank-tiles { display:grid; height:calc(100% - 3rem); grid-template-rows:repeat(12,minmax(0,1fr)); gap:.45rem; }
     .rank-tile { position:relative; display:grid; grid-template-columns:26px minmax(0,1fr) 28px auto; gap:.45rem; align-items:center; min-height:55px; padding:.48rem .58rem; overflow:hidden; background:linear-gradient(100deg,color-mix(in srgb,var(--rank-accent) 20%,#171418),#111012 75%); border:1px solid color-mix(in srgb,var(--rank-accent) 35%,#2d282c); border-radius:5px; }
@@ -1620,7 +1658,7 @@ st.markdown(
         .team-hero img { width: 100%; height: auto; aspect-ratio: 1; }
         .profile-grid { grid-template-columns: 1fr; }
         .scoreboard-grid { grid-template-columns: 1fr; }
-        .league-board { min-height:0; }
+        .league-board { height:auto; min-height:0; }
         .rank-tiles { height:auto; grid-template-rows:none; }
         .roster-row { grid-template-columns:52px 1fr 70px; }
         .roster-row > div:nth-child(4), .roster-row > div:nth-child(5) { display:none; }
@@ -2013,7 +2051,10 @@ with scoreboard_tab:
     bonus_by_team["The Gambler"] = gambler_bonus
     bonus_notes["The Gambler"] = ("Fate's draw · +12" if gambler_bonus > 0 else "Fate's draw · −8") if scores_revealed else "Fate's draw · revealed at kickoff"
 
-    bonus_notes["The Hunter"] = "Marked Prey · +0 to start"
+    hunter_bonus = realm_state_entering_week(scoreboard_week, active_vampire_name)["hunter_bonus"]
+    bonus_by_team["The Hunter"] = hunter_bonus
+    hunter_wins = int(hunter_bonus / 2)
+    bonus_notes["The Hunter"] = f"Marked Prey · {hunter_wins} prior win{'s' if hunter_wins != 1 else ''} · +{hunter_bonus:.2f}"
     bonus_by_team["The Wizard"] = wizard_bonus
     if wizard_target:
         replacement_name = wizard_replacement.get("player", "no replacement") if wizard_replacement else "no replacement"
