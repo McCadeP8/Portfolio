@@ -1569,7 +1569,7 @@ st.markdown(
     .rank-score { grid-column:4; white-space:nowrap; }
     .rank-tile.vampire-rank { border-color:#cf4058; background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:0 0 15px rgba(190,40,64,.25); }
     .rank-tile.vampire-rank:after { content:none; }
-    .rank-tile.vampire-rank { min-height:75px; grid-template-columns:28px minmax(0,1fr) 30px auto; padding:.55rem .62rem; }
+    .rank-tile.vampire-rank { min-height:55px; grid-template-columns:28px minmax(0,1fr) 30px auto; padding:.48rem .62rem; }
     .rank-tile.vampire-rank .rank-team strong { color:#fff0e9; font-size:.98rem; }
     .rank-tile.vampire-rank .rank-team span { color:#e28b98; }
     .rank-tile.vampire-rank .rank-number { font-size:.82rem; }
