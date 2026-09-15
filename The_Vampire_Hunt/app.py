@@ -990,6 +990,35 @@ def realm_state_entering_week(week: int, realm_name: str) -> dict:
     return state
 
 
+def finalized_realm_battle(week: int, realm_name: str) -> dict | None:
+    """Rebuild one completed week's official best-ball battle for a realm."""
+    if int(week) < 1:
+        return None
+    try:
+        if not games_are_final(nfl_week_games(nfl_season, int(week))):
+            return None
+        state_before = realm_state_entering_week(int(week), realm_name)
+        world_roster = vampire_world_rosters(int(week)).get(realm_name, [])
+        world_roster, world_score_source = add_fantrax_player_scores(world_roster, int(week))
+        creature_roster, _ = fantrax_roster_for_week(int(week))
+        creature_roster = enrich_roster_rows(creature_roster)
+        creature_roster, creature_score_source = add_fantrax_player_scores(creature_roster, int(week))
+        creature_roster = mark_stolen_creature_followers(creature_roster, int(week), realm_name)
+        if world_score_source != "live" or creature_score_source != "live":
+            return None
+        return calculate_realm_battle(
+            int(week),
+            realm_name,
+            world_roster,
+            creature_roster,
+            state_before["remaining"],
+            state_before["hydra_hit"],
+            state_before["hunter_bonus"],
+        )
+    except Exception:
+        return None
+
+
 st.markdown(
     """
     <style>
@@ -1689,6 +1718,11 @@ overview_tab, teams_tab, scoreboard_tab, realm_summary_tab, available_tab, about
 )
 
 with overview_tab:
+    # The Overview belongs to the selected Vampire's realm. Carry every
+    # finalized battle through the start of the active week so the front-page
+    # life counts update as soon as the previous NFL week goes final.
+    overview_realm_state = realm_state_entering_week(active_week, active_vampire_name)
+    overview_lives = overview_realm_state["remaining"]
     st.markdown(
         f"""<div class="vampire-card">
             <img src="{VAMPIRE_LOGO}" alt="The Vampire logo">
@@ -1733,7 +1767,7 @@ with overview_tab:
     )
 
     for creature in CREATURES:
-        lives_left = week_one_preview["remaining"].get(creature["name"], creature["lives"]) if week_one_preview else creature["lives"]
+        lives_left = overview_lives.get(creature["name"], creature["lives"])
         hearts = life_diamonds(creature["lives"], lives_left)
         creature_logo = creature.get("logo", DEFAULT_LOGO)
         st.markdown(
@@ -1775,39 +1809,30 @@ with teams_tab:
     roster_rows = mark_stolen_creature_followers(roster_rows, selected_week)
     team_roster = [row for row in roster_rows if row.get("team") == selected_name]
     standings, _ = fantrax_standings()
-    standing = next((row for row in standings if row.get("team") == selected_name), {})
-    reported_lives = next(
-        (row.get("lives_remaining") for row in team_roster if row.get("lives_remaining") is not None),
-        standing.get("lives_remaining"),
-    )
+    selected_realm_state = realm_state_entering_week(selected_week, active_vampire_name)
     if is_vampire:
         lives_display = "—"
-    elif week_one_preview and selected_week >= 1:
-        lives_display = str(week_one_preview["remaining"].get(selected_name, selected_team["lives"]))
-    elif reported_lives is None:
-        lives_display = str(selected_team["lives"])
     else:
-        lives_display = str(min(int(reported_lives), int(selected_team["lives"])))
+        lives_display = str(selected_realm_state["remaining"].get(selected_name, selected_team["lives"]))
     condition_display = "HUNTING" if is_vampire else life_diamonds(selected_team["lives"], int(lives_display))
 
-    previous_week = active_week - 1
-    weekly_scores = snapshot.get("weekly_scores", {}).get(str(previous_week), []) if previous_week > 0 else []
-    last_week_entry = next((row for row in weekly_scores if row.get("team") == selected_name), {})
-    last_week_score = last_week_entry.get("score")
-    last_week_finish = last_week_entry.get("finish")
+    previous_week = selected_week - 1
+    previous_battle = finalized_realm_battle(previous_week, active_vampire_name)
+    previous_scores = previous_battle.get("scores", {}) if previous_battle else {}
+    last_week_score = previous_scores.get(selected_name)
     last_week_display = f"{last_week_score:.2f}" if isinstance(last_week_score, (int, float)) else "—"
-    if isinstance(last_week_finish, int):
+    if isinstance(last_week_score, (int, float)):
+        last_week_finish = 1 + sum(
+            score > last_week_score
+            for score in previous_scores.values()
+            if isinstance(score, (int, float))
+        )
         suffix = "th" if 10 <= last_week_finish % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(last_week_finish % 10, "th")
-        last_week_detail = f"{last_week_finish}{suffix} finish"
+        last_week_detail = f"Week {previous_week} · {last_week_finish}{suffix} finish"
     elif previous_week < 1:
         last_week_detail = "No prior week"
     else:
         last_week_detail = "Awaiting Fantrax score"
-    if week_one_preview and active_week == 1 and selected_name in week_one_preview["scores"]:
-        last_week_display = f'{week_one_preview["scores"][selected_name]:.2f}'
-        rank = 1 + sum(score > week_one_preview["scores"][selected_name] for score in week_one_preview["scores"].values())
-        suffix = "th" if 10 <= rank % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(rank % 10, "th")
-        last_week_detail = f"Week 1 · {rank}{suffix} finish"
     position_order = {position: index for index, (position, _) in enumerate(BASE_ROSTER)}
     team_roster.sort(
         key=lambda row: (
@@ -2204,17 +2229,23 @@ with scoreboard_tab:
         else:
             status_label, status_class = "Status pending", "unknown"
         status_html = f'<span class="rank-status {status_class}">{status_label}</span>' if status_label else ""
+        # Keep each tile on one uninterrupted line. Indented multiline HTML can
+        # be interpreted by Markdown as a code block when a conditional fragment
+        # is empty, which previously exposed the Vampire tile's markup onscreen.
         rank_rows.append(
-            f'''<div class="rank-tile {'vampire-rank' if team['name'] == active_vampire_name else ''}" style="--rank-accent:{team['accent']}">
-                <div class="rank-number">{rank}</div>
-                <div class="rank-team"><strong>{team['emoji']} {escape(team_label(team['name']))}</strong>{status_html}<span>{detail}</span></div>
-                {pending_html}
-                <div class="rank-score">{total_text}</div>
-            </div>'''
+            f'<div class="rank-tile {"vampire-rank" if team["name"] == active_vampire_name else ""}" style="--rank-accent:{team["accent"]}">'
+            f'<div class="rank-number">{rank}</div>'
+            f'<div class="rank-team"><strong>{team["emoji"]} {escape(team_label(team["name"]))}</strong>{status_html}<span>{detail}</span></div>'
+            f'{pending_html}'
+            f'<div class="rank-score">{total_text}</div>'
+            '</div>'
         )
-    league_board = f'''<div class="league-board"><div class="league-board-title">Week {scoreboard_week} Scoreboard</div>
-        <div class="rank-tiles">{''.join(rank_rows)}</div>
-    </div>'''
+    league_board = (
+        '<div class="league-board">'
+        f'<div class="league-board-title">Week {scoreboard_week} Scoreboard</div>'
+        f'<div class="rank-tiles">{"".join(rank_rows)}</div>'
+        '</div>'
+    )
 
     board_cols = st.columns([1.8, 1.8, 1.4], gap="medium")
     with board_cols[0]:
