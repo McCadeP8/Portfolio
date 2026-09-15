@@ -446,6 +446,21 @@ def fantasypros_weekly_rankings(week: int) -> list[dict]:
     return fetch_fantasypros_weekly_rankings(int(week))
 
 
+def automatic_active_week(snapshot: dict) -> tuple[int, int]:
+    """Advance after the last NFL game of a week reaches final."""
+    season = int(snapshot.get("season") or 2026)
+    week = max(1, min(18, int(snapshot.get("current_week", 1))))
+    while week < 18:
+        try:
+            games = nfl_week_games(season, week)
+        except Exception:
+            break
+        if not games_are_final(games):
+            break
+        week += 1
+    return week, season
+
+
 def add_fantrax_player_scores(rows: list[dict], week: int) -> tuple[list[dict], str]:
     try:
         scores = fantrax_player_scores(int(week))
@@ -605,6 +620,17 @@ if st.session_state.get("_last_active_vampire") != active_vampire_name:
     st.session_state["_last_active_vampire"] = active_vampire_name
 VAMPIRE_TEAM["name"] = active_vampire_name
 active_vampire_label = f"{active_vampire_name} the Vampire"
+snapshot = load_snapshot()
+active_week, nfl_season = automatic_active_week(snapshot)
+previous_active_week = st.session_state.get("_automatic_active_week")
+if previous_active_week is not None and previous_active_week != active_week:
+    # Move every primary week control forward in an already-open browser session.
+    st.session_state["creature_roster_week"] = active_week
+    st.session_state["scoreboard_week"] = active_week
+    st.session_state["realm_summary_week"] = active_week
+st.session_state["_automatic_active_week"] = active_week
+
+
 def team_label(name: str) -> str:
     return active_vampire_label if name == active_vampire_name else CREATURE_LABELS.get(name, name)
 
@@ -1696,14 +1722,13 @@ with teams_tab:
     )
     selected_team = next(team for team in all_teams if team["name"] == selected_name)
     is_vampire = selected_name == active_vampire_name
-    snapshot = load_snapshot()
-    active_week = max(1, min(18, int(snapshot.get("current_week", 1))))
     selected_week = st.select_slider(
         "Roster week",
         options=list(range(1, 19)),
         value=active_week,
         format_func=lambda week: f"Week {week}",
         help="Review the roster and life timeline for any week. Vampire rosters can change after each hunt.",
+        key="creature_roster_week",
     )
 
     roster_rows, roster_source = fantrax_roster_for_week(selected_week)
@@ -1891,12 +1916,42 @@ with scoreboard_tab:
     if st.session_state.pop("fantrax_refresh_notice", False):
         st.success("Fantrax rosters and official player FPts refreshed; team scores are calculated here from players.", icon="✅")
 
+    latest_completed_week = active_week - 1
+    if latest_completed_week >= 1:
+        latest_recorded_tribute = next(
+            (
+                str(row.get(active_vampire_name, "")).strip()
+                for row in vampire_sheet_rows
+                if str(row.get("Week", "")) == str(latest_completed_week)
+                and str(row.get("Slot", "")).strip().lower() == "stolen"
+                and str(row.get(active_vampire_name, "")).strip()
+            ),
+            "",
+        )
+        latest_tribute_key = f"tribute:{active_vampire_name}:{latest_completed_week}"
+        if latest_recorded_tribute:
+            st.success(f"Week {latest_completed_week} tribute selected: {latest_recorded_tribute}", icon="🩸")
+        elif st.session_state.get(latest_tribute_key):
+            st.success(
+                f"Week {latest_completed_week} tribute sent: {st.session_state[latest_tribute_key]}. Waiting for the realm sheet to update.",
+                icon="🩸",
+            )
+        elif scoreboard_week != latest_completed_week:
+            def open_latest_tribute() -> None:
+                st.session_state["scoreboard_week"] = latest_completed_week
+
+            st.warning(f"Week {latest_completed_week} tribute is still waiting.", icon="🩸")
+            st.button(
+                f"Choose Week {latest_completed_week} tribute",
+                key=f"open_tribute_week_{latest_completed_week}",
+                on_click=open_latest_tribute,
+            )
+
     score_rosters, score_roster_source = fantrax_roster_for_week(scoreboard_week)
     score_rosters = enrich_roster_rows(score_rosters)
     score_rosters, score_player_source = add_fantrax_player_scores(score_rosters, scoreboard_week)
     score_rosters = mark_stolen_creature_followers(score_rosters, scoreboard_week)
     scores_revealed = scoreboard_week <= active_week
-    nfl_season = int(snapshot.get("season") or 2026)
     try:
         week_games = nfl_week_games(nfl_season, scoreboard_week)
     except Exception:
@@ -2339,7 +2394,7 @@ with realm_summary_tab:
 
 with available_tab:
     available_snapshot = load_snapshot()
-    available_week = max(1, min(18, int(available_snapshot.get("current_week", 1))))
+    available_week = active_week
     st.markdown(
         f'''<div class="available-intro">
             <div><h2>Choose Your Followers</h2>
