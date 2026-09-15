@@ -215,7 +215,9 @@ st.markdown('<div class="court-copy">Choose a team, tune its court, save the row
 
 with st.sidebar:
     st.header("Court controls")
-    team = st.selectbox("Team/configuration name", TEAMS, index=0)
+    requested_team = str(st.query_params.get("team", ""))
+    default_team_index = TEAMS.index(requested_team) if requested_team in TEAMS else 0
+    team = st.selectbox("Team/configuration name", TEAMS, index=default_team_index)
     saved = table.loc[table["team"] == team].iloc[0].to_dict()
     key_prefix = re.sub(r"[^a-z0-9]", "_", team.lower())
     team_color_1 = str(team_info[team]["bg"])
@@ -266,6 +268,7 @@ with st.sidebar:
         center_logo_team = st.selectbox("Center-court team logo", logo_options, index=logo_options.index(saved_logo_team) if saved_logo_team in logo_options else logo_options.index(team), key=f"{key_prefix}_center_logo_team")
         logo_scale = st.slider("Logo scale", 0.10, 1.80, float(saved["logo_scale"]), 0.05, key=f"{key_prefix}_logo_scale")
         logo_opacity = st.slider("Logo opacity", 0.10, 1.00, float(saved["logo_opacity"]), 0.05, key=f"{key_prefix}_logo_opacity")
+        logo_rotation = st.number_input("Logo rotation", min_value=0.0, max_value=359.0, value=float(saved["logo_rotation"]), step=1.0, key=f"{key_prefix}_logo_rotation", help="Rotation in degrees. Changes appear immediately in the court preview.")
         logo_x = st.number_input("Logo horizontal position", min_value=0.0, max_value=50.0, value=float(saved["logo_x"]), step=0.5, key=f"{key_prefix}_logo_x")
         logo_y = st.number_input("Logo vertical position", min_value=0.0, max_value=94.0, value=float(saved["logo_y"]), step=0.5, key=f"{key_prefix}_logo_y")
 
@@ -300,7 +303,7 @@ config = CourtConfig(
     baseline_text=baseline_text_bottom, baseline_text_bottom=baseline_text_bottom,
     baseline_text_top=baseline_text_top, sideline_text=sideline_text, text_color=text_color,
     text_size=float(text_size), font_family=font_family, font_path=font_path,
-    logo_scale=logo_scale, logo_rotation=90.0, logo_opacity=logo_opacity,
+    logo_scale=logo_scale, logo_rotation=logo_rotation, logo_opacity=logo_opacity,
     logo_x=logo_x, logo_y=logo_y, center_logo_team="" if center_logo_team == "None" else center_logo_team,
     league_logo_scale=league_logo_scale, league_logo_opacity=league_logo_opacity,
     show_center_circle=True, show_lane_marks=True,
