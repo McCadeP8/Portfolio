@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import unittest
 
-from sbc_backend.live.espn import as_legacy_player_rows, parse_live_game, parse_player_boxscore
+from sbc_backend.live.espn import as_legacy_player_rows, format_live_game_status, parse_live_game, parse_player_boxscore
 
 
 class EspnLiveTests(unittest.TestCase):
+    def test_compact_game_status_labels(self):
+        self.assertEqual(format_live_game_status("pre", "10/20 - 7:30 PM EDT"), "7:30 ET")
+        self.assertEqual(format_live_game_status("in", "", 1, "11:15", False), "11:15 1st Quarter")
+        self.assertEqual(format_live_game_status("post", "Final", 4, "0.0", True), "Final")
+
     def setUp(self):
         self.event = {
             "id": "401000001",

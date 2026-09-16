@@ -219,6 +219,7 @@ for team_name, motto in team_mottos.items():
     team_info[team_name]["motto"] = motto
 
 cap_sheets_to_fantrax_name_fix = {
+    "Karim L�pez": "Karim Lopez",
     "Eugeny Omoruyi": "Eugene Omoruyi",
     "Kenneth Lofton Jr.": "Kenneth Lofton",
     "Lonnie Walker IV": "Lonnie Walker",

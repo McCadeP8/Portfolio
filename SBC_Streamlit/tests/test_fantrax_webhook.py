@@ -8,11 +8,31 @@ import pandas as pd
 import requests
 from PIL import Image
 
-from functions import build_live_scoreboard_image, build_mobile_live_scoreboard_image, build_mobile_matchup_preview_image, build_mobile_matchup_recap_image, build_mobile_standings_image, build_matchup_preview_image, build_matchup_recap_image, build_record_leader_announcement_image, build_standings_bracket_image, get_weekly_scores_df, matchup_period_progress, post_fantrax_webhook
+from functions import _mobile_player_box_lines, build_live_scoreboard_image, build_mobile_live_scoreboard_image, build_mobile_matchup_preview_image, build_mobile_matchup_recap_image, build_mobile_standings_image, build_matchup_preview_image, build_matchup_recap_image, build_record_leader_announcement_image, build_standings_bracket_image, get_weekly_scores_df, matchup_period_progress, post_fantrax_webhook
 from sbc_backend.fantrax_rotation import FantraxRotation
 
 
 class FantraxWebhookTests(unittest.TestCase):
+    def test_mobile_player_box_score_uses_split_rebounds_and_shooting_line(self):
+        primary, secondary = _mobile_player_box_lines({
+            "PTS": 31,
+            "OREB": 7,
+            "DREB": 10,
+            "AST": 8,
+            "MP": 121,
+            "2PT%": .554,
+            "3PT%": .204,
+            "FT%": .899,
+            "TS%": .571,
+            "ST": 3,
+            "BLK": 2,
+            "TO": 4,
+            "+/-": -6,
+        })
+
+        self.assertEqual(primary, "31 PTS  •  7/10 REB  •  8 AST")
+        self.assertEqual(secondary, "121 MP  •  55-20-90-57 %  •  3 STL  •  2 BLK  •  4 TOV  •  -6 +/-")
+
     @patch("functions.requests.post")
     def test_posts_fixed_message_as_webhook_content(self, mock_post):
         response = Mock(status_code=204)
@@ -135,6 +155,34 @@ class FantraxWebhookTests(unittest.TestCase):
 
         self.assertEqual(len(featured), 2)
         self.assertEqual(len(selected_teams), len(set(selected_teams)))
+
+    def test_standings_streak_and_last_ten_come_from_completed_games(self):
+        rotation = FantraxRotation.__new__(FantraxRotation)
+        rotation.period = Mock(year=2026, period=13)
+        rotation.standings = pd.DataFrame([
+            {"Year": 2026, "Period": 12, "Team": "Vegas", "Record": "10-2"},
+            {"Year": 2026, "Period": 12, "Team": "Anaheim", "Record": "2-10"},
+        ])
+        rotation.schedule = pd.DataFrame([
+            {
+                "Year": 2026,
+                "Period": period,
+                "Type": "Regular Season",
+                "TeamA": "Vegas",
+                "TeamB": "Anaheim",
+                "TeamAScore": 100 if period > 2 else 80,
+                "TeamBScore": 80 if period > 2 else 100,
+                "Game_ID": f"2026_{period:03d}",
+            }
+            for period in range(1, 13)
+        ])
+
+        standings = rotation.standings_table("West").set_index("Team")
+
+        self.assertEqual(standings.loc["Vegas", "Streak"], "W10")
+        self.assertEqual(standings.loc["Vegas", "Last10"], "10-0")
+        self.assertEqual(standings.loc["Anaheim", "Streak"], "L10")
+        self.assertEqual(standings.loc["Anaheim", "Last10"], "0-10")
 
     def test_team_averages_include_season_fantasy_points_per_game(self):
         rotation = FantraxRotation.__new__(FantraxRotation)
@@ -265,6 +313,9 @@ class FantraxWebhookTests(unittest.TestCase):
         mobile_rendered = Image.open(BytesIO(mobile_result))
         self.assertEqual(mobile_rendered.format, "PNG")
         self.assertEqual(mobile_rendered.size, (1080, 2600))
+        self.assertEqual(mobile_rendered.getpixel((300, 270)), (223, 243, 231))
+        self.assertEqual(mobile_rendered.getpixel((300, 950)), (249, 228, 231))
+        self.assertEqual(mobile_rendered.getpixel((540, 1592)), (239, 189, 46))
 
     @patch("functions._scoreboard_logo_bytes", return_value=None)
     def test_builds_weekly_matchup_preview(self, _mock_logo):

@@ -7,8 +7,10 @@ batch exports, roster graphics, or future matchup presentations.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, fields
+from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
+import re
 from typing import Any, Mapping
 from urllib.request import Request, urlopen
 
@@ -19,6 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.ft2font import FT2Font
 from matplotlib.patches import Arc, Circle, PathPatch, Polygon, Rectangle
 from matplotlib.path import Path as MplPath
 import matplotlib.patheffects as path_effects
@@ -77,6 +80,61 @@ class JerseyConfig:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@lru_cache(maxsize=64)
+def resolve_brand_font_path(font_family: str, saved_path: str = "", cache_root: str = "") -> str:
+    """Resolve a saved jersey font locally, downloading it when necessary."""
+    configured = Path(str(saved_path)) if str(saved_path).strip() else None
+    if configured is not None and configured.exists():
+        try:
+            FT2Font(str(configured))
+            return str(configured)
+        except (RuntimeError, OSError):
+            pass
+
+    family = str(font_family or "").strip()
+    if not family or family.startswith("DejaVu"):
+        return ""
+    safe_name = re.sub(r"[^a-z0-9]+", "_", family.lower()).strip("_")
+    destination_root = Path(cache_root) if str(cache_root).strip() else Path(__file__).resolve().parent / ".streamlit_cache" / "jersey_fonts"
+    for candidate in destination_root.glob(f"{safe_name}.*") if destination_root.exists() else []:
+        try:
+            FT2Font(str(candidate))
+            return str(candidate)
+        except (RuntimeError, OSError):
+            continue
+
+    destination_root.mkdir(parents=True, exist_ok=True)
+    css_url = f"https://fonts.googleapis.com/css2?family={family.replace(' ', '+')}"
+    css_request = Request(css_url, headers={"User-Agent": "Mozilla/5.0"})
+    with urlopen(css_request, timeout=15) as response:
+        css = response.read().decode("utf-8", errors="replace")
+    font_urls = re.findall(r"url\((https://[^)]+)\)", css)
+    if not font_urls:
+        return ""
+    font_request = Request(font_urls[-1], headers={"User-Agent": "Mozilla/5.0"})
+    with urlopen(font_request, timeout=20) as response:
+        content = response.read()
+        content_type = str(response.headers.get("content-type", ""))
+    suffix = ".woff2" if "woff2" in content_type else ".ttf"
+    destination = destination_root / f"{safe_name}{suffix}"
+    destination.write_bytes(content)
+    FT2Font(str(destination))
+    return str(destination)
+
+
+def apply_resolved_brand_font(config: JerseyConfig, cache_root: str | Path = "") -> JerseyConfig:
+    """Make a saved uniform portable across the app and automation runners."""
+    try:
+        config.font_path = resolve_brand_font_path(
+            config.font_family,
+            config.font_path,
+            str(cache_root) if cache_root else "",
+        )
+    except Exception:
+        config.font_path = ""
+    return config
 
 
 def _read_image(image: Any) -> np.ndarray | None:
@@ -160,6 +218,21 @@ def _outlined_text(ax: Axes, x: float, y: float, text: str, color: str, outline:
     return artist
 
 
+def _front_wordmark_text(config: JerseyConfig) -> str:
+    """Return the intentional wordmark without leaking renderer defaults."""
+    wordmark = str(config.wordmark or "").strip()
+    if wordmark.casefold() in {"nan", "none"}:
+        return ""
+    if str(config.edition).strip().casefold() == "statement" and wordmark.casefold() == "sbc":
+        return ""
+    return wordmark
+
+
+def _show_front_league_mark(config: JerseyConfig) -> bool:
+    """Third jerseys use their chest logo without an overlapping league mark."""
+    return bool(config.show_league_mark) and str(config.edition).strip().casefold() != "statement"
+
+
 def _jersey_stripes(ax: Axes, config: JerseyConfig, cx: float, top: float, jersey_clip: PathPatch, scale: float):
     style = config.stripe_style
     z = 3
@@ -217,9 +290,11 @@ def _draw_jersey(ax: Axes, config: JerseyConfig, cx: float, top: float, back: bo
         _outlined_text(ax, cx + config.back_name_x * scale, top + config.back_name_y * scale, config.player_name.upper(), config.player_name_color, config.number_outline_color, config.number_outline_width, fontsize=config.back_name_size * scale, fontweight="bold", fontproperties=font, ha="center", va="center", zorder=21)
         _outlined_text(ax, cx + config.back_number_x * scale, top + config.back_number_y * scale, config.number, config.number_color, config.number_outline_color, config.number_outline_width, fontsize=config.back_number_size * scale, fontweight="bold", fontproperties=font, ha="center", va="center", zorder=21)
     else:
-        _outlined_text(ax, cx + config.front_wordmark_x * scale, top + config.front_wordmark_y * scale, config.wordmark.upper(), config.wordmark_color, config.number_outline_color, config.number_outline_width, fontsize=config.front_wordmark_size * scale, fontweight="bold", fontproperties=font, ha="center", va="center", zorder=21)
+        wordmark = _front_wordmark_text(config)
+        if wordmark:
+            _outlined_text(ax, cx + config.front_wordmark_x * scale, top + config.front_wordmark_y * scale, wordmark.upper(), config.wordmark_color, config.number_outline_color, config.number_outline_width, fontsize=config.front_wordmark_size * scale, fontweight="bold", fontproperties=font, ha="center", va="center", zorder=21)
         _outlined_text(ax, cx + config.front_number_x * scale, top + config.front_number_y * scale, config.number, config.number_color, config.number_outline_color, config.number_outline_width, fontsize=config.front_number_size * scale, fontweight="bold", fontproperties=font, ha="center", va="center", zorder=21)
-        if config.show_league_mark:
+        if _show_front_league_mark(config):
             ax.text(cx, top + 13 * scale, "SBC", color=config.accent_color, fontsize=4.8 * scale, fontweight="bold", ha="center", va="center", zorder=21)
         logo_data = _read_image(logo)
         if config.show_jersey_logo and logo_data is not None:

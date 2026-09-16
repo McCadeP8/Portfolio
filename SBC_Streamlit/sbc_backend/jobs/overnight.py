@@ -19,7 +19,7 @@ from ..datasets import DATASETS, DatasetRepository
 from ..live import EspnNBAClient, LiveScoreService, as_legacy_player_rows, parse_live_game
 from ..storage import FileLock, LockUnavailable, atomic_write_json, atomic_write_parquet
 from ..validation import build_repository_manifest, validate_repository
-from ..fantrax_rotation import FantraxRotation, planned_post_kinds, simulated_today
+from ..fantrax_rotation import FantraxRotation, SIMULATED_DATE_OFFSET_DAYS, planned_post_kinds, simulated_today
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -284,7 +284,7 @@ def _discord_webhooks_for_post(kind: str) -> list[str]:
 def publish_fantrax_rotation(context: JobContext) -> dict[str, Any]:
     """Render and publish the date-aware nightly Fantrax image rotation."""
     webhooks = _discord_webhook_urls()
-    offset_days = int(os.getenv("SBC_FANTRAX_DATE_OFFSET_DAYS", "168"))
+    offset_days = int(os.getenv("SBC_FANTRAX_DATE_OFFSET_DAYS", str(SIMULATED_DATE_OFFSET_DAYS)))
     publishing_date = simulated_today(context.target_date, offset_days)
     rotation = FantraxRotation(context.repository, PROJECT_ROOT, publishing_date)
     kinds = planned_post_kinds(rotation.period, context.fantrax_slot)
@@ -396,7 +396,7 @@ def main(argv: list[str] | None = None) -> int:
     repository = DatasetRepository(settings)
     context = JobContext(settings, repository, args.date, max(0, args.lookback_days), args.fantrax_slot)
     if args.dry_run:
-        offset_days = int(os.getenv("SBC_FANTRAX_DATE_OFFSET_DAYS", "168"))
+        offset_days = int(os.getenv("SBC_FANTRAX_DATE_OFFSET_DAYS", str(SIMULATED_DATE_OFFSET_DAYS)))
         publishing_date = simulated_today(args.date, offset_days)
         calendar = __import__("functions").get_period_calendar()
         from ..fantrax_rotation import period_for_date

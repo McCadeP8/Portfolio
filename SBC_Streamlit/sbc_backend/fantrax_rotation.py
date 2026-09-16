@@ -13,17 +13,19 @@ import pandas as pd
 from court_engine import CourtConfig, draw_branded_court
 from data import team_info
 import functions as fantrax
-from jersey_engine import JerseyConfig, draw_uniform, figure_bytes as jersey_figure_bytes
+from jersey_engine import JerseyConfig, apply_resolved_brand_font, draw_uniform, figure_bytes as jersey_figure_bytes
 from jersey_rotation import select_game_uniforms
 
 from .datasets import DatasetRepository
+from .live import EspnNBAClient
+from .matchup_progress import starter_game_progress
 
 
 BOX_SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 CATEGORIES = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 WEIGHTS = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
 PERCENTAGES = {"TS%", "2PT%", "3PT%", "FT%"}
-SIMULATED_DATE_OFFSET_DAYS = 168
+SIMULATED_DATE_OFFSET_DAYS = 274
 
 
 @dataclass(frozen=True)
@@ -48,7 +50,7 @@ class FantraxPost:
 
 
 def simulated_today(real_today: date | None = None, offset_days: int = SIMULATED_DATE_OFFSET_DAYS) -> date:
-    """Advance through 2025-26 while the real calendar advances through the offseason."""
+    """Advance from simulated Dec. 15 while the real offseason calendar advances."""
     return (real_today or date.today()) - timedelta(days=int(offset_days))
 
 
@@ -125,7 +127,66 @@ class FantraxRotation:
         self.boxscores = repository.read("nba_boxscores", required=True)
         self.matchup_archive = repository.read("matchup_stats", required=True)
         self.players = repository.read("fantrax_players")
+        self.player_catalog = self._player_catalog()
+        self._period_nba_games_cache: pd.DataFrame | None = None
         self._bridge = self._player_bridge()
+
+    def _player_catalog(self) -> pd.DataFrame:
+        catalog = self.players.copy()
+        catalog["fantraxId"] = catalog.get("fantraxId", pd.Series(dtype=str)).astype(str)
+        history_path = self.root / "fantrax_player_history.csv"
+        if history_path.exists():
+            history = pd.read_csv(history_path)
+            history["fantraxId"] = history.get("fantraxId", pd.Series(dtype=str)).astype(str)
+            details = history.reindex(columns=["fantraxId", "nba_team", "position"]).drop_duplicates("fantraxId")
+            catalog = catalog.drop(columns=["nba_team", "position"], errors="ignore").merge(details, on="fantraxId", how="left")
+            missing = history[~history["fantraxId"].isin(catalog["fantraxId"])].copy()
+            catalog = pd.concat([catalog, missing], ignore_index=True, sort=False)
+        if "team" in catalog.columns:
+            live_team = catalog["team"].astype(str).str.strip()
+            has_live_team = ~live_team.isin(["", "(N/A)", "N/A", "nan", "None"])
+            catalog.loc[has_live_team, "nba_team"] = live_team[has_live_team]
+        return catalog
+
+    def _period_nba_games(self) -> pd.DataFrame:
+        if self._period_nba_games_cache is not None:
+            return self._period_nba_games_cache
+        dates = self.calendar[
+            (pd.to_numeric(self.calendar["Year"], errors="coerce") == self.period.year)
+            & (pd.to_numeric(self.calendar["Period"], errors="coerce") == self.period.period)
+        ]["Date"]
+        client = EspnNBAClient(
+            cache_root=self.repository.settings.runtime_root / "espn",
+            timeout_seconds=self.repository.settings.http_timeout_seconds,
+            live_ttl_seconds=self.repository.settings.live_cache_seconds,
+        )
+        frames = []
+        for value in pd.to_datetime(dates, errors="coerce").dropna().dt.date.unique():
+            try:
+                frame = client.snapshot(value, include_player_stats=False).game_frame()
+                if not frame.empty:
+                    frames.append(frame)
+            except Exception:
+                continue
+        self._period_nba_games_cache = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+        return self._period_nba_games_cache
+
+    def matchup_progress(self, teams: tuple[str, ...] | list[str] = ()) -> float:
+        games = self._period_nba_games()
+        if games.empty:
+            return fantrax.matchup_period_progress(
+                self.calendar, self.period.year, self.period.period, as_of=self.as_of,
+            )
+        return starter_game_progress(
+            self.calendar,
+            self.rosters,
+            self.player_catalog,
+            games,
+            self.period.year,
+            self.period.period,
+            as_of=self.as_of,
+            teams=teams,
+        )
 
     def _player_bridge(self) -> pd.DataFrame:
         players = self.players.rename(columns={"name": "display_player", "fantraxId": "fantrax_id"}).copy()
@@ -265,9 +326,53 @@ class FantraxRotation:
         source["FullTeam"] = source["Team"].map(lambda team: f"{team} {team_info.get(str(team), {}).get('nickname', '')}".strip())
         source["Logo"] = source["Team"].map(lambda team: team_info.get(str(team), {}).get("logo", ""))
         source["WinPct"] = (source["_pct"].fillna(0) * 100).round(1).astype(str) + "%"
-        source["Streak"] = "-"
-        source["Last10"] = source.apply(lambda row: f"{min(10, int(row['wins']))}-{max(0, min(10, int(row['wins'] + row['losses'])) - min(10, int(row['wins'])))}", axis=1)
+        recent_form = self._recent_regular_season_form(through)
+        source["Streak"] = source["Team"].map(lambda team: recent_form.get(str(team), {}).get("Streak", "-"))
+        source["Last10"] = source["Team"].map(lambda team: recent_form.get(str(team), {}).get("Last10", "-"))
         return source
+
+    def _recent_regular_season_form(self, through_period: int) -> dict[str, dict[str, str]]:
+        """Calculate each team's current streak and last-ten record from played games."""
+        if self.period is None or self.schedule is None or self.schedule.empty:
+            return {}
+        required = {"Year", "Period", "TeamA", "TeamB", "TeamAScore", "TeamBScore"}
+        if not required.issubset(self.schedule.columns):
+            return {}
+        games = self.schedule.copy()
+        game_types = games.get("Type", pd.Series("", index=games.index)).astype(str)
+        games = games[
+            (pd.to_numeric(games["Year"], errors="coerce") == self.period.year)
+            & (pd.to_numeric(games["Period"], errors="coerce") <= through_period)
+            & game_types.str.contains("regular", case=False, na=False)
+        ].copy()
+        games["_score_a"] = pd.to_numeric(games["TeamAScore"], errors="coerce")
+        games["_score_b"] = pd.to_numeric(games["TeamBScore"], errors="coerce")
+        games = games[
+            games["_score_a"].notna()
+            & games["_score_b"].notna()
+            & ((games["_score_a"] > 0) | (games["_score_b"] > 0))
+        ]
+        if games.empty:
+            return {}
+        sort_columns = [column for column in ("Period", "Game_ID") if column in games.columns]
+        games = games.sort_values(sort_columns, kind="stable") if sort_columns else games
+        results: dict[str, list[str]] = {}
+        for _, game in games.iterrows():
+            team_a, team_b = str(game["TeamA"]), str(game["TeamB"])
+            score_a, score_b = float(game["_score_a"]), float(game["_score_b"])
+            result_a, result_b = ("W", "L") if score_a > score_b else (("L", "W") if score_b > score_a else ("T", "T"))
+            results.setdefault(team_a, []).append(result_a)
+            results.setdefault(team_b, []).append(result_b)
+
+        form: dict[str, dict[str, str]] = {}
+        for team, outcomes in results.items():
+            recent = outcomes[-10:]
+            wins, losses, ties = recent.count("W"), recent.count("L"), recent.count("T")
+            last_ten = f"{wins}-{losses}" + (f"-{ties}" if ties else "")
+            current = outcomes[-1]
+            streak_count = next((index for index, outcome in enumerate(reversed(outcomes), start=0) if outcome != current), len(outcomes))
+            form[team] = {"Streak": f"{current}{streak_count}", "Last10": last_ten}
+        return form
 
     def featured(self, slate: pd.DataFrame) -> list[pd.Series]:
         standings = pd.concat([self.standings_table("West"), self.standings_table("East")], ignore_index=True)
@@ -294,10 +399,22 @@ class FantraxRotation:
         return featured
 
     def team_averages(self, teams: list[str]) -> dict[str, dict[str, float | None]]:
-        stats = self.team_stats[(pd.to_numeric(self.team_stats["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.team_stats["Period"], errors="coerce") < self.period.period)].copy()
+        stats_years = pd.to_numeric(self.team_stats["Year"], errors="coerce")
+        stats_periods = pd.to_numeric(self.team_stats["Period"], errors="coerce")
+        source_year = self.period.year
+        stats = self.team_stats[(stats_years == source_year) & (stats_periods < self.period.period)].copy()
+        if stats.empty:
+            prior_years = stats_years[stats_years < self.period.year]
+            if not prior_years.empty:
+                source_year = int(prior_years.max())
+                stats = self.team_stats[stats_years == source_year].copy()
         schedule = self.schedule[
-            (pd.to_numeric(self.schedule["Year"], errors="coerce") == self.period.year)
-            & (pd.to_numeric(self.schedule["Period"], errors="coerce") < self.period.period)
+            (pd.to_numeric(self.schedule["Year"], errors="coerce") == source_year)
+            & (
+                (pd.to_numeric(self.schedule["Period"], errors="coerce") < self.period.period)
+                if source_year == self.period.year
+                else True
+            )
         ].copy()
         regular_season = pd.Series(False, index=schedule.index)
         if "Type" in schedule.columns:
@@ -358,7 +475,10 @@ class FantraxRotation:
         table = pd.read_csv(path) if path.exists() else pd.DataFrame()
         row = table[(table.get("team", pd.Series(dtype=str)).astype(str) == team) & (table.get("edition", pd.Series(dtype=str)).astype(str) == edition)]
         values = {key: value for key, value in row.iloc[0].to_dict().items() if not pd.isna(value)} if not row.empty else {}
+        if not row.empty and "wordmark" in row.columns and pd.isna(row.iloc[0].get("wordmark")):
+            values["wordmark"] = ""
         config = JerseyConfig.from_mapping(values) if values else JerseyConfig(team=team, edition=edition)
+        config = apply_resolved_brand_font(config, self.root / ".streamlit_cache" / "jersey_fonts")
         logo_team = str(row.iloc[0].get("logo_team") or team) if not row.empty else team
         return config, str(team_info.get(logo_team, team_info.get(team, {})).get("logo", ""))
 
@@ -526,10 +646,10 @@ class FantraxRotation:
         season = f"{self.period.year - 1}-{str(self.period.year)[-2:]}"
         generated = datetime.combine(self.as_of, datetime.min.time()).replace(hour=3)
         if "overnight_scores" in kinds:
-            progress = fantrax.matchup_period_progress(self.calendar, self.period.year, self.period.period, as_of=self.as_of)
+            progress = self.matchup_progress()
             posts.append(FantraxPost("overnight_scores", f"sbcfbl-overnight-scores-{self.period.year}-p{self.period.period}.png", fantrax.build_live_scoreboard_image(slate, progress, season, self.period_label(), generated)))
         if "mobile_overnight_scores" in kinds:
-            progress = fantrax.matchup_period_progress(self.calendar, self.period.year, self.period.period, as_of=self.as_of)
+            progress = self.matchup_progress()
             posts.append(FantraxPost("mobile_overnight_scores", f"sbcfbl-mobile-overnight-scores-{self.period.year}-p{self.period.period}.png", fantrax.build_mobile_live_scoreboard_image(slate, progress, season, self.period_label(), generated)))
         if any(kind in kinds for kind in ("matchup_preview", "mobile_matchup_preview")):
             assets = self.preview_assets(featured)

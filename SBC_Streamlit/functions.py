@@ -25,6 +25,7 @@ from data import current_salary_cap, current_luxury_tax, current_apron_1, curren
 from sbc_backend import BackendSettings, get_repository
 from sbc_backend.network import CachedHttpClient
 from sbc_backend.storage import atomic_write_parquet
+from sbc_backend.matchup_progress import starter_game_progress
 
 APP_DIR = Path(__file__).resolve().parent
 BACKEND_SETTINGS = BackendSettings.from_env(APP_DIR)
@@ -296,8 +297,8 @@ def get_fantrax_players() -> pd.DataFrame:
             player_record = player_info.copy()
             players_list.append(player_record)
         players_df = pd.DataFrame(players_list)
-        players_df = players_df[['name', 'fantraxId']]
-        new_row = pd.DataFrame([{"name": "Bogdanovic, Bojan", "fantraxId": "027pg"}])
+        players_df = players_df[['name', 'fantraxId', 'team', 'position']]
+        new_row = pd.DataFrame([{"name": "Bogdanovic, Bojan", "fantraxId": "027pg", "team": "(N/A)", "position": ""}])
         players_df = pd.concat([players_df, new_row], ignore_index=True)
         players_df['name'] = players_df['name'].str.split(', ').str[1] + ' ' + players_df['name'].str.split(', ').str[0]
         players_df.loc[players_df['name'] == 'Amari Bailey', 'fantraxId'] = '06cbt'
@@ -1526,15 +1527,16 @@ def hard_cap_check(df: pd.DataFrame, base_cap: pd.DataFrame) -> str:
     return df
 
 def stepien_data_check(df: pd.DataFrame) -> pd.DataFrame:
-    df = get_draft_picks()
-
-
+    df = df.copy()
     df2 = pd.DataFrame({
-        "Year": [current_year-1] * 30,
-        "Round": ["1st Round"] * 30,
+        "Year": [current_year-1] * len(team_info),
+        "Round": ["1st Round"] * len(team_info),
         "CurrentTeam": list(team_info.keys())
     })
-    df = df[(df['FullyOwned']) | (df['Locked']) | (df['TwoYearLimit'])]
+    # A swap still leaves the team with a first-round selection. Excluding swap
+    # assets creates false Stepien warnings for teams that do not fully own the
+    # underlying pick but are guaranteed to retain a first in that draft.
+    df = df[(df['FullyOwned']) | (df['PickSwap']) | (df['Locked']) | (df['TwoYearLimit'])]
     df['Year'] = np.where(df['TwoYearLimit'], df['Year'] + 0.5, df['Year'])
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes','OGTeam','TeamTouched','Explanation', 'TwoYearLimit'])
     df = df[df['Round'] == "1st Round"]
@@ -1845,28 +1847,58 @@ def _ensure_check_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
             df[column] = pd.NA
     return df
 
+
+def _fantrax_identity_catalog(ft_players: pd.DataFrame) -> pd.DataFrame:
+    current = _ensure_check_columns(ft_players, ['name', 'fantraxId'])[['name', 'fantraxId']]
+    history_path = APP_DIR / "fantrax_player_history.csv"
+    if history_path.exists():
+        historical = _ensure_check_columns(pd.read_csv(history_path), ['name', 'fantraxId'])[['name', 'fantraxId']]
+    else:
+        historical = pd.DataFrame(columns=['name', 'fantraxId'])
+
+    def clean_catalog(frame: pd.DataFrame) -> pd.DataFrame:
+        frame = frame.dropna(subset=['name', 'fantraxId']).copy()
+        frame['name'] = frame['name'].astype(str).str.strip()
+        frame['fantraxId'] = frame['fantraxId'].astype(str).str.strip().str.strip('*')
+        frame = frame[(frame['name'] != '') & (frame['fantraxId'] != '')]
+        frame['_player_key'] = frame['name'].map(normalize_player_key)
+        return frame
+
+    current = clean_catalog(current)
+    historical = clean_catalog(historical)
+    # The live/current catalog wins when Fantrax has reassigned or corrected an
+    # ID. Historical rows are a fallback only for names no longer in its feed.
+    historical = historical[~historical['_player_key'].isin(current['_player_key'])]
+    catalog = pd.concat([current, historical], ignore_index=True)
+
+    # Automatic matching is only safe when a normalized name identifies one
+    # Fantrax player. Same-name collisions remain on the review page.
+    id_counts = catalog.groupby('_player_key')['fantraxId'].nunique()
+    safe_keys = id_counts[id_counts == 1].index
+    return catalog[catalog['_player_key'].isin(safe_keys)].drop_duplicates('_player_key')
+
+
 def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
     df = _ensure_check_columns(df, ['Player', 'Trade.Restriction']).copy()
-    ft_players = _ensure_check_columns(ft_players, ['name', 'fantraxId'])
-    ft_roster = _ensure_check_columns(ft_roster, ['id', 'team_name'])
-    if ft_players['fantraxId'].dropna().empty or ft_roster['id'].dropna().empty:
+    catalog = _fantrax_identity_catalog(ft_players)
+    if catalog.empty:
         return pd.DataFrame([{
             'Cap Sheet Name': 'Fantrax data unavailable',
             'Fantrax Name': pd.NA,
-            'id': pd.NA,
-            'team_name': 'Refresh Fantrax data and rerun checks',
+            'Fantrax ID': pd.NA,
         }])
+
+    df['Cap Sheet Name'] = df['Player']
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
     df = df[df['Trade.Restriction'] != "Banned"]
-    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
-    df = df.merge(ft_roster, how='outer', left_on='fantraxId', right_on='id')
-    df = df[df['Player'].isna() | df['team_name'].isna()]
-    df = df.rename(columns={'Player': 'Cap Sheet Name'})
+    df['_player_key'] = df['Player'].map(normalize_player_key)
+    df = df.merge(catalog, how='left', on='_player_key')
+    df = df[df['fantraxId'].isna()]
     df = df.rename(columns={'name': 'Fantrax Name'})
-    df = df[['Cap Sheet Name', 'Fantrax Name', 'id', 'team_name']]
-    return df
+    df = df.rename(columns={'fantraxId': 'Fantrax ID'})
+    return df[['Cap Sheet Name', 'Fantrax Name', 'Fantrax ID']].drop_duplicates().reset_index(drop=True)
 
 def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
     df = _ensure_check_columns(df, ['Player', 'Trade.Restriction', 'Type']).copy()
@@ -2247,8 +2279,29 @@ def post_fantrax_webhook(
     return response.status_code
 
 
-def matchup_period_progress(period_calendar: pd.DataFrame, year: int, period: int, as_of=None) -> float:
-    """Return the share of matchup calendar days completed, from 0 through 100."""
+def matchup_period_progress(
+    period_calendar: pd.DataFrame,
+    year: int,
+    period: int,
+    as_of=None,
+    *,
+    rosters: pd.DataFrame | None = None,
+    player_catalog: pd.DataFrame | None = None,
+    nba_games: pd.DataFrame | None = None,
+    teams: tuple[str, ...] | list[str] = (),
+) -> float:
+    """Return starter-game completion, with calendar-day fallback for legacy callers."""
+    if rosters is not None and player_catalog is not None and nba_games is not None:
+        return starter_game_progress(
+            period_calendar,
+            rosters,
+            player_catalog,
+            nba_games,
+            year,
+            period,
+            as_of=as_of,
+            teams=teams,
+        )
     required = {"Year", "Period", "Date"}
     if period_calendar is None or period_calendar.empty or not required.issubset(period_calendar.columns):
         return 0.0
@@ -2826,6 +2879,31 @@ def _recap_stat_text(value, stat, attempts=None):
     return f"{number:.0f}" if number.is_integer() else f"{number:.1f}"
 
 
+def _mobile_player_box_lines(player) -> tuple[str, str]:
+    """Build the two compact stat lines used by the mobile matchup recap."""
+    def rounded_percentage(stat: str) -> str:
+        try:
+            value = float(player.get(stat))
+        except (TypeError, ValueError):
+            return "—"
+        if pd.isna(value):
+            return "—"
+        return f"{value * 100:.0f}"
+
+    primary = (
+        f"{_recap_stat_text(player.get('PTS'), 'PTS')} PTS  •  "
+        f"{_recap_stat_text(player.get('OREB'), 'OREB')}/{_recap_stat_text(player.get('DREB'), 'DREB')} REB  •  "
+        f"{_recap_stat_text(player.get('AST'), 'AST')} AST"
+    )
+    shooting = "-".join(rounded_percentage(stat) for stat in ("2PT%", "3PT%", "FT%", "TS%"))
+    secondary = (
+        f"{_recap_stat_text(player.get('MP'), 'MP')} MP  •  {shooting} %  •  "
+        f"{_recap_stat_text(player.get('ST'), 'ST')} STL  •  {_recap_stat_text(player.get('BLK'), 'BLK')} BLK  •  "
+        f"{_recap_stat_text(player.get('TO'), 'TO')} TOV  •  {_recap_stat_text(player.get('+/-'), '+/-')} +/-"
+    )
+    return primary, secondary
+
+
 def _recap_contrast_text(color) -> str:
     """Return readable dark or light text for a team-colored background."""
     rgb = color if isinstance(color, tuple) else _scoreboard_color(color)
@@ -3334,9 +3412,6 @@ def build_mobile_matchup_recap_image(
     # Full-width, stacked player boxes with two readable stat lines.
     draw.text((margin, players_title_y), "PLAYER BOX SCORE", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
 
-    def numeric(value):
-        return pd.to_numeric(pd.Series([value]), errors="coerce").fillna(0).iloc[0]
-
     def draw_player_table(team, color, short_name, top):
         players = rosters[team]
         bottom = top + table_heights[team]
@@ -3356,17 +3431,11 @@ def build_mobile_matchup_recap_image(
             row_bottom = row_top + player_row_height
             if player_index % 2 == 0:
                 draw.rectangle((margin + 6, row_top, width - margin - 6, row_bottom), fill="#f2f6fa")
-            rebounds = numeric(player.get("OREB")) + numeric(player.get("DREB"))
             player_name = str(player.get("display_player", ""))
-            primary = f"{_recap_stat_text(player.get('PTS'), 'PTS')} PTS  •  {_recap_stat_text(rebounds, 'REB')} REB  •  {_recap_stat_text(player.get('AST'), 'AST')} AST"
-            secondary = (
-                f"{_recap_stat_text(player.get('MP'), 'MP')} MIN  •  {_recap_stat_text(player.get('TS%'), 'TS%')} TS  •  "
-                f"{_recap_stat_text(player.get('ST'), 'ST')} STL  •  {_recap_stat_text(player.get('BLK'), 'BLK')} BLK  •  "
-                f"{_recap_stat_text(player.get('TO'), 'TO')} TO  •  {_recap_stat_text(player.get('+/-'), '+/-')} +/-"
-            )
+            primary, secondary = _mobile_player_box_lines(player)
             draw.text((margin + 18, row_top + 31), player_name, font=_fit_scoreboard_font(draw, player_name, 440, 25, 18), fill=navy, anchor="lm")
             draw.text((width - margin - 18, row_top + 31), primary, font=_scoreboard_font(24, True), fill=navy, anchor="rm")
-            draw.text((margin + 18, row_top + 68), secondary, font=_scoreboard_font(20, True), fill="#42546a", anchor="lm")
+            draw.text((margin + 18, row_top + 68), secondary, font=_fit_scoreboard_font(draw, secondary, width - margin * 2 - 36, 20, 16), fill="#42546a", anchor="lm")
         return bottom
 
     draw_player_table(team_a, color_a, name_a, table_a_top)
@@ -3800,7 +3869,7 @@ def build_standings_bracket_image(
         row_top, row_height = top + 137, 101
         for index, (_, row) in enumerate(rows.iterrows()):
             y1, y2 = row_top + index * row_height, row_top + (index + 1) * row_height - 5
-            fill = "#eaf7ef" if index < 6 else "#fff6df" if index < 10 else ("#f4f7fa" if index % 2 == 0 else "#ffffff")
+            fill = "#dff3e7" if index < 6 else "#fff6df" if index < 10 else "#f9e4e7"
             draw.rounded_rectangle((left + 9, y1, right - 9, y2), radius=11, fill=fill)
             row_mid = (y1 + y2) // 2
             draw.text((left + 27, row_mid), str(index + 1), font=_scoreboard_font(21, True), fill=color if index < 10 else "#8091a5", anchor="mm")
@@ -3924,7 +3993,7 @@ def build_standings_bracket_image(
 
     def draw_matchup_card(center, card, color, compact=False, finals_card=False):
         x, y = center
-        w, h = ((330, 136) if finals_card else ((226, 98) if compact else (card_w, card_h)))
+        w, h = ((330, 136) if finals_card else ((250, 98) if compact else (card_w, card_h)))
         left, top, right, bottom = x - w // 2, y - h // 2, x + w // 2, y + h // 2
         draw.rounded_rectangle((left, top, right, bottom), radius=18, fill="#f8fafc", outline=color, width=4)
         draw.line((left + 10, y, right - 10, y), fill="#d8e0e9", width=2)
@@ -3944,13 +4013,14 @@ def build_standings_bracket_image(
                 image.paste(logo, (logo_x, row_y - logo.height // 2), logo)
             text_x = logo_x + (logo_size + 7 if logo is not None else 2)
             score = scores[team_index] if scores[team_index] is not None else None
-            score_space = 50 if score is not None else 10
+            score_space = 88 if score is not None else 10
             label = team_label(team)
             font = _fit_scoreboard_font(draw, label, right - score_space - text_x, 20 if compact else 23, 14)
             draw.text((text_x, row_y), label, font=font, fill=ink if team else "#93a1b2", anchor="lm")
             if score is not None:
                 score_text = _scoreboard_score(score)
-                draw.text((right - 13, row_y), score_text, font=_scoreboard_font(20, True), fill=color if winner else ink, anchor="rm")
+                score_font = _fit_scoreboard_font(draw, score_text, score_space - 17, 20, 15)
+                draw.text((right - 13, row_y), score_text, font=score_font, fill=color if winner else ink, anchor="rm")
         return left, top, right, bottom
 
     west_positions = {"first": [(1050, y) for y in (390, 665, 1005, 1280)], "semi": [(1335, y) for y in (530, 1140)], "conf": [(1555, ring_center_y)]}
@@ -4229,7 +4299,7 @@ def build_mobile_standings_image(
         for index in range(15):
             top = standings_top + conference_header + index * row_height
             bottom = top + row_height - 4
-            fill = "#eaf7ef" if index < 6 else "#fff6df" if index < 10 else ("#f4f7fa" if index % 2 == 0 else "#ffffff")
+            fill = "#dff3e7" if index < 6 else "#fff6df" if index < 10 else "#f9e4e7"
             draw.rounded_rectangle((left + 6, top, right - 6, bottom), radius=9, fill=fill)
             if index >= len(rows):
                 continue
@@ -4317,11 +4387,12 @@ def build_mobile_standings_image(
     draw.text((bracket_mid, bracket_top + 34), "POSTSEASON", font=_scoreboard_font(30, True), fill="#ffffff", anchor="mm")
     draw.text((bracket_mid, bracket_top + 70), "LOGOS MOVE TOWARD THE FINALS", font=_scoreboard_font(15, True), fill="#d8e3ee", anchor="mm")
 
-    path_top, path_bottom = bracket_top + 126, bracket_bottom - 225
-    path_mid_y = (path_top + path_bottom) // 2
+    path_top = bracket_top + 126
     card_width, card_height = 72, 126
-    west_positions = {"first": [(92, y) for y in (path_top + 45, path_top + 230, path_top + 455, path_top + 640)], "semi": [(265, y) for y in (path_top + 138, path_top + 548)], "conf": [(410, path_mid_y)]}
-    east_positions = {"first": [(988, y) for y in (path_top + 45, path_top + 230, path_top + 455, path_top + 640)], "semi": [(815, y) for y in (path_top + 138, path_top + 548)], "conf": [(670, path_mid_y)]}
+    first_round_y = (path_top + 45, path_top + 230, path_top + 455, path_top + 640)
+    championship_y = (first_round_y[0] + first_round_y[-1]) // 2
+    west_positions = {"first": [(92, y) for y in first_round_y], "semi": [(265, y) for y in (path_top + 138, path_top + 548)], "conf": [(410, championship_y)]}
+    east_positions = {"first": [(988, y) for y in first_round_y], "semi": [(815, y) for y in (path_top + 138, path_top + 548)], "conf": [(670, championship_y)]}
 
     def draw_connections(positions, side):
         direction = 1 if side == "West" else -1
@@ -4360,11 +4431,11 @@ def build_mobile_standings_image(
                 draw_logo_match(center, card, color)
 
     final_left, final_right = bracket_mid - 62, bracket_mid + 62
-    draw.rounded_rectangle((final_left, path_mid_y - 180, final_right, path_mid_y + 180), radius=24, fill="#17263a", outline=gold, width=8)
-    draw.text((bracket_mid, path_mid_y - 137), "FINALS", font=_scoreboard_font(18, True), fill=gold, anchor="mm")
-    draw_logo_match((bracket_mid, path_mid_y + 18), final_card, gold, final=True)
-    draw.line((446, path_mid_y, final_left, path_mid_y), fill=gold, width=7)
-    draw.line((final_right, path_mid_y, 634, path_mid_y), fill=gold, width=7)
+    draw.rounded_rectangle((final_left, championship_y - 180, final_right, championship_y + 180), radius=24, fill="#17263a", outline=gold, width=8)
+    draw.text((bracket_mid, championship_y - 137), "FINALS", font=_scoreboard_font(18, True), fill=gold, anchor="mm")
+    draw_logo_match((bracket_mid, championship_y + 18), final_card, gold, final=True)
+    draw.line((446, championship_y, final_left, championship_y), fill=gold, width=7)
+    draw.line((final_right, championship_y, 634, championship_y), fill=gold, width=7)
 
     playin_y = bracket_bottom - 88
     draw.rounded_rectangle((margin + 16, bracket_bottom - 194, width - margin - 16, bracket_bottom - 28), radius=18, fill="#f8fafc", outline="#d4dee8", width=2)

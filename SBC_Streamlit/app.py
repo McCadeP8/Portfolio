@@ -65,6 +65,8 @@ from jersey_rotation import select_game_uniforms
 from sbc_backend import BackendSettings, get_repository
 from sbc_backend.awards import build_award_count_tables
 from sbc_backend.player_stats import prepare_matchup_archive_rows
+from sbc_backend.live import EspnNBAClient, format_live_game_status
+from sbc_backend.matchup_preview import project_player_rows
 import scorebug_creator as highlight_scorebug
 
 
@@ -787,7 +789,61 @@ def load_fantrax_players_snapshot():
     df = DATA_REPOSITORY.read("fantrax_players")
     if df.empty:
         df = get_fantrax_players()
-    return ensure_columns(df, ["name", "fantraxId"]).dropna(subset=["name", "fantraxId"])
+    df = ensure_columns(df, ["name", "fantraxId", "nba_team", "position"])
+    historical = _read_local_csv("fantrax_player_history.csv")
+    if not historical.empty:
+        historical = ensure_columns(historical, ["fantraxId", "name", "nba_team", "position"])
+        historical["fantraxId"] = historical["fantraxId"].astype(str)
+        df["fantraxId"] = df["fantraxId"].astype(str)
+        current_ids = set(df["fantraxId"].dropna())
+        missing = historical[~historical["fantraxId"].isin(current_ids)]
+        df = pd.concat([df, missing], ignore_index=True, sort=False)
+        details = historical[["fantraxId", "nba_team", "position"]].drop_duplicates("fantraxId")
+        df = df.drop(columns=["nba_team", "position"], errors="ignore").merge(details, on="fantraxId", how="left")
+    if "team" in df.columns:
+        live_team = df["team"].astype(str).str.strip()
+        has_live_team = ~live_team.isin(["", "(N/A)", "N/A", "nan", "None"])
+        df.loc[has_live_team, "nba_team"] = live_team[has_live_team]
+    return df.dropna(subset=["name", "fantraxId"])
+
+
+@st.cache_data(ttl=300, max_entries=64)
+def load_nba_games_for_dates(date_values):
+    client = EspnNBAClient(
+        cache_root=BACKEND_SETTINGS.runtime_root / "espn",
+        timeout_seconds=BACKEND_SETTINGS.http_timeout_seconds,
+        live_ttl_seconds=BACKEND_SETTINGS.live_cache_seconds,
+    )
+    frames = []
+    for value in date_values:
+        try:
+            snapshot = client.snapshot(pd.Timestamp(value).date(), include_player_stats=False)
+            frame = snapshot.game_frame()
+            if not frame.empty:
+                frames.append(frame)
+        except Exception:
+            continue
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+
+def matchup_starter_progress(year, matchup_period, teams=(), as_of=None):
+    calendar = period_calendar.copy()
+    dates = calendar[
+        (pd.to_numeric(calendar.get("Year"), errors="coerce") == int(year))
+        & (pd.to_numeric(calendar.get("Period"), errors="coerce") == int(matchup_period))
+    ].get("Date", pd.Series(dtype=object))
+    date_values = tuple(sorted(pd.to_datetime(dates, errors="coerce").dropna().dt.date.astype(str).unique()))
+    games = load_nba_games_for_dates(date_values) if date_values else pd.DataFrame()
+    return matchup_period_progress(
+        period_calendar,
+        int(year),
+        int(matchup_period),
+        as_of=as_of,
+        rosters=all_time_rosters,
+        player_catalog=load_fantrax_players_snapshot(),
+        nba_games=games,
+        teams=tuple(teams),
+    )
 
 
 def normalize_boxscore_player_key(value):
@@ -893,10 +949,28 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
     active = active.dropna(subset=["espn_player_id"])
     active["espn_player_id"] = active["espn_player_id"].astype(str)
 
-    box = load_nba_player_boxscores_archive()
-    if box.empty:
+    box_archive = load_nba_player_boxscores_archive()
+    if box_archive.empty:
         return pd.DataFrame()
-    box = box[box["sbc_year"].astype(int) == year].copy()
+    box_years = pd.to_numeric(box_archive["sbc_year"], errors="coerce")
+    box = box_archive[box_years == year].copy()
+    preview_status = str(matchup_row.get("_display_status", "")).strip().lower()
+    if box.empty and preview_status in {"preview", "future", "upcoming"}:
+        prior_years = box_years[box_years < year]
+        if not prior_years.empty:
+            opening_day = int(matchup_days["Day"].min())
+            opening_roster = active[active["Day"] == opening_day][["fantraxId", "sbc_team"]].drop_duplicates("fantraxId")
+            games = load_nba_games_for_dates(tuple(sorted(matchup_days["Date"].astype(str).unique())))
+            projected = project_player_rows(
+                opening_roster,
+                bridge,
+                load_fantrax_players_snapshot(),
+                box_archive[box_years == prior_years.max()],
+                games,
+            )
+            if not projected.empty:
+                projected["Date"] = matchup_days["Date"].min()
+                return projected.sort_values(["sbc_team", "display_player"]).reset_index(drop=True)
     box["Date"] = pd.to_datetime(box["Date"], errors="coerce").dt.date
     box = box[box["Date"].isin(matchup_days["Date"])].copy()
     box = box.merge(matchup_days[["Date", "Day"]], on="Date", how="inner")
@@ -910,6 +984,21 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
     )
     if merged.empty:
         return pd.DataFrame()
+    game_dates = tuple(sorted(matchup_days["Date"].astype(str).unique()))
+    game_statuses = load_nba_games_for_dates(game_dates)
+    if not game_statuses.empty:
+        status_columns = game_statuses[["event_id", "state", "status", "period", "clock", "completed"]].copy()
+        status_columns = status_columns.rename(columns={
+            "event_id": "nba_game_id",
+            "state": "nba_game_state",
+            "status": "nba_game_status",
+            "period": "nba_game_period",
+            "clock": "nba_game_clock",
+            "completed": "nba_game_completed",
+        })
+        status_columns["nba_game_id"] = status_columns["nba_game_id"].astype(str)
+        merged["nba_game_id"] = merged["nba_game_id"].astype(str)
+        merged = merged.merge(status_columns.drop_duplicates("nba_game_id"), on="nba_game_id", how="left")
     merged["display_player"] = merged["fantrax_name"].fillna(merged["player_name"])
     return merged.sort_values(["sbc_team", "display_player", "Date", "nba_game_id"]).reset_index(drop=True)
 
@@ -1121,13 +1210,18 @@ def render_category_votes_box(category_table, team_totals, team_a, team_b):
 
 def matchup_label_for_row(row):
     matchup = str(row.get("matchup", "") or "").strip()
-    if matchup:
-        return matchup
-    nba_team = str(row.get("nba_team", "") or "").strip()
-    opponent = str(row.get("opponent", "") or "").strip()
-    if nba_team and opponent:
-        return f"{nba_team} vs. {opponent}"
-    return nba_team or opponent
+    if not matchup:
+        nba_team = str(row.get("nba_team", "") or "").strip()
+        opponent = str(row.get("opponent", "") or "").strip()
+        matchup = f"{nba_team} vs. {opponent}" if nba_team and opponent else nba_team or opponent
+    game_status = format_live_game_status(
+        row.get("nba_game_state"),
+        row.get("nba_game_status"),
+        row.get("nba_game_period"),
+        row.get("nba_game_clock"),
+        row.get("nba_game_completed"),
+    )
+    return " · ".join(part for part in [matchup, game_status] if part)
 
 
 def render_player_boxscore_team(team_rows, team_name, aggregate):
@@ -2602,6 +2696,11 @@ def render_matchup_highlight_tab(events, matchup_row, team_a, team_b, key_prefix
     moment = ordered_moments[selected_index]
     record_a, rank_a = matchup_start_standing(matchup_row, team_a, "TeamA")
     record_b, rank_b = matchup_start_standing(matchup_row, team_b, "TeamB")
+    matchup_completion = matchup_starter_progress(
+        int(matchup_row.get("Year", current_year)),
+        int(matchup_row.get("Period", 1)),
+        teams=[team_a, team_b],
+    )
     before = highlight_scorebug.ScorebugData(
         team_a=highlight_scorebug.team_display(
             team_a,
@@ -2616,7 +2715,7 @@ def render_matchup_highlight_tab(events, matchup_row, team_a, team_b, key_prefix
         categories=moment["before_categories"],
         score_a=moment["score_a"],
         score_b=moment["score_b"],
-        matchup_progress=moment["progress"],
+        matchup_progress=int(round(matchup_completion)),
         label="SBCFBL MATCHUP",
         status="IN PROGRESS",
         play_description=highlight_play_description(moment, team_a, team_b),
@@ -3140,6 +3239,23 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     type_label = str(matchup_row.get("Type", ""))
     title_label = boxscore_title_for_round(round_label, type_label)
     status_label = str(matchup_row.get("_display_status", "Final") or "Final").strip()
+    matchup_year = pd.to_numeric(matchup_row.get("Year"), errors="coerce")
+    matchup_period_value = pd.to_numeric(matchup_row.get("Period"), errors="coerce")
+    if pd.notna(matchup_year) and pd.notna(matchup_period_value):
+        matchup_dates = pd.to_datetime(
+            period_calendar.loc[
+                (pd.to_numeric(period_calendar.get("Year"), errors="coerce") == int(matchup_year))
+                & (pd.to_numeric(period_calendar.get("Period"), errors="coerce") == int(matchup_period_value)),
+                "Date",
+            ],
+            errors="coerce",
+        ).dropna()
+        current_day = pd.Timestamp(date.today()).normalize()
+        if not matchup_dates.empty and matchup_dates.min().normalize() <= current_day <= matchup_dates.max().normalize():
+            completion = matchup_starter_progress(
+                int(matchup_year), int(matchup_period_value), teams=[team_a, team_b], as_of=current_day,
+            )
+            status_label = "Final" if completion >= 100 else f"{completion:.1f}% Complete"
     status_lower = status_label.lower()
     status_percent_match = re.search(r"(\d+(?:\.\d+)?)\s*%", status_label)
     if "final" in status_lower:
@@ -9247,6 +9363,11 @@ def matchup_preview_team_averages(team_stats_df, schedule_df, selected_year, sel
         year_values = pd.to_numeric(schedule.get("Year"), errors="coerce")
         period_values = pd.to_numeric(schedule.get("Period"), errors="coerce")
         schedule = schedule[(year_values == int(selected_year)) & (period_values < int(selected_period))].copy()
+        if schedule.empty:
+            source_years = pd.to_numeric(schedule_df.get("Year"), errors="coerce")
+            prior_years = source_years[source_years < int(selected_year)]
+            if not prior_years.empty:
+                schedule = schedule_df[source_years == prior_years.max()].copy()
         if "Type" in schedule.columns:
             schedule = schedule[schedule["Type"].astype(str).str.strip().str.casefold().str.contains("regular", na=False)]
         score_a = pd.to_numeric(schedule.get("TeamAScore"), errors="coerce")
@@ -9269,6 +9390,13 @@ def matchup_preview_team_averages(team_stats_df, schedule_df, selected_year, sel
     year_values = pd.to_numeric(stats.get("Year"), errors="coerce")
     period_values = pd.to_numeric(stats.get("Period"), errors="coerce")
     stats = stats[(year_values == int(selected_year)) & (period_values < int(selected_period))].copy()
+    if stats.empty:
+        # Opening-week previews have no current-season results yet. Use the
+        # completed prior regular season until this season has a real baseline.
+        source_year = pd.to_numeric(team_stats_df.get("Year"), errors="coerce")
+        prior_years = source_year[source_year < int(selected_year)]
+        if not prior_years.empty:
+            stats = team_stats_df[source_year == prior_years.max()].copy()
     if stats.empty:
         return empty
     result = {}
@@ -19505,8 +19633,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
                             live_matchup_stats,
                             standings,
                         )
-                        live_progress = matchup_period_progress(
-                            period_calendar,
+                        live_progress = matchup_starter_progress(
                             selected_scoreboard_year,
                             selected_scoreboard_period,
                         )
@@ -19552,8 +19679,7 @@ if main_page == "Team Hub" and selected_team_page == "History":
                             live_matchup_stats,
                             standings,
                         )
-                        live_progress = matchup_period_progress(
-                            period_calendar,
+                        live_progress = matchup_starter_progress(
                             selected_scoreboard_year,
                             selected_scoreboard_period,
                         )

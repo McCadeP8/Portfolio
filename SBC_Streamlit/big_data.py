@@ -42,9 +42,10 @@ ROSTER_SEASON_WINDOWS = {
 def dataset_path(filename: str) -> Path:
     return BACKEND_SETTINGS.data_root / filename
 
-def notify(message: str):
+def notify(message: str, *, alert: bool = False):
+    """Log refresh progress, sending Discord only for actionable problems."""
     print(message)
-    if not DISCORD_WEBHOOK_URL:
+    if not alert or not DISCORD_WEBHOOK_URL:
         return
     try:
         send_discord_message(DISCORD_WEBHOOK_URL, message)
@@ -70,7 +71,7 @@ def refresh_sheet_snapshots():
             loader()
             notify(f"Refreshed snapshot: {label}")
         except Exception as exc:
-            notify(f"Skipped snapshot refresh for {label}: {type(exc).__name__}: {exc}")
+            notify(f"Skipped snapshot refresh for {label}: {type(exc).__name__}: {exc}", alert=True)
 
 
 def get_all_team_stats_history() -> pd.DataFrame:
@@ -79,7 +80,7 @@ def get_all_team_stats_history() -> pd.DataFrame:
     all_dates = all_dates[all_dates["Year"] == current_year]
     all_dates = (all_dates[["Year", "Period"]].drop_duplicates().reset_index(drop=True))
     if all_dates.empty:
-        notify(f"Skipped get_all_team_stats_history: no {current_year} periods found in all_time_scores.parquet")
+        notify(f"Skipped get_all_team_stats_history: no {current_year} periods found in all_time_scores.parquet", alert=True)
         return history
 
     dfs = []
@@ -88,13 +89,13 @@ def get_all_team_stats_history() -> pd.DataFrame:
         period = int(row.Period)
         df = get_matchup_stats(year, period)
         if df is None or df.empty:
-            notify(f"Skipped team stats for {year} period {period}: Fantrax returned no data")
+            notify(f"Skipped team stats for {year} period {period}: Fantrax returned no data", alert=True)
             continue
         df["Year"] = year
         df["Period"] = period
         dfs.append(df)
     if not dfs:
-        notify(f"Skipped get_all_team_stats_history: no Fantrax team stats were available for {current_year}")
+        notify(f"Skipped get_all_team_stats_history: no Fantrax team stats were available for {current_year}", alert=True)
         return history
 
     df_old = history[history["Year"] != current_year]
@@ -140,7 +141,7 @@ def get_all_time_rosters_history() -> pd.DataFrame:
     history = pd.read_parquet(dataset_path("all_time_rosters_history.parquet"))
     roster_year = BACKEND_SETTINGS.current_sbc_year
     if roster_year not in league_ids:
-        notify(f"Skipped get_all_time_rosters_history: no Fantrax league ID configured for {roster_year}")
+        notify(f"Skipped get_all_time_rosters_history: no Fantrax league ID configured for {roster_year}", alert=True)
         return history
     df = _configured_roster_periods(roster_year)
     if not df.empty:
@@ -155,7 +156,7 @@ def get_all_time_rosters_history() -> pd.DataFrame:
         df["games"] = df["games"].astype(int)
         df = df[["games", "Year"]].drop_duplicates().sort_values("games").reset_index(drop=True)
     if df.empty:
-        notify(f"Skipped get_all_time_rosters_history: no {roster_year} roster periods found in the schedule sheet")
+        notify(f"Skipped get_all_time_rosters_history: no {roster_year} roster periods found in the schedule sheet", alert=True)
         return history
 
     all_rosters = []
@@ -165,7 +166,7 @@ def get_all_time_rosters_history() -> pd.DataFrame:
         games = int(row.games)
         df2 = get_fantrax_roster(year, games)
         if df2 is None or df2.empty:
-            notify(f"Skipped roster snapshot for {year} period {games}: Fantrax returned no roster data")
+            notify(f"Skipped roster snapshot for {year} period {games}: Fantrax returned no roster data", alert=True)
             continue
         df2["Year"] = year
         df2["period"] = games
@@ -175,7 +176,7 @@ def get_all_time_rosters_history() -> pd.DataFrame:
         all_rosters.append(df2)
         refreshed_periods.add(games)
     if not all_rosters:
-        notify(f"Skipped get_all_time_rosters_history: no Fantrax roster data was available for {roster_year}")
+        notify(f"Skipped get_all_time_rosters_history: no Fantrax roster data was available for {roster_year}", alert=True)
         return history
 
     fresh = pd.concat(all_rosters, ignore_index=True)
@@ -192,13 +193,13 @@ def get_all_time_scores() -> pd.DataFrame:
     df_old = df[df["Year"] != current_year]
     df = df[df["Year"] == current_year]
     if df.empty:
-        notify(f"Skipped get_all_time_scores: no {current_year} games found in all_time_scores.parquet")
+        notify(f"Skipped get_all_time_scores: no {current_year} games found in all_time_scores.parquet", alert=True)
         return pd.concat([df_old, df], ignore_index=True)
 
     try:
         period_calendar = get_period_calendar()
     except Exception as exc:
-        notify(f"Could not apply future score guard: {type(exc).__name__}: {exc}")
+        notify(f"Could not apply future score guard: {type(exc).__name__}: {exc}", alert=True)
         period_calendar = pd.DataFrame()
     future_periods = future_matchup_periods(period_calendar)
     df = zero_future_matchup_scores(df, period_calendar)
@@ -211,7 +212,7 @@ def get_all_time_scores() -> pd.DataFrame:
             continue
         stats_df = get_matchup_stats(year, period)
         if stats_df is None or stats_df.empty:
-            notify(f"Skipped score update for {year} period {period}: Fantrax returned no team stats")
+            notify(f"Skipped score update for {year} period {period}: Fantrax returned no team stats", alert=True)
             continue
         for idx in group.index:
             team_a = df.at[idx, "TeamA"]
@@ -219,10 +220,10 @@ def get_all_time_scores() -> pd.DataFrame:
             try:
                 team_a_score, team_b_score = get_matchup_score(team_a, team_b, stats_df)
             except ValueError as exc:
-                notify(f"Skipped score update for {team_a} vs {team_b}, {year} period {period}: {exc}")
+                notify(f"Skipped score update for {team_a} vs {team_b}, {year} period {period}: {exc}", alert=True)
                 continue
             if team_a_score is None or team_b_score is None:
-                notify(f"Skipped score update for {team_a} vs {team_b}, {year} period {period}: incomplete team stats")
+                notify(f"Skipped score update for {team_a} vs {team_b}, {year} period {period}: incomplete team stats", alert=True)
                 continue
             df.at[idx, "TeamAScore"] = team_a_score
             df.at[idx, "TeamBScore"] = team_b_score
@@ -249,7 +250,7 @@ def get_all_time_standings() -> pd.DataFrame:
     df_old = df2[df2["Year"] != current_year]
     df2 = df2[df2["Year"] == current_year]
     if df.empty or df2.empty:
-        notify(f"Skipped get_all_time_standings: missing {current_year} scores or standings seed rows")
+        notify(f"Skipped get_all_time_standings: missing {current_year} scores or standings seed rows", alert=True)
         return pd.concat([df_old, df2], ignore_index=True)
 
     # A 0-0 row is an unplayed schedule placeholder, not a TeamB win.

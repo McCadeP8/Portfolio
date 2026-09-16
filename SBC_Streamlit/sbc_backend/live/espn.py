@@ -128,6 +128,38 @@ def parse_live_game(event: dict[str, Any], *, fetched_at: str | None = None) -> 
     )
 
 
+def format_live_game_status(
+    state: Any,
+    status: Any,
+    period: Any = 0,
+    clock: Any = "",
+    completed: Any = False,
+) -> str:
+    """Format an ESPN game state for the compact player-game row label."""
+    state_text = str(state or "").strip().lower()
+    status_text = str(status or "").strip()
+    completed_text = str(completed or "").strip().lower()
+    is_completed = completed is True or completed_text in {"true", "1", "yes"}
+    if is_completed or state_text == "post" or "final" in status_text.lower():
+        return "Final"
+    if state_text == "in":
+        try:
+            period_number = int(float(period or 0))
+        except (TypeError, ValueError):
+            period_number = 0
+        if period_number <= 4:
+            suffix = "th" if 10 <= period_number % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(period_number % 10, "th")
+            period_label = f"{period_number}{suffix} Quarter" if period_number else "In Progress"
+        else:
+            overtime = period_number - 4
+            period_label = "OT" if overtime == 1 else f"{overtime}OT"
+        return " ".join(part for part in [str(clock or "").strip(), period_label] if part)
+    time_match = re.search(r"\b(\d{1,2}:\d{2})\s*(?:AM|PM)?\s*(?:E[DS]T|ET)?\b", status_text, flags=re.IGNORECASE)
+    if time_match:
+        return f"{time_match.group(1).lstrip('0')} ET"
+    return status_text.replace("EDT", "ET").replace("EST", "ET")
+
+
 def parse_player_boxscore(summary: dict[str, Any], event: dict[str, Any]) -> pd.DataFrame:
     event_id = str(event.get("id") or "")
     game_date = pd.to_datetime(event.get("sbc_game_date") or event.get("date"), errors="coerce")
