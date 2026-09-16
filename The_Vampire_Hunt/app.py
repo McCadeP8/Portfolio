@@ -2576,12 +2576,16 @@ with available_tab:
                         for rank, row in enumerate(rows, 1)
                     )
                     with column:
+                        pool_html = (
+                            f'<div class="pool-section" style="--pool-accent:{accent}">'
+                            f'<div class="pool-heading"><strong>{position}</strong>'
+                            f'<span>Select {select_count} followers · Top {player_count}</span></div>'
+                            '<div class="pool-row header"><div>#</div><div>Follower</div><div>NFL</div></div>'
+                            f'{table_rows}'
+                            '</div>'
+                        )
                         st.markdown(
-                            f'''<div class="pool-section" style="--pool-accent:{accent}">
-            <div class="pool-heading"><strong>{position}</strong><span>Select {select_count} followers · Top {player_count}</span></div>
-                            <div class="pool-row header"><div>#</div><div>Follower</div><div>NFL</div></div>
-                                {table_rows}
-                            </div>''',
+                            pool_html,
                             unsafe_allow_html=True,
                         )
                         selected_by_position[position] = st.multiselect(
