@@ -2526,7 +2526,17 @@ def build_live_scoreboard_image(
 
     progress = max(0.0, min(100.0, float(progress_percent)))
 
+    def row_progress(row) -> float:
+        try:
+            value = row.get("MatchupProgress", progress)
+            if pd.isna(value):
+                value = progress
+            return max(0.0, min(100.0, float(value)))
+        except (TypeError, ValueError):
+            return progress
+
     def draw_matchup_card(row, card_left, card_top):
+        card_progress = row_progress(row)
         card_right = card_left + card_width
         card_bottom = card_top + row_height - 8
         center_y = (card_top + card_bottom) // 2
@@ -2585,22 +2595,20 @@ def build_live_scoreboard_image(
         bar_right = card_left + 550
         bar_width = bar_right - bar_left
         bar_top, bar_bottom = center_y - 15, center_y + 15
-        if progress >= 100.0:
+        if card_progress >= 100.0:
             draw.rounded_rectangle((bar_left, bar_top, bar_right, bar_bottom), radius=15, fill="#172033")
             draw.text(((bar_left + bar_right) // 2, center_y), "FINAL", font=_scoreboard_font(16, True), fill="#ffffff", anchor="mm")
         else:
             draw.rounded_rectangle((bar_left, bar_top, bar_right, bar_bottom), radius=9, fill="#dfe7ef", outline="#cbd6e2", width=1)
-            fill_width = int(bar_width * progress / 100.0)
+            fill_width = int(bar_width * card_progress / 100.0)
             if fill_width > 0:
                 fill_right = min(bar_right, bar_left + fill_width)
-                draw.rounded_rectangle((bar_left, bar_top, fill_right, bar_bottom), radius=9, fill=color_a)
-                for x in range(max(0, fill_width - 8)):
-                    blend = x / max(1, bar_width - 1)
-                    color = tuple(int(a + (b - a) * blend) for a, b in zip(color_a, color_b))
-                    draw.line((bar_left + 4 + x, bar_top + 2, bar_left + 4 + x, bar_bottom - 2), fill=color)
-            draw.text(((bar_left + bar_right) // 2, center_y), f"{progress:.0f}%", font=_scoreboard_font(14, True), fill="#ffffff", anchor="mm", stroke_width=2, stroke_fill="#172033")
+                draw.rounded_rectangle((bar_left, bar_top, fill_right, bar_bottom), radius=9, fill="#172033")
+            label_color = "#ffffff" if card_progress >= 50 else "#172033"
+            draw.text(((bar_left + bar_right) // 2, center_y), f"{card_progress:.0f}%", font=_scoreboard_font(14, True), fill=label_color, anchor="mm")
 
     def draw_regular_matchup_card(row, card_left, card_top):
+        card_progress = row_progress(row)
         card_right = card_left + regular_card_width
         card_bottom = card_top + regular_row_height - 8
         team_a, team_b = str(row.get("TeamA", "")), str(row.get("TeamB", ""))
@@ -2645,12 +2653,18 @@ def build_live_scoreboard_image(
             )
             bounds = draw.textbbox(winner_pos, winner_text, font=score_font, anchor=winner_anchor)
             draw.line((bounds[0], bounds[3] + 5, bounds[2], bounds[3] + 5), fill=winner_color, width=3)
-        if progress >= 100:
-            draw.rounded_rectangle((card_mid - 54, score_y - 16, card_mid + 54, score_y + 16), radius=16, fill="#172033")
+        pill_left, pill_right = card_mid - 54, card_mid + 54
+        pill_top, pill_bottom = score_y - 16, score_y + 16
+        if card_progress >= 100:
+            draw.rounded_rectangle((pill_left, pill_top, pill_right, pill_bottom), radius=16, fill="#172033")
             draw.text((card_mid, score_y), "FINAL", font=_scoreboard_font(13, True), fill="#ffffff", anchor="mm")
         else:
-            draw.rounded_rectangle((card_mid - 54, score_y - 16, card_mid + 54, score_y + 16), radius=16, fill="#dfe7ef")
-            draw.text((card_mid, score_y), f"{progress:.0f}%", font=_scoreboard_font(13, True), fill="#172033", anchor="mm")
+            draw.rounded_rectangle((pill_left, pill_top, pill_right, pill_bottom), radius=16, fill="#dfe7ef")
+            fill_right = pill_left + int((pill_right - pill_left) * card_progress / 100.0)
+            if fill_right > pill_left:
+                draw.rounded_rectangle((pill_left, pill_top, fill_right, pill_bottom), radius=16, fill="#172033")
+            label_color = "#ffffff" if card_progress >= 50 else "#172033"
+            draw.text((card_mid, score_y), f"{card_progress:.0f}%", font=_scoreboard_font(13, True), fill=label_color, anchor="mm")
 
     y_cursor = header_height
     for game_type, section_rows in sections:
@@ -2771,6 +2785,15 @@ def build_mobile_live_scoreboard_image(
 
     progress = max(0.0, min(100.0, float(progress_percent)))
 
+    def row_progress(row) -> float:
+        try:
+            value = row.get("MatchupProgress", progress)
+            if pd.isna(value):
+                value = progress
+            return max(0.0, min(100.0, float(value)))
+        except (TypeError, ValueError):
+            return progress
+
     def paste_team_logo(row, side, team, center, fallback_color):
         source = str(row.get(f"Team{side}_logo", safe_team_info(team, "logo", "")) or "")
         logo = _scoreboard_logo_image(_scoreboard_logo_bytes(source), 60)
@@ -2781,6 +2804,7 @@ def build_mobile_live_scoreboard_image(
             draw.text(center, team[:2].upper(), font=_scoreboard_font(15, True), fill="#ffffff", anchor="mm")
 
     def draw_mobile_matchup(row, top, left):
+        card_progress = row_progress(row)
         right, bottom = left + mobile_card_width, top + row_height - 8
         center_y = (top + bottom) // 2
         team_a, team_b = str(row.get("TeamA", "")), str(row.get("TeamB", ""))
@@ -2810,15 +2834,16 @@ def build_mobile_live_scoreboard_image(
         card_mid = (left + right) // 2
         pill_left, pill_right = card_mid - 31, card_mid + 31
         pill_top, pill_bottom = center_y - 26, center_y + 26
-        if progress >= 100:
+        if card_progress >= 100:
             draw.rounded_rectangle((pill_left, pill_top, pill_right, pill_bottom), radius=20, fill=navy)
             draw.text((card_mid, center_y), "F", font=_scoreboard_font(25, True), fill="#ffffff", anchor="mm")
         else:
             draw.rounded_rectangle((pill_left, pill_top, pill_right, pill_bottom), radius=20, fill="#dfe7ef")
-            fill_right = pill_left + int((pill_right - pill_left) * progress / 100)
+            fill_right = pill_left + int((pill_right - pill_left) * card_progress / 100)
             if fill_right > pill_left:
-                draw.rounded_rectangle((pill_left, pill_top, max(pill_left + 16, fill_right), pill_bottom), radius=20, fill=color_a)
-            draw.text((card_mid, center_y), f"{progress:.0f}%", font=_scoreboard_font(14, True), fill="#ffffff", stroke_width=2, stroke_fill=navy, anchor="mm")
+                draw.rounded_rectangle((pill_left, pill_top, max(pill_left + 16, fill_right), pill_bottom), radius=20, fill=navy)
+            label_color = "#ffffff" if card_progress >= 50 else navy
+            draw.text((card_mid, center_y), f"{card_progress:.0f}%", font=_scoreboard_font(14, True), fill=label_color, anchor="mm")
 
     cursor = header_height
     for game_type, section_rows in sections:

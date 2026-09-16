@@ -188,6 +188,23 @@ class FantraxRotation:
             teams=teams,
         )
 
+    def scoreboard_slate_with_progress(self, slate: pd.DataFrame) -> pd.DataFrame:
+        """Attach starter-game completion for the two lineups in each matchup."""
+        enriched = slate.copy()
+        if enriched.empty:
+            enriched["MatchupProgress"] = pd.Series(dtype=float)
+            return enriched
+        progress_by_pair: dict[tuple[str, str], float] = {}
+        values = []
+        for _, game in enriched.iterrows():
+            teams = (str(game.get("TeamA", "")), str(game.get("TeamB", "")))
+            key = tuple(sorted(teams))
+            if key not in progress_by_pair:
+                progress_by_pair[key] = self.matchup_progress(teams)
+            values.append(progress_by_pair[key])
+        enriched["MatchupProgress"] = values
+        return enriched
+
     def _player_bridge(self) -> pd.DataFrame:
         players = self.players.rename(columns={"name": "display_player", "fantraxId": "fantrax_id"}).copy()
         if players.empty or self.boxscores.empty:
@@ -645,12 +662,13 @@ class FantraxRotation:
         posts, skipped = [], []
         season = f"{self.period.year - 1}-{str(self.period.year)[-2:]}"
         generated = datetime.combine(self.as_of, datetime.min.time()).replace(hour=3)
+        scoreboard_slate = None
+        if any(kind in kinds for kind in ("overnight_scores", "mobile_overnight_scores")):
+            scoreboard_slate = self.scoreboard_slate_with_progress(slate)
         if "overnight_scores" in kinds:
-            progress = self.matchup_progress()
-            posts.append(FantraxPost("overnight_scores", f"sbcfbl-overnight-scores-{self.period.year}-p{self.period.period}.png", fantrax.build_live_scoreboard_image(slate, progress, season, self.period_label(), generated)))
+            posts.append(FantraxPost("overnight_scores", f"sbcfbl-overnight-scores-{self.period.year}-p{self.period.period}.png", fantrax.build_live_scoreboard_image(scoreboard_slate, 0.0, season, self.period_label(), generated)))
         if "mobile_overnight_scores" in kinds:
-            progress = self.matchup_progress()
-            posts.append(FantraxPost("mobile_overnight_scores", f"sbcfbl-mobile-overnight-scores-{self.period.year}-p{self.period.period}.png", fantrax.build_mobile_live_scoreboard_image(slate, progress, season, self.period_label(), generated)))
+            posts.append(FantraxPost("mobile_overnight_scores", f"sbcfbl-mobile-overnight-scores-{self.period.year}-p{self.period.period}.png", fantrax.build_mobile_live_scoreboard_image(scoreboard_slate, 0.0, season, self.period_label(), generated)))
         if any(kind in kinds for kind in ("matchup_preview", "mobile_matchup_preview")):
             assets = self.preview_assets(featured)
         if "matchup_preview" in kinds:

@@ -156,6 +156,26 @@ class FantraxWebhookTests(unittest.TestCase):
         self.assertEqual(len(featured), 2)
         self.assertEqual(len(selected_teams), len(set(selected_teams)))
 
+    def test_overnight_slate_gets_progress_for_each_specific_matchup(self):
+        rotation = FantraxRotation.__new__(FantraxRotation)
+        calls = []
+
+        def progress(teams=()):
+            calls.append(tuple(teams))
+            return 25.0 if "Alpha" in teams else 75.0
+
+        rotation.matchup_progress = progress
+        slate = pd.DataFrame([
+            {"TeamA": "Alpha", "TeamB": "Beta"},
+            {"TeamA": "Gamma", "TeamB": "Delta"},
+            {"TeamA": "Beta", "TeamB": "Alpha", "Type": "In-Season Tournament"},
+        ])
+
+        result = rotation.scoreboard_slate_with_progress(slate)
+
+        self.assertEqual(result["MatchupProgress"].tolist(), [25.0, 75.0, 25.0])
+        self.assertEqual(calls, [("Alpha", "Beta"), ("Gamma", "Delta")])
+
     def test_standings_streak_and_last_ten_come_from_completed_games(self):
         rotation = FantraxRotation.__new__(FantraxRotation)
         rotation.period = Mock(year=2026, period=13)
