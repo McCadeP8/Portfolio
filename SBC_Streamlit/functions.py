@@ -1925,10 +1925,16 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: 
     return df
 
 def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
-    df = get_data()
     df = _ensure_check_columns(df, ['Player', 'Type', 'Team']).copy()
-    ft_players = _ensure_check_columns(ft_players, ['name', 'fantraxId'])
-    ft_rosters = _ensure_check_columns(ft_rosters, ['id', 'position', 'status'])
+    # Keep only the fields this check owns. The player feed also includes a
+    # current NBA ``position`` now; allowing it through this merge makes pandas
+    # rename the roster slot to position_x/position_y and breaks the check.
+    ft_players = _ensure_check_columns(ft_players, ['name', 'fantraxId'])[
+        ['name', 'fantraxId']
+    ].copy()
+    ft_rosters = _ensure_check_columns(ft_rosters, ['id', 'position', 'status'])[
+        ['id', 'position', 'status']
+    ].copy()
     if ft_players['fantraxId'].dropna().empty or ft_rosters['id'].dropna().empty:
         return pd.DataFrame([{
             'Team': 'Fantrax data unavailable',

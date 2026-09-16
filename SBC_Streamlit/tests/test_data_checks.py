@@ -97,5 +97,33 @@ class FantraxTranslationCheckTests(unittest.TestCase):
         self.assertEqual(jalen["fantraxId"].tolist(), ["current-id"])
 
 
+class FantraxPositionalCheckTests(unittest.TestCase):
+    def test_player_position_does_not_collide_with_roster_slot(self):
+        cap_sheet = pd.DataFrame([{
+            "Player": "Known Player",
+            "Type": "Active Players",
+            "Team": "El Paso",
+        }])
+        fantrax_players = pd.DataFrame([{
+            "name": "Known Player",
+            "fantraxId": "known01",
+            "position": "PF",
+        }])
+        fantrax_roster = pd.DataFrame([{
+            "id": "known01",
+            "position": "PG",
+            "status": "ACTIVE",
+        }])
+
+        with patch.object(functions, "active_player_n", return_value=1):
+            result = functions.fantrax_positional_check(
+                cap_sheet,
+                fantrax_players,
+                fantrax_roster,
+            )
+
+        self.assertTrue(result.empty)
+
+
 if __name__ == "__main__":
     unittest.main()
