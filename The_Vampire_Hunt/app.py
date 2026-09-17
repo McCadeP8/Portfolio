@@ -355,7 +355,7 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict, team_nam
         name = display_player_name(player.get("name", ""))
         if name:
             by_directory_name[player_match_key(name)] = (str(player_id), player)
-    defense_ids = {player_match_key(name): (team_id, nfl_team) for team_id, (name, nfl_team) in DEFENSE_TEAMS.items()}
+    defense_ids = {defense_match_key(name): (team_id, nfl_team) for team_id, (name, nfl_team) in DEFENSE_TEAMS.items()}
 
     rebuilt = []
     for slot, player_name in slots:
@@ -367,8 +367,9 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict, team_nam
         if directory_entry:
             player_id, player_info = directory_entry
         position = slot.rstrip("0123456789")
-        if position == "DST" and player_match_key(clean_name) in defense_ids:
-            player_id, nfl_team = defense_ids[player_match_key(clean_name)]
+        defense_key = defense_match_key(clean_name)
+        if position == "DST" and defense_key in defense_ids:
+            player_id, nfl_team = defense_ids[defense_key]
         else:
             nfl_team = str(existing.get("nfl_team") or player_info.get("team") or "FA")
         rebuilt.append({
@@ -389,6 +390,7 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict, team_nam
 
 @st.cache_data(ttl=30, show_spinner=False)
 def fantrax_roster_for_week(week: int) -> tuple[list[dict], str]:
+    players = {}
     try:
         players = fantrax_player_directory()
         rows = fetch_roster_week(int(week), players)
@@ -398,7 +400,7 @@ def fantrax_roster_for_week(week: int) -> tuple[list[dict], str]:
         pass
     snapshot = load_snapshot()
     rows = snapshot.get("rosters", {}).get(str(int(week)), [])
-    return sheet_vampire_rows(int(week), rows, {}), "snapshot"
+    return sheet_vampire_rows(int(week), rows, players), "snapshot"
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -641,9 +643,26 @@ def player_match_key(name: str) -> str:
     # Common short-name variants used by different fantasy data providers.
     value = re.sub(r"\bcam(?=\s+skattebo\b)", "cameron", value)
     value = re.sub(r"\bkenny(?=\s+gainwell\b)", "kenneth", value)
+    value = re.sub(r"\b(?:chris|christian)(?=\s+brooks\b)", "christopher", value)
+    value = re.sub(r"\bandy(?=\s+borregales\b)", "andres", value)
     value = re.sub(r"\b(jr|sr|ii|iii|iv|v)\.?\b", "", value)
     value = re.sub(r"[^a-z0-9]", "", value)
     return value
+
+
+def defense_match_key(name: str) -> str:
+    """Match either Fantrax's city label or a sheet's full NFL team name."""
+    value = str(name or "").strip()
+    mascots = (
+        "49ers", "Bears", "Bengals", "Bills", "Broncos", "Browns", "Buccaneers",
+        "Cardinals", "Chargers", "Chiefs", "Colts", "Commanders", "Cowboys",
+        "Dolphins", "Eagles", "Falcons", "Giants", "Jaguars", "Jets", "Lions",
+        "Packers", "Panthers", "Patriots", "Raiders", "Rams", "Ravens", "Saints",
+        "Seahawks", "Steelers", "Texans", "Titans", "Vikings",
+    )
+    stripped = re.sub(rf"\s+(?:{'|'.join(mascots)})$", "", value, flags=re.I)
+    key = player_match_key(stripped)
+    return {"losangeles": "la", "newyork": "ny"}.get(key, key)
 
 
 def stolen_followers_before(week: int, realm_name: str | None = None) -> dict[str, int]:

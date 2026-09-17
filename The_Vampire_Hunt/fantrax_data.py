@@ -214,48 +214,58 @@ def _stat_column(data: dict[str, Any], key: str, sort_key: str = "") -> int | No
 
 
 def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
-    """Fetch Fantrax's official weekly FPts for every rostered player."""
+    """Fetch Fantrax's official weekly FPts for rostered and sheet-selected players."""
     cookie_header = str(auth_cookie).strip()
     if cookie_header and "=" not in cookie_header:
         cookie_header = f"JSESSIONID={cookie_header}"
-    data = _fetch_player_stats(week, "ALL_TAKEN")
-
-    header_cells = data.get("tableHeader", {}).get("cells", [])
-    score_index = None
-    for index, header in enumerate(header_cells):
-        if str(header.get("key", "")).lower() == "fpts" or str(header.get("sortKey", "")).upper() == "SCORE":
-            score_index = index
-            break
-    if score_index is None:
-        for index, header in enumerate(header_cells):
-            if str(header.get("shortName", "")).lower() == "fpts":
-                score_index = index
-                break
-    if score_index is None:
-        for index, header in enumerate(header_cells):
-            searchable = " ".join(
-                str(header.get(key, "")) for key in ("key", "name", "shortName", "sortKey")
-            ).lower()
-            if "fantasy point" in searchable:
-                score_index = index
-                break
-    if score_index is None:
-        raise FantraxUnavailable("Fantrax's FPts column was not found.")
+    # The Vampire roster is maintained in the public sheet and can contain a
+    # player who Fantrax currently labels a free agent. ALL_TAKEN alone omits
+    # those selections (notably DST units), so merge the complete player table.
+    data_sources = [_fetch_player_stats(week, "ALL_TAKEN")]
+    try:
+        data_sources.append(_fetch_player_stats(week, "ALL"))
+    except (requests.RequestException, FantraxUnavailable, ValueError, KeyError):
+        # Keep the normal rostered-player scores if the supplemental free-agent
+        # table is briefly unavailable.
+        pass
 
     scores: dict[str, float] = {}
-    for row in data.get("statsTable", []):
-        scorer = row.get("scorer") or {}
-        scorer_id = str(scorer.get("scorerId", "")).strip()
-        cells = row.get("cells") or []
-        if not scorer_id or score_index >= len(cells):
-            continue
-        score = _score_from_cell(cells[score_index])
-        if score is not None:
-            scores[scorer_id] = score
-            # Roster payloads identify DST units by NFL team ID, while the
-            # Players table gives them a separate scorer ID.
-            if scorer.get("team") and scorer.get("teamId") is not None:
-                scores[str(scorer["teamId"])] = score
+    for data in data_sources:
+        header_cells = data.get("tableHeader", {}).get("cells", [])
+        score_index = None
+        for index, header in enumerate(header_cells):
+            if str(header.get("key", "")).lower() == "fpts" or str(header.get("sortKey", "")).upper() == "SCORE":
+                score_index = index
+                break
+        if score_index is None:
+            for index, header in enumerate(header_cells):
+                if str(header.get("shortName", "")).lower() == "fpts":
+                    score_index = index
+                    break
+        if score_index is None:
+            for index, header in enumerate(header_cells):
+                searchable = " ".join(
+                    str(header.get(key, "")) for key in ("key", "name", "shortName", "sortKey")
+                ).lower()
+                if "fantasy point" in searchable:
+                    score_index = index
+                    break
+        if score_index is None:
+            raise FantraxUnavailable("Fantrax's FPts column was not found.")
+
+        for row in data.get("statsTable", []):
+            scorer = row.get("scorer") or {}
+            scorer_id = str(scorer.get("scorerId", "")).strip()
+            cells = row.get("cells") or []
+            if not scorer_id or score_index >= len(cells):
+                continue
+            score = _score_from_cell(cells[score_index])
+            if score is not None:
+                scores[scorer_id] = score
+                # Roster payloads identify DST units by NFL team ID, while the
+                # Players table gives them a separate scorer ID.
+                if scorer.get("team") and scorer.get("teamId") is not None:
+                    scores[str(scorer["teamId"])] = score
     return scores
 
 
