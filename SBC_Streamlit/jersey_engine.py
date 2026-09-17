@@ -233,8 +233,15 @@ def _show_front_league_mark(config: JerseyConfig) -> bool:
     return bool(config.show_league_mark) and str(config.edition).strip().casefold() != "statement"
 
 
+def _uniform_stripe_style(config: JerseyConfig, *, shorts: bool = False) -> str:
+    """Statement uniforms are intentionally logo-on-primary with no striping."""
+    if str(config.edition).strip().casefold() == "statement":
+        return "None"
+    return str(config.shorts_stripe_style if shorts else config.stripe_style)
+
+
 def _jersey_stripes(ax: Axes, config: JerseyConfig, cx: float, top: float, jersey_clip: PathPatch, scale: float):
-    style = config.stripe_style
+    style = _uniform_stripe_style(config)
     z = 3
     if style == "None":
         return
@@ -313,7 +320,7 @@ def _draw_shorts(ax: Axes, config: JerseyConfig, cx: float, top: float, logo: An
         ax.add_patch(Polygon(shape, facecolor=config.shorts_color, edgecolor=config.trim_color, linewidth=config.trim_width, joinstyle="round", zorder=2))
     ax.add_patch(Rectangle((cx - 20 * scale, top), 40 * scale, 5 * scale, facecolor=config.trim_color, edgecolor="none", zorder=4))
 
-    style = config.shorts_stripe_style
+    style = _uniform_stripe_style(config, shorts=True)
     if style == "Side panels":
         ax.add_patch(Polygon([(cx - 25 * scale, top + 7 * scale), (cx - 20 * scale, top + 5 * scale), (cx - 18 * scale, top + 33 * scale), (cx - 24 * scale, top + 34 * scale)], facecolor=config.accent_color, edgecolor="none", zorder=4))
         ax.add_patch(Polygon([(cx + 25 * scale, top + 7 * scale), (cx + 20 * scale, top + 5 * scale), (cx + 18 * scale, top + 33 * scale), (cx + 24 * scale, top + 34 * scale)], facecolor=config.accent_color, edgecolor="none", zorder=4))

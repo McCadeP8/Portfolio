@@ -11,6 +11,7 @@ from jersey_engine import (
     JerseyConfig,
     _front_wordmark_text,
     _show_front_league_mark,
+    _uniform_stripe_style,
     apply_resolved_brand_font,
     resolve_brand_font_path,
 )
@@ -42,6 +43,26 @@ class JerseyFontTests(unittest.TestCase):
 
         self.assertEqual(_front_wordmark_text(config), "SBC")
         self.assertTrue(_show_front_league_mark(config))
+
+    def test_statement_jerseys_never_inherit_default_stripes(self):
+        config = JerseyConfig(
+            edition="Statement",
+            stripe_style="Side panels",
+            shorts_stripe_style="Double side",
+        )
+
+        self.assertEqual(_uniform_stripe_style(config), "None")
+        self.assertEqual(_uniform_stripe_style(config, shorts=True), "None")
+
+    def test_standard_jerseys_keep_their_configured_stripes(self):
+        config = JerseyConfig(
+            edition="Icon",
+            stripe_style="Side panels",
+            shorts_stripe_style="Double side",
+        )
+
+        self.assertEqual(_uniform_stripe_style(config), "Side panels")
+        self.assertEqual(_uniform_stripe_style(config, shorts=True), "Double side")
 
 
 if __name__ == "__main__":
