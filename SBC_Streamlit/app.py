@@ -2835,15 +2835,21 @@ def render_matchup_boxscore_dialog(matchup_row, rosters_df):
 def matchup_starter_shots(rows, team_a, team_b):
     if rows.empty:
         return pd.DataFrame()
-    game_ids = tuple(sorted(rows.get("nba_game_id", pd.Series(dtype=str)).dropna().astype(str).unique()))
+
+    def normalized_ids(values):
+        return values.dropna().astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+
+    game_ids = tuple(sorted(normalized_ids(rows.get("nba_game_id", pd.Series(dtype=str))).unique()))
     game_dates = tuple(sorted(rows.get("game_date", pd.Series(dtype=str)).dropna().astype(str).unique()))
     shots_mtime = DATA_REPOSITORY.archive_mtime("data_snapshots/shots/nba_shots_20????.parquet")
     shots = load_nba_shots_for_games(game_ids, game_dates, shots_mtime)
     if shots.empty:
         return pd.DataFrame()
     mapping = rows[["nba_game_id", "espn_player_id", "sbc_team", "display_player"]].dropna().drop_duplicates().copy()
-    mapping["game_id"] = mapping["nba_game_id"].astype(str)
-    mapping["player_id"] = mapping["espn_player_id"].astype(str)
+    mapping["game_id"] = normalized_ids(mapping["nba_game_id"])
+    mapping["player_id"] = normalized_ids(mapping["espn_player_id"])
+    shots["game_id"] = normalized_ids(shots["game_id"])
+    shots["player_id"] = normalized_ids(shots["player_id"])
     mapping = mapping[mapping["sbc_team"].isin([team_a, team_b])]
     joined = shots.merge(
         mapping[["game_id", "player_id", "sbc_team", "display_player"]],

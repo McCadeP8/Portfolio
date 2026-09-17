@@ -20,8 +20,14 @@ class FantraxWebhookTests(unittest.TestCase):
             "DREB": 10,
             "AST": 8,
             "MP": 121,
+            "2PTM": 31,
+            "2PTA": 56,
             "2PT%": .554,
+            "3PTM": 10,
+            "3PTA": 49,
             "3PT%": .204,
+            "FTM": 8,
+            "FTA": 9,
             "FT%": .899,
             "TS%": .571,
             "ST": 3,
@@ -31,7 +37,7 @@ class FantraxWebhookTests(unittest.TestCase):
         })
 
         self.assertEqual(primary, "31 PTS  •  7/10 REB  •  8 AST")
-        self.assertEqual(secondary, "121 MP  •  55-20-90-57 %  •  3 STL  •  2 BLK  •  4 TOV  •  -6 +/-")
+        self.assertEqual(secondary, "121 MP  •  31/56 2P  •  10/49 3P  •  8/9 FT  •  57.10 TS%  •  3 STL  •  2 BLK  •  4 TOV  •  -6 +/-")
 
     @patch("functions.requests.post")
     def test_posts_fixed_message_as_webhook_content(self, mock_post):

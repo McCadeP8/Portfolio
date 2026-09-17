@@ -2912,23 +2912,33 @@ def _recap_stat_text(value, stat, attempts=None):
 
 def _mobile_player_box_lines(player) -> tuple[str, str]:
     """Build the two compact stat lines used by the mobile matchup recap."""
-    def rounded_percentage(stat: str) -> str:
+    def made_attempt_label(made_stat: str, attempt_stat: str, label: str) -> str:
+        made = _recap_stat_text(player.get(made_stat), made_stat)
+        attempted = _recap_stat_text(player.get(attempt_stat), attempt_stat)
+        return f"{made}/{attempted} {label}"
+
+    def percentage_label(stat: str, label: str) -> str:
         try:
             value = float(player.get(stat))
         except (TypeError, ValueError):
-            return "—"
+            return f"— {label}"
         if pd.isna(value):
-            return "—"
-        return f"{value * 100:.0f}"
+            return f"— {label}"
+        return f"{value * 100:.2f} {label}"
 
     primary = (
         f"{_recap_stat_text(player.get('PTS'), 'PTS')} PTS  •  "
         f"{_recap_stat_text(player.get('OREB'), 'OREB')}/{_recap_stat_text(player.get('DREB'), 'DREB')} REB  •  "
         f"{_recap_stat_text(player.get('AST'), 'AST')} AST"
     )
-    shooting = "-".join(rounded_percentage(stat) for stat in ("2PT%", "3PT%", "FT%", "TS%"))
+    shooting = "  •  ".join((
+        made_attempt_label("2PTM", "2PTA", "2P"),
+        made_attempt_label("3PTM", "3PTA", "3P"),
+        made_attempt_label("FTM", "FTA", "FT"),
+        percentage_label("TS%", "TS%"),
+    ))
     secondary = (
-        f"{_recap_stat_text(player.get('MP'), 'MP')} MP  •  {shooting} %  •  "
+        f"{_recap_stat_text(player.get('MP'), 'MP')} MP  •  {shooting}  •  "
         f"{_recap_stat_text(player.get('ST'), 'ST')} STL  •  {_recap_stat_text(player.get('BLK'), 'BLK')} BLK  •  "
         f"{_recap_stat_text(player.get('TO'), 'TO')} TOV  •  {_recap_stat_text(player.get('+/-'), '+/-')} +/-"
     )
@@ -3483,52 +3493,100 @@ def build_mobile_matchup_recap_image(
     draw.text((width // 4, look_bottom - 27), f"{name_a} • {road_edition}", font=_scoreboard_font(18, True), fill="#52667b", anchor="mm")
     draw.text((width * 3 // 4, look_bottom - 27), f"{name_b} • {home_edition}", font=_scoreboard_font(18, True), fill="#52667b", anchor="mm")
 
-    # Simplified differential flow with larger labels.
+    # Compact version of the desktop day-by-day matchup score flow.
     draw.text((margin, flow_title_y), "MATCHUP FLOW", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
     draw.rounded_rectangle((margin, chart_top, width - margin, chart_bottom), radius=16, fill="#ffffff", outline="#dbe4ee", width=2)
-    plot_left, plot_right = margin + 58, width - margin - 28
-    plot_top, plot_bottom = chart_top + 72, chart_bottom - 54
-    mid_y = (plot_top + plot_bottom) // 2
-    draw.line((plot_left, mid_y, plot_right, mid_y), fill="#aab6c3", width=3)
-    draw.text((plot_left, chart_top + 30), name_a, font=_scoreboard_font(24, True), fill=color_a, anchor="lm")
-    draw.text((plot_right, chart_top + 30), name_b, font=_scoreboard_font(24, True), fill=color_b, anchor="rm")
-    draw.text((plot_left, plot_top + 4), f"{name_a.upper()} LEAD", font=_scoreboard_font(17, True), fill="#607286", anchor="la")
-    draw.text((plot_left, plot_bottom - 4), f"{name_b.upper()} LEAD", font=_scoreboard_font(17, True), fill="#607286", anchor="ld")
+    chip_top, chip_bottom = chart_top + 18, chart_top + 70
+    chip_width = 300
+    draw.rounded_rectangle((margin + 18, chip_top, margin + 18 + chip_width, chip_bottom), radius=22, fill=color_a)
+    draw.text((margin + 18 + chip_width // 2, (chip_top + chip_bottom) // 2), name_a, font=_fit_scoreboard_font(draw, name_a, chip_width - 34, 21, 15), fill=_recap_contrast_text(color_a), anchor="mm")
+    draw.rounded_rectangle((width - margin - 18 - chip_width, chip_top, width - margin - 18, chip_bottom), radius=22, fill=color_b)
+    draw.text((width - margin - 18 - chip_width // 2, (chip_top + chip_bottom) // 2), name_b, font=_fit_scoreboard_font(draw, name_b, chip_width - 34, 21, 15), fill=_recap_contrast_text(color_b), anchor="mm")
+    margin_value = None if score_a_number is None or score_b_number is None else score_a_number - score_b_number
+    margin_text = "FLOW" if margin_value is None else f"{margin_value:+.0f}"
+    draw.rounded_rectangle((width // 2 - 74, chip_top, width // 2 + 74, chip_bottom), radius=22, fill=navy)
+    draw.text((width // 2, (chip_top + chip_bottom) // 2), margin_text, font=_scoreboard_font(20, True), fill="#ffffff", anchor="mm")
+
+    plot_left, plot_right = margin + 88, width - margin - 24
+    plot_top, plot_bottom = chart_top + 106, chart_bottom - 52
     trend = trend_table.copy().reset_index(drop=True) if trend_table is not None else pd.DataFrame()
     if not trend.empty and team_a in trend.columns and team_b in trend.columns:
         trend[team_a] = pd.to_numeric(trend[team_a], errors="coerce")
         trend[team_b] = pd.to_numeric(trend[team_b], errors="coerce")
         trend = trend.dropna(subset=[team_a, team_b]).reset_index(drop=True)
     if not trend.empty:
+        if "game_date" in trend.columns:
+            trend["_day"] = pd.to_datetime(trend["game_date"].astype(str), format="%Y%m%d", errors="coerce")
+        else:
+            trend["_day"] = pd.NaT
+        wallclock = pd.to_datetime(trend.get("wallclock", pd.Series(pd.NaT, index=trend.index)), errors="coerce", utc=True)
+        trend["_day"] = trend["_day"].fillna(wallclock.dt.tz_localize(None).dt.normalize())
+        if trend["_day"].isna().all():
+            trend["_day"] = pd.date_range("2000-01-01", periods=len(trend), freq="D")
+        else:
+            trend["_day"] = trend["_day"].ffill().bfill()
+        fallback_times = pd.to_datetime(trend["_day"], errors="coerce", utc=True) + pd.Timedelta(hours=20)
+        trend["_wallclock"] = wallclock.fillna(pd.Series(fallback_times, index=trend.index))
         if score_a_number is not None and score_b_number is not None:
             trend.loc[trend.index[-1], [team_a, team_b]] = [score_a_number, score_b_number]
-        differential = (trend[team_a] - trend[team_b]).astype(float)
-        max_abs = max(1.0, float(differential.abs().max()))
-        points = []
-        for index, value in enumerate(differential):
-            x = int(plot_left + index / max(1, len(differential) - 1) * (plot_right - plot_left))
-            y = int(mid_y - value / max_abs * (plot_bottom - plot_top) * 0.41)
-            points.append((x, y, value))
-        for first, second in zip(points, points[1:]):
-            segment_color = color_a if (first[2] + second[2]) / 2 >= 0 else color_b
-            draw.line((first[0], first[1], second[0], second[1]), fill=segment_color, width=8)
-        if points:
-            last = points[-1]
-            last_color = color_a if last[2] >= 0 else color_b
-            draw.ellipse((last[0] - 9, last[1] - 9, last[0] + 9, last[1] + 9), fill=last_color)
-        if "game_date" in trend.columns:
-            dates = pd.to_datetime(trend["game_date"].astype(str), format="%Y%m%d", errors="coerce")
-            valid_dates = dates.dropna()
-            if not valid_dates.empty:
-                unique_dates = list(pd.Series(valid_dates.dt.normalize().unique()).sort_values())
-                for date_value in unique_dates:
-                    indexes = dates[dates.dt.normalize() == date_value].index
-                    if len(indexes):
-                        x = int(plot_left + int(indexes.min()) / max(1, len(trend) - 1) * (plot_right - plot_left))
-                        draw.line((x, plot_top, x, plot_bottom), fill="#e0e7ef", width=2)
-                        draw.text((x + 5, plot_bottom + 24), pd.Timestamp(date_value).strftime("%a"), font=_scoreboard_font(18, True), fill="#52667b", anchor="mm")
+        trend = trend.sort_values("_wallclock").reset_index(drop=True)
+        days = list(pd.Series(trend["_day"].dropna().unique()).sort_values())
+        panel_gap = 7
+        panel_width = int((plot_right - plot_left - panel_gap * max(0, len(days) - 1)) / max(1, len(days)))
+        score_max, score_mid = 413.0, 206.5
+        top_fill = _recap_tint(color_a, 0.73)
+        bottom_fill = _recap_tint(color_b, 0.73)
+
+        def score_y(value):
+            score = max(0.0, min(score_max, float(value)))
+            return int(plot_bottom - score / score_max * (plot_bottom - plot_top))
+
+        draw.text((plot_left - 12, plot_top + 4), name_a.upper(), font=_scoreboard_font(14, True), fill=color_a, anchor="rs")
+        draw.text((plot_left - 12, score_y(score_mid)), "TIE", font=_scoreboard_font(14, True), fill="#52667b", anchor="rm")
+        draw.text((plot_left - 12, plot_bottom - 4), name_b.upper(), font=_scoreboard_font(14, True), fill=color_b, anchor="rd")
+        prior_score = score_mid
+        for day_index, day in enumerate(days):
+            panel_left = plot_left + day_index * (panel_width + panel_gap)
+            panel_right = panel_left + panel_width
+            day_rows = trend[trend["_day"] == day].copy().sort_values("_wallclock")
+            timeline = [(16.0, prior_score)]
+            for _, trend_row in day_rows.iterrows():
+                eastern = pd.Timestamp(trend_row["_wallclock"]).tz_convert("America/New_York")
+                chart_hour = eastern.hour + eastern.minute / 60 + eastern.second / 3600
+                if chart_hour < 4:
+                    chart_hour += 24
+                timeline.append((max(16.0, min(25.0, chart_hour)), float(trend_row[team_b])))
+            prior_score = timeline[-1][1]
+            timeline.append((25.0, prior_score))
+
+            def hour_x(hour):
+                return int(panel_left + (hour - 16) / 9 * panel_width)
+
+            for (hour_a, value_a), (hour_b, _) in zip(timeline, timeline[1:]):
+                x1, x2 = hour_x(hour_a), hour_x(hour_b)
+                y = score_y(value_a)
+                draw.rectangle((x1, plot_top, x2, y), fill=top_fill)
+                draw.rectangle((x1, y, x2, plot_bottom), fill=bottom_fill)
+            for score_tick in (0, 113, score_mid, 300, score_max):
+                y = score_y(score_tick)
+                draw.line((panel_left, y, panel_right, y), fill="#8c9baa" if score_tick == score_mid else "#d7e0e9", width=3 if score_tick == score_mid else 1)
+            draw.rectangle((panel_left, plot_top, panel_right, plot_bottom), outline="#52667b", width=2)
+            for (hour_a, value_a), (hour_b, value_b) in zip(timeline, timeline[1:]):
+                x1, x2 = hour_x(hour_a), hour_x(hour_b)
+                y1, y2 = score_y(value_a), score_y(value_b)
+                draw.line((x1, y1, x2, y1), fill="#ffffff", width=8)
+                draw.line((x2, y1, x2, y2), fill="#ffffff", width=8)
+                draw.line((x1, y1, x2, y1), fill=navy, width=4)
+                draw.line((x2, y1, x2, y2), fill=navy, width=4)
+            date_label = pd.Timestamp(day).strftime("%a\n%b %d").replace(" 0", " ")
+            line_one, line_two = date_label.split("\n")
+            draw.text(((panel_left + panel_right) // 2, plot_bottom + 18), line_one, font=_scoreboard_font(16, True), fill="#344054", anchor="mm")
+            draw.text(((panel_left + panel_right) // 2, plot_bottom + 37), line_two, font=_scoreboard_font(13, True), fill="#718398", anchor="mm")
     else:
-        draw.text((width // 2, mid_y), "FLOW DATA UNAVAILABLE", font=_scoreboard_font(18, True), fill="#8293a6", anchor="mm")
+        empty_mid = (plot_top + plot_bottom) // 2
+        draw.rounded_rectangle((plot_left, plot_top, plot_right, plot_bottom), radius=12, fill="#f4f7fa")
+        draw.text((width // 2, empty_mid - 12), "FLOW DATA UNAVAILABLE", font=_scoreboard_font(20, True), fill="#607286", anchor="mm")
+        draw.text((width // 2, empty_mid + 22), "Scoring movement will appear when play-by-play is available.", font=_scoreboard_font(15, True), fill="#8293a6", anchor="mm")
 
     generated = pd.Timestamp(generated_at if generated_at is not None else pd.Timestamp.now()).strftime("%b %d • %I:%M %p").replace(" 0", " ")
     draw.text((margin, height - 26), f"SBCFBL • {generated}", font=_scoreboard_font(14, True), fill="#718398", anchor="lm")
