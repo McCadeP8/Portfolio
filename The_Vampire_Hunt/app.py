@@ -1706,6 +1706,7 @@ st.markdown(
         .team-hero img { width: 100%; height: auto; aspect-ratio: 1; }
         .profile-grid { grid-template-columns: 1fr; }
         .scoreboard-grid { grid-template-columns: 1fr; }
+        .score-card:after { display:none; }
         .league-board { height:auto; min-height:0; }
         .rank-tiles { height:auto; grid-template-rows:none; }
         .roster-row { grid-template-columns:52px 1fr 70px; }
