@@ -2840,7 +2840,8 @@ def matchup_starter_shots(rows, team_a, team_b):
         return values.dropna().astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
 
     game_ids = tuple(sorted(normalized_ids(rows.get("nba_game_id", pd.Series(dtype=str))).unique()))
-    game_dates = tuple(sorted(rows.get("game_date", pd.Series(dtype=str)).dropna().astype(str).unique()))
+    date_column = "game_date" if "game_date" in rows.columns else "Date" if "Date" in rows.columns else None
+    game_dates = tuple(sorted(rows[date_column].dropna().astype(str).unique())) if date_column else ()
     shots_mtime = DATA_REPOSITORY.archive_mtime("data_snapshots/shots/nba_shots_20????.parquet")
     shots = load_nba_shots_for_games(game_ids, game_dates, shots_mtime)
     if shots.empty:
@@ -2865,6 +2866,123 @@ def matchup_starter_shots(rows, team_a, team_b):
     joined.loc[home_mask, "court_x"] = 50.0 - joined.loc[home_mask, "court_x"]
     joined.loc[home_mask, "court_y"] = 94.0 - joined.loc[home_mask, "court_y"]
     return joined.dropna(subset=["court_x", "court_y"])
+
+
+def draw_matchup_shot_overlay(ax, shots, rows, team_a, team_b):
+    """Draw each fantasy team's shots on its own side of the recap court."""
+    if (shots is None or shots.empty) and (rows is None or rows.empty):
+        return
+
+    def shooting_line(team):
+        team_rows = rows[rows["sbc_team"].astype(str) == str(team)] if rows is not None and not rows.empty and "sbc_team" in rows.columns else pd.DataFrame()
+
+        def total(column):
+            if team_rows.empty or column not in team_rows.columns:
+                return 0
+            return int(round(pd.to_numeric(team_rows[column], errors="coerce").fillna(0).sum()))
+
+        line = {
+            "2PTM": total("2PTM"), "2PTA": total("2PTA"),
+            "3PTM": total("3PTM"), "3PTA": total("3PTA"),
+            "FTM": total("FTM"), "FTA": total("FTA"),
+        }
+        line["FT%"] = line["FTM"] / line["FTA"] if line["FTA"] else 0
+        return line
+
+    team_lines = {str(team_a): shooting_line(team_a), str(team_b): shooting_line(team_b)}
+
+    # Both teams retain the same green=make / red=miss language, while the
+    # darker left palette and brighter right palette make team ownership
+    # obvious even where shots cluster near midcourt.
+    palettes = {
+        str(team_a): {"made": "#15803d", "missed": "#b91c1c"},
+        str(team_b): {"made": "#4ade80", "missed": "#fb7185"},
+    }
+    if shots is not None and not shots.empty:
+        made_values = shots.get("made", pd.Series(False, index=shots.index))
+        if pd.api.types.is_bool_dtype(made_values):
+            made_mask = made_values.fillna(False)
+        else:
+            made_mask = made_values.astype(str).str.strip().str.casefold().isin({"true", "1", "made", "yes"})
+        team_values = shots["sbc_team"].astype(str)
+        for team in (team_a, team_b):
+            team_mask = team_values == str(team)
+            made = shots[team_mask & made_mask]
+            missed = shots[team_mask & ~made_mask]
+            palette = palettes[str(team)]
+
+            # White halos and larger marks keep the shot chart readable in the
+            # reduced desktop and phone recap exports.
+            ax.scatter(
+                made["court_y"], -made["court_x"], s=104, marker="o",
+                facecolor="#ffffff", edgecolor="#10233f", linewidth=1.25,
+                alpha=.98, zorder=39,
+            )
+            ax.scatter(
+                made["court_y"], -made["court_x"], s=67, marker="o",
+                facecolor=palette["made"], edgecolor="#ffffff", linewidth=1.15,
+                alpha=.98, zorder=40,
+            )
+            ax.scatter(
+                missed["court_y"], -missed["court_x"], s=112, marker="x",
+                color="#ffffff", linewidth=4.4, alpha=.98, zorder=39,
+            )
+            ax.scatter(
+                missed["court_y"], -missed["court_x"], s=84, marker="x",
+                color=palette["missed"], linewidth=2.35, alpha=.98, zorder=40,
+            )
+
+    label_style = {
+        "boxstyle": "round,pad=0.38", "facecolor": "#10233f",
+        "linewidth": 1.4, "alpha": .95,
+    }
+    line_a = team_lines[str(team_a)]
+    line_b = team_lines[str(team_b)]
+    ax.text(
+        .018, .975,
+        f"{str(team_a).upper()}  ·  {line_a['2PTM']}/{line_a['2PTA']} 2P  ·  {line_a['3PTM']}/{line_a['3PTA']} 3P  ·  {line_a['FTM']}/{line_a['FTA']} FT",
+        transform=ax.transAxes,
+        ha="left", va="top", fontsize=8.9, fontweight="bold", color="#ffffff",
+        bbox={**label_style, "edgecolor": palettes[str(team_a)]["made"]},
+        zorder=45,
+    )
+    ax.text(
+        .982, .975,
+        f"{str(team_b).upper()}  ·  {line_b['2PTM']}/{line_b['2PTA']} 2P  ·  {line_b['3PTM']}/{line_b['3PTA']} 3P  ·  {line_b['FTM']}/{line_b['FTA']} FT",
+        transform=ax.transAxes,
+        ha="right", va="top", fontsize=8.9, fontweight="bold", color="#ffffff",
+        bbox={**label_style, "edgecolor": palettes[str(team_b)]["made"]},
+        zorder=45,
+    )
+
+    def ft_yellow(percentage):
+        """Blend pale cream into saturated gold as FT% increases."""
+        percentage = max(0.0, min(1.0, float(percentage)))
+        low = (255, 250, 214)
+        high = (250, 190, 0)
+        rgb = tuple(round(start + (end - start) * percentage) for start, end in zip(low, high))
+        return "#" + "".join(f"{channel:02x}" for channel in rgb)
+
+    # Small foul-line dots encode FT% only through yellow intensity, keeping
+    # the signal intentionally quieter than the actual shot markers.
+    for longitudinal, line in ((19.0, line_a), (75.0, line_b)):
+        ax.scatter(
+            [longitudinal], [-25.0], s=390, marker="o",
+            facecolor="#ffffff", edgecolor="#10233f", linewidth=1.6,
+            alpha=.98, zorder=41,
+        )
+        ax.scatter(
+            [longitudinal], [-25.0], s=285, marker="o",
+            facecolor=ft_yellow(line["FT%"]), edgecolor="#854d0e", linewidth=1.2,
+            alpha=.55 + (.43 * line["FT%"]) if line["FTA"] else .35, zorder=42,
+        )
+    ax.text(
+        .5, .035, "● MADE    × MISSED",
+        transform=ax.transAxes,
+        ha="center", va="bottom", fontsize=8.7, fontweight="bold", color="#ffffff",
+        bbox={**label_style, "edgecolor": "#ffffff", "linewidth": 1.0},
+        zorder=45,
+    )
 
 
 def saved_uniform_config(team, edition):
@@ -2925,19 +3043,7 @@ def matchup_recap_court_bytes(rows, team_a, team_b, include_shots=True):
         figsize=(12.4, 6.7),
         dpi=120,
     )
-    if not shots.empty:
-        shot_colors = {
-            team_a: {"made": "#15803D", "missed": "#B91C1C"},
-            team_b: {"made": "#4ADE80", "missed": "#FB7185"},
-        }
-        for team in [team_a, team_b]:
-            team_shots = shots[shots["sbc_team"].astype(str) == str(team)]
-            colors = shot_colors[team]
-            made = team_shots[team_shots["made"].astype(bool)]
-            missed = team_shots[~team_shots["made"].astype(bool)]
-            ax.scatter(made["court_y"], -made["court_x"], s=36, marker="o", facecolor=colors["made"], edgecolor="#FFFFFF", linewidth=.75, alpha=.92, zorder=30)
-            ax.scatter(missed["court_y"], -missed["court_x"], s=43, marker="x", color="#FFFFFF", linewidth=2.5, alpha=.85, zorder=29.8)
-            ax.scatter(missed["court_y"], -missed["court_x"], s=34, marker="x", color=colors["missed"], linewidth=1.45, alpha=.92, zorder=30)
+    draw_matchup_shot_overlay(ax, shots, rows, team_a, team_b)
     image_buffer = BytesIO()
     figure.savefig(image_buffer, format="png", dpi=figure.dpi, bbox_inches="tight", pad_inches=.04)
     plt.close(figure)
