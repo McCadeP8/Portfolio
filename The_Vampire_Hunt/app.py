@@ -1467,7 +1467,7 @@ st.markdown(
 
     .hunt-timeline { margin-top:1.25rem; padding-top:.9rem; border-top:1px solid color-mix(in srgb,var(--team-accent) 28%,#302a2e); }
     .hunt-timeline-title { color:#8d8584; font:600 .58rem 'Inter',sans-serif; letter-spacing:.14em; text-transform:uppercase; margin-bottom:.55rem; }
-    .hunt-weeks { display:flex; gap:.28rem; flex-wrap:nowrap; }
+    .hunt-weeks { display:flex; gap:.28rem; flex-wrap:wrap; }
     .hunt-week { width:1.58rem; height:1.58rem; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #4a4145; background:#171417; color:#8f8787; font:700 .78rem 'Inter',sans-serif; box-sizing:border-box; }
     .hunt-week.survived { color:#8ed3a4; border-color:#4f8d68; background:#13251b; }
     .hunt-week.lost { color:#f08e87; border-color:#9e4b50; background:#32171b; }
@@ -1828,7 +1828,6 @@ with teams_tab:
     roster_rows, player_score_source = add_fantrax_player_scores(roster_rows, selected_week)
     roster_rows = mark_stolen_creature_followers(roster_rows, selected_week)
     team_roster = [row for row in roster_rows if row.get("team") == selected_name]
-    standings, _ = fantrax_standings()
     selected_realm_state = realm_state_entering_week(selected_week, active_vampire_name)
     if is_vampire:
         lives_display = "—"
@@ -1890,55 +1889,44 @@ with teams_tab:
     oracle_weeks = sorted(
         sorted(range(5, 16), key=lambda week: hashlib.sha256(f"oracle:{world_seed}:{week}".encode()).digest())[:3]
     )
-    active_vampire_rows = [row for row in roster_rows if row.get("team") == active_vampire_name]
-    active_vampire_lineup = best_ball_lineup(active_vampire_rows)
-    vampire_score = sum(
-        float(row.get("score", 0))
-        for row in active_vampire_lineup
-        if isinstance(row.get("score"), (int, float))
-    ) or next((row.get("score") for row in standings if row.get("team") == active_vampire_name), None)
-    stolen_through_selected_week = stolen_followers_before(selected_week + 1)
+    stolen_through_active_week = stolen_followers_before(active_week)
+    original_creature_roster = enrich_roster_rows(snapshot.get("rosters", {}).get("1", []))
+    creature_followers = {
+        player_match_key(row.get("player", ""))
+        for row in original_creature_roster
+        if row.get("team") == selected_name
+    }
     stolen_weeks = {
-        stolen_through_selected_week[player_match_key(row.get("player", ""))]
-        for row in team_roster
-        if player_match_key(row.get("player", "")) in stolen_through_selected_week
-        and not is_vampire
+        claimed_week
+        for follower, claimed_week in stolen_through_active_week.items()
+        if follower in creature_followers and not is_vampire
     }
     timeline_bits = []
     for week in range(1, 19):
         status, status_class, symbol = "Scheduled", "scheduled", "·"
-        if week <= active_week:
-            week_rows = snapshot.get("weekly_scores", {}).get(str(week), [])
-            if week == active_week:
-                week_rows = standings
-            team_score = next((row.get("score") for row in week_rows if row.get("team") == selected_name), None)
-            if isinstance(team_score, (int, float)) and isinstance(vampire_score, (int, float)):
-                if team_score >= vampire_score:
-                    status, status_class, symbol = "Survived", "survived", "✓"
-                else:
-                    status, status_class, symbol = "Lost a life", "lost", "✕"
-                    if selected_name == "The Hydra" and week == active_week:
-                        status, status_class, symbol = "Danger: first loss", "danger", "⚠"
-            elif week == active_week:
-                status, status_class, symbol = "Current week", "unknown", "?"
-            if week == 1 and week_one_preview and not is_vampire:
-                outcome = week_one_preview["outcomes"].get(selected_name, "pending")
-                status, status_class, symbol = {
-                    "survived": ("Survived", "survived", "✓"),
-                    "lost": ("Lost a life", "lost", "✕"),
-                    "hit": ("Hydra took a hit; no life lost", "danger", "⚠"),
-                    "pending": ("Score pending", "unknown", "?"),
-                }[outcome]
-            if week in stolen_weeks:
+        battle = finalized_realm_battle(week, active_vampire_name) if not is_vampire and week <= active_week else None
+        if battle is not None:
+            outcome = battle["outcomes"].get(selected_name, "pending")
+            status, status_class, symbol = {
+                "survived": ("Survived", "survived", "✓"),
+                "lost": ("Lost a life", "lost", "✕"),
+                "hit": ("Hydra took a hit; no life lost", "danger", "⚠"),
+                "pending": ("Score pending", "unknown", "?"),
+            }[outcome]
+            if outcome == "lost" and week in stolen_weeks:
                 status, status_class, symbol = "Lost a life and follower stolen", "stolen", "☠"
-        if selected_name == "The Gambler" and week <= active_week:
+        elif week < active_week:
+            status, status_class, symbol = "Result unavailable", "unknown", "?"
+        elif week == active_week:
+            status, status_class, symbol = "Current week in progress", "unknown", "?"
+        if selected_name == "The Gambler" and battle is not None:
             gambler_outcome = seeded_pick(week, "gambler-flip", [12, -8], world_seed)
-            status = f"Gambler {gambler_outcome:+d}"
+            status = f"{status} · Gambler {gambler_outcome:+d}"
             status_class = f"{status_class} gambler-positive" if gambler_outcome > 0 else f"{status_class} gambler-negative"
-        if selected_name == "The Oracle" and week <= active_week and week in oracle_weeks:
+        if selected_name == "The Oracle" and battle is not None and week in oracle_weeks:
             status = f"Oracle +20 week · {status}"
             status_class = f"{status_class} oracle-bonus"
-        timeline_bits.append(f'<span class="hunt-week {status_class}" title="Week {week}: {status}">{symbol}</span>')
+        timeline_bits.append(f'<span class="hunt-week {status_class}" title="Week {week}: {status}" aria-label="Week {week}: {status}">{symbol}</span>')
     selected_display_name = team_label(selected_name)
     timeline_html = f'''<div class="hunt-timeline"><div class="hunt-timeline-title">Season life timeline · {escape(selected_display_name)}</div>
         <div class="hunt-weeks">{''.join(timeline_bits)}</div>

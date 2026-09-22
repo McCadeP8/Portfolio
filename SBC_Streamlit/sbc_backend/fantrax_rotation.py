@@ -506,7 +506,107 @@ class FantraxRotation:
         plt.close(figure)
         return content
 
-    def court(self, home_team: str) -> bytes:
+    @staticmethod
+    def _normalized_ids(values: pd.Series) -> pd.Series:
+        return values.dropna().astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+
+    def matchup_shots(self, rows: pd.DataFrame, team_a: str, team_b: str) -> pd.DataFrame:
+        """Join the scheduled starters in a matchup to the archived ESPN shots."""
+        required = {"nba_game_id", "espn_player_id", "sbc_team", "display_player"}
+        if rows is None or rows.empty or not required.issubset(rows.columns):
+            return pd.DataFrame()
+        game_ids = tuple(sorted(self._normalized_ids(rows["nba_game_id"]).unique()))
+        game_dates = tuple(
+            sorted(pd.to_datetime(rows.get("Date", pd.Series(dtype=str)), errors="coerce").dropna().dt.strftime("%Y%m%d").unique())
+        )
+        shots = self.repository.read_shots(
+            game_ids,
+            game_dates=game_dates,
+            columns=["game_id", "shot_id", "player_id", "x", "y", "made"],
+        )
+        if shots.empty:
+            return pd.DataFrame()
+        mapping = rows[["nba_game_id", "espn_player_id", "sbc_team", "display_player"]].dropna().drop_duplicates().copy()
+        mapping["game_id"] = self._normalized_ids(mapping["nba_game_id"])
+        mapping["player_id"] = self._normalized_ids(mapping["espn_player_id"])
+        shots["game_id"] = self._normalized_ids(shots["game_id"])
+        shots["player_id"] = self._normalized_ids(shots["player_id"])
+        mapping = mapping[mapping["sbc_team"].isin([team_a, team_b])]
+        joined = shots.merge(
+            mapping[["game_id", "player_id", "sbc_team", "display_player"]],
+            on=["game_id", "player_id"], how="inner",
+        ).drop_duplicates(["game_id", "shot_id", "sbc_team"])
+        if joined.empty:
+            return joined
+        joined["court_x"] = pd.to_numeric(joined["x"], errors="coerce")
+        joined["court_y"] = pd.to_numeric(joined["y"], errors="coerce") + 5.25
+        home_mask = joined["sbc_team"].astype(str) == str(team_b)
+        joined.loc[home_mask, "court_x"] = 50.0 - joined.loc[home_mask, "court_x"]
+        joined.loc[home_mask, "court_y"] = 94.0 - joined.loc[home_mask, "court_y"]
+        return joined.dropna(subset=["court_x", "court_y"])
+
+    @staticmethod
+    def _draw_matchup_shots(ax, shots: pd.DataFrame, totals: pd.DataFrame, team_a: str, team_b: str) -> None:
+        palettes = {
+            str(team_a): {"made": "#15803d", "missed": "#b91c1c"},
+            str(team_b): {"made": "#4ade80", "missed": "#fb7185"},
+        }
+        if shots is not None and not shots.empty:
+            made_values = shots.get("made", pd.Series(False, index=shots.index))
+            made_mask = (
+                made_values.fillna(False)
+                if pd.api.types.is_bool_dtype(made_values)
+                else made_values.astype(str).str.strip().str.casefold().isin({"true", "1", "made", "yes"})
+            )
+            team_values = shots["sbc_team"].astype(str)
+            for team in (team_a, team_b):
+                team_mask = team_values == str(team)
+                made = shots[team_mask & made_mask]
+                missed = shots[team_mask & ~made_mask]
+                palette = palettes[str(team)]
+                ax.scatter(made["court_y"], -made["court_x"], s=104, marker="o", facecolor="#ffffff", edgecolor="#10233f", linewidth=1.25, alpha=.98, zorder=39)
+                ax.scatter(made["court_y"], -made["court_x"], s=67, marker="o", facecolor=palette["made"], edgecolor="#ffffff", linewidth=1.15, alpha=.98, zorder=40)
+                ax.scatter(missed["court_y"], -missed["court_x"], s=112, marker="x", color="#ffffff", linewidth=4.4, alpha=.98, zorder=39)
+                ax.scatter(missed["court_y"], -missed["court_x"], s=84, marker="x", color=palette["missed"], linewidth=2.35, alpha=.98, zorder=40)
+
+        indexed = totals.set_index("Team") if totals is not None and not totals.empty else pd.DataFrame()
+
+        def shooting_line(team: str) -> dict[str, int | float]:
+            row = indexed.loc[team] if not indexed.empty and team in indexed.index else pd.Series(dtype=float)
+            line = {column: int(round(float(row.get(column, 0) or 0))) for column in ("2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA")}
+            line["FT%"] = line["FTM"] / line["FTA"] if line["FTA"] else 0
+            return line
+
+        line_a, line_b = shooting_line(team_a), shooting_line(team_b)
+        label_style = {"boxstyle": "round,pad=0.38", "facecolor": "#10233f", "linewidth": 1.4, "alpha": .95}
+        for x, alignment, team, line in ((.018, "left", team_a, line_a), (.982, "right", team_b, line_b)):
+            ax.text(
+                x, .975,
+                f"{str(team).upper()}  ·  {line['2PTM']}/{line['2PTA']} 2P  ·  {line['3PTM']}/{line['3PTA']} 3P  ·  {line['FTM']}/{line['FTA']} FT",
+                transform=ax.transAxes, ha=alignment, va="top", fontsize=8.9, fontweight="bold", color="#ffffff",
+                bbox={**label_style, "edgecolor": palettes[str(team)]["made"]}, zorder=45,
+            )
+
+        def ft_yellow(percentage: float) -> str:
+            percentage = max(0.0, min(1.0, float(percentage)))
+            low, high = (255, 250, 214), (250, 190, 0)
+            rgb = tuple(round(start + (end - start) * percentage) for start, end in zip(low, high))
+            return "#" + "".join(f"{channel:02x}" for channel in rgb)
+
+        for longitudinal, line in ((19.0, line_a), (75.0, line_b)):
+            ax.scatter([longitudinal], [-25.0], s=390, marker="o", facecolor="#ffffff", edgecolor="#10233f", linewidth=1.6, alpha=.98, zorder=41)
+            ax.scatter(
+                [longitudinal], [-25.0], s=285, marker="o", facecolor=ft_yellow(line["FT%"]),
+                edgecolor="#854d0e", linewidth=1.2,
+                alpha=.55 + (.43 * line["FT%"]) if line["FTA"] else .35, zorder=42,
+            )
+        ax.text(
+            .5, .035, "● MADE    × MISSED", transform=ax.transAxes,
+            ha="center", va="bottom", fontsize=8.7, fontweight="bold", color="#ffffff",
+            bbox={**label_style, "edgecolor": "#ffffff", "linewidth": 1.0}, zorder=45,
+        )
+
+    def court(self, home_team: str, *, rows: pd.DataFrame | None = None, away_team: str | None = None) -> bytes:
         path = self.root / "court_team_configs.csv"
         table = pd.read_csv(path) if path.exists() else pd.DataFrame()
         row = table[table.get("team", pd.Series(dtype=str)).astype(str) == home_team]
@@ -514,7 +614,11 @@ class FantraxRotation:
         config = CourtConfig.from_mapping(values) if values else CourtConfig(team=home_team)
         logo_team = str(row.iloc[0].get("center_logo_team") or home_team) if not row.empty else home_team
         logo = team_info.get(logo_team, team_info.get(home_team, {})).get("logo", "")
-        figure, _ = draw_branded_court(config, logo=logo, orientation="horizontal", view="full", figsize=(12.4, 6.7), dpi=120)
+        figure, ax = draw_branded_court(config, logo=logo, orientation="horizontal", view="full", figsize=(12.4, 6.7), dpi=120)
+        if rows is not None and away_team:
+            shots = self.matchup_shots(rows, away_team, home_team)
+            totals = self.team_totals(rows, [away_team, home_team])
+            self._draw_matchup_shots(ax, shots, totals, away_team, home_team)
         output = BytesIO(); figure.savefig(output, format="png", dpi=150, transparent=False, bbox_inches="tight", pad_inches=0.04); plt.close(figure)
         return output.getvalue()
 
@@ -641,7 +745,7 @@ class FantraxRotation:
                 road, home, _ = select_game_uniforms(current, a, b, lambda team, edition: self._uniform_config(team, edition)[0])
             except Exception:
                 road, home = "Icon", "Association"
-            kwargs = dict(trend_table=self._trend(current), court_image=self.court(b), road_jersey_image=self.jersey(a, road), home_jersey_image=self.jersey(b, home), road_edition=road, home_edition=home, matchup_date_label=self.period_label())
+            kwargs = dict(trend_table=self._trend(current), court_image=self.court(b, rows=rows, away_team=a), road_jersey_image=self.jersey(a, road), home_jersey_image=self.jersey(b, home), road_edition=road, home_edition=home, matchup_date_label=self.period_label())
             posts.append(FantraxPost("matchup_recap", f"sbcfbl-matchup-recap-{game_id}.png", fantrax.build_matchup_recap_image(current, categories, players, **kwargs)))
             posts.append(FantraxPost("mobile_matchup_recap", f"sbcfbl-mobile-matchup-recap-{game_id}.png", fantrax.build_mobile_matchup_recap_image(current, categories, players, **kwargs)))
         return posts

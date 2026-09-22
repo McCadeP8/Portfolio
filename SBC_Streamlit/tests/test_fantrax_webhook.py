@@ -182,6 +182,31 @@ class FantraxWebhookTests(unittest.TestCase):
         self.assertEqual(result["MatchupProgress"].tolist(), [25.0, 75.0, 25.0])
         self.assertEqual(calls, [("Alpha", "Beta"), ("Gamma", "Delta")])
 
+    def test_overnight_recap_matches_shots_and_flips_home_team_to_right_basket(self):
+        rotation = FantraxRotation.__new__(FantraxRotation)
+        rotation.repository = Mock()
+        rotation.repository.read_shots.return_value = pd.DataFrame([
+            {"game_id": "401.0", "shot_id": "a", "player_id": "11.0", "x": 20, "y": 10, "made": True},
+            {"game_id": "402", "shot_id": "b", "player_id": "22", "x": 20, "y": 10, "made": False},
+        ])
+        rows = pd.DataFrame([
+            {"nba_game_id": "401", "espn_player_id": "11", "sbc_team": "Vegas", "display_player": "Road Player", "Date": "2026-02-19"},
+            {"nba_game_id": "402.0", "espn_player_id": "22.0", "sbc_team": "Baltimore", "display_player": "Home Player", "Date": "2026-02-20"},
+        ])
+
+        shots = rotation.matchup_shots(rows, "Vegas", "Baltimore").set_index("sbc_team")
+
+        self.assertEqual(set(shots.index), {"Vegas", "Baltimore"})
+        self.assertAlmostEqual(shots.loc["Vegas", "court_x"], 20.0)
+        self.assertAlmostEqual(shots.loc["Vegas", "court_y"], 15.25)
+        self.assertAlmostEqual(shots.loc["Baltimore", "court_x"], 30.0)
+        self.assertAlmostEqual(shots.loc["Baltimore", "court_y"], 78.75)
+        rotation.repository.read_shots.assert_called_once_with(
+            ("401", "402"),
+            game_dates=("20260219", "20260220"),
+            columns=["game_id", "shot_id", "player_id", "x", "y", "made"],
+        )
+
     def test_standings_streak_and_last_ten_come_from_completed_games(self):
         rotation = FantraxRotation.__new__(FantraxRotation)
         rotation.period = Mock(year=2026, period=13)
