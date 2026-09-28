@@ -2550,9 +2550,11 @@ with scoreboard_tab:
     bonus_notes["The Werewolf"] = "The Turning · +3 per stolen starter"
     bonus_notes["Dracula"] = "The Final Form · 3 lives · +0"
 
+    first_wave_team_names = {team["name"] for team in ALL_TEAMS}
     preliminary_totals = {
         name: float(score) + bonus_by_team.get(name, 0.0)
         for name, score in base_scores.items()
+        if name in first_wave_team_names
     }
     juggernaut_base = base_scores.get("The Juggernaut")
     if isinstance(juggernaut_base, (int, float)):
