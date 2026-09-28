@@ -120,6 +120,10 @@ KNIGHT_LOGO = image_data_uri("knight.png")
 WIZARD_LOGO = image_data_uri("wizard.png")
 GUARDIAN_LOGO = image_data_uri("guardian.png")
 HUNTER_LOGO = image_data_uri("hunter.png")
+SIREN_LOGO = image_data_uri("siren.png")
+CERBERUS_LOGO = image_data_uri("cerberus.png")
+WEREWOLF_LOGO = image_data_uri("werewolf.png")
+DRACULA_LOGO = image_data_uri("dracula.png")
 
 CREATURES = [
     {
@@ -223,6 +227,58 @@ CREATURES = [
     },
 ]
 
+TIER_TWO_START_WEEK = 7
+TIER_TWO_WEEKS = list(range(TIER_TWO_START_WEEK, 19))
+TIER_TWO_SCORE_MULTIPLIER = 11 / 3
+TIER_TWO_CREATURES = [
+    {
+        "name": "The Siren",
+        "emoji": "🧜‍♀️",
+        "lives": 2,
+        "ability": "Fatal Chorus",
+        "rule": "Charms your highest-projected starter at lineup lock. Your best eligible bench follower replaces them, and the charmed follower's actual points belong to the Siren.",
+        "accent": "#22C7C9",
+        "logo": SIREN_LOGO,
+        "roster_size": 30,
+    },
+    {
+        "name": "The Cerberus",
+        "emoji": "🐕‍🦺",
+        "lives": 1,
+        "ability": "The Three Gates",
+        "rule": "Must be beaten three weeks in a row. After the first severed head it gains +3; after the second it gains +6. Any loss or tie restores all three heads.",
+        "accent": "#B8E34D",
+        "logo": CERBERUS_LOGO,
+        "roster_size": 30,
+    },
+    {
+        "name": "The Werewolf",
+        "emoji": "🌕",
+        "lives": 4,
+        "ability": "The Turning",
+        "rule": "Gains +3 for every stolen follower in your starting nine.",
+        "accent": "#E56FA8",
+        "logo": WEREWOLF_LOGO,
+        "roster_size": 30,
+    },
+]
+
+TIER_THREE_START_WEEK = 11
+TIER_THREE_WEEKS = list(range(TIER_THREE_START_WEEK, 19))
+DRACULA_SCORE_MULTIPLIER = 11
+TIER_THREE_CREATURES = [
+    {
+        "name": "Dracula",
+        "emoji": "🦇",
+        "lives": 3,
+        "ability": "The Final Form",
+        "rule": "Begins with no bonus. After losing one life he gains +10 each week; on his final life he gains +25.",
+        "accent": "#E1062C",
+        "logo": DRACULA_LOGO,
+        "roster_size": 50,
+    },
+]
+
 VAMPIRE_TEAM = {
     "name": "The Vampire",
     "emoji": "🧛",
@@ -283,6 +339,22 @@ TEAM_LORE = {
         "No prophecy announced The Mortal. No curse protects him, no hidden bonus changes his score, and only two lives stand between him and elimination. Yet every ancient creature in the league watches him carefully. "
         "Mortals built fantasy football, learned its patterns, and survived by making better choices than monsters who believed power was enough. He enters with nothing except the standard roster and the freedom of having no trick to expose. Sometimes the simplest threat is the one the darkness overlooks."
     ),
+    "The Siren": (
+        "Melusine waits beneath the black water with two lives and a song calibrated to the strongest name in your lineup. "
+        "At lineup lock, her Fatal Chorus charms your highest-projected starter, forces the best eligible follower from your bench into the vacancy, and carries every point scored by the charmed player across the water to her own total."
+    ),
+    "The Cerberus": (
+        "Cindermaw guards the three gates with three heads but only one life. A single victory merely severs the first head; a second consecutive victory severs another. "
+        "Each wound enrages what remains, granting three points after the first and six after the second. Lose or tie before the third straight victory and every head grows back."
+    ),
+    "The Werewolf": (
+        "Lucian the Werewolf hunts the scent of stolen blood across four lives. Every stolen follower in your starting nine strengthens The Turning by three points. "
+        "The stolen remain yours whether Lucian wins or loses; their presence alone feeds the pack's weekly bonus."
+    ),
+    "Dracula": (
+        "At the pyramid's summit waits Dracula, the first hunger and the last opponent. Fifty followers fill his court, and three lives guard the final dawn. "
+        "His power deepens as defeat approaches: no bonus at full strength, ten points after the first wound, and twenty-five points each week in his final form."
+    ),
 }
 
 ALL_TEAMS = [VAMPIRE_TEAM, *CREATURES]
@@ -298,6 +370,10 @@ CREATURE_LABELS = {
     "The Gambler": "Rook the Gambler",
     "The Alpha": "Fenrir the Alpha",
     "The Mortal": "Elias the Mortal",
+    "The Siren": "Melusine the Siren",
+    "The Cerberus": "Cindermaw the Cerberus",
+    "The Werewolf": "Lucian the Werewolf",
+    "Dracula": "Dracula, Lord of the Hunt",
 }
 BASE_ROSTER = [("QB", 2), ("RB", 6), ("WR", 6), ("TE", 2), ("DST", 2), ("K", 2)]
 VAMPIRE_ROSTER = BASE_ROSTER
@@ -545,8 +621,13 @@ def _scored_first(row: dict) -> tuple[bool, float, str]:
     return isinstance(score, (int, float)), float(score or 0), str(row.get("player", ""))
 
 
-def best_ball_lineup(roster: list[dict]) -> list[dict]:
-    """Choose eligible best-ball starters, filling the flex after fixed slots."""
+def _projected_first(row: dict) -> tuple[bool, float, str]:
+    projection = row.get("projection")
+    return isinstance(projection, (int, float)), float(projection or 0), str(row.get("player", ""))
+
+
+def best_ball_lineup(roster: list[dict], ranking_key=_scored_first) -> list[dict]:
+    """Choose eligible starters by the supplied score key, filling flex last."""
     eligible = []
     seen_followers = set()
     for row in roster:
@@ -561,7 +642,7 @@ def best_ball_lineup(roster: list[dict]) -> list[dict]:
     for position in ("QB", "RB", "WR", "TE", "DST", "K"):
         pools[position] = sorted(
             [dict(row) for row in eligible if row.get("position") == position],
-            key=_scored_first,
+            key=ranking_key,
             reverse=True,
         )
 
@@ -578,7 +659,7 @@ def best_ball_lineup(roster: list[dict]) -> list[dict]:
     take("RB", 2)
     take("WR", 2)
     take("TE", 1)
-    flex_pool = sorted(pools["RB"] + pools["WR"] + pools["TE"], key=_scored_first, reverse=True)
+    flex_pool = sorted(pools["RB"] + pools["WR"] + pools["TE"], key=ranking_key, reverse=True)
     if flex_pool:
         flex = flex_pool[0]
         for pool in (pools["RB"], pools["WR"], pools["TE"]):
@@ -624,6 +705,27 @@ VAMPIRE_TEAM["name"] = active_vampire_name
 active_vampire_label = f"{active_vampire_name} the Vampire"
 snapshot = load_snapshot()
 active_week, nfl_season = automatic_active_week(snapshot)
+
+
+def tier_is_unlocked(tier: int, realm_name: str | None = None) -> bool:
+    """Read realm unlock switches from the Week 19 control rows."""
+    owner = realm_name or active_vampire_name
+    slot_name = f"tier{int(tier)}"
+    value = next(
+        (
+            str(row.get(owner, "")).strip().casefold()
+            for row in vampire_sheet_rows
+            if str(row.get("Week", "")).strip() == "19"
+            and str(row.get("Slot", "")).strip().casefold() == slot_name
+        ),
+        "false",
+    )
+    return value == "true"
+
+
+tier_two_unlocked = tier_is_unlocked(2)
+tier_three_unlocked = tier_is_unlocked(3)
+tier_four_unlocked = tier_is_unlocked(4)
 previous_active_week = st.session_state.get("_automatic_active_week")
 if previous_active_week is not None and previous_active_week != active_week:
     # Move every primary week control forward in an already-open browser session.
@@ -745,6 +847,59 @@ def nfl_team_match_key(code: str) -> str:
     return {"JAC": "JAX"}.get(value, value)
 
 
+def add_weekly_projections(rows: list[dict], week: int) -> list[dict]:
+    """Match FantasyPros weekly projections onto Fantrax/sheet roster rows."""
+    try:
+        rankings = fantasypros_weekly_rankings(int(week))
+    except Exception:
+        return [dict(row) for row in rows]
+    by_player = {}
+    by_defense = {}
+    for ranked in rankings:
+        projection = ranked.get("projection")
+        if not isinstance(projection, (int, float)):
+            continue
+        position = str(ranked.get("position") or "")
+        if position == "DST":
+            by_defense.setdefault(nfl_team_match_key(ranked.get("nfl_team", "")), float(projection))
+        else:
+            by_player.setdefault((position, player_match_key(ranked.get("player", ""))), float(projection))
+    projected_rows = []
+    for original in rows:
+        row = dict(original)
+        position = str(row.get("position") or "")
+        if position == "DST":
+            projection = by_defense.get(nfl_team_match_key(row.get("nfl_team", "")))
+        else:
+            projection = by_player.get((position, player_match_key(row.get("player", ""))))
+        if projection is not None:
+            row["projection"] = projection
+        projected_rows.append(row)
+    return projected_rows
+
+
+def mark_siren_target(rows: list[dict], week: int, realm_name: str) -> tuple[list[dict], dict | None]:
+    """Flag the highest-projected member of the Vampire's projected starting nine."""
+    if int(week) not in TIER_TWO_WEEKS:
+        return rows, None
+    projected_rows = add_weekly_projections(rows, int(week))
+    vampire_roster = [row for row in projected_rows if row.get("team") == realm_name]
+    projected_starters = best_ball_lineup(vampire_roster, _projected_first)
+    candidates = [row for row in projected_starters if isinstance(row.get("projection"), (int, float))]
+    target = max(candidates, key=lambda row: float(row["projection"]), default=None)
+    target_key = (
+        str(target.get("player_id") or "").strip() or player_match_key(target.get("player", ""))
+        if target else ""
+    )
+    marked = []
+    for original in projected_rows:
+        row = dict(original)
+        row_key = str(row.get("player_id") or "").strip() or player_match_key(row.get("player", ""))
+        row["siren_target"] = bool(target_key and row.get("team") == realm_name and row_key == target_key)
+        marked.append(row)
+    return marked, target
+
+
 def complete_defense_recommendations(pool: list[dict], taken_teams: set[str]) -> list[dict]:
     """Keep every untaken NFL defense selectable if a rankings pull omits one."""
     listed_teams = {
@@ -778,6 +933,35 @@ def life_diamonds(starting_lives: int, remaining_lives: int) -> str:
     starting = max(0, int(starting_lives))
     remaining = max(0, min(starting, int(remaining_lives)))
     return "◆" * remaining + "◇" * (starting - remaining)
+
+
+def victory_margin_points(
+    vampire_score: float | None,
+    opponent_scores: dict[str, float],
+    lives_before: dict[str, int],
+    free_hunt: bool = False,
+) -> float:
+    """Award only positive margins against living opponents, or the full score after Dracula falls."""
+    if not isinstance(vampire_score, (int, float)):
+        return 0.0
+    if free_hunt:
+        return max(0.0, float(vampire_score))
+    return sum(
+        max(0.0, float(vampire_score) - float(opponent_score))
+        for name, opponent_score in opponent_scores.items()
+        if int(lives_before.get(name, 0)) > 0 and isinstance(opponent_score, (int, float))
+    )
+
+
+def settle_streak_margin(current_margin: float, outcome: str, pending_margin: float) -> tuple[float, float]:
+    """Bank multi-week margins until Hydra/Cerberus completes a life-loss streak."""
+    current = max(0.0, float(current_margin))
+    pending = max(0.0, float(pending_margin))
+    if outcome == "hit":
+        return 0.0, pending + current
+    if outcome == "lost":
+        return pending + current, 0.0
+    return 0.0, 0.0
 
 
 def mccade_week_one_preview() -> dict | None:
@@ -929,6 +1113,128 @@ def calculate_realm_battle(
         "remaining": lives_after,
         "hydra_hit": hydra_hit_after,
         "hunter_bonus": hunter_bonus_after,
+    }
+
+
+def calculate_tier_two_battle(
+    week: int,
+    vampire_roster: list[dict],
+    tier_two_rosters: dict[str, list[dict]],
+    lives_before: dict[str, int],
+    cerberus_streak_before: int = 0,
+) -> dict | None:
+    """Resolve the second wave once its master rosters and projections are attached."""
+    if int(week) not in TIER_TWO_WEEKS or len(vampire_roster) < 9:
+        return None
+    lineups = {"The Vampire": best_ball_lineup(vampire_roster)}
+    lineups.update({name: best_ball_lineup(rows) for name, rows in tier_two_rosters.items()})
+    if len(lineups["The Vampire"]) != 9 or any(len(lineups.get(team["name"], [])) != 9 for team in TIER_TWO_CREATURES):
+        return None
+
+    base_scores = {
+        name: sum(float(row["score"]) for row in lineup if isinstance(row.get("score"), (int, float)))
+        for name, lineup in lineups.items()
+    }
+    scores = dict(base_scores)
+    bonuses = {team["name"]: 0.0 for team in TIER_TWO_CREATURES}
+    notes = {team["name"]: "No weekly score bonus" for team in TIER_TWO_CREATURES}
+
+    # Fatal Chorus: transfer the charmed starter's actual points to the Siren
+    # and replace that starter with the best eligible bench follower.
+    vampire_lineup = lineups["The Vampire"]
+    projected_vampire_lineup = best_ball_lineup(vampire_roster, _projected_first)
+    projected = [row for row in projected_vampire_lineup if isinstance(row.get("projection"), (int, float))]
+    siren_target = max(projected, key=lambda row: float(row["projection"]), default=None)
+    if siren_target is not None:
+        target_positions = {"RB", "WR", "TE"} if siren_target.get("slot") == "RWT FLEX" else {siren_target.get("position")}
+        starter_ids = {str(row.get("player_id") or player_match_key(row.get("player", ""))) for row in projected_vampire_lineup}
+        replacements = [
+            row for row in vampire_roster
+            if str(row.get("player_id") or player_match_key(row.get("player", ""))) not in starter_ids
+            and row.get("position") in target_positions
+        ]
+        replacement = max(replacements, key=_projected_first, default=None)
+        target_score = float(siren_target.get("score") or 0.0)
+        replacement_score = float(replacement.get("score") or 0.0) if replacement else 0.0
+        scores["The Vampire"] = sum(
+            float(row.get("score") or 0.0)
+            for row in projected_vampire_lineup
+            if row is not siren_target
+        ) + replacement_score
+        scores["The Siren"] += target_score
+        bonuses["The Siren"] = target_score
+        notes["The Siren"] = f"Fatal Chorus · {siren_target.get('player', 'charmed starter')} transferred"
+
+    cerberus_bonus = float(max(0, min(2, int(cerberus_streak_before))) * 3)
+    scores["The Cerberus"] += cerberus_bonus
+    bonuses["The Cerberus"] = cerberus_bonus
+    notes["The Cerberus"] = f"The Three Gates · {cerberus_streak_before} head{'s' if cerberus_streak_before != 1 else ''} severed"
+
+    stolen_starters = [row for row in vampire_lineup if row.get("stolen")]
+    werewolf_bonus = float(3 * len(stolen_starters))
+    scores["The Werewolf"] += werewolf_bonus
+    bonuses["The Werewolf"] = werewolf_bonus
+    notes["The Werewolf"] = f"The Turning · {len(stolen_starters)} stolen starter{'s' if len(stolen_starters) != 1 else ''}"
+
+    lives_after = dict(lives_before)
+    outcomes = {}
+    cerberus_streak_after = int(cerberus_streak_before)
+    vampire_score = scores["The Vampire"]
+    for creature in TIER_TWO_CREATURES:
+        name = creature["name"]
+        creature_score = scores[name]
+        if vampire_score > creature_score:
+            if name == "The Cerberus":
+                cerberus_streak_after += 1
+                if cerberus_streak_after >= 3:
+                    outcomes[name] = "lost"
+                    lives_after[name] = max(0, lives_after[name] - 1)
+                    cerberus_streak_after = 0
+                else:
+                    outcomes[name] = "hit"
+            else:
+                outcomes[name] = "lost"
+                lives_after[name] = max(0, lives_after[name] - 1)
+        else:
+            outcomes[name] = "survived"
+            if name == "The Cerberus":
+                cerberus_streak_after = 0
+
+    return {
+        "scores": scores,
+        "bonuses": bonuses,
+        "bonus_notes": notes,
+        "outcomes": outcomes,
+        "remaining": lives_after,
+        "cerberus_streak": cerberus_streak_after,
+        "siren_target": siren_target.get("player") if siren_target else None,
+    }
+
+
+def calculate_tier_three_battle(
+    week: int,
+    vampire_roster: list[dict],
+    dracula_roster: list[dict],
+    lives_before: int,
+) -> dict | None:
+    """Resolve Dracula's final-tier battle once his 50-player roster is attached."""
+    if int(week) not in TIER_THREE_WEEKS:
+        return None
+    vampire_lineup = best_ball_lineup(vampire_roster)
+    dracula_lineup = best_ball_lineup(dracula_roster)
+    if len(vampire_lineup) != 9 or len(dracula_lineup) != 9:
+        return None
+    vampire_score = sum(float(row.get("score") or 0.0) for row in vampire_lineup)
+    dracula_base = sum(float(row.get("score") or 0.0) for row in dracula_lineup)
+    lives_before = max(1, min(3, int(lives_before)))
+    dracula_bonus = {3: 0.0, 2: 10.0, 1: 25.0}[lives_before]
+    dracula_score = dracula_base + dracula_bonus
+    vampire_won = vampire_score > dracula_score
+    return {
+        "scores": {"The Vampire": vampire_score, "Dracula": dracula_score},
+        "bonus": dracula_bonus,
+        "outcome": "lost" if vampire_won else "survived",
+        "remaining": max(0, lives_before - 1) if vampire_won else lives_before,
     }
 
 
@@ -1466,9 +1772,15 @@ st.markdown(
     }
 
     .hunt-timeline { margin-top:1.25rem; padding-top:.9rem; border-top:1px solid color-mix(in srgb,var(--team-accent) 28%,#302a2e); }
-    .hunt-timeline-title { color:#8d8584; font:600 .58rem 'Inter',sans-serif; letter-spacing:.14em; text-transform:uppercase; margin-bottom:.55rem; }
+    .hunt-timeline-title { display:flex; align-items:center; gap:.42rem; color:#8d8584; font:600 .58rem 'Inter',sans-serif; letter-spacing:.14em; text-transform:uppercase; margin-bottom:.55rem; }
+    .timeline-help { position:relative; display:inline-flex; align-items:center; justify-content:center; width:1rem; height:1rem; flex:0 0 1rem; border:1px solid #595155; border-radius:50%; color:#aaa1a2; background:#171417; font:700 .62rem 'Inter',sans-serif; letter-spacing:0; text-transform:none; cursor:help; outline:none; }
+    .timeline-help-tip { position:absolute; right:0; bottom:calc(100% + .55rem); z-index:20; width:min(290px,78vw); padding:.7rem .78rem; border:1px solid #4a4145; border-radius:5px; background:#191519; color:#c9c0bb; box-shadow:0 12px 30px rgba(0,0,0,.48); font:500 .67rem/1.55 'Inter',sans-serif; letter-spacing:0; text-align:left; text-transform:none; opacity:0; visibility:hidden; transform:translateY(4px); transition:opacity .15s ease,transform .15s ease,visibility .15s ease; pointer-events:none; }
+    .timeline-help:hover .timeline-help-tip,.timeline-help:focus .timeline-help-tip,.timeline-help:focus-within .timeline-help-tip { opacity:1; visibility:visible; transform:translateY(0); }
+    .timeline-help-tip b { color:#f1e7df; }
     .hunt-weeks { display:flex; gap:.28rem; flex-wrap:wrap; }
+    .hunt-week-cell { width:1.58rem; display:flex; flex-direction:column; align-items:center; gap:.2rem; }
     .hunt-week { width:1.58rem; height:1.58rem; display:flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid #4a4145; background:#171417; color:#8f8787; font:700 .78rem 'Inter',sans-serif; box-sizing:border-box; }
+    .hunt-week-number { color:#665f61; font:600 .5rem 'Inter',sans-serif; line-height:1; }
     .hunt-week.survived { color:#8ed3a4; border-color:#4f8d68; background:#13251b; }
     .hunt-week.lost { color:#f08e87; border-color:#9e4b50; background:#32171b; }
     .hunt-week.danger { color:#f2c06b; border-color:#a87736; background:#302312; }
@@ -1553,6 +1865,7 @@ st.markdown(
     .roster-row.stolen-following { background:linear-gradient(90deg,rgba(172,46,68,.25),rgba(38,19,25,.55)); box-shadow:inset 3px 0 #d4546a; }
     .roster-row.stolen-following .player strong { color:#ffd9df; }
     .stolen-badge { display:inline-block; margin-left:.6rem; padding:.17rem .4rem; border:1px solid #b74b60; border-radius:3px; background:#521d2b; color:#ffd7dc; font:700 .55rem 'Inter',sans-serif; letter-spacing:.05em; text-transform:uppercase; }
+    .siren-badge { display:inline-block; margin-left:.6rem; padding:.17rem .4rem; border:1px solid #22c7c9; border-radius:3px; background:#12383b; color:#9ff6f4; font:700 .55rem 'Inter',sans-serif; letter-spacing:.05em; text-transform:uppercase; box-shadow:0 0 8px rgba(34,199,201,.2); }
     .stolen-score-name { color:#ffb6c1 !important; }
     .stolen-origin { display:block; margin-top:.1rem; color:#a96875; font:500 .57rem 'Inter',sans-serif; }
     .roster-row.header { min-height:34px; background:color-mix(in srgb,var(--team-accent) 12%,#171418); color:#827a7b; font:600 .59rem 'Inter',sans-serif; letter-spacing:.12em; text-transform:uppercase; }
@@ -1612,6 +1925,10 @@ st.markdown(
     .league-board { --score-accent:#9f2639; height:1035px; min-height:0; box-sizing:border-box; padding:.7rem; background:linear-gradient(160deg,#241117,#0e0d0f 68%); }
     .league-board-title { color:#f0e2d9; font:700 1.8rem 'Cormorant Garamond',serif; margin:.15rem .25rem .7rem; }
     .rank-tiles { display:grid; height:calc(100% - 3rem); grid-template-rows:repeat(12,minmax(0,1fr)); gap:.45rem; }
+    .league-board.compact { height:auto; min-height:0; }
+    .league-board.compact .rank-tiles { height:auto; grid-template-rows:none; }
+    .league-board.fun-board { margin-top:1rem; background:linear-gradient(160deg,#17151a,#0d0c0e 72%); border-color:#343036; }
+    .league-board.fun-board .league-board-title { font-size:1.35rem; margin-bottom:.55rem; }
     .rank-tile { position:relative; display:grid; grid-template-columns:26px minmax(0,1fr) 28px auto; gap:.45rem; align-items:center; min-height:55px; padding:.48rem .58rem; overflow:hidden; background:linear-gradient(100deg,color-mix(in srgb,var(--rank-accent) 20%,#171418),#111012 75%); border:1px solid color-mix(in srgb,var(--rank-accent) 35%,#2d282c); border-radius:5px; }
     .rank-team { min-width:0; }
     .rank-score { grid-column:4; white-space:nowrap; }
@@ -1681,6 +1998,9 @@ st.markdown(
     .realm-cross tbody th { text-align:left; white-space:nowrap; color:#f0e5dc; font-size:.82rem; }
     .realm-cross tbody th small { display:block; color:#8f8182; font-size:.58rem; font-weight:500; }
     .realm-cross tbody tr.active { background:linear-gradient(100deg,#4a1520,#171014 75%); box-shadow:inset 3px 0 #cf4058; }
+    .realm-cross tbody tr.victorious { background:linear-gradient(100deg,rgba(70,119,83,.36),rgba(25,24,19,.92) 75%); box-shadow:inset 3px 0 #8fc47f; }
+    .realm-cross tbody tr.victorious th { color:#d9efcf; }
+    .victory-label { color:#aee09c; font:800 .72rem 'Inter',sans-serif; letter-spacing:.1em; text-transform:uppercase; text-shadow:0 0 10px rgba(143,196,127,.28); }
     .realm-cross td { color:#cbbfba; font-weight:700; }
     .realm-cross td.stolen { color:#e6b86a; font-weight:600; min-width:150px; }
     .realm-cross td.life-diamonds { color:#d45a68; letter-spacing:.12em; font-size:1rem; white-space:nowrap; }
@@ -1690,6 +2010,17 @@ st.markdown(
     .realm-cross td.life-diamonds small.hit { color:#e7bb70; }
     .realm-cross td.life-diamonds small.live { color:#b5a8a0; }
     .realm-cross td.realm-score small { display:block; margin-top:.18rem; color:#998e8b; font:.55rem 'Inter',sans-serif; }
+    .total-scoreboard { margin-top:1.15rem; padding:.8rem; border:1px solid #50343d; border-radius:6px; background:linear-gradient(150deg,#241117,#100e11 72%); }
+    .total-scoreboard-title { color:#f0e2d9; font:700 1.65rem 'Cormorant Garamond',serif; margin:0 .15rem .65rem; }
+    .total-score-row { display:grid; grid-template-columns:34px minmax(170px,1fr) 90px 110px; gap:.6rem; align-items:center; min-height:48px; padding:.35rem .55rem; border-top:1px solid #30272c; }
+    .total-score-row:first-of-type { border-top:0; }
+    .total-score-row.active { background:linear-gradient(90deg,rgba(122,24,43,.42),transparent); box-shadow:inset 3px 0 #cf4058; }
+    .total-score-row.champion { background:linear-gradient(90deg,rgba(129,101,45,.38),transparent); box-shadow:inset 3px 0 #d5b466; }
+    .total-score-rank { color:#807779; font:700 .75rem 'Inter',sans-serif; }
+    .total-score-team strong { display:block; color:#eee3dc; font:700 .82rem 'Inter',sans-serif; }
+    .total-score-team small { color:#887f80; font:600 .56rem 'Inter',sans-serif; letter-spacing:.07em; text-transform:uppercase; }
+    .total-score-week { color:#9b9090; font:600 .64rem 'Inter',sans-serif; text-align:right; }
+    .total-score-points { color:#e4b96f; font:800 1.05rem 'Inter',sans-serif; text-align:right; }
 
     @media (max-width: 760px) {
         .block-container { padding-top: 2rem; }
@@ -1711,6 +2042,7 @@ st.markdown(
         .rank-tiles { height:auto; grid-template-rows:none; }
         .roster-row { grid-template-columns:52px 1fr 70px; }
         .roster-row > div:nth-child(4), .roster-row > div:nth-child(5) { display:none; }
+        .total-score-row { grid-template-columns:28px minmax(130px,1fr) 72px 82px; gap:.35rem; }
         .available-intro { align-items:start; flex-direction:column; }
         .pool-row { grid-template-columns:32px 1fr 62px; }
     }
@@ -1800,12 +2132,85 @@ with overview_tab:
             unsafe_allow_html=True,
         )
 
+    if tier_two_unlocked:
+        st.markdown('<div class="section-kicker">The second wave</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Three greater horrors answer the bloodshed.</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="base-roster">Tier II · 30-player master rosters · Drafts will be attached later</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """<div class="lore">
+                <p>The first wave was never the whole covenant. Its dying cries carry beyond the walls and three older hunters answer: Melusine sings from black water, Cindermaw bars the road with three snarling heads, and Lucian follows the scent of stolen blood on your hands. Each arrives with thirty followers chosen from what remains—armies broad enough to punish every weakness the first eleven exposed. The hunt has changed. You are no longer stalking scattered prey; now the darkness has begun to hunt you back.</p>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        for creature in TIER_TWO_CREATURES:
+            hearts = life_diamonds(creature["lives"], creature["lives"])
+            st.markdown(
+                f"""<div class="monster-card" data-sigil="{creature['emoji']}" style="--card-accent:{creature['accent']}">
+                    <div class="lives">{creature['lives']} {'life' if creature['lives'] == 1 else 'lives'} <span class="life-pips" title="{creature['lives']} starting lives">{hearts}</span></div>
+                    <img src="{creature['logo']}" alt="{creature['name']} logo">
+                    <div><div class="creature-name"><span class="emoji">{creature['emoji']}</span>{escape(team_label(creature['name']))}</div>
+                    <div class="ability-line"><strong>{creature['ability']}</strong> — {creature['rule']}</div></div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+    if tier_three_unlocked:
+        st.markdown('<div class="section-kicker">The summit</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">The final opponent awakens.</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="base-roster">Tier III · 50-player master roster · Draft will be attached later</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """<div class="lore">
+                <p>If you survive the second wave, the invitation's true author finally steps from the high tower. Dracula has watched every theft, every fallen bloodline, and every follower gathered to your side—and at last he descends with fifty names bound to his will. Wound him once and he grows stronger; wound him twice and he assumes his final form. There is no deeper chamber beyond him. Take all three lives and the remaining nights belong to you. Fail, and every victory before his throne becomes only the story of how far you climbed before the king of monsters cast you down.</p>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        for creature in TIER_THREE_CREATURES:
+            hearts = life_diamonds(creature["lives"], creature["lives"])
+            st.markdown(
+                f"""<div class="monster-card" data-sigil="{creature['emoji']}" style="--card-accent:{creature['accent']}">
+                    <div class="lives">{creature['lives']} lives <span class="life-pips" title="{creature['lives']} starting lives">{hearts}</span></div>
+                    <img src="{creature['logo']}" alt="{creature['name']} logo">
+                    <div><div class="creature-name"><span class="emoji">{creature['emoji']}</span>{escape(team_label(creature['name']))}</div>
+                    <div class="ability-line"><strong>{creature['ability']}</strong> — {creature['rule']}</div></div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+    if tier_four_unlocked:
+        st.markdown('<div class="section-kicker">The reign</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">The throne is yours.</div>', unsafe_allow_html=True)
+        st.markdown(
+            """<div class="lore">
+                <p>Congratulations, Vampire. Dracula has fallen, his final life extinguished beneath your hand, and the land no longer answers to his throne—it answers to you. The gates stand open, every follower in every realm is yours to command, and no bloodline remains beyond your reach. For all the nights that remain, choose freely, build the most merciless following the realm has ever known, and turn every point you score into proof of your dominion. The hunt is over. Now the age of the Vampire begins.</p>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"""<div class="monster-card" data-sigil="🧛" style="--card-accent:{VAMPIRE_TEAM['accent']}">
+                <div class="lives">∞ lives <span class="life-pips" title="Infinite lives">∞</span></div>
+                <img src="{VAMPIRE_LOGO}" alt="{escape(active_vampire_label)} logo">
+                <div><div class="creature-name"><span class="emoji">🧛</span>{escape(active_vampire_label)}</div>
+                <div class="ability-line"><strong>The Eternal Reign</strong> — The throne is claimed. Every follower is yours to command, and every remaining score becomes tribute to your rule.</div></div>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+
 with teams_tab:
     st.markdown('<div class="section-kicker">Creature dossiers</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Know what waits across the field.</div>', unsafe_allow_html=True)
     st.caption("Select a team to inspect its history, power, lives, and roster.")
 
-    all_teams = ALL_TEAMS
+    all_teams = [
+        *ALL_TEAMS,
+        *(TIER_TWO_CREATURES if tier_two_unlocked else []),
+        *(TIER_THREE_CREATURES if tier_three_unlocked else []),
+    ]
     team_names = [team["name"] for team in all_teams]
     selected_name = st.selectbox(
         "Choose a team",
@@ -1814,33 +2219,50 @@ with teams_tab:
     )
     selected_team = next(team for team in all_teams if team["name"] == selected_name)
     is_vampire = selected_name == active_vampire_name
+    is_tier_two = selected_name in {team["name"] for team in TIER_TWO_CREATURES}
+    is_tier_three = selected_name in {team["name"] for team in TIER_THREE_CREATURES}
+    roster_weeks = TIER_THREE_WEEKS if is_tier_three else TIER_TWO_WEEKS if is_tier_two else list(range(1, 19))
+    tier_start_week = TIER_THREE_START_WEEK if is_tier_three else TIER_TWO_START_WEEK
+    default_roster_week = max(tier_start_week, active_week) if (is_tier_two or is_tier_three) else active_week
     selected_week = st.select_slider(
         "Roster week",
-        options=list(range(1, 19)),
-        value=active_week,
+        options=roster_weeks,
+        value=min(18, default_roster_week),
         format_func=lambda week: f"Week {week}",
         help="Review the roster and life timeline for any week. Vampire rosters can change after each hunt.",
-        key="creature_roster_week",
+        key="tier_three_roster_week" if is_tier_three else "tier_two_roster_week" if is_tier_two else "creature_roster_week",
     )
 
-    roster_rows, roster_source = fantrax_roster_for_week(selected_week)
-    roster_rows = enrich_roster_rows(roster_rows)
-    roster_rows, player_score_source = add_fantrax_player_scores(roster_rows, selected_week)
-    roster_rows = mark_stolen_creature_followers(roster_rows, selected_week)
-    team_roster = [row for row in roster_rows if row.get("team") == selected_name]
-    selected_realm_state = realm_state_entering_week(selected_week, active_vampire_name)
+    if is_tier_two or is_tier_three:
+        roster_rows, roster_source, player_score_source, team_roster = [], "pending", "pending", []
+        selected_realm_state = None
+    else:
+        roster_rows, roster_source = fantrax_roster_for_week(selected_week)
+        roster_rows = enrich_roster_rows(roster_rows)
+        roster_rows, player_score_source = add_fantrax_player_scores(roster_rows, selected_week)
+        roster_rows = mark_stolen_creature_followers(roster_rows, selected_week)
+        if is_vampire and tier_two_unlocked and selected_week in TIER_TWO_WEEKS:
+            roster_rows, _ = mark_siren_target(roster_rows, selected_week, active_vampire_name)
+        team_roster = [row for row in roster_rows if row.get("team") == selected_name]
+        selected_realm_state = realm_state_entering_week(selected_week, active_vampire_name)
     if is_vampire:
         lives_display = "—"
+    elif is_tier_two or is_tier_three:
+        lives_display = str(selected_team["lives"])
     else:
         lives_display = str(selected_realm_state["remaining"].get(selected_name, selected_team["lives"]))
     condition_display = "HUNTING" if is_vampire else life_diamonds(selected_team["lives"], int(lives_display))
 
     previous_week = selected_week - 1
-    previous_battle = finalized_realm_battle(previous_week, active_vampire_name)
+    previous_battle = None if (is_tier_two or is_tier_three) else finalized_realm_battle(previous_week, active_vampire_name)
     previous_scores = previous_battle.get("scores", {}) if previous_battle else {}
     last_week_score = previous_scores.get(selected_name)
     last_week_display = f"{last_week_score:.2f}" if isinstance(last_week_score, (int, float)) else "—"
-    if isinstance(last_week_score, (int, float)):
+    if is_tier_two or is_tier_three:
+        tier_label = "Tier III" if is_tier_three else "Tier II"
+        tier_start = TIER_THREE_START_WEEK if is_tier_three else TIER_TWO_START_WEEK
+        last_week_detail = f"{tier_label} begins in Week {tier_start}" if selected_week == tier_start else f"Awaiting {tier_label} results"
+    elif isinstance(last_week_score, (int, float)):
         last_week_finish = 1 + sum(
             score > last_week_score
             for score in previous_scores.values()
@@ -1862,11 +2284,16 @@ with teams_tab:
     roster_html_parts = []
     for index, row in enumerate(team_roster, start=1):
         stolen_badge = f'<span class="stolen-badge">Stolen after Week {row["stolen_week"]}</span>' if row.get("stolen") else ""
+        projection = row.get("projection")
+        siren_badge = (
+            f'<span class="siren-badge">Siren target · {projection:.2f} projected</span>'
+            if row.get("siren_target") and isinstance(projection, (int, float)) else ""
+        )
         score_text = f'{row["score"]:.2f}' if isinstance(row.get("score"), (int, float)) else '—'
         roster_html_parts.append(
             f'''<div class="roster-row {'stolen-following' if row.get('stolen') else ''}">
                 <div>{index}</div>
-                <div class="player"><strong>{escape(str(row.get("player") or "Unknown follower"))}</strong>{stolen_badge}</div>
+                <div class="player"><strong>{escape(str(row.get("player") or "Unknown follower"))}</strong>{stolen_badge}{siren_badge}</div>
                 <div><span class="pos-pill">{escape(str(row.get("position") or "—"))}</span></div>
                 <div>{escape(str(row.get("nfl_team") or "FA"))}</div>
                 <div class="score">{score_text}</div>
@@ -1874,7 +2301,9 @@ with teams_tab:
         )
     roster_rows_html = "".join(roster_html_parts)
     if not roster_rows_html:
-        roster_rows_html = '<div class="roster-empty"><div><strong>Roster unavailable</strong><br>The last Fantrax snapshot did not contain this team.</div></div>'
+        empty_title = "Awaiting the Tier III draft" if is_tier_three else "Awaiting the Tier II draft" if is_tier_two else "Roster unavailable"
+        empty_detail = "This 50-player master roster will be attached after the Week 10 draft." if is_tier_three else "This 30-player master roster will be attached after the Week 6 draft." if is_tier_two else "The last Fantrax snapshot did not contain this team."
+        roster_rows_html = f'<div class="roster-empty"><div><strong>{empty_title}</strong><br>{empty_detail}</div></div>'
     roster_note = "Stolen followers remain visible here but score 0 FPts in this realm." if any(row.get("stolen") for row in team_roster) else ""
     roster_table = f'''<div class="roster-header">
         <div><div class="dossier-label">The active ledger</div><h3>Week {selected_week} roster</h3></div>
@@ -1902,9 +2331,10 @@ with teams_tab:
         if follower in creature_followers and not is_vampire
     }
     timeline_bits = []
-    for week in range(1, 19):
+    timeline_weeks = TIER_THREE_WEEKS if is_tier_three else TIER_TWO_WEEKS if is_tier_two else list(range(1, 19))
+    for week in timeline_weeks:
         status, status_class, symbol = "Scheduled", "scheduled", "·"
-        battle = finalized_realm_battle(week, active_vampire_name) if not is_vampire and week <= active_week else None
+        battle = finalized_realm_battle(week, active_vampire_name) if not is_vampire and not is_tier_two and not is_tier_three and week <= active_week else None
         if battle is not None:
             outcome = battle["outcomes"].get(selected_name, "pending")
             status, status_class, symbol = {
@@ -1915,7 +2345,7 @@ with teams_tab:
             }[outcome]
             if outcome == "lost" and week in stolen_weeks:
                 status, status_class, symbol = "Lost a life and follower stolen", "stolen", "☠"
-        elif week < active_week:
+        elif week < active_week and not is_tier_two and not is_tier_three:
             status, status_class, symbol = "Result unavailable", "unknown", "?"
         elif week == active_week:
             status, status_class, symbol = "Current week in progress", "unknown", "?"
@@ -1926,9 +2356,20 @@ with teams_tab:
         if selected_name == "The Oracle" and battle is not None and week in oracle_weeks:
             status = f"Oracle +20 week · {status}"
             status_class = f"{status_class} oracle-bonus"
-        timeline_bits.append(f'<span class="hunt-week {status_class}" title="Week {week}: {status}" aria-label="Week {week}: {status}">{symbol}</span>')
+        timeline_bits.append(
+            f'<span class="hunt-week-cell"><span class="hunt-week {status_class}" title="Week {week}: {status}" '
+            f'aria-label="Week {week}: {status}">{symbol}</span><span class="hunt-week-number">{week}</span></span>'
+        )
     selected_display_name = team_label(selected_name)
-    timeline_html = f'''<div class="hunt-timeline"><div class="hunt-timeline-title">Season life timeline · {escape(selected_display_name)}</div>
+    timeline_help = '''<span class="timeline-help" tabindex="0" aria-label="Timeline legend">?
+        <span class="timeline-help-tip" role="tooltip"><b>✓ Green</b> — creature survived<br>
+        <b>✕ Red</b> — creature lost a life<br>
+        <b>☠ Pink</b> — life lost and a follower stolen<br>
+        <b>⚠ Gold</b> — setup hit; no life lost yet<br>
+        <b>? Gray</b> — current or unavailable result<br>
+        <b>· Dark</b> — future scheduled week<br>
+        Purple ring marks an Oracle +20 week. Underline/overline marks the Gambler's positive/negative draw.</span></span>'''
+    timeline_html = f'''<div class="hunt-timeline"><div class="hunt-timeline-title">Season life timeline · {escape(selected_display_name)} {timeline_help}</div>
         <div class="hunt-weeks">{''.join(timeline_bits)}</div>
     </div>'''
     timeline_fragment = timeline_html if not is_vampire else '<div class="timeline-slot"></div>'
@@ -1984,6 +2425,12 @@ with scoreboard_tab:
             st.session_state["fantrax_refresh_notice"] = True
             st.rerun()
 
+    scoreboard_is_tier_three = tier_three_unlocked and scoreboard_week in TIER_THREE_WEEKS
+    scoreboard_is_tier_two = not scoreboard_is_tier_three and tier_two_unlocked and scoreboard_week in TIER_TWO_WEEKS
+    scoreboard_creatures = TIER_THREE_CREATURES if scoreboard_is_tier_three else TIER_TWO_CREATURES if scoreboard_is_tier_two else CREATURES
+    scoreboard_teams = [VAMPIRE_TEAM, *scoreboard_creatures]
+    scoreboard_roster_teams = [*ALL_TEAMS, *TIER_TWO_CREATURES, *TIER_THREE_CREATURES]
+
     if st.session_state.pop("fantrax_refresh_notice", False):
         st.success("Fantrax rosters and official player FPts refreshed; team scores are calculated here from players.", icon="✅")
 
@@ -2022,6 +2469,8 @@ with scoreboard_tab:
     score_rosters = enrich_roster_rows(score_rosters)
     score_rosters, score_player_source = add_fantrax_player_scores(score_rosters, scoreboard_week)
     score_rosters = mark_stolen_creature_followers(score_rosters, scoreboard_week)
+    if scoreboard_is_tier_two:
+        score_rosters, _ = mark_siren_target(score_rosters, scoreboard_week, active_vampire_name)
     scores_revealed = scoreboard_week <= active_week
     try:
         week_games = nfl_week_games(nfl_season, scoreboard_week)
@@ -2030,7 +2479,7 @@ with scoreboard_tab:
 
     rosters_by_team = {
         team["name"]: [row for row in score_rosters if row.get("team") == team["name"]]
-        for team in ALL_TEAMS
+        for team in scoreboard_roster_teams
     }
     lineups = {name: best_ball_lineup(rows) for name, rows in rosters_by_team.items()}
     # Fantrax team totals are intentionally ignored. Every score is rebuilt
@@ -2066,8 +2515,8 @@ with scoreboard_tab:
         if isinstance(target_score, (int, float)) and isinstance(replacement_score, (int, float)):
             wizard_bonus = max(0.0, float(target_score) - float(replacement_score))
 
-    bonus_by_team = {team["name"]: 0.0 for team in ALL_TEAMS}
-    bonus_notes = {team["name"]: "No weekly score bonus" for team in ALL_TEAMS}
+    bonus_by_team = {team["name"]: 0.0 for team in scoreboard_roster_teams}
+    bonus_notes = {team["name"]: "No weekly score bonus" for team in scoreboard_roster_teams}
 
     knight_roster = rosters_by_team.get("The Knight", [])
     knight_reported_lives = next(
@@ -2096,6 +2545,10 @@ with scoreboard_tab:
         bonus_notes["The Wizard"] = "Hex draw pending roster"
     bonus_notes["The Oracle"] = "Prophecy not selected"
     bonus_notes["The Hydra"] = "Two-week shield intact"
+    bonus_notes["The Siren"] = "Fatal Chorus · target pending roster"
+    bonus_notes["The Cerberus"] = "The Three Gates · all three heads intact"
+    bonus_notes["The Werewolf"] = "The Turning · +3 per stolen starter"
+    bonus_notes["Dracula"] = "The Final Form · 3 lives · +0"
 
     preliminary_totals = {
         name: float(score) + bonus_by_team.get(name, 0.0)
@@ -2115,7 +2568,7 @@ with scoreboard_tab:
             float(base_scores[team["name"]]) + bonus_by_team[team["name"]]
             if team["name"] in base_scores else None
         )
-        for team in ALL_TEAMS
+        for team in scoreboard_roster_teams
     }
 
     game_by_team = {
@@ -2144,11 +2597,16 @@ with scoreboard_tab:
             candidates = by_slot.get(slot, [])
             row = candidates[slot_index] if slot_index < len(candidates) else {}
             used_by_slot[slot] = slot_index + 1
+            projection = row.get("projection")
+            siren_badge = (
+                f'<span class="siren-badge">Siren target · {projection:.2f} projected</span>'
+                if row.get("siren_target") and isinstance(projection, (int, float)) else ""
+            )
             if row.get("stolen"):
                 original_name = escape(str(row.get("player") or "Unknown follower"))
-                player_markup = f'<strong class="stolen-score-name">Stolen Player</strong><span class="stolen-origin">{original_name} · taken after Week {row["stolen_week"]}</span>'
+                player_markup = f'<strong class="stolen-score-name">Stolen Player</strong>{siren_badge}<span class="stolen-origin">{original_name} · taken after Week {row["stolen_week"]}</span>'
             else:
-                player_markup = f'<strong>{escape(str(row.get("player") or "Awaiting roster"))}</strong>'
+                player_markup = f'<strong>{escape(str(row.get("player") or "Awaiting roster"))}</strong>{siren_badge}'
             nfl_team = escape(str(row.get("nfl_team") or "—"))
             score = row.get("score")
             score_text = f"{score:.2f}" if isinstance(score, (int, float)) else "—"
@@ -2188,18 +2646,23 @@ with scoreboard_tab:
         for row in bench:
             original_name = escape(str(row.get("player") or "Awaiting roster"))
             stolen_origin = f'<small class="stolen-origin">{original_name} · taken after Week {row["stolen_week"]}</small>' if row.get("stolen") else ""
+            projection = row.get("projection")
+            siren_badge = (
+                f'<span class="siren-badge">Siren target · {projection:.2f} projected</span>'
+                if row.get("siren_target") and isinstance(projection, (int, float)) else ""
+            )
             display_name = "Stolen Player" if row.get("stolen") else original_name
             score_text = f'{row["score"]:.2f}' if isinstance(row.get("score"), (int, float)) else '—'
             bench_rows.append(
                 f'''<div class="bench-row {'stolen-following' if row.get('stolen') else ''}"><span>{escape(str(row.get("position") or "—"))}</span>
-                <strong class="{'stolen-score-name' if row.get('stolen') else ''}">{display_name}{stolen_origin}<small class="bench-meta">{escape(str(row.get("nfl_team") or "—"))} {'' if row.get('stolen') else game_marker_html(str(row.get('nfl_team') or ''))}</small></strong><b>{score_text}</b></div>'''
+                <strong class="{'stolen-score-name' if row.get('stolen') else ''}">{display_name}{siren_badge}{stolen_origin}<small class="bench-meta">{escape(str(row.get("nfl_team") or "—"))} {'' if row.get('stolen') else game_marker_html(str(row.get('nfl_team') or ''))}</small></strong><b>{score_text}</b></div>'''
             )
         rows = "".join(bench_rows)
         empty = "<div class='score-note'>No bench data available.</div>"
         return f'<div class="bench-list"><div class="bench-title">Bench · {len(bench)} players</div>{rows or empty}</div>'
 
     ranked_teams = sorted(
-        ALL_TEAMS,
+        scoreboard_teams,
         key=lambda team: (
             adjusted_scores.get(team["name"]) if adjusted_scores.get(team["name"]) is not None else float("-inf"),
             0 if team["name"] != active_vampire_name else -1,
@@ -2230,6 +2693,8 @@ with scoreboard_tab:
                 "hit": ("Took a hit", "danger"),
                 "pending": ("Status pending", "unknown"),
             }[week_one_preview["outcomes"].get(team["name"], "pending")]
+        elif not isinstance(total, (int, float)) or not isinstance(adjusted_scores.get(active_vampire_name), (int, float)):
+            status_label, status_class = "Status pending", "unknown"
         elif rank < vampire_rank:
             status_label, status_class = "Safe", "safe"
         elif rank > vampire_rank:
@@ -2248,12 +2713,39 @@ with scoreboard_tab:
             f'<div class="rank-score">{total_text}</div>'
             '</div>'
         )
+    main_board_class = "league-board compact" if (scoreboard_is_tier_two or scoreboard_is_tier_three) else "league-board"
     league_board = (
-        '<div class="league-board">'
+        f'<div class="{main_board_class}">'
         f'<div class="league-board-title">Week {scoreboard_week} Scoreboard</div>'
         f'<div class="rank-tiles">{"".join(rank_rows)}</div>'
         '</div>'
     )
+
+    def wave_scoreboard_html(teams: list[dict], title: str) -> str:
+        ranked_wave = sorted(
+            teams,
+            key=lambda team: adjusted_scores.get(team["name"]) if adjusted_scores.get(team["name"]) is not None else float("-inf"),
+            reverse=True,
+        )
+        wave_rows = []
+        for rank, team in enumerate(ranked_wave, start=1):
+            total = adjusted_scores.get(team["name"])
+            total_text = f"{total:.2f}" if isinstance(total, (int, float)) else "—"
+            bonus = bonus_by_team.get(team["name"], 0.0)
+            detail = f"Bonus {bonus:+.2f}" if bonus else "No bonus"
+            wave_rows.append(
+                f'<div class="rank-tile {"vampire-rank" if team["name"] == active_vampire_name else ""}" style="--rank-accent:{team["accent"]}">'
+                f'<div class="rank-number">{rank}</div>'
+                f'<div class="rank-team"><strong>{team["emoji"]} {escape(team_label(team["name"]))}</strong><span>{detail}</span></div>'
+                f'<div class="rank-score">{total_text}</div>'
+                '</div>'
+            )
+        return (
+            '<div class="league-board compact fun-board">'
+            f'<div class="league-board-title">{escape(title)}</div>'
+            f'<div class="rank-tiles">{"".join(wave_rows)}</div>'
+            '</div>'
+        )
 
     board_cols = st.columns([1.8, 1.8, 1.4], gap="medium")
     with board_cols[0]:
@@ -2267,8 +2759,11 @@ with scoreboard_tab:
         st.markdown(lineup_html(VAMPIRE_TEAM, "THE HUNTER", include_head=False), unsafe_allow_html=True)
         st.markdown(bench_html(VAMPIRE_TEAM), unsafe_allow_html=True)
     with board_cols[1]:
-        opponent_name = st.session_state.get("scoreboard_opponent", "The King")
-        opponent_team = next(team for team in CREATURES if team["name"] == opponent_name)
+        opponent_key = "scoreboard_opponent_tier_three" if scoreboard_is_tier_three else "scoreboard_opponent_tier_two" if scoreboard_is_tier_two else "scoreboard_opponent"
+        opponent_name = st.session_state.get(opponent_key, scoreboard_creatures[0]["name"])
+        if opponent_name not in {team["name"] for team in scoreboard_creatures}:
+            opponent_name = scoreboard_creatures[0]["name"]
+        opponent_team = next(team for team in scoreboard_creatures if team["name"] == opponent_name)
         with st.container(border=True):
             st.markdown('<div class="opponent-picker-title">Choose your prey</div>', unsafe_allow_html=True)
             picker_cols = st.columns([.38, .62], gap="small")
@@ -2277,16 +2772,20 @@ with scoreboard_tab:
             with picker_cols[1]:
                 opponent_name = st.selectbox(
                     "Opponent",
-                    [team["name"] for team in CREATURES],
-                    format_func=lambda name: f"{next(team['emoji'] for team in CREATURES if team['name'] == name)}  {team_label(name)}",
-                    key="scoreboard_opponent",
+                    [team["name"] for team in scoreboard_creatures],
+                    format_func=lambda name: f"{next(team['emoji'] for team in scoreboard_creatures if team['name'] == name)}  {team_label(name)}",
+                    key=opponent_key,
                     label_visibility="collapsed",
                 )
-        opponent_team = next(team for team in CREATURES if team["name"] == opponent_name)
+        opponent_team = next(team for team in scoreboard_creatures if team["name"] == opponent_name)
         st.markdown(lineup_html(opponent_team, "THE HUNTED", include_head=False), unsafe_allow_html=True)
         st.markdown(bench_html(opponent_team), unsafe_allow_html=True)
     with board_cols[2]:
         st.markdown(league_board, unsafe_allow_html=True)
+        if scoreboard_is_tier_three:
+            st.markdown(wave_scoreboard_html([VAMPIRE_TEAM, *TIER_TWO_CREATURES], "Second Wave Scoreboard"), unsafe_allow_html=True)
+        if scoreboard_is_tier_two or scoreboard_is_tier_three:
+            st.markdown(wave_scoreboard_html([VAMPIRE_TEAM, *CREATURES], "First Wave Scoreboard"), unsafe_allow_html=True)
 
     # Keep the entire tribute interface hidden until the full NFL week is final.
     # Missing/incomplete NFL data must never unlock a claim.
@@ -2330,7 +2829,7 @@ with scoreboard_tab:
         except Exception:
             hydra_claimable = False
         eligible_creatures = [
-            creature for creature in CREATURES
+            creature for creature in scoreboard_creatures
             if isinstance(vampire_total, (int, float))
             and isinstance(adjusted_scores.get(creature["name"]), (int, float))
             and vampire_total > adjusted_scores[creature["name"]]
@@ -2341,7 +2840,12 @@ with scoreboard_tab:
         if not eligible_creatures:
             st.info("No creature lost a life to this Vampire this week, so there is no tribute to claim.")
         else:
-            st.caption("Choose from creatures that lost a life this week. A first hit on Hydra does not unlock its followers; the Guardian's top two scorers are protected.")
+            if scoreboard_is_tier_three:
+                st.caption("Dracula is the final opponent. Defeat him to take one of his three lives.")
+            elif scoreboard_is_tier_two:
+                st.caption("Choose from Tier II creatures that lost a life this week.")
+            else:
+                st.caption("Choose from creatures that lost a life this week. A first hit on Hydra does not unlock its followers; the Guardian's top two scorers are protected.")
             claim_options = {}
             for creature in eligible_creatures:
                 creature_name = creature["name"]
@@ -2393,12 +2897,22 @@ with scoreboard_tab:
 with realm_summary_tab:
     realm_week = st.selectbox("Summary week", list(range(1, 19)), index=active_week - 1, format_func=lambda week: f"Week {week}", key="realm_summary_week")
     st.markdown(f"<div class='realm-intro'><h2>Cross-Realm Summary · Week {realm_week}</h2><p>Each Vampire faces all eleven creatures every week. Scores update live; lives and results settle only after every NFL game is final.</p></div>", unsafe_allow_html=True)
+    st.caption("Life diamonds show the count entering a live week, then update to the new remaining-life count after every NFL game that week is final.")
     realm_states = {
         name: {
             "remaining": {creature["name"]: creature["lives"] for creature in CREATURES},
             "hydra_hit": False,
+            "hydra_margin_pending": 0.0,
             "hunter_bonus": 0.0,
             "weeks": {},
+            "total_score": 0.0,
+            "weekly_margin": {},
+            "tier_two_remaining": {creature["name"]: creature["lives"] for creature in TIER_TWO_CREATURES},
+            "cerberus_streak": 0,
+            "cerberus_margin_pending": 0.0,
+            "tier_two_weeks": {},
+            "dracula_remaining": 3,
+            "tier_three_weeks": {},
         }
         for name in vampire_sheet_teams
     }
@@ -2425,18 +2939,136 @@ with realm_summary_tab:
             world_roster = weekly_world_rosters.get(world_name, [])
             world_roster, _ = add_fantrax_player_scores(world_roster, battle_week)
             creature_roster = mark_stolen_creature_followers(weekly_creatures, battle_week, world_name)
+            in_tier_three = tier_is_unlocked(3, world_name) and battle_week in TIER_THREE_WEEKS
+            in_tier_two = not in_tier_three and tier_is_unlocked(2, world_name) and battle_week in TIER_TWO_WEEKS
+
+            if in_tier_three:
+                if state["dracula_remaining"] <= 0:
+                    vampire_lineup = best_ball_lineup(world_roster)
+                    if week_is_final and len(vampire_lineup) == 9:
+                        vampire_score = sum(float(row.get("score") or 0.0) for row in vampire_lineup)
+                        margin_points = victory_margin_points(vampire_score, {}, {}, free_hunt=True)
+                        state["weekly_margin"][battle_week] = margin_points
+                        state["total_score"] += margin_points
+                    continue
+                dracula_roster = [row for row in weekly_creatures if row.get("team") == "Dracula"]
+                battle = calculate_tier_three_battle(
+                    battle_week, world_roster, dracula_roster, state["dracula_remaining"]
+                )
+                if battle is not None:
+                    state["tier_three_weeks"][battle_week] = battle
+                    if week_is_final:
+                        margin_points = victory_margin_points(
+                            battle["scores"].get("The Vampire"),
+                            {"Dracula": battle["scores"].get("Dracula")},
+                            {"Dracula": state["dracula_remaining"]},
+                        ) * DRACULA_SCORE_MULTIPLIER
+                        state["weekly_margin"][battle_week] = margin_points
+                        state["total_score"] += margin_points
+                        state["dracula_remaining"] = battle["remaining"]
+                continue
+
+            if in_tier_two:
+                projected_world_roster = add_weekly_projections(world_roster, battle_week)
+                tier_two_rosters = {
+                    creature["name"]: [row for row in weekly_creatures if row.get("team") == creature["name"]]
+                    for creature in TIER_TWO_CREATURES
+                }
+                lives_before_battle = dict(state["tier_two_remaining"])
+                battle = calculate_tier_two_battle(
+                    battle_week,
+                    projected_world_roster,
+                    tier_two_rosters,
+                    lives_before_battle,
+                    state["cerberus_streak"],
+                )
+                if battle is not None:
+                    state["tier_two_weeks"][battle_week] = battle
+                    if week_is_final:
+                        margin_points = victory_margin_points(
+                            battle["scores"].get("The Vampire"),
+                            {
+                                creature["name"]: battle["scores"].get(creature["name"])
+                                for creature in TIER_TWO_CREATURES
+                                if creature["name"] != "The Cerberus"
+                            },
+                            lives_before_battle,
+                        )
+                        vampire_score = battle["scores"].get("The Vampire")
+                        cerberus_score = battle["scores"].get("The Cerberus")
+                        cerberus_margin = (
+                            max(0.0, float(vampire_score) - float(cerberus_score))
+                            if lives_before_battle.get("The Cerberus", 0) > 0
+                            and isinstance(vampire_score, (int, float))
+                            and isinstance(cerberus_score, (int, float))
+                            else 0.0
+                        )
+                        cerberus_outcome = (
+                            battle["outcomes"].get("The Cerberus", "survived")
+                            if lives_before_battle.get("The Cerberus", 0) > 0
+                            else "survived"
+                        )
+                        cerberus_awarded, state["cerberus_margin_pending"] = settle_streak_margin(
+                            cerberus_margin,
+                            cerberus_outcome,
+                            state["cerberus_margin_pending"],
+                        )
+                        margin_points += cerberus_awarded
+                        margin_points *= TIER_TWO_SCORE_MULTIPLIER
+                        state["weekly_margin"][battle_week] = margin_points
+                        state["total_score"] += margin_points
+                        state["tier_two_remaining"] = battle["remaining"]
+                        state["cerberus_streak"] = battle["cerberus_streak"]
+                elif week_is_final:
+                    state["cerberus_streak"] = 0
+                    state["cerberus_margin_pending"] = 0.0
+                continue
+
+            lives_before_battle = dict(state["remaining"])
             battle = calculate_realm_battle(
                 battle_week, world_name, world_roster, creature_roster,
                 state["remaining"], state["hydra_hit"], state["hunter_bonus"],
             )
             if battle is not None:
                 if week_is_final:
+                    margin_points = victory_margin_points(
+                        battle["scores"].get(world_name),
+                        {
+                            creature["name"]: battle["scores"].get(creature["name"])
+                            for creature in CREATURES
+                            if creature["name"] != "The Hydra"
+                        },
+                        lives_before_battle,
+                    )
+                    vampire_score = battle["scores"].get(world_name)
+                    hydra_score = battle["scores"].get("The Hydra")
+                    hydra_margin = (
+                        max(0.0, float(vampire_score) - float(hydra_score))
+                        if lives_before_battle.get("The Hydra", 0) > 0
+                        and isinstance(vampire_score, (int, float))
+                        and isinstance(hydra_score, (int, float))
+                        else 0.0
+                    )
+                    hydra_outcome = (
+                        battle["outcomes"].get("The Hydra", "survived")
+                        if lives_before_battle.get("The Hydra", 0) > 0
+                        else "survived"
+                    )
+                    hydra_awarded, state["hydra_margin_pending"] = settle_streak_margin(
+                        hydra_margin,
+                        hydra_outcome,
+                        state["hydra_margin_pending"],
+                    )
+                    margin_points += hydra_awarded
+                    state["weekly_margin"][battle_week] = margin_points
+                    state["total_score"] += margin_points
                     state["remaining"] = battle["remaining"]
                     state["hydra_hit"] = battle["hydra_hit"]
                     state["hunter_bonus"] = battle["hunter_bonus"]
                 state["weeks"][battle_week] = battle
             elif week_is_final:
                 state["hydra_hit"] = False
+                state["hydra_margin_pending"] = 0.0
         prior_weeks_verified = week_is_final
     if selected_world_rosters is None:
         selected_world_rosters = vampire_world_rosters(realm_week)
@@ -2445,6 +3077,10 @@ with realm_summary_tab:
     body_rows = []
     for world_name in vampire_sheet_teams:
         state = realm_states[world_name]
+        tier_one_victorious = all(
+            state["remaining"].get(creature["name"], creature["lives"]) == 0
+            for creature in CREATURES
+        )
         battle = state["weeks"].get(realm_week)
         score = battle["scores"].get(world_name) if battle else None
         stolen = next((str(row.get(world_name, "")).strip() for row in vampire_sheet_rows if str(row.get("Week", "")) == str(realm_week) and str(row.get("Slot", "")).strip().lower() == "stolen"), "") if selected_week_final else ""
@@ -2469,8 +3105,98 @@ with realm_summary_tab:
             score_text += "<small>No FPts yet</small>"
         elif isinstance(score, (int, float)) and not selected_week_final:
             score_text += "<small>Live score</small>"
-        body_rows.append(f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th><td class='realm-score'>{score_text}</td>{cells}<td class='stolen'>{escape(stolen)}</td></tr>")
+        if tier_one_victorious:
+            score_text = "<span class='victory-label'>Victorious</span>"
+        row_classes = " ".join(filter(None, [
+            "active" if world_name == active_vampire_name else "",
+            "victorious" if tier_one_victorious else "",
+        ]))
+        body_rows.append(f"<tr class='{row_classes}'><th>🧛 {escape(team_label(world_name))}<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th><td class='realm-score'>{score_text}</td>{cells}<td class='stolen'>{escape(stolen)}</td></tr>")
     st.markdown(f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th><th>Week {realm_week}</th>{header_cells}<th>Player stolen</th></tr></thead><tbody>{''.join(body_rows)}</tbody></table></div>", unsafe_allow_html=True)
+
+    tier_two_realms = [name for name in vampire_sheet_teams if tier_is_unlocked(2, name)]
+    if tier_two_realms and realm_week in TIER_TWO_WEEKS:
+        tier_two_headers = "".join(
+            f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>"
+            for creature in TIER_TWO_CREATURES
+        )
+        tier_two_rows = []
+        for world_name in tier_two_realms:
+            creature_cells = "".join(
+                f"<td class='life-diamonds' title='{creature['lives']} starting lives'>"
+                f"{life_diamonds(creature['lives'], creature['lives'])}<small class='pending'>SCHEDULED</small></td>"
+                for creature in TIER_TWO_CREATURES
+            )
+            tier_two_rows.append(
+                f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}"
+                f"<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th>"
+                f"<td class='realm-score'>Awaiting draft</td>{creature_cells}</tr>"
+            )
+        st.markdown(
+            f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th>"
+            f"<th>Week {realm_week}</th>{tier_two_headers}</tr></thead><tbody>{''.join(tier_two_rows)}</tbody></table></div>",
+            unsafe_allow_html=True,
+        )
+
+    tier_three_realms = [name for name in vampire_sheet_teams if tier_is_unlocked(3, name)]
+    if tier_three_realms and realm_week in TIER_THREE_WEEKS:
+        tier_three_headers = "".join(
+            f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>"
+            for creature in TIER_THREE_CREATURES
+        )
+        tier_three_rows = []
+        for world_name in tier_three_realms:
+            creature_cells = "".join(
+                f"<td class='life-diamonds' title='{creature['lives']} starting lives'>"
+                f"{life_diamonds(creature['lives'], creature['lives'])}<small class='pending'>SCHEDULED</small></td>"
+                for creature in TIER_THREE_CREATURES
+            )
+            tier_three_rows.append(
+                f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}"
+                f"<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th>"
+                f"<td class='realm-score'>Awaiting draft</td>{creature_cells}</tr>"
+            )
+        st.markdown(
+            f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th>"
+            f"<th>Week {realm_week}</th>{tier_three_headers}</tr></thead><tbody>{''.join(tier_three_rows)}</tbody></table></div>",
+            unsafe_allow_html=True,
+        )
+
+    total_rankings = sorted(
+        vampire_sheet_teams,
+        key=lambda name: (
+            realm_states[name]["dracula_remaining"] <= 0,
+            float(realm_states[name]["total_score"]),
+            name == active_vampire_name,
+        ),
+        reverse=True,
+    )
+    total_rows = []
+    for rank, world_name in enumerate(total_rankings, start=1):
+        state = realm_states[world_name]
+        total = float(state["total_score"])
+        weekly = state["weekly_margin"].get(realm_week)
+        weekly_text = f"+{weekly:.2f}" if isinstance(weekly, (int, float)) else "—"
+        champion_eligible = state["dracula_remaining"] <= 0
+        row_classes = " ".join(filter(None, [
+            "active" if world_name == active_vampire_name else "",
+            "champion" if champion_eligible else "",
+        ]))
+        total_rows.append(
+            f'<div class="total-score-row {row_classes}">'
+            f'<div class="total-score-rank">{rank}</div>'
+            f'<div class="total-score-team"><strong>🧛 {escape(team_label(world_name))}</strong></div>'
+            f'<div class="total-score-week">Week {realm_week}<br>{weekly_text}</div>'
+            f'<div class="total-score-points">{total:.2f}</div>'
+            '</div>'
+        )
+    st.markdown(
+        '<div class="total-scoreboard">'
+        '<div class="total-scoreboard-title">Total Scoreboard</div>'
+        f'{"".join(total_rows)}'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
 with available_tab:
     available_snapshot = load_snapshot()
@@ -2673,19 +3399,21 @@ with about_tab:
     st.subheader("How the league works")
     st.markdown(
         """
-        - There are 12 teams: The Vampire and 11 opposing creatures.
+        - The hunt pits The Vampire against 11 creatures.
         - The season runs for 18 scoring weeks.
         - Each week, teams are compared by their fantasy football score.
         - When The Vampire outscores an opponent, that opponent loses one life.
         - After a successful hunt, The Vampire may steal one follower from that opponent's roster.
         - The Vampire may set a different starting lineup every week. Other teams use their standard roster and best-ball scoring.
+        - The Total Scoreboard awards the positive margin of every victory against a creature that entered the week with a life.
+        - Hydra's two-week margin is banked until the life-ending win. A broken streak forfeits those pending points.
         """
     )
 
     st.subheader("Roster settings")
     st.markdown(
         """
-        **All teams (including The Vampire)**
+        **All teams**
 
         - 2 QB
         - 6 RB
