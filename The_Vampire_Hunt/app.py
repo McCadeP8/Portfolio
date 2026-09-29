@@ -2657,14 +2657,12 @@ with scoreboard_tab:
     bonus_by_team = {team["name"]: 0.0 for team in scoreboard_roster_teams}
     bonus_notes = {team["name"]: "No weekly score bonus" for team in scoreboard_roster_teams}
 
-    knight_roster = rosters_by_team.get("The Knight", [])
-    knight_reported_lives = next(
-        (row.get("lives_remaining") for row in knight_roster if row.get("lives_remaining") is not None),
-        4,
+    scoreboard_realm_state = (
+        realm_state_with_settled_active_matchups(active_week, active_vampire_name)
+        if scoreboard_week > active_week
+        else realm_state_entering_week(scoreboard_week, active_vampire_name)
     )
-    if week_one_preview and scoreboard_week > 1:
-        knight_reported_lives = week_one_preview["remaining"]["The Knight"]
-    knight_lives = max(1, min(4, int(knight_reported_lives)))
+    knight_lives = max(1, min(4, int(scoreboard_realm_state["remaining"].get("The Knight", 4))))
     bonus_by_team["The Knight"] = float((4 - knight_lives) * 5)
     bonus_notes["The Knight"] = f"Last Stand · {knight_lives} lives"
 
@@ -2672,11 +2670,6 @@ with scoreboard_tab:
     bonus_by_team["The Gambler"] = gambler_bonus
     bonus_notes["The Gambler"] = ("Fate's draw · +12" if gambler_bonus > 0 else "Fate's draw · −8") if scores_revealed else "Fate's draw · revealed at kickoff"
 
-    scoreboard_realm_state = (
-        realm_state_with_settled_active_matchups(active_week, active_vampire_name)
-        if scoreboard_week > active_week
-        else realm_state_entering_week(scoreboard_week, active_vampire_name)
-    )
     hunter_bonus = scoreboard_realm_state["hunter_bonus"]
     bonus_by_team["The Hunter"] = hunter_bonus
     hunter_wins = int(hunter_bonus / 2)
