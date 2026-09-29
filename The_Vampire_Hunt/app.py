@@ -2731,30 +2731,12 @@ with scoreboard_tab:
     }
 
     def scoreboard_team_is_eliminated(team: dict) -> bool:
-        """Return true for creatures dead before, or conclusively killed in, this week."""
+        """Return true only for creatures that entered the selected week already dead."""
         name = team["name"]
         if name == active_vampire_name:
             return False
         lives_before = scoreboard_realm_state["remaining"].get(name, team.get("lives") or 1)
-        if lives_before <= 0:
-            return True
-        team_total = adjusted_scores.get(name)
-        vampire_total = adjusted_scores.get(active_vampire_name)
-        if not (
-            lives_before == 1
-            and isinstance(team_total, (int, float))
-            and isinstance(vampire_total, (int, float))
-            and float(vampire_total) > float(team_total)
-            and matchup_is_settled(
-                rosters_by_team.get(active_vampire_name, []),
-                rosters_by_team.get(name, []),
-                week_games,
-                name,
-                rosters_by_team,
-            )
-        ):
-            return False
-        return not (name == "The Hydra" and not scoreboard_realm_state["hydra_hit"])
+        return lives_before <= 0
 
     def game_marker_html(nfl_team: str) -> str:
         code = team_code(nfl_team)
