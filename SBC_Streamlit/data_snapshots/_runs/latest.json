@@ -1,15 +1,15 @@
 {
-  "finished_at": "2026-09-30T15:57:16.530694+00:00",
+  "finished_at": "2026-10-01T16:29:26.864760+00:00",
   "live_mode": "shadow",
   "results": [
     {
       "details": {
         "message": "Google Sheet snapshots refreshed with stale-cache fallback"
       },
-      "duration_seconds": 6.964,
-      "finished_at": "2026-09-30T15:56:20.156627+00:00",
+      "duration_seconds": 7.192,
+      "finished_at": "2026-10-01T16:28:21.358994+00:00",
       "name": "sheets",
-      "started_at": "2026-09-30T15:56:13.193010+00:00",
+      "started_at": "2026-10-01T16:28:14.167395+00:00",
       "status": "ok"
     },
     {
@@ -21,40 +21,42 @@
           "get_all_time_standings"
         ]
       },
-      "duration_seconds": 17.221,
-      "finished_at": "2026-09-30T15:56:37.377745+00:00",
+      "duration_seconds": 17.392,
+      "finished_at": "2026-10-01T16:28:38.750729+00:00",
       "name": "league",
-      "started_at": "2026-09-30T15:56:20.156693+00:00",
+      "started_at": "2026-10-01T16:28:21.359058+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "message": "outside the NBA regular-season refresh window"
+        "events_seen": 0,
+        "message": "no completed ESPN games in lookback"
       },
-      "duration_seconds": 0.0,
-      "finished_at": "2026-09-30T15:56:37.377874+00:00",
+      "duration_seconds": 0.169,
+      "finished_at": "2026-10-01T16:28:38.920266+00:00",
       "name": "espn_boxscores",
-      "started_at": "2026-09-30T15:56:37.377864+00:00",
+      "started_at": "2026-10-01T16:28:38.750820+00:00",
       "status": "skipped"
     },
     {
       "details": {
-        "message": "outside the NBA regular-season refresh window"
+        "archives_changed": false,
+        "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/data_snapshots/shots"
       },
-      "duration_seconds": 0.0,
-      "finished_at": "2026-09-30T15:56:37.377901+00:00",
+      "duration_seconds": 0.059,
+      "finished_at": "2026-10-01T16:28:38.978847+00:00",
       "name": "shots",
-      "started_at": "2026-09-30T15:56:37.377898+00:00",
-      "status": "skipped"
+      "started_at": "2026-10-01T16:28:38.920332+00:00",
+      "status": "ok"
     },
     {
       "details": {
-        "message": "outside the NBA regular-season refresh window"
+        "message": "no indexed games in lookback"
       },
-      "duration_seconds": 0.0,
-      "finished_at": "2026-09-30T15:56:37.377922+00:00",
+      "duration_seconds": 0.107,
+      "finished_at": "2026-10-01T16:28:39.086374+00:00",
       "name": "pbp",
-      "started_at": "2026-09-30T15:56:37.377919+00:00",
+      "started_at": "2026-10-01T16:28:38.978912+00:00",
       "status": "skipped"
     },
     {
@@ -62,10 +64,10 @@
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/sbc_player_matchup_stats.parquet",
         "rows": 119095
       },
-      "duration_seconds": 4.634,
-      "finished_at": "2026-09-30T15:56:42.012122+00:00",
+      "duration_seconds": 6.016,
+      "finished_at": "2026-10-01T16:28:45.102713+00:00",
       "name": "matchups",
-      "started_at": "2026-09-30T15:56:37.377939+00:00",
+      "started_at": "2026-10-01T16:28:39.086456+00:00",
       "status": "ok"
     },
     {
@@ -75,23 +77,23 @@
         "player_rows": 0,
         "published": false
       },
-      "duration_seconds": 0.05,
-      "finished_at": "2026-09-30T15:56:42.061941+00:00",
+      "duration_seconds": 0.002,
+      "finished_at": "2026-10-01T16:28:45.105066+00:00",
       "name": "live_shadow",
-      "started_at": "2026-09-30T15:56:42.012209+00:00",
+      "started_at": "2026-10-01T16:28:45.102838+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "bytes": 143781533,
+        "bytes": 143781536,
         "datasets": 19,
         "rows": 7348046,
         "warnings": 0
       },
-      "duration_seconds": 0.134,
-      "finished_at": "2026-09-30T15:56:42.196324+00:00",
+      "duration_seconds": 0.165,
+      "finished_at": "2026-10-01T16:28:45.270548+00:00",
       "name": "validate",
-      "started_at": "2026-09-30T15:56:42.061994+00:00",
+      "started_at": "2026-10-01T16:28:45.105127+00:00",
       "status": "ok"
     },
     {
@@ -103,69 +105,69 @@
         "planned": [],
         "published": [
           {
-            "bytes": 375513,
+            "bytes": 365612,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-overnight-scores-2026-p20.png",
             "kind": "overnight_scores"
           },
           {
-            "bytes": 455386,
+            "bytes": 441011,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-overnight-scores-2026-p20.png",
             "kind": "mobile_overnight_scores"
           },
           {
-            "bytes": 523853,
+            "bytes": 578896,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-matchup-recap-2026_580.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 558011,
+            "bytes": 621952,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-matchup-recap-2026_580.png",
             "kind": "mobile_matchup_recap"
           },
           {
-            "bytes": 551573,
+            "bytes": 598783,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-matchup-recap-2026_575.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 625116,
+            "bytes": 691028,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-matchup-recap-2026_575.png",
             "kind": "mobile_matchup_recap"
           },
           {
-            "bytes": 357435,
+            "bytes": 350366,
             "delivered": 1,
             "destinations": 1,
-            "filename": "sbcfbl-record-tulsa-2pt-jalen-duren.png",
+            "filename": "sbcfbl-record-st. louis-3pt-ryan-rollins.png",
             "kind": "record_leader"
           }
         ],
-        "publishing_date": "2025-12-30",
+        "publishing_date": "2025-12-31",
         "skipped": [],
         "slot": "opening",
         "year": 2026
       },
-      "duration_seconds": 34.334,
-      "finished_at": "2026-09-30T15:57:16.530138+00:00",
+      "duration_seconds": 41.594,
+      "finished_at": "2026-10-01T16:29:26.864279+00:00",
       "name": "fantrax_rotation",
-      "started_at": "2026-09-30T15:56:42.196377+00:00",
+      "started_at": "2026-10-01T16:28:45.270644+00:00",
       "status": "ok"
     }
   ],
   "schema_version": 1,
-  "started_at": "2026-09-30T15:56:13.192871+00:00",
+  "started_at": "2026-10-01T16:28:14.167225+00:00",
   "status": "ok",
-  "target_date": "2026-09-30"
+  "target_date": "2026-10-01"
 }
