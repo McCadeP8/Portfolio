@@ -672,6 +672,32 @@ def best_ball_lineup(roster: list[dict], ranking_key=_scored_first) -> list[dict
     return sorted(chosen, key=lambda row: slot_order.get(row.get("slot", ""), 99))
 
 
+def follower_identity(row: dict) -> str:
+    """Return the stable identity used to compare followers across lineup copies."""
+    return str(row.get("player_id") or "").strip() or str(row.get("player") or "").strip().casefold()
+
+
+def wizard_hex_adjustment(
+    vampire_roster: list[dict],
+    vampire_lineup: list[dict],
+    target: dict,
+) -> tuple[dict | None, float]:
+    """Remove the cursed starter, then rebuild the Vampire's best legal lineup."""
+    target_identity = follower_identity(target)
+    reduced_roster = [row for row in vampire_roster if follower_identity(row) != target_identity]
+    rebuilt_lineup = best_ball_lineup(reduced_roster)
+    original_starters = {follower_identity(row) for row in vampire_lineup}
+    replacement = next(
+        (row for row in rebuilt_lineup if follower_identity(row) not in original_starters),
+        None,
+    )
+    target_score = target.get("score")
+    replacement_score = replacement.get("score") if replacement else None
+    if isinstance(target_score, (int, float)) and isinstance(replacement_score, (int, float)):
+        return replacement, max(0.0, float(target_score) - float(replacement_score))
+    return replacement, 0.0
+
+
 def seeded_pick(week: int, label: str, choices: list, universe: str = ""):
     digest = hashlib.sha256(f"et040dehmtxkchmx:{universe}:{week}:{label}".encode()).digest()
     return choices[int.from_bytes(digest[:8], "big") % len(choices)]
@@ -993,17 +1019,12 @@ def mccade_week_one_preview() -> dict | None:
     bonus["The Gambler"] = float(seeded_pick(1, "gambler-flip", [12, -8], world_seed))
     vampire_lineup = lineups[active_vampire_name]
     wizard_target = seeded_pick(1, "wizard-hex", vampire_lineup, world_seed)
-    eligible_positions = {"RB", "WR", "TE"} if wizard_target.get("slot") == "RWT FLEX" else {wizard_target.get("position")}
-    chosen_ids = {row.get("player_id") for row in vampire_lineup}
-    replacements = sorted(
-        [row for row in rosters[active_vampire_name] if row.get("player_id") not in chosen_ids and row.get("position") in eligible_positions],
-        key=_scored_first,
-        reverse=True,
+    _, wizard_penalty = wizard_hex_adjustment(
+        rosters[active_vampire_name],
+        vampire_lineup,
+        wizard_target,
     )
-    replacement_score = replacements[0].get("score") if replacements else None
-    target_score = wizard_target.get("score")
-    if isinstance(target_score, (int, float)) and isinstance(replacement_score, (int, float)):
-        bonus["The Wizard"] = max(0.0, float(target_score) - float(replacement_score))
+    bonus["The Wizard"] = wizard_penalty
     preliminary = {name: score + bonus[name] for name, score in base.items()}
     if "The Juggernaut" in base:
         below = sum(
@@ -1067,17 +1088,8 @@ def calculate_realm_battle(
 
     vampire_lineup = lineups[realm_name]
     hex_target = seeded_pick(week, "wizard-hex", vampire_lineup, seed)
-    hex_positions = {"RB", "WR", "TE"} if hex_target.get("slot") == "RWT FLEX" else {hex_target.get("position")}
-    starter_ids = {row.get("player_id") for row in vampire_lineup}
-    replacements = sorted(
-        [row for row in vampire_roster if row.get("player_id") not in starter_ids and row.get("position") in hex_positions],
-        key=_scored_first,
-        reverse=True,
-    )
-    target_score = hex_target.get("score")
-    replacement_score = replacements[0].get("score") if replacements else None
-    if isinstance(target_score, (int, float)) and isinstance(replacement_score, (int, float)):
-        bonus["The Wizard"] = max(0.0, float(target_score) - float(replacement_score))
+    _, wizard_penalty = wizard_hex_adjustment(vampire_roster, vampire_lineup, hex_target)
+    bonus["The Wizard"] = wizard_penalty
 
     preliminary = {name: score + bonus[name] for name, score in base.items()}
     living_teams = {realm_name} | {
@@ -2637,22 +2649,11 @@ with scoreboard_tab:
     wizard_bonus = 0.0
     if vampire_lineup:
         wizard_target = seeded_pick(scoreboard_week, "wizard-hex", vampire_lineup, world_seed)
-        target_slot = wizard_target.get("slot")
-        eligible_positions = {"RB", "WR", "TE"} if target_slot == "RWT FLEX" else {wizard_target.get("position")}
-        chosen_ids = {row.get("player_id") for row in vampire_lineup}
-        replacements = sorted(
-            [
-                row for row in rosters_by_team[active_vampire_name]
-                if row.get("player_id") not in chosen_ids and row.get("position") in eligible_positions
-            ],
-            key=_scored_first,
-            reverse=True,
+        wizard_replacement, wizard_bonus = wizard_hex_adjustment(
+            rosters_by_team[active_vampire_name],
+            vampire_lineup,
+            wizard_target,
         )
-        wizard_replacement = replacements[0] if replacements else None
-        target_score = wizard_target.get("score")
-        replacement_score = wizard_replacement.get("score") if wizard_replacement else None
-        if isinstance(target_score, (int, float)) and isinstance(replacement_score, (int, float)):
-            wizard_bonus = max(0.0, float(target_score) - float(replacement_score))
 
     bonus_by_team = {team["name"]: 0.0 for team in scoreboard_roster_teams}
     bonus_notes = {team["name"]: "No weekly score bonus" for team in scoreboard_roster_teams}
