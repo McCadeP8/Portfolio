@@ -2821,7 +2821,6 @@ with scoreboard_tab:
     ranked_teams = sorted(
         scoreboard_teams,
         key=lambda team: (
-            not eliminated_by_team[team["name"]],
             adjusted_scores.get(team["name"]) if adjusted_scores.get(team["name"]) is not None else float("-inf"),
             0 if team["name"] != active_vampire_name else -1,
         ),
