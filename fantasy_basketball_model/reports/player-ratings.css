@@ -1,0 +1,143 @@
+.roster-table tbody tr {
+  height: 3.35rem;
+}
+
+.roster-table tbody td {
+  vertical-align: middle;
+}
+
+.roster-table td:nth-child(1),
+.roster-table td:nth-child(2),
+.roster-table td:nth-child(3),
+.roster-table td:nth-child(4) {
+  font-weight: 800;
+}
+
+.stat-cell {
+  display: flex;
+  min-width: 2.2rem;
+  min-height: 2.6rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+}
+
+.stat-cell > span:first-child {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rating-pill {
+  display: inline-flex;
+  min-width: 2rem;
+  height: 1.22rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.25rem;
+  padding: 0 0.34rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, #dbe4ee);
+  border-radius: 999px;
+  color: #111827;
+  background: color-mix(in srgb, var(--primary) 7%, white);
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.rating-pill.is-high {
+  border-width: 2px;
+  background: color-mix(in srgb, var(--primary) 10%, white);
+  color: #111827;
+  font-weight: 1000;
+}
+
+.rating-pill.is-low {
+  color: #111827;
+  background: color-mix(in srgb, var(--primary) 4%, white);
+}
+
+.rating-pill.is-empty {
+  visibility: hidden;
+}
+
+.overall-player-rating {
+  display: inline-grid;
+  min-width: 2.4rem;
+  height: 1.65rem;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--primary) 65%, #94a3b8);
+  border-radius: 999px;
+  color: #111827;
+  background: color-mix(in srgb, var(--primary) 9%, white);
+  font-size: 0.82rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.06);
+}
+
+.overall-player-rating.is-high {
+  background: color-mix(in srgb, var(--primary) 12%, white);
+  color: #111827;
+  font-weight: 1000;
+}
+
+.overall-player-rating.is-low {
+  color: #111827;
+  background: color-mix(in srgb, var(--primary) 5%, white);
+}
+
+.overall-player-rating.is-empty {
+  visibility: hidden;
+}
+
+.roster-table th:last-child {
+  background: color-mix(in srgb, var(--primary) 82%, #000);
+}
+
+.roster-table td:last-child {
+  background: color-mix(in srgb, var(--primary) 3%, white);
+}
+
+.chemistry-player-rating {
+  display: inline-grid;
+  min-width: 2.5rem;
+  height: 1.65rem;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--primary) 45%, #cbd5e1);
+  border-radius: 999px;
+  color: #111827;
+  background: color-mix(in srgb, var(--primary) 7%, white);
+  font-size: 0.82rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.chemistry-player-rating.is-empty {
+  visibility: hidden;
+}
+
+.roster-table th,
+.roster-table td {
+  text-align: center !important;
+  padding-right: 0.28rem !important;
+  padding-left: 0.28rem !important;
+}
+
+.roster-table {
+  font-size: 0.64rem;
+}
+
+.roster-table th {
+  padding-top: 0.38rem !important;
+  padding-bottom: 0.38rem !important;
+  font-size: 0.56rem;
+  letter-spacing: 0.035em;
+}
+
+.roster-table th:nth-child(2),
+.roster-table td:nth-child(2) {
+  text-align: left !important;
+}

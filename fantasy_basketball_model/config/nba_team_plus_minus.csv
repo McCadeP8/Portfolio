@@ -1,0 +1,31 @@
+nba_team_name,nba_team,projected_wins,projected_point_diff,projected_season_plus_minus
+Oklahoma City Thunder,OKC,62.5,537.5,2687.5
+San Antonio Spurs,SA,59.5,462.5,2312.5
+New York Knicks,NY,52.5,287.5,1437.5
+Boston Celtics,BOS,51.5,262.5,1312.5
+Philadelphia 76ers,PHI,50.5,237.5,1187.5
+Denver Nuggets,DEN,49.5,212.5,1062.5
+Detroit Pistons,DET,49.5,212.5,1062.5
+Houston Rockets,HOU,48.5,187.5,937.5
+Minnesota Timberwolves,MIN,48.5,187.5,937.5
+Cleveland Cavaliers,CLE,47.5,162.5,812.5
+Los Angeles Lakers,LAL,46.5,137.5,687.5
+Miami Heat,MIA,46.5,137.5,687.5
+Toronto Raptors,TOR,46.5,137.5,687.5
+Atlanta Hawks,ATL,43.5,62.5,312.5
+Indiana Pacers,IND,43.5,62.5,312.5
+Orlando Magic,ORL,43.5,62.5,312.5
+Portland Trail Blazers,POR,42.5,37.5,187.5
+Golden State Warriors,GS,40.5,-12.5,-62.5
+Phoenix Suns,PHO,40.5,-12.5,-62.5
+Charlotte Hornets,CHA,39.5,-37.5,-187.5
+Utah Jazz,UTA,37.5,-87.5,-437.5
+Dallas Mavericks,DAL,34.5,-162.5,-812.5
+Washington Wizards,WAS,34.5,-162.5,-812.5
+Chicago Bulls,CHI,29.5,-287.5,-1437.5
+Memphis Grizzlies,MEM,29.5,-287.5,-1437.5
+LA Clippers,LAC,28.5,-312.5,-1562.5
+New Orleans Pelicans,NO,27.5,-337.5,-1687.5
+Milwaukee Bucks,MIL,25.5,-387.5,-1937.5
+Brooklyn Nets,BKN,24.5,-412.5,-2062.5
+Sacramento Kings,SAC,21.5,-487.5,-2437.5

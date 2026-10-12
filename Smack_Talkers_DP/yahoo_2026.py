@@ -217,6 +217,13 @@ def _number(value: Any) -> float | None:
         return None
 
 
+def _integer(value: Any) -> int | None:
+    try:
+        return int(value) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 def normalize_teams(
     payload: dict[str, Any], config: dict[str, str], fetched_at: str
 ) -> list[dict[str, Any]]:
@@ -239,9 +246,9 @@ def normalize_teams(
             "manager_nickname": team.get("manager_nickname"),
             "manager_guid": team.get("manager_guid"),
             "is_commissioner": team.get("is_commissioner"),
-            "previous_season_team_rank": team.get("previous_season_team_rank"),
-            "number_of_moves": team.get("number_of_moves"),
-            "number_of_trades": team.get("number_of_trades"),
+            "previous_season_team_rank": _integer(team.get("previous_season_team_rank")),
+            "number_of_moves": _integer(team.get("number_of_moves")),
+            "number_of_trades": _integer(team.get("number_of_trades")),
             "draft_grade": team.get("draft_grade"),
             "fetched_at_utc": fetched_at,
         })
@@ -385,9 +392,7 @@ def normalize_rosters(
                 if isinstance(item, dict):
                     player_metadata.update(item)
             selected = _find_first(player[1:] if isinstance(player, list) else player, "selected_position") or {}
-            if isinstance(selected, list):
-                selected = next((item for item in selected if isinstance(item, dict)), {})
-            slot = str(selected.get("position") or "")
+            slot = str(_find_first(selected, "position") or "")
             display_position = str(
                 player_metadata.get("display_position") or player_metadata.get("primary_position") or ""
             )
@@ -541,9 +546,29 @@ def _upsert_and_write(
     temporary.replace(path)
 
 
+def _replace_leagues_and_write(
+    path: Path, rows: list[dict[str, Any]], columns: list[str], league_ids: Iterable[int]
+) -> None:
+    """Replace complete league datasets while preserving unrelated cached leagues."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    incoming = pd.DataFrame(rows, columns=columns)
+    frames = [incoming]
+    if path.exists():
+        existing = pd.read_parquet(path)
+        existing = existing.loc[~existing["league_id"].astype(int).isin(set(league_ids))]
+        frames.insert(0, existing)
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    temporary = path.with_suffix(".tmp.parquet")
+    combined.to_parquet(temporary, index=False)
+    temporary.replace(path)
+
+
 def refresh_yahoo_2026(
-    root: Path, config_path: Path | None = None, fetcher=fetch_json
+    root: Path, config_path: Path | None = None, fetcher=fetch_json,
+    through_week: int | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    if through_week is not None and through_week < 1:
+        raise ValueError("through_week must be at least 1")
     config_path = config_path or root / DEFAULT_CONFIG
     leagues = load_league_config(config_path)
     game_key, game_payload = derive_current_nfl_game_key(fetcher)
@@ -567,7 +592,10 @@ def refresh_yahoo_2026(
         try:
             teams_payload = fetcher(f"{YAHOO_API_ROOT}/league/{league_key}/teams?format=json")
             status = status_row(teams_payload, config, game_key, fetched_at, raw_path)
-            current_week = int(status["current_week"] or 1)
+            yahoo_current_week = int(status["current_week"] or 1)
+            current_week = min(yahoo_current_week, through_week) if through_week else yahoo_current_week
+            # The app treats this field as cache coverage, not the live Yahoo week.
+            status["current_week"] = current_week
             standings_payload = fetcher(f"{YAHOO_API_ROOT}/league/{league_key}/standings?format=json")
             weekly_payloads = []
             league_matchups: list[dict[str, Any]] = []
@@ -596,6 +624,8 @@ def refresh_yahoo_2026(
                 "game_key": game_key,
                 "league_key": league_key,
                 "source_league_url": config["league_url"],
+                "yahoo_current_week": yahoo_current_week,
+                "through_week": current_week,
                 "game": game_payload,
                 "teams": teams_payload,
                 "standings": standings_payload,
@@ -620,15 +650,16 @@ def refresh_yahoo_2026(
 
     processed = root / DEFAULT_PROCESSED_DIR
     configured_keys = [f"{game_key}.l.{row['league_id']}" for row in leagues]
+    successful_league_ids = [int(row["league_id"]) for row in statuses if row["success"]]
     _merge_and_write(processed / "league_status.parquet", statuses, STATUS_COLUMNS, configured_keys)
     _merge_and_write(processed / "teams.parquet", teams, TEAM_COLUMNS, successful_keys)
     _merge_and_write(processed / "matchups.parquet", matchups, MATCHUP_COLUMNS, successful_keys)
     _upsert_and_write(processed / "team_map.parquet", team_map_rows, TEAM_MAP_COLUMNS, ["league_id", "yahoo_team_id"])
     _upsert_and_write(processed / "standings.parquet", standings_rows, STANDINGS_COLUMNS, ["league_id", "team_id"])
-    _upsert_and_write(processed / "scores.parquet", history_score_rows, SCORE_COLUMNS, ["league_id", "team_id", "week"])
-    _upsert_and_write(processed / "history_matchups.parquet", history_matchup_rows, HISTORY_MATCHUP_COLUMNS, ["league_id", "week", "team_a_id", "team_b_id"])
-    _upsert_and_write(processed / "lineup_scores.parquet", lineup_score_rows, LINEUP_SCORE_COLUMNS, ["league_id", "team_id", "week"])
-    _upsert_and_write(processed / "lineups.parquet", lineup_rows, LINEUP_COLUMNS, ["league_id", "team_id", "week", "roster_slot", "player_key"])
+    _replace_leagues_and_write(processed / "scores.parquet", history_score_rows, SCORE_COLUMNS, successful_league_ids)
+    _replace_leagues_and_write(processed / "history_matchups.parquet", history_matchup_rows, HISTORY_MATCHUP_COLUMNS, successful_league_ids)
+    _replace_leagues_and_write(processed / "lineup_scores.parquet", lineup_score_rows, LINEUP_SCORE_COLUMNS, successful_league_ids)
+    _replace_leagues_and_write(processed / "lineups.parquet", lineup_rows, LINEUP_COLUMNS, successful_league_ids)
     return statuses, teams, matchups
 
 

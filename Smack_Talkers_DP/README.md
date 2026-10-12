@@ -74,6 +74,13 @@ python "Smack_Talkers_DP/scripts/build_draft_history.py"
 streamlit run "Smack_Talkers_DP/app.py"
 ```
 
+Refresh the current Yahoo season through Yahoo's active week, or pin the cache
+to the latest completed week when the next matchup is already live:
+
+```powershell
+python "Smack_Talkers_DP/refresh_yahoo_2026.py" --through-week 4
+```
+
 The history views are coverage-aware: complete schedule-score tables power the
 league-strength analysis, while start/sit and roster-retention views use only
 the detailed weekly lineup pages captured so far.

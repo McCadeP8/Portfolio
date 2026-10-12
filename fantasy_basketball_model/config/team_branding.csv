@@ -1,0 +1,31 @@
+team_key,team_name,conference,division,primary_color,secondary_color,text_color,font_family,logo_url,motto
+Albuquerque,Albuquerque Armadillos,West,Southwest,#D72C2C,#281B0D,white,Amatic SC,https://pbs.twimg.com/media/Fxamop_aMAIM8OV?format=png&name=small,#RollUp
+Anaheim,Anaheim Mice,West,Pacific,#DA0F10,#FFB1B1,white,Baloo 2,https://pbs.twimg.com/media/FxamoqBaQAAQSwY?format=png&name=small,#MouseInTheHouse
+Anchorage,Anchorage Killer Whales,West,Northwest,#454B55,#B8C4C4,white,Fjalla One,https://pbs.twimg.com/media/FxamoqAaYAEpifP?format=png&name=small,#FearThePod
+Austin,Austin Bats,West,Southwest,#040404,#BB8549,white,Creepster,https://pbs.twimg.com/media/FxvLuE8acAAUiBQ?format=png&name=small,#BatCountry
+Baltimore,Baltimore Blue Crabs,East,Atlantic,#00CED1,#FBF5E1,black,Lobster,https://pbs.twimg.com/media/Fxamr7daQAAhwSx?format=png&name=small,#GetCrabby
+Birmingham,Birmingham Bandits,East,Southeast,#853500,#EA2507,white,Rye,https://pbs.twimg.com/media/Fxamr8GaMAE5xbG?format=png&name=small,#StealTheShow
+Boise,Boise Spuds,West,Northwest,#744529,#EAD676,white,Neucha,https://pbs.twimg.com/media/Fxamr80aEAAWgO1?format=png&name=small,#DigDeep
+Buffalo,Buffalo Daredevils,East,Atlantic,#152238,#FFDE3A,white,Teko,https://pbs.twimg.com/media/Fxamr7JaYAADNSj?format=png&name=small,#DefyTheOdds
+Cincinnati,Cincinnati Chili,East,Central,#FFEA61,#D2691E,black,Satisfy,https://pbs.twimg.com/media/FxamtxqaMAAoWvU?format=png&name=small,#FiveWay
+Columbus,Columbus Arches,East,Central,#CD7F32,#666666,white,Arvo,https://pbs.twimg.com/media/FxamtzbaUAEvyXi?format=png&name=small,#ArchMadness
+Des Moines,Des Moines Racoons,East,Central,#1B1E23,#F7F7EE,white,Cabin Sketch,https://pbs.twimg.com/media/FxamtzcaMAAPdlW?format=png&name=small,#TrashTalk
+El Paso,El Paso Vipers,West,Southwest,#F8EFAE,#2A623D,black,Pathway Gothic One,https://pbs.twimg.com/media/FxamtxraQAANsYd?format=png&name=small,#StrikeFirst
+Honolulu,Honolulu Diamonds,West,Pacific,#CDC0C0,#FAFBF5,black,Dancing Script,https://pbs.twimg.com/media/FxamvzcaUAAnl_g?format=png&name=small,#ShineOn
+Jacksonville,Jacksonville Manatees,East,Southeast,#36454F,#B0E0E6,white,Pacifico,https://pbs.twimg.com/media/FxamvzoaIAAd9nF?format=png&name=small,#SeaTheFuture
+Kentucky,Kentucky Thoroughbreds,East,Central,#663399,#FFFF00,white,Playfair Display,https://pbs.twimg.com/media/Fxamv04aQAQl4UB?format=png&name=small,#RunWithUs
+Lansing,Lansing Lagoon,East,Central,#B9EFE1,#197419,black,Ubuntu,https://pbs.twimg.com/media/Fxamv1ZacAAfxMM?format=png&name=small,#TroubledWaters
+Lincoln,Lincoln Bully,West,Northwest,#FC6A03,#1520A6,black,Bebas Neue,https://pbs.twimg.com/media/Fxamx14aEAAyD29?format=png&name=small,#BullyBall
+Little Rock,Little Rock Big Foot,East,Southeast,#710193,#E39FF6,white,Alfa Slab One,https://pbs.twimg.com/media/Fxamx2xaYAAqupS?format=png&name=small,#BelieveTheHype
+Manchester,Manchester Trout,East,Atlantic,#D7F2FA,#C20700,black,Quicksand,https://pbs.twimg.com/media/Fxamx3nagAAZXCI?format=png&name=small,#AgainstTheCurrent
+Nashville,Nashville Strings,East,Southeast,#450012,#93A9AE,white,Tangerine,https://pbs.twimg.com/media/Fxamx01aMAAD8na?format=png&name=small,#StringTogether
+Pittsburgh,Pittsburgh Bridge,East,Atlantic,#F1F137,#32322C,black,Roboto Slab,https://pbs.twimg.com/media/Fxam0E7agAAc1zF?format=png&name=small,#BuiltDifferent
+Providence,Providence Pilgrims,East,Atlantic,#BF0A30,#1C2E4A,white,IM Fell English,https://pbs.twimg.com/media/Fxam0GKaQAAlzwx?format=png&name=small,#MakeTheJourney
+San Diego,San Diego Seals,West,Pacific,#31439B,#0BB5FF,white,Comfortaa,https://pbs.twimg.com/media/Fxam0INacAIC29O?format=png&name=small,#SealTheDeal
+San Jose,San Jose Seagulls,West,Pacific,#97EBF4,#EDFF21,black,Indie Flower,https://pbs.twimg.com/media/Fxam0EvaIAAcI_3?format=png&name=small,#FearTheFlock
+Seattle,Seattle Brew,West,Northwest,#006241,#FFFFFF,white,Poppins,https://pbs.twimg.com/media/Fxam1s5aAAIanao?format=png&name=small,#StayGrounded
+St. Louis,St. Louis 66ers,West,Southwest,#B7B1AE,#B90E0A,black,Oswald,https://pbs.twimg.com/media/Fxam1ugaEAUkbUi?format=png&name=small,#RouteToVictory
+Tampa Bay,Tampa Bay Flamingos,East,Southeast,#FC8EAC,#313639,black,Parisienne,https://pbs.twimg.com/media/G_eTqPpacAIV82Y?format=png&name=small,#StandTall
+Tulsa,Tulsa Tornado,West,Southwest,#333333,#656565,white,Permanent Marker,https://pbs.twimg.com/media/Fxam1s7aQAAiSsW?format=png&name=small,#SoundTheSirens
+Vancouver,Vancouver Forest,West,Northwest,#17780D,#CACE00,black,Shadows Into Light,https://pbs.twimg.com/media/Fxam4eaaMAAW6Pz?format=png&name=small,#IntoTheWoods
+Vegas,Vegas Blackjack,West,Pacific,#35654D,#B8000A,white,Audiowide,https://pbs.twimg.com/media/Fxam4dlaIAIKnBb?format=png&name=small,#DealDamage

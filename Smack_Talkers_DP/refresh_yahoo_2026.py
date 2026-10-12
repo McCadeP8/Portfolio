@@ -1,14 +1,21 @@
 """Tuesday-runnable Yahoo refresh for the two 2026 Smack Talkers leagues."""
 
+import argparse
 from pathlib import Path
 
 from yahoo_2026 import DEFAULT_PROCESSED_DIR, refresh_yahoo_2026
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--through-week", type=int,
+        help="Fetch and cache only through this week (defaults to Yahoo's current week).",
+    )
+    args = parser.parse_args()
     root = Path(__file__).resolve().parent
     try:
-        statuses, teams, matchups = refresh_yahoo_2026(root)
+        statuses, teams, matchups = refresh_yahoo_2026(root, through_week=args.through_week)
     except Exception as error:
         print(f"[FATAL] Yahoo refresh could not start: {type(error).__name__}: {error}")
         return 1

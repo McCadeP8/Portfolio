@@ -1,0 +1,12 @@
+pandas<3,>=2.2
+numpy<3,>=2.0
+requests<3,>=2.32
+openpyxl<4,>=3.1
+lxml<7,>=5
+pyarrow<22,>=18
+
+[dev]
+pytest<10,>=8
+
+[reports]
+jupyter<2,>=1

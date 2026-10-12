@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fantasy-basketball-model"
+version = "0.1.0"
+description = "Reproducible Fantrax and projection data foundation for fantasy basketball analysis"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pandas>=2.2,<3",
+  "numpy>=2.0,<3",
+  "requests>=2.32,<3",
+  "openpyxl>=3.1,<4",
+  "lxml>=5,<7",
+  "pyarrow>=18,<22",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+reports = ["jupyter>=1,<2"]
+
+[project.scripts]
+fantasy-basketball = "fantasy_basketball.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+

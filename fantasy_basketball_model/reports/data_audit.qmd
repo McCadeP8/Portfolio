@@ -1,0 +1,1371 @@
+---
+title: "SBCFBL Scouting Lab"
+subtitle: "2026–27 fantasy basketball analytics"
+format:
+  html:
+    theme: cosmo
+    css:
+      - styles.css
+      - overall.css
+      - player-ratings.css
+    page-layout: full
+    toc: false
+    code-fold: true
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+  error: false
+jupyter: python3
+---
+
+```{python}
+from pathlib import Path
+from html import escape
+import json
+import numpy as np
+import pandas as pd
+from IPython.display import HTML, display
+
+root = Path.cwd().parent if Path.cwd().name == "reports" else Path.cwd()
+processed = root / "data" / "processed"
+config = json.loads((root / "config" / "league.json").read_text())
+branding = pd.read_csv(root / "config" / "team_branding.csv").fillna("")
+categories = pd.read_csv(root / "config" / "categories.csv")
+canonical = pd.read_csv(processed / "canonical_player_projections.csv", dtype={"fantrax_player_id": str})
+player_value_ratings = pd.read_csv(processed / "player_value_ratings.csv", dtype={"fantrax_player_id": str})
+team_outlook = pd.read_csv(processed / "team_outlook.csv", dtype={"fantasy_team_id": str}).set_index("fantasy_team_id")
+player_team_chemistry = pd.read_csv(
+    processed / "player_team_chemistry.csv",
+    dtype={"fantrax_player_id": str, "current_team_id": str, "target_team_id": str},
+)
+player_teammate_chemistry = pd.read_csv(
+    processed / "player_teammate_chemistry.csv",
+    dtype={"fantrax_player_id": str, "teammate_player_id": str, "fantasy_team_id": str},
+)
+player_archetypes = pd.read_csv(
+    processed / "player_archetypes.csv", dtype={"fantrax_player_id": str, "fantasy_team_id": str},
+)
+hierarchical_cluster_summary = pd.read_csv(processed / "hierarchical_cluster_summary.csv")
+player_rating_columns = [column for column in player_value_ratings.columns if column.startswith("rating_") or column == "overall_rating"]
+canonical = canonical.merge(
+    player_value_ratings[["fantrax_player_id", *player_rating_columns]],
+    on="fantrax_player_id", how="left", validate="one_to_one",
+)
+current_player_chemistry = player_team_chemistry[
+    player_team_chemistry["current_team_id"].eq(player_team_chemistry["target_team_id"])
+][["fantrax_player_id", "player_chemistry"]]
+canonical = canonical.merge(
+    current_player_chemistry,
+    on="fantrax_player_id", how="left", validate="one_to_one",
+)
+category_summary = pd.read_csv(processed / "league_category_summary.csv").set_index("category")
+category_cowin = pd.read_csv(processed / "league_category_cowin.csv", index_col=0)
+historical_matchups = pd.read_parquet(processed / "historical_matchups.parquet")
+nba_schedule = pd.read_csv(processed / "nba_schedule.csv")
+counting_models = pd.read_csv(processed / "counting_logistic_models.csv").set_index("category")
+counting_curves = pd.read_csv(processed / "counting_logistic_curves.csv")
+counting_bins = pd.read_csv(processed / "counting_logistic_bins.csv")
+shooting_models = pd.read_csv(processed / "shooting_logistic_models.csv").set_index("category")
+shooting_curves = pd.read_csv(processed / "shooting_logistic_curves.csv")
+shooting_bins = pd.read_csv(processed / "shooting_logistic_bins.csv")
+overall_model = pd.read_csv(processed / "overall_logistic_model.csv").iloc[0]
+overall_coefficients = pd.read_csv(processed / "overall_logistic_coefficients.csv").set_index("category")
+overall_calibration = pd.read_csv(processed / "overall_logistic_calibration.csv")
+season_backtest_summary = pd.read_csv(processed / "season_backtest_summary.csv")
+season_backtest_folds = pd.read_csv(processed / "season_backtest_folds.csv")
+season_backtest_calibration = pd.read_csv(processed / "season_backtest_calibration.csv")
+
+historical_regular_schedule = nba_schedule[
+    pd.to_numeric(nba_schedule["sbc_year"], errors="coerce").between(2021, 2026)
+    & nba_schedule["Season"].eq("Regular")
+    & nba_schedule["Period"].notna()
+]
+period_nba_games = historical_regular_schedule.groupby(["sbc_year", "Period"])["nba_game_id"].nunique()
+
+category_order = categories["category"].tolist()
+category_summary = category_summary.reindex(category_order)
+category_cowin = category_cowin.reindex(index=category_order, columns=category_order)
+
+def number(value, decimals=0):
+    if pd.isna(value) or value == 0:
+        return ""
+    return f"{value:,.{decimals}f}"
+
+def signed_number(value, decimals=1):
+    if pd.isna(value) or value == 0:
+        return ""
+    return f"{value:+,.{decimals}f}"
+
+def projection_with_rating(value, rating):
+    projection = escape(str(value)) if str(value) else "&nbsp;"
+    if pd.isna(rating):
+        return f'<div class="stat-cell"><span>{projection}</span><span class="rating-pill is-empty">&nbsp;</span></div>'
+    emphasis = " is-high" if rating >= 8 else " is-low" if rating < 3 else ""
+    return f'<div class="stat-cell"><span>{projection}</span><span class="rating-pill{emphasis}">{rating:.1f}</span></div>'
+
+def overall_rating_pill(value):
+    if pd.isna(value):
+        return '<div class="overall-player-rating is-empty">&nbsp;</div>'
+    emphasis = " is-high" if value >= 8 else " is-low" if value < 3 else ""
+    return f'<div class="overall-player-rating{emphasis}">{value:.1f}</div>'
+
+def chemistry_rating_pill(value):
+    if pd.isna(value):
+        return '<div class="chemistry-player-rating is-empty">&nbsp;</div>'
+    return f'<div class="chemistry-player-rating">{value:.1f}</div>'
+
+def ordinal(value):
+    value = int(value)
+    suffix = "th" if 10 <= value % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+    return f"{value}{suffix}"
+
+def team_metric_tiles(team_id):
+    outlook = team_outlook.loc[str(team_id)]
+    chemistry_level = float(outlook["chemistry_level"])
+    return f"""
+    <div class="metric-grid">
+      <article><small>Skill Level</small><strong>{float(outlook['skill_probability']):.1%}</strong></article>
+      <article><small>Expected Score</small><strong>{float(outlook['expected_score']):.1f}</strong></article>
+      <article><small>Team Chemistry</small><strong>{chemistry_level:.1f}</strong></article>
+      <article><small>League Rank</small><strong>{ordinal(outlook['league_rank'])}</strong></article>
+    </div>"""
+
+def team_category_chart(team_id):
+    outlook = team_outlook.loc[str(team_id)]
+    chart_width, chart_height = 1240, 330
+    left, right, top, bottom = 54, 18, 24, 58
+    plot_width = chart_width - left - right
+    plot_height = chart_height - top - bottom
+    total_weight = float(categories["weight"].sum())
+    x = left
+    bars, labels, values = [], [], []
+    for row in categories.itertuples(index=False):
+        category = row.category
+        probability = float(outlook[f"probability_{category}"])
+        width = plot_width * float(row.weight) / total_weight
+        height = plot_height * probability
+        y = top + plot_height - height
+        bars.append(
+            f'<rect class="weighted-category-bar" x="{x:.2f}" y="{y:.2f}" width="{width:.2f}" height="{height:.2f}">'
+            f'<title>{escape(category)} · {probability:.1%} win probability · {int(row.weight)} points</title></rect>'
+        )
+        labels.append(
+            f'<text class="weighted-category-label" x="{x + width / 2:.2f}" y="{chart_height - 32}" text-anchor="middle">{escape(category)}</text>'
+        )
+        values.append(
+            f'<text class="weighted-category-value" x="{x + width / 2:.2f}" y="{max(top + 13, y - 7):.2f}" text-anchor="middle">{probability:.0%}</text>'
+        )
+        x += width
+    grid = []
+    for probability in [0, .25, .5, .75, 1]:
+        y = top + plot_height * (1 - probability)
+        line = "" if probability == .5 else f'<line class="weighted-category-grid" x1="{left}" y1="{y:.2f}" x2="{chart_width - right}" y2="{y:.2f}"></line>'
+        grid.append(
+            line + f'<text class="weighted-category-axis" x="{left - 9}" y="{y + 4:.2f}" text-anchor="end">{probability:.0%}</text>'
+        )
+    return f"""<div class="weighted-category-card">
+      <svg viewBox="0 0 {chart_width} {chart_height}" role="img" aria-label="Projected category win probabilities with bar widths proportional to SBCFBL category weights">
+        {''.join(grid)}{''.join(bars)}{''.join(values)}{''.join(labels)}
+      </svg>
+    </div>"""
+
+def player_fit_boards(team_id):
+    team_id = str(team_id)
+    candidates = player_team_chemistry[
+        player_team_chemistry["target_team_id"].eq(team_id)
+        & player_team_chemistry["current_team_id"].ne(team_id)
+    ].copy()
+    candidates = candidates.merge(
+        player_value_ratings[["fantrax_player_id", "overall_rating"]],
+        on="fantrax_player_id", how="left", validate="many_to_one",
+    ).dropna(subset=["team_fit_score", "player_chemistry", "overall_rating"])
+    candidates = candidates[candidates["overall_rating"].ge(5.0)]
+
+    def fit_table(frame, ascending):
+        frame = frame.sort_values(
+            ["team_fit_score", "player_chemistry", "skill_impact_pp"],
+            ascending=[ascending, ascending, ascending],
+        ).head(8)
+        rows = "".join(
+            f"<tr><td>{escape(row.player_name)}</td><td>{escape(row.current_team_name)}</td>"
+            f"<td>{row.overall_rating:.1f}</td><td>{row.player_chemistry:.1f}</td><td>{row.team_fit_score:.1f}</td></tr>"
+            for row in frame.itertuples(index=False)
+        )
+        return f"""<table class="fit-board-table"><thead><tr><th>Player</th><th>From</th><th>Ovr</th><th>Chemistry</th><th>Fit</th></tr></thead><tbody>{rows}</tbody></table>"""
+
+    return f"""<div class="fit-board-grid">
+      <section><h3>Players To Add</h3>{fit_table(candidates, False)}</section>
+      <section><h3>Players To Avoid</h3>{fit_table(candidates, True)}</section>
+      <section class="category-bar-panel"><h3>Category Win Profile</h3>{team_category_chart(team_id)}</section>
+    </div>"""
+
+def percentage(value):
+    if pd.isna(value) or value == 0:
+        return ""
+    return f"{value:.1%}"
+
+def overview_kpis():
+    completed_seasons = historical_matchups["Year"].nunique()
+    current_nba_games = int(pd.to_numeric(nba_schedule["sbc_year"], errors="coerce").eq(2027).sum())
+    return f"""
+    <div class="overview-kpis">
+      <article><small>Completed Seasons</small><strong>{completed_seasons}</strong><span>2021–2026 frozen history</span></article>
+      <article><small>SBCFBL Matchups</small><strong>{len(historical_matchups):,}</strong><span>regular season and postseason</span></article>
+      <article><small>NBA Games Archived</small><strong>{len(nba_schedule):,}</strong><span>{current_nba_games:,} on the 2026–27 schedule</span></article>
+    </div>"""
+
+def archetype_overview():
+    rated = player_archetypes[player_archetypes["archetype_label"].ne("Unrated")]
+    return f"""<section class="archetype-overview">
+      <div class="archetype-overview-kpis">
+        <article><small>Players Classified</small><strong>{len(rated)}</strong></article>
+        <article><small>Named Archetypes</small><strong>8</strong></article>
+        <article><small>Observed Labels</small><strong>{rated['archetype_label'].nunique()} / 64</strong></article>
+        <article><small>Ward Branches</small><strong>{rated['hierarchical_cluster'].nunique()}</strong></article>
+      </div>
+      <div class="archetype-method-note"><strong>Two complementary lenses</strong><span>Named archetypes explain <em>how</em> a player creates fantasy value. Ward branches answer <em>who actually looks alike</em> when category ratings, projected totals, and per-36 production are considered together.</span></div>
+    </section>"""
+
+ARCHETYPE_COLORS = {
+    "Do-It-All Superstar": "#d99a16",
+    "Star To Build Around": "#7759a8",
+    "Role Player": "#3f78a8",
+    "Specialist": "#d65f59",
+    "Minute Filler": "#6f8f3d",
+    "Negative Player": "#8f4852",
+    "Bench Warmer": "#8793a2",
+    "Sleeper": "#22a18a",
+}
+ARCHETYPE_SCORE_KEYS = {
+    "Do-It-All Superstar": "do_it_all_superstar",
+    "Star To Build Around": "star_to_build_around",
+    "Role Player": "role_player",
+    "Specialist": "specialist",
+    "Minute Filler": "minute_filler",
+    "Negative Player": "negative_player",
+    "Bench Warmer": "bench_warmer",
+    "Sleeper": "sleeper",
+}
+
+def archetype_landscape():
+    rated = player_archetypes[
+        player_archetypes["archetype_label"].ne("Unrated")
+        & player_archetypes["map_x"].notna()
+        & player_archetypes["map_y"].notna()
+    ].copy()
+    width, height = 1180, 650
+    left, right, top, bottom = 54, 28, 32, 68
+    x_min, x_max = rated["map_x"].min(), rated["map_x"].max()
+    y_min, y_max = rated["map_y"].min(), rated["map_y"].max()
+    def sx(value):
+        return left + (float(value) - x_min) / max(x_max - x_min, 1e-9) * (width - left - right)
+    def sy(value):
+        return top + (y_max - float(value)) / max(y_max - y_min, 1e-9) * (height - top - bottom)
+    grid = []
+    for fraction in [.2, .4, .6, .8]:
+        x = left + fraction * (width - left - right)
+        y = top + fraction * (height - top - bottom)
+        grid.extend([
+            f'<line class="landscape-grid" x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{height-bottom}"/>',
+            f'<line class="landscape-grid" x1="{left}" y1="{y:.1f}" x2="{width-right}" y2="{y:.1f}"/>',
+        ])
+    points = []
+    for row in rated.sort_values("overall_rating").itertuples(index=False):
+        color = ARCHETYPE_COLORS.get(row.primary_archetype, "#64748b")
+        radius = 3.1 + 5.8 * max(0, min(10, float(row.overall_rating))) / 10
+        point_x, point_y = sx(row.map_x), sy(row.map_y)
+        label_left = point_x > width - 230
+        label_x = point_x - radius - 7 if label_left else point_x + radius + 7
+        label_anchor = "end" if label_left else "start"
+        points.append(
+            f'<g class="landscape-player"><circle class="landscape-point" cx="{point_x:.1f}" cy="{point_y:.1f}" r="{radius:.1f}" fill="{color}">'
+            f'<title>{escape(row.player_name)} · {escape(row.archetype_label)} · Ovr {row.overall_rating:.1f} · Ward Branch {int(row.hierarchical_cluster)}</title></circle>'
+            f'<text class="point-hover-label" x="{label_x:.1f}" y="{point_y-9:.1f}" text-anchor="{label_anchor}">{escape(row.player_name)} · {row.overall_rating:.1f}</text></g>'
+        )
+    centroids = rated.groupby("hierarchical_cluster", as_index=False).agg(
+        map_x=("map_x", "mean"), map_y=("map_y", "mean"), players=("player_name", "size")
+    )
+    branch_labels = "".join(
+        f'<g class="branch-marker"><circle cx="{sx(row.map_x):.1f}" cy="{sy(row.map_y):.1f}" r="15"/><text x="{sx(row.map_x):.1f}" y="{sy(row.map_y)+4:.1f}" text-anchor="middle">B{int(row.hierarchical_cluster)}</text></g>'
+        for row in centroids.itertuples(index=False)
+    )
+    stars = rated[rated["primary_archetype"].eq("Do-It-All Superstar")]
+    star_labels = "".join(
+        f'<text class="star-label" x="{sx(row.map_x)+9:.1f}" y="{sy(row.map_y)-8:.1f}">{escape(row.player_name)}</text>'
+        for row in stars.itertuples(index=False)
+    )
+    legend = "".join(
+        f'<span><i style="background:{color}"></i>{escape(label)}</span>'
+        for label, color in ARCHETYPE_COLORS.items()
+    )
+    return f"""<section class="landscape-card">
+      <header><div><small>Weighted Feature Space</small><h4>Player Style Landscape</h4></div><p>Nearby dots have similar category shape, opportunity, and per-36 production. Color is the interpretable primary archetype; B1–B12 mark Ward-branch centers. Dot size follows Ovr.</p></header>
+      <svg viewBox="0 0 {width} {height}" role="img" aria-label="Two-dimensional map of projected players by statistical similarity">{''.join(grid)}{''.join(points)}{branch_labels}{star_labels}<text class="landscape-axis" x="{width/2}" y="{height-16}" text-anchor="middle">Principal Component 1 · statistical profile, not quality</text><text class="landscape-axis" transform="translate(16 {height/2}) rotate(-90)" text-anchor="middle">Principal Component 2</text></svg>
+      <div class="landscape-legend">{legend}</div>
+      <footer>PCA compresses the full similarity inputs into two display dimensions. The Ward model and nearest-neighbor search still use every standardized feature.</footer>
+    </section>"""
+
+def archetype_mix_visual():
+    rated = player_archetypes[player_archetypes["archetype_label"].ne("Unrated")].copy()
+    counts = rated["primary_archetype"].value_counts().reindex(ARCHETYPE_COLORS).fillna(0).astype(int)
+    max_count = max(int(counts.max()), 1)
+    count_rows = "".join(
+        f'<div class="mix-row"><span>{escape(label)}</span><div><i style="width:{100*count/max_count:.1f}%;background:{ARCHETYPE_COLORS[label]}"></i></div><strong>{count}</strong></div>'
+        for label, count in counts.items()
+    )
+    subtype_counts = rated.loc[
+        rated["primary_archetype"].eq("Specialist") | rated["secondary_archetype"].eq("Specialist"),
+        "specialist_subtype",
+    ].value_counts()
+    subtype_max = max(int(subtype_counts.max()), 1) if len(subtype_counts) else 1
+    subtype_rows = "".join(
+        f'<div class="subtype-row"><span>{escape(label.replace(" Specialist", ""))}</span><div><i style="width:{100*count/subtype_max:.1f}%"></i></div><strong>{count}</strong></div>'
+        for label, count in subtype_counts.items()
+    )
+    score_columns = [f"score_{key}" for key in ARCHETYPE_SCORE_KEYS.values()]
+    matrix = rated.groupby("primary_archetype")[score_columns].median().reindex(ARCHETYPE_COLORS)
+    headers = "".join(f'<th title="{escape(label)}">{escape(label.split()[0])}</th>' for label in ARCHETYPE_COLORS)
+    heat_rows = []
+    for label, row in matrix.iterrows():
+        cells = []
+        for key in ARCHETYPE_SCORE_KEYS.values():
+            value = float(row[f"score_{key}"])
+            alpha = .08 + .84 * value / 100
+            cells.append(f'<td style="background:rgba(18,58,104,{alpha:.3f});color:{"#fff" if value >= 55 else "#142033"}">{value:.0f}</td>')
+        heat_rows.append(f'<tr><th>{escape(label)}</th>{"".join(cells)}</tr>')
+    return f"""<div class="archetype-viz-grid">
+      <section class="archetype-viz-card"><header><small>Primary Identity</small><h4>Who Is In Each Archetype?</h4></header><div class="mix-bars">{count_rows}</div></section>
+      <section class="archetype-viz-card"><header><small>K-Means Shape</small><h4>What Kind Of Specialists?</h4></header><div class="subtype-bars">{subtype_rows}</div><p>Includes players with Specialist as either their primary or secondary identity.</p></section>
+      <section class="archetype-viz-card archetype-fingerprint"><header><small>Median Membership Score</small><h4>Archetype Fingerprints</h4></header><div class="table-scroll"><table><thead><tr><th>Primary Archetype</th>{headers}</tr></thead><tbody>{''.join(heat_rows)}</tbody></table></div></section>
+    </div>"""
+
+def specialist_kmeans_explainer():
+    rated = player_archetypes[player_archetypes["archetype_label"].ne("Unrated")].copy()
+    specialists = rated[
+        rated["primary_archetype"].eq("Specialist")
+        | rated["secondary_archetype"].eq("Specialist")
+    ]
+    subtype_counts = specialists["specialist_subtype"].value_counts()
+    subtype_descriptions = {
+        "Shooting Specialist": "TS%, 2PT%, 3PT%, and FT% shape",
+        "Scoring Specialist": "minutes and points production",
+        "Playmaking Specialist": "assists with turnover control",
+        "Defensive Specialist": "steals, blocks, and +/- impact",
+        "Interior Specialist": "rebounds, rim efficiency, and blocks",
+    }
+    subtype_cards = "".join(
+        f"""<article><span>{int(subtype_counts.get(label, 0))} Players</span><strong>{escape(label)}</strong><small>{escape(description)}</small></article>"""
+        for label, description in subtype_descriptions.items()
+    )
+    return f"""<section class="specialist-explainer">
+      <header><div><small>Unsupervised Subtyping</small><h4>How Specialist K-Means Works</h4></div><p>K-means is used only after the interpretable Specialist score identifies concentrated category value. It describes the <em>shape</em> of that specialization; it does not decide whether the player is good.</p></header>
+      <div class="specialist-process">
+        <article><b>1</b><div><strong>Build Five Domains</strong><span>The 13 category ratings are summarized into shooting, scoring, playmaking, defense, and interior production.</span></div></article>
+        <article><b>2</b><div><strong>Remove General Talent</strong><span>Each player's five-domain average is subtracted. Jokic cannot become every specialist simply because he is elite everywhere.</span></div></article>
+        <article><b>3</b><div><strong>Cluster The Shape</strong><span>Standardized profiles with Specialist scores of at least 50 train a deterministic five-cluster K-means model.</span></div></article>
+        <article><b>4</b><div><strong>Name The Centroids</strong><span>The five centroids are matched one-to-one with the five basketball meanings using the strongest total domain alignment.</span></div></article>
+      </div>
+      <div class="specialist-type-cards">{subtype_cards}</div>
+      <footer><strong>Reading the result:</strong> “Shooting Specialist” means shooting is the player's most distinctive concentration relative to their own overall profile. The player's Ovr and category ratings still determine how valuable that specialization is.</footer>
+    </section>"""
+
+SPECIALIST_COLORS = {
+    "Shooting Specialist": "#9b59b6",
+    "Scoring Specialist": "#df6b3f",
+    "Playmaking Specialist": "#2878b5",
+    "Defensive Specialist": "#2d8b73",
+    "Interior Specialist": "#c29428",
+}
+
+def specialist_cluster_map():
+    rating_fields = [f"rating_{category}" for category in category_order]
+    frame = player_archetypes.merge(
+        player_value_ratings[["fantrax_player_id", *rating_fields]],
+        on="fantrax_player_id", how="left", validate="one_to_one",
+    )
+    frame = frame[
+        frame["score_specialist"].ge(50)
+        & frame["specialist_subtype"].isin(SPECIALIST_COLORS)
+    ].copy()
+    domains = pd.DataFrame({
+        "Shooting": frame[["rating_TS%", "rating_2PT%", "rating_3PT%", "rating_FT%"]].mean(axis=1),
+        "Scoring": frame[["rating_MP", "rating_PTS"]].mean(axis=1),
+        "Playmaking": frame[["rating_AST", "rating_TOV"]].mean(axis=1),
+        "Defense": frame[["rating_STL", "rating_BLK", "rating_+/-"]].mean(axis=1),
+        "Interior": frame[["rating_OREB", "rating_DREB", "rating_2PT%", "rating_BLK"]].mean(axis=1),
+    }, index=frame.index)
+    shaped = domains.sub(domains.mean(axis=1), axis=0)
+    standardized = shaped.sub(shaped.mean()).div(shaped.std().replace(0, 1))
+    centered = standardized.to_numpy() - standardized.to_numpy().mean(axis=0)
+    u, singular_values, _ = np.linalg.svd(centered, full_matrices=False)
+    frame["cluster_x"] = u[:, 0] * singular_values[0]
+    frame["cluster_y"] = u[:, 1] * singular_values[1]
+
+    width, height = 1160, 650
+    left, right, top, bottom = 45, 32, 26, 70
+    x_min, x_max = frame["cluster_x"].min(), frame["cluster_x"].max()
+    y_min, y_max = frame["cluster_y"].min(), frame["cluster_y"].max()
+    def sx(value):
+        return left + (float(value) - x_min) / max(x_max - x_min, 1e-9) * (width - left - right)
+    def sy(value):
+        return top + (y_max - float(value)) / max(y_max - y_min, 1e-9) * (height - top - bottom)
+
+    grid = []
+    for fraction in [.2, .4, .6, .8]:
+        x = left + fraction * (width - left - right)
+        y = top + fraction * (height - top - bottom)
+        grid.extend([
+            f'<line class="specialist-grid" x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{height-bottom}"/>',
+            f'<line class="specialist-grid" x1="{left}" y1="{y:.1f}" x2="{width-right}" y2="{y:.1f}"/>',
+        ])
+
+    centroids = frame.groupby("specialist_subtype", as_index=False).agg(
+        cluster_x=("cluster_x", "mean"), cluster_y=("cluster_y", "mean"), players=("player_name", "size")
+    )
+    centroid_lookup = {
+        row.specialist_subtype: (sx(row.cluster_x), sy(row.cluster_y))
+        for row in centroids.itertuples(index=False)
+    }
+    envelopes, centroid_marks, connections = [], [], []
+    for subtype, group in frame.groupby("specialist_subtype"):
+        cx, cy = centroid_lookup[subtype]
+        pixel_distances = np.sqrt(
+            (group["cluster_x"].map(sx).to_numpy() - cx) ** 2
+            + (group["cluster_y"].map(sy).to_numpy() - cy) ** 2
+        )
+        radius = max(46, min(150, float(np.quantile(pixel_distances, .82)) + 16))
+        color = SPECIALIST_COLORS[subtype]
+        envelopes.append(f'<circle class="specialist-envelope" cx="{cx:.1f}" cy="{cy:.1f}" r="{radius:.1f}" fill="{color}" stroke="{color}"/>')
+        short_label = subtype.replace(" Specialist", "")
+        centroid_marks.append(
+            f'<g class="specialist-centroid"><circle cx="{cx:.1f}" cy="{cy:.1f}" r="20" fill="{color}"/><text x="{cx:.1f}" y="{cy+4:.1f}" text-anchor="middle">{escape(short_label[:3].upper())}</text></g>'
+        )
+        connections.extend(
+            f'<line class="centroid-link" x1="{sx(row.cluster_x):.1f}" y1="{sy(row.cluster_y):.1f}" x2="{cx:.1f}" y2="{cy:.1f}" stroke="{color}"/>'
+            for row in group.itertuples(index=False)
+        )
+
+    points = []
+    for row in frame.sort_values("overall_rating").itertuples(index=False):
+        color = SPECIALIST_COLORS[row.specialist_subtype]
+        radius = 3.2 + 3.8 * max(0, min(10, float(row.overall_rating))) / 10
+        point_x, point_y = sx(row.cluster_x), sy(row.cluster_y)
+        label_left = point_x > width - 250
+        label_x = point_x - radius - 7 if label_left else point_x + radius + 7
+        label_anchor = "end" if label_left else "start"
+        points.append(
+            f'<g class="specialist-player"><circle class="specialist-point" cx="{point_x:.1f}" cy="{point_y:.1f}" r="{radius:.1f}" fill="{color}">'
+            f'<title>{escape(row.player_name)} · {escape(row.specialist_subtype)} · Specialist Score {row.score_specialist:.1f} · Ovr {row.overall_rating:.1f}</title></circle>'
+            f'<text class="point-hover-label" x="{label_x:.1f}" y="{point_y-9:.1f}" text-anchor="{label_anchor}">{escape(row.player_name)} · {escape(row.specialist_subtype.replace(" Specialist", ""))}</text></g>'
+        )
+    representatives = frame.sort_values("overall_rating", ascending=False).groupby("specialist_subtype", as_index=False).head(1)
+    labels = "".join(
+        f'<text class="specialist-player-label" x="{sx(row.cluster_x)+8:.1f}" y="{sy(row.cluster_y)-8:.1f}">{escape(row.player_name)}</text>'
+        for row in representatives.itertuples(index=False)
+    )
+    legend = "".join(
+        f'<span><i style="background:{color}"></i>{escape(label)} ({int((frame["specialist_subtype"] == label).sum())})</span>'
+        for label, color in SPECIALIST_COLORS.items()
+    )
+    return f"""<section class="specialist-map-card">
+      <header><div><small>Five-Domain PCA View</small><h4>Specialist Cluster Map</h4></div><p>Every dot trained the K-means model. Color shows its assigned subtype, size follows Ovr, and the translucent circles summarize each subtype's neighborhood around its centroid.</p></header>
+      <svg viewBox="0 0 {width} {height}" role="img" aria-label="K-means specialist clusters shown as player points around five subtype centroids">{''.join(grid)}{''.join(envelopes)}{''.join(connections)}{''.join(points)}{''.join(centroid_marks)}{labels}<text class="specialist-axis" x="{width/2}" y="{height-17}" text-anchor="middle">Principal Component 1 · relative specialist shape</text><text class="specialist-axis" transform="translate(15 {height/2}) rotate(-90)" text-anchor="middle">Principal Component 2</text></svg>
+      <div class="specialist-map-legend">{legend}</div>
+      <footer>The circles are descriptive 82% envelopes, not hard K-means decision boundaries. Hover over any point for the player, subtype, Specialist score, and Ovr.</footer>
+    </section>"""
+
+def hierarchy_branch_cards():
+    max_players = max(int(hierarchical_cluster_summary["players"].max()), 1)
+    cards = []
+    for row in hierarchical_cluster_summary.itertuples(index=False):
+        examples = str(row.example_players).replace(" | ", " · ")
+        cards.append(f"""<article><header><span>Ward Branch</span><strong>{int(row.hierarchical_cluster)}</strong></header><div class="branch-size"><i style="width:{100*int(row.players)/max_players:.1f}%"></i></div><h5>{escape(row.most_common_archetype)}</h5><p>{int(row.players)} players</p><footer>{escape(examples)}</footer></article>""")
+    return '<section class="branch-section"><header><div><small>12-Branch Cut</small><h4>Hierarchical Neighborhoods</h4></div><p>Branch numbers are ordered by average Ovr, not manually named. The examples are the four highest-rated players in each branch.</p></header><div class="branch-card-grid">' + "".join(cards) + '</div></section>'
+
+def category_win_bars():
+    rows = []
+    ranked = category_summary.sort_values("matchup_winner_category_win_pct", ascending=False)
+    for category, row in ranked.iterrows():
+        value = float(row["matchup_winner_category_win_pct"])
+        rows.append(f"""
+        <div class="macro-bar-row">
+          <span class="macro-bar-label">{escape(category)}</span>
+          <div class="macro-bar-track"><span style="width:{value:.1%}"></span></div>
+          <strong>{value:.1%}</strong>
+        </div>""")
+    return '<div class="macro-card"><div class="macro-bars">' + "".join(rows) + "</div></div>"
+
+def winning_threshold_table():
+    headers = "".join(f"<th>{escape(category)}</th>" for category in category_order)
+    rows = []
+    for label, field in [
+        ("Winner Average", "average_winning_threshold"),
+        ("League Average", "average_league_threshold"),
+        ("Loser Average", "average_losing_threshold"),
+    ]:
+        values = []
+        for category in category_order:
+            value = float(category_summary.loc[category, field])
+            value_label = f"{value:.1%}" if category in {"TS%", "2PT%", "3PT%", "FT%"} else f"{value:.2f}"
+            values.append(f"<td>{value_label}</td>")
+        rows.append(f"<tr><th>{label}</th>{''.join(values)}</tr>")
+    return f"""<div class="macro-card table-scroll"><table class="threshold-table">
+      <thead><tr><th>Category</th>{headers}</tr></thead>
+      <tbody>{''.join(rows)}</tbody>
+    </table></div>"""
+
+def period_game_volume_note():
+    return f"""<div class="macro-note"><strong>{period_nba_games.mean():.1f} NBA games per period</strong>
+    The historical schedule contains {int(period_nba_games.sum()):,} NBA games across {len(period_nba_games):,} SBCFBL
+    regular-season periods ({int(period_nba_games.sum()):,} ÷ {len(period_nba_games):,} = {period_nba_games.mean():.2f}).
+    The median was {period_nba_games.median():.0f}; the middle 50% of periods contained
+    {period_nba_games.quantile(.25):.0f}–{period_nba_games.quantile(.75):.0f} NBA games.</div>"""
+
+def heat_color(value):
+    value = float(value)
+    if value >= 0.5:
+        strength = min(1, (value - 0.5) / 0.5)
+        start, end = (235, 242, 249), (18, 58, 104)
+    else:
+        strength = min(1, (0.5 - value) / 0.5)
+        start, end = (247, 244, 241), (166, 55, 55)
+    color = tuple(round(start[i] + (end[i] - start[i]) * strength) for i in range(3))
+    text = "#ffffff" if strength > 0.62 else "#142033"
+    return f"rgb{color}", text
+
+def category_cowin_heatmap():
+    headers = "".join(f"<th>{escape(category)}</th>" for category in category_order)
+    rows = []
+    for row_category in category_order:
+        cells = []
+        for column_category in category_order:
+            value = float(category_cowin.loc[row_category, column_category])
+            background, text = heat_color(value)
+            cells.append(
+                f'<td style="background:{background};color:{text}" title="{escape(row_category)} and {escape(column_category)}: {value:.1%}">{value:.0%}</td>'
+            )
+        rows.append(f"<tr><th>{escape(row_category)}</th>{''.join(cells)}</tr>")
+    return f"""<div class="macro-card table-scroll"><table class="cowin-table">
+      <thead><tr><th>Category</th>{headers}</tr></thead><tbody>{''.join(rows)}</tbody>
+    </table></div>"""
+
+def season_backtest_visual():
+    order = [*category_order, "Overall"]
+    summary = season_backtest_summary.set_index("category").reindex(order).reset_index()
+    overall = summary[summary["category"].eq("Overall")].iloc[0]
+    width, height = 760, 510
+    left, right, top, bottom = 78, 34, 22, 42
+    row_height = (height - top - bottom) / len(summary)
+    def sx(value):
+        return left + (float(value) - .5) / .5 * (width - left - right)
+    grid = []
+    for value in [.5, .6, .7, .8, .9, 1.0]:
+        x = sx(value)
+        grid.append(f'<line class="backtest-grid" x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{height-bottom}"/><text class="backtest-axis" x="{x:.1f}" y="{height-15}" text-anchor="middle">{value:.1f}</text>')
+    rows = []
+    for index, row in enumerate(summary.itertuples(index=False)):
+        y = top + row_height * (index + .5)
+        color = "#d99a16" if row.category == "Overall" else "#315f8e"
+        rows.append(
+            f'<text class="backtest-label" x="{left-9}" y="{y+4:.1f}" text-anchor="end">{escape(row.category)}</text>'
+            f'<line class="backtest-range" x1="{sx(row.auc_fold_min):.1f}" y1="{y:.1f}" x2="{sx(row.auc_fold_max):.1f}" y2="{y:.1f}"/>'
+            f'<circle class="backtest-dot" cx="{sx(row.auc):.1f}" cy="{y:.1f}" r="6" fill="{color}"><title>{escape(row.category)} · pooled AUC {row.auc:.3f} · season range {row.auc_fold_min:.3f}–{row.auc_fold_max:.3f}</title></circle>'
+            f'<text class="backtest-value" x="{sx(row.auc)+10:.1f}" y="{y+4:.1f}">{row.auc:.3f}</text>'
+        )
+
+    calibration = season_backtest_calibration[
+        season_backtest_calibration["category"].eq("Overall")
+    ].sort_values("predicted_probability")
+    cal_width, cal_height = 430, 430
+    pad = 48
+    def cx(value): return pad + float(value) * (cal_width - 2 * pad)
+    def cy(value): return cal_height - pad - float(value) * (cal_height - 2 * pad)
+    calibration_points = " ".join(
+        f'{cx(row.predicted_probability):.1f},{cy(row.observed_win_rate):.1f}'
+        for row in calibration.itertuples(index=False)
+    )
+    cal_grid = []
+    for value in [0, .25, .5, .75, 1]:
+        cal_grid.extend([
+            f'<line class="calibration-grid" x1="{cx(value):.1f}" y1="{pad}" x2="{cx(value):.1f}" y2="{cal_height-pad}"/>',
+            f'<line class="calibration-grid" x1="{pad}" y1="{cy(value):.1f}" x2="{cal_width-pad}" y2="{cy(value):.1f}"/>',
+            f'<text class="calibration-axis" x="{cx(value):.1f}" y="{cal_height-23}" text-anchor="middle">{value:.0%}</text>',
+            f'<text class="calibration-axis" x="{pad-9}" y="{cy(value)+4:.1f}" text-anchor="end">{value:.0%}</text>',
+        ])
+    cal_dots = "".join(
+        f'<circle class="calibration-dot" cx="{cx(row.predicted_probability):.1f}" cy="{cy(row.observed_win_rate):.1f}" r="6"><title>Predicted {row.predicted_probability:.1%} · Observed {row.observed_win_rate:.1%} · {int(row.observations):,} observations</title></circle>'
+        for row in calibration.itertuples(index=False)
+    )
+    table_rows = "".join(
+        f'<tr class="{"is-overall" if row.category == "Overall" else ""}"><th>{escape(row.category)}</th><td>{row.auc:.3f}</td><td>{row.auc_fold_min:.3f}–{row.auc_fold_max:.3f}</td><td>{row.brier_score:.3f}</td><td>{row.log_loss:.3f}</td><td>{row.calibration_error:.1%}</td></tr>'
+        for row in summary.itertuples(index=False)
+    )
+    return f"""<section class="backtest-section">
+      <div class="backtest-kpis"><article><small>Held-Out Seasons</small><strong>{int(overall.seasons)}</strong></article><article><small>Overall Model AUC</small><strong>{overall.auc:.3f}</strong></article><article><small>Overall Brier Score</small><strong>{overall.brier_score:.3f}</strong></article><article><small>Calibration Error</small><strong>{overall.calibration_error:.1%}</strong></article></div>
+      <div class="backtest-chart-grid">
+        <article><header><small>Discrimination</small><h4>Pooled Out-Of-Sample AUC</h4><p>Lines show the minimum-to-maximum AUC across the six held-out seasons.</p></header><svg viewBox="0 0 {width} {height}">{''.join(grid)}{''.join(rows)}</svg></article>
+        <article><header><small>Probability Accuracy</small><h4>Overall Model Calibration</h4><p>Perfectly calibrated predictions follow the diagonal.</p></header><svg viewBox="0 0 {cal_width} {cal_height}">{''.join(cal_grid)}<line class="calibration-perfect" x1="{pad}" y1="{cal_height-pad}" x2="{cal_width-pad}" y2="{pad}"/><polyline class="calibration-line" points="{calibration_points}"/>{cal_dots}<text class="calibration-title" x="{cal_width/2}" y="{cal_height-5}" text-anchor="middle">Predicted Win Probability</text><text class="calibration-title" transform="translate(12 {cal_height/2}) rotate(-90)" text-anchor="middle">Observed Win Rate</text></svg></article>
+      </div>
+      <div class="table-scroll"><table class="backtest-table"><thead><tr><th>Model</th><th>AUC</th><th>Season AUC Range</th><th>Brier</th><th>Log Loss</th><th>Calibration Error</th></tr></thead><tbody>{table_rows}</tbody></table></div>
+    </section>"""
+
+def probability_model_cards(model_table, curve_table, bin_table, model_categories, metric_label, grid_class=""):
+    cards = []
+    for category in model_categories:
+        model = model_table.loc[category]
+        curve = curve_table[curve_table["category"].eq(category)]
+        observed = bin_table[bin_table["category"].eq(category)]
+        x_min, x_max = curve["adjusted_total"].min(), curve["adjusted_total"].max()
+        x_span = x_max - x_min or 1
+        sx = lambda value: 38 + (float(value) - x_min) / x_span * 264
+        sy = lambda value: 178 - float(value) * 142
+        path = " ".join(
+            ("M" if index == 0 else "L") + f"{sx(row.adjusted_total):.1f},{sy(row.win_probability):.1f}"
+            for index, row in enumerate(curve.itertuples(index=False))
+        )
+        dots = "".join(
+            f'<circle cx="{sx(row.adjusted_total):.1f}" cy="{sy(row.observed_win_rate):.1f}" r="3.2"><title>{row.adjusted_total:.1f}: {row.observed_win_rate:.1%} observed ({int(row.observations):,})</title></circle>'
+            for row in observed.itertuples(index=False)
+        )
+        threshold_x = sx(model.threshold_50)
+        direction = "Lower Is Better" if category == "TOV" else "Higher Is Better"
+        threshold_label = f"{model.threshold_50:+.2f}" if metric_label == "Points gained" else f"{model.threshold_50:.2f}"
+        cards.append(f"""
+        <article class="logit-card">
+          <header><div><small>{direction}</small><h4>{escape(category)}</h4></div><div><small>50% Mark</small><strong>{threshold_label}</strong></div></header>
+          <svg viewBox="0 0 320 200" role="img" aria-label="{escape(category)} category win probability curve">
+            <line class="curve" x1="90" y1="22" x2="108" y2="22"></line><text x="113" y="25">Model curve</text>
+            <g class="observed"><circle cx="206" cy="22" r="3.2"></circle></g><text x="213" y="25">Historical results</text>
+            <line class="grid" x1="38" y1="107" x2="302" y2="107"></line>
+            <line class="threshold" x1="{threshold_x:.1f}" y1="36" x2="{threshold_x:.1f}" y2="178"></line>
+            <line class="axis" x1="38" y1="178" x2="302" y2="178"></line><line class="axis" x1="38" y1="36" x2="38" y2="178"></line>
+            <path class="curve" d="{path}"></path><g class="observed">{dots}</g>
+            <text x="31" y="181" text-anchor="end">0%</text><text x="31" y="110" text-anchor="end">50%</text><text x="31" y="40" text-anchor="end">100%</text>
+            <text x="38" y="195" text-anchor="start">{x_min:.1f}</text><text x="170" y="195" text-anchor="middle">{escape(metric_label)} · 24.93 games</text><text x="302" y="195" text-anchor="end">{x_max:.1f}</text>
+          </svg>
+          <footer><span>AUC <strong>{model.auc:.3f}</strong></span><span>R² <strong>{model.mcfadden_r2:.3f}</strong></span><span>{int(model.matchups):,} matchups</span></footer>
+        </article>""")
+    grid_style = ' style="grid-template-columns:repeat(2,minmax(0,1fr));max-width:980px;margin-left:auto;margin-right:auto"' if grid_class else ""
+    return f'<div class="logit-grid {grid_class}"{grid_style}>' + "".join(cards) + "</div>"
+
+def counting_model_cards():
+    return probability_model_cards(
+        counting_models, counting_curves, counting_bins,
+        ["MP", "PTS", "OREB", "DREB", "AST", "STL", "BLK", "TOV", "+/-"],
+        "Adjusted total",
+    )
+
+def shooting_model_cards():
+    return probability_model_cards(
+        shooting_models, shooting_curves, shooting_bins,
+        ["TS%", "2PT%", "3PT%", "FT%"], "Points gained", "shooting-grid",
+    )
+
+def counting_model_results_table():
+    rows = []
+    for category in ["MP", "PTS", "OREB", "DREB", "AST", "STL", "BLK", "TOV", "+/-"]:
+        row = counting_models.loc[category]
+        rows.append(f"""<tr><th>{escape(category)}</th><td>{row.threshold_50:.2f}</td><td>{row.slope:.4f}</td>
+          <td>{row.slope_se:.4f}</td><td>{row.odds_ratio_per_unit:.3f}</td><td>{row.auc:.3f}</td>
+          <td>{row.brier_score:.3f}</td><td>{row.mcfadden_r2:.3f}</td><td>{int(row.matchups):,}</td></tr>""")
+    return f"""<div class="macro-card table-scroll"><table class="model-results-table">
+      <thead><tr><th>Category</th><th>50% Mark</th><th>Slope</th><th>Clustered SE</th><th>Odds Ratio</th><th>AUC</th><th>Brier</th><th>McFadden R²</th><th>Matchups</th></tr></thead>
+      <tbody>{''.join(rows)}</tbody></table></div>"""
+
+def shooting_model_results_table():
+    rows = []
+    for category in ["TS%", "2PT%", "3PT%", "FT%"]:
+        row = shooting_models.loc[category]
+        rows.append(f"""<tr><th>{escape(category)}</th><td>{row.threshold_50:+.2f}</td><td>{row.slope:.4f}</td>
+          <td>{row.slope_se:.4f}</td><td>{row.odds_ratio_per_unit:.3f}</td><td>{row.auc:.3f}</td>
+          <td>{row.brier_score:.3f}</td><td>{row.mcfadden_r2:.3f}</td><td>{int(row.matchups):,}</td></tr>""")
+    return f"""<div class="macro-card table-scroll"><table class="model-results-table">
+      <thead><tr><th>Category</th><th>50% Mark</th><th>Slope</th><th>Clustered SE</th><th>Odds Ratio</th><th>AUC</th><th>Brier</th><th>McFadden R²</th><th>Matchups</th></tr></thead>
+      <tbody>{''.join(rows)}</tbody></table></div>"""
+
+def overall_model_visual():
+    points = overall_calibration.sort_values("predicted_probability")
+    sx = lambda value: 55 + float(value) * 570
+    sy = lambda value: 300 - float(value) * 250
+    observed_path = " ".join(
+        ("M" if index == 0 else "L") + f"{sx(row.predicted_probability):.1f},{sy(row.observed_win_rate):.1f}"
+        for index, row in enumerate(points.itertuples(index=False))
+    )
+    dots = "".join(
+        f'<circle cx="{sx(row.predicted_probability):.1f}" cy="{sy(row.observed_win_rate):.1f}" r="5"><title>{row.predicted_probability:.1%} predicted; {row.observed_win_rate:.1%} observed ({int(row.observations):,} team-games)</title></circle>'
+        for row in points.itertuples(index=False)
+    )
+    return f"""<section class="overall-model-card">
+      <div class="overall-kpis">
+        <article><small>AUC</small><strong>{overall_model.auc:.3f}</strong><span>Ability to rank winners above losers</span></article>
+        <article><small>Brier Score</small><strong>{overall_model.brier_score:.3f}</strong><span>Average probability error; lower is better</span></article>
+        <article><small>McFadden R²</small><strong>{overall_model.mcfadden_r2:.3f}</strong><span>Improvement over a coin-flip model</span></article>
+        <article><small>Historical Matchups</small><strong>{int(overall_model.matchups):,}</strong><span>Two paired team observations per matchup</span></article>
+      </div>
+      <div class="calibration-wrap">
+        <div><small>Calibration Curve</small><h4>Predicted Chance vs. Actual Results</h4><p>A well-calibrated model follows the dashed diagonal. Each dot is one equally populated band of historical predictions.</p></div>
+        <svg viewBox="0 0 680 340" role="img" aria-label="Overall matchup model calibration curve">
+          <line class="cal-grid" x1="55" y1="237.5" x2="625" y2="237.5"></line><line class="cal-grid" x1="55" y1="175" x2="625" y2="175"></line><line class="cal-grid" x1="55" y1="112.5" x2="625" y2="112.5"></line>
+          <line class="cal-axis" x1="55" y1="300" x2="625" y2="300"></line><line class="cal-axis" x1="55" y1="50" x2="55" y2="300"></line>
+          <line class="cal-ideal" x1="55" y1="300" x2="625" y2="50"></line><path class="cal-observed" d="{observed_path}"></path><g class="cal-dots">{dots}</g>
+          <text x="45" y="304" text-anchor="end">0%</text><text x="45" y="179" text-anchor="end">50%</text><text x="45" y="54" text-anchor="end">100%</text>
+          <text x="55" y="320">0%</text><text x="340" y="320" text-anchor="middle">50%</text><text x="625" y="320" text-anchor="end">100%</text>
+          <text x="340" y="338" text-anchor="middle">Predicted Matchup-Win Probability</text><text transform="translate(13 175) rotate(-90)" text-anchor="middle">Observed Win Rate</text>
+        </svg>
+      </div>
+    </section>"""
+
+def overall_effect_chart():
+    rows = []
+    max_effect = max(overall_coefficients["coefficient_per_sd"].abs().max(), .01)
+    for category in category_order:
+        row = overall_coefficients.loc[category]
+        coefficient = float(row.coefficient_per_sd)
+        width = abs(coefficient) / max_effect * 48
+        side = "positive" if coefficient >= 0 else "negative"
+        rows.append(f"""<div class="effect-row"><strong>{escape(category)}</strong><div class="effect-track"><i class="{side}" style="width:{width:.1f}%"></i></div><span>{row.odds_ratio_per_sd:.2f}×</span></div>""")
+    return '<div class="effect-card"><div class="effect-head"><span>Category</span><span>Conditional Effect on Matchup-Win Odds</span><span>Odds / +1 SD</span></div>' + "".join(rows) + '</div>'
+
+def overall_coefficient_table():
+    rows = []
+    for category in category_order:
+        row = overall_coefficients.loc[category]
+        p_label = "<0.001" if row.p_value < .001 else f"{row.p_value:.3f}"
+        rows.append(f"""<tr><th>{escape(category)}</th><td>{row.coefficient_per_sd:.3f}</td><td>{row.clustered_se:.3f}</td><td>{row.odds_ratio_per_sd:.3f}</td><td>{row.ci_95_low:.3f}–{row.ci_95_high:.3f}</td><td>{p_label}</td></tr>""")
+    return f"""<details class="model-details"><summary>Mathematical Diagnostics</summary><div class="macro-card table-scroll"><table class="model-results-table">
+      <thead><tr><th>Category</th><th>Coefficient / SD</th><th>Clustered SE</th><th>Odds Ratio / SD</th><th>95% Odds-Ratio Interval</th><th>P-Value</th></tr></thead><tbody>{''.join(rows)}</tbody>
+    </table></div></details>"""
+
+def team_panel(brand, selected=False):
+    team = canonical[canonical["fantasy_team_name"].eq(brand.team_name)].copy()
+    panel_id = "team-" + str(brand.fantasy_team_id)
+    status_order = {"ACTIVE": 0, "RESERVE": 0, "INJURED_RESERVE": 0, "MINORS": 1}
+    team["_status_order"] = team["roster_status"].map(status_order).fillna(0)
+    team["nba_team_display"] = team["nba_team"].replace({"PHO":"PHX", "CHO":"CHA", "SA":"SAS", "NO":"NOP", "(N/A)":"", "N/A":""}).fillna("")
+    team["_overall_sort"] = pd.to_numeric(team["overall_rating"], errors="coerce").fillna(-1)
+    team["_nba_team_sort"] = team["nba_team_display"].replace("", "ZZZ")
+    team = team.sort_values(
+        ["_status_order", "_overall_sort", "_nba_team_sort", "player_name"],
+        ascending=[True, False, True, True],
+    )
+    per_game = {
+        "points":"ppg", "offensive_rebounds":"orpg", "defensive_rebounds":"drpg",
+        "assists":"apg", "steals":"spg", "blocks":"bpg", "turnovers":"tpg",
+        "plus_minus":"plus_minus_pg",
+    }
+    valid_games = team["games"].where(team["games"] > 0)
+    for source, target in per_game.items():
+        team[target] = team[source] / valid_games
+    columns = ["eligible_positions", "player_name", "nba_team_display", "games", "minutes", "ts_pct", "two_pct", "three_pct", "ft_pct", "ppg", "orpg", "drpg", "apg", "spg", "bpg", "tpg", "plus_minus_pg", "overall_rating", "player_chemistry"]
+    table = team[columns].rename(columns={"eligible_positions":"Pos.", "player_name":"Player", "nba_team_display":"Tm", "games":"GP", "minutes":"MP", "ts_pct":"TS%", "two_pct":"2PT%", "three_pct":"3PT%", "ft_pct":"FT%", "ppg":"PPG", "orpg":"ORPG", "drpg":"DRPG", "apg":"APG", "spg":"SPG", "bpg":"BPG", "tpg":"TPG", "plus_minus_pg":"+/-", "overall_rating":"Ovr", "player_chemistry":"Chemistry"})
+    table["GP"] = table["GP"].map(lambda value: number(value, 0))
+    for column in ["MP", "PPG", "ORPG", "DRPG", "APG", "SPG", "BPG", "TPG"]:
+        table[column] = table[column].map(lambda value: number(value, 1))
+    table["+/-"] = table["+/-"].map(signed_number)
+    for column in ["TS%", "2PT%", "3PT%", "FT%"]:
+        table[column] = table[column].map(percentage)
+    rating_map = {
+        "MP":"rating_MP", "TS%":"rating_TS%", "2PT%":"rating_2PT%", "3PT%":"rating_3PT%", "FT%":"rating_FT%",
+        "PPG":"rating_PTS", "ORPG":"rating_OREB", "DRPG":"rating_DREB", "APG":"rating_AST", "SPG":"rating_STL",
+        "BPG":"rating_BLK", "TPG":"rating_TOV", "+/-":"rating_+/-",
+    }
+    for display_column, rating_column in rating_map.items():
+        table[display_column] = [
+            projection_with_rating(value, rating)
+            for value, rating in zip(table[display_column], team[rating_column])
+        ]
+    table["Ovr"] = team["overall_rating"].map(overall_rating_pill)
+    table["Chemistry"] = team["player_chemistry"].map(chemistry_rating_pill)
+    for column in ["Pos.", "Player", "Tm", "GP"]:
+        table[column] = table[column].map(lambda value: escape(str(value)) if str(value) else "")
+    table_html = table.to_html(index=False, classes="roster-table", border=0, escape=False)
+    return f"""
+    <section class="team-sheet{' is-selected' if selected else ''}" id="{escape(panel_id)}" data-team="{escape(str(brand.fantasy_team_id))}" style="--primary:{escape(brand.primary_color)};--secondary:{escape(brand.secondary_color)};--team-text:{escape(brand.text_color)};--team-font:'{escape(brand.font_family)}';">
+      <header class="team-hero"><div class="team-identity"><img src="{escape(brand.logo_url)}" alt="{escape(brand.team_name)} logo"><div><span>{escape(brand.conference)} Conference · {escape(brand.division)} Division</span><h1>{escape(brand.team_name)}</h1><p>{escape(brand.motto)}</p></div></div></header>
+      {team_metric_tiles(brand.fantasy_team_id)}
+      <div class="section-label"><span>Roster Projection Board</span></div><div class="table-wrap">{table_html}</div>
+      {player_fit_boards(brand.fantasy_team_id)}
+      <footer><span>Fantrax ownership + Hashtag Basketball projections</span></footer>
+    </section>"""
+
+ARCHETYPE_NAMES = {
+    "do_it_all_superstar": "Do-It-All Superstar",
+    "star_to_build_around": "Star To Build Around",
+    "role_player": "Role Player",
+    "specialist": "Specialist",
+    "minute_filler": "Minute Filler",
+    "negative_player": "Negative Player",
+    "bench_warmer": "Bench Warmer",
+    "sleeper": "Sleeper",
+}
+
+def player_skill_cards(player):
+    games = float(player.games) if pd.notna(player.games) and player.games > 0 else None
+    projection_columns = {
+        "MP": "minutes", "TS%": "ts_pct", "2PT%": "two_pct", "3PT%": "three_pct", "FT%": "ft_pct",
+        "PTS": "points", "OREB": "offensive_rebounds", "DREB": "defensive_rebounds", "AST": "assists",
+        "STL": "steals", "BLK": "blocks", "TOV": "turnovers", "+/-": "plus_minus",
+    }
+    cards = []
+    for category in category_order:
+        raw = player[projection_columns[category]]
+        if category in {"TS%", "2PT%", "3PT%", "FT%"}:
+            projection = percentage(raw)
+        elif category == "MP":
+            projection = number(raw, 1)
+        elif category == "+/-":
+            projection = signed_number(raw / games, 1) if games else ""
+        else:
+            projection = number(raw / games, 1) if games else ""
+        rating = player[f"rating_{category}"]
+        width = 0 if pd.isna(rating) else float(rating) * 10
+        rating_label = "—" if pd.isna(rating) else f"{float(rating):.1f}"
+        cards.append(f"""<article><header><span>{escape(category)}</span><strong>{projection or '—'}</strong></header>
+          <div class="player-skill-track"><i style="width:{width:.1f}%"></i></div><footer><span>Category Rating</span><b>{rating_label}</b></footer></article>""")
+    overall = player["overall_rating"]
+    overall_width = 0 if pd.isna(overall) else float(overall) * 10
+    overall_label = "—" if pd.isna(overall) else f"{float(overall):.1f}"
+    cards.append(f"""<article class="is-overall"><header><span>Ovr</span><strong>All 13</strong></header>
+      <div class="player-skill-track"><i style="width:{overall_width:.1f}%"></i></div><footer><span>Overall Rating</span><b>{overall_label}</b></footer></article>""")
+    return '<div class="player-skill-grid">' + "".join(cards) + "</div>"
+
+def player_archetype_scores(profile):
+    rows = []
+    for key, label in ARCHETYPE_NAMES.items():
+        value = getattr(profile, f"score_{key}")
+        score = 0 if pd.isna(value) else float(value)
+        rows.append(f"""<div class="archetype-score-row"><span>{escape(label)}</span><div><i style="width:{score:.1f}%"></i></div><strong>{score:.1f}</strong></div>""")
+    return '<div class="archetype-score-card">' + "".join(rows) + '</div>'
+
+def player_team_fit_table(player_id, current_team_id):
+    fits = player_team_chemistry[player_team_chemistry["fantrax_player_id"].eq(str(player_id))].copy()
+    fits = fits.sort_values(["team_fit_score", "player_chemistry"], ascending=[False, False])
+    rows = []
+    for row in fits.itertuples(index=False):
+        is_current = str(row.target_team_id) == str(current_team_id)
+        marker = '<span class="current-team-badge">Current Team</span>' if is_current else ""
+        rows.append(
+            f'<tr class="{"is-current-team" if is_current else ""}"><td>{escape(row.target_team_name)} {marker}</td>'
+            f'<td>{float(row.player_chemistry):.1f}</td><td>{float(row.team_fit_score):.1f}</td>'
+            f'<td>{float(row.skill_impact_pp):+.2f} pp</td><td>{float(row.expected_score_impact):+.1f}</td>'
+            f'<td>{float(row.chemistry_impact_pp):+.2f} pp</td></tr>'
+        )
+    return f"""<div class="player-fit-table-wrap"><table class="player-all-team-fit"><thead><tr><th>Franchise</th><th>Chemistry</th><th>Fit</th><th>Skill Impact</th><th>Score Impact</th><th>Chemistry Impact</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>{chemistry_fit_notes()}"""
+
+def chemistry_fit_notes():
+    return """<div class="chemistry-fit-notes">
+      <p><strong>Chemistry</strong><span>0–10 global percentile of the player's change to team chemistry across all 12,150 player-team combinations.</span></p>
+      <p><strong>Fit</strong><span>Relative destination score for this player: 65% of the player's within-player Chemistry rank plus 35% of the within-player Skill Impact rank across the 30 teams.</span></p>
+      <p><strong>Skill Impact</strong><span>Percentage-point change in the full 13-category model's probability of defeating an average opponent.</span></p>
+      <p><strong>Score Impact</strong><span>Change in category-based Expected Score on the 413-point matchup scale.</span></p>
+      <p><strong>Chemistry Impact</strong><span>Percentage-point change beyond the category baseline. Positive means the player's category shape works together better than its standalone parts.</span></p>
+      <div><strong>Why can the scores look low?</strong> Both Chemistry and Fit are percentile-based, so they measure relative placement—not raw talent. Half of all global Chemistry combinations fall below 5.0, while a player's 30 Fit destinations are intentionally centered near 5. Use Chemistry Impact to see whether the underlying effect is actually positive or negative.</div>
+    </div>"""
+
+def player_panel(profile, selected=False):
+    player = canonical[canonical["fantrax_player_id"].eq(str(profile.fantrax_player_id))].iloc[0]
+    current_team_id = str(profile.fantasy_team_id)
+    brand_match = branding[branding["fantasy_team_id"].astype(str).eq(current_team_id)]
+    if len(brand_match):
+        brand = brand_match.iloc[0]
+        primary, secondary, text_color = brand.primary_color, brand.secondary_color, brand.text_color
+    else:
+        primary, secondary, text_color = "#123a68", "#6f8daa", "#ffffff"
+    similar = [name for name in str(profile.similar_players).split(" | ") if name]
+    similar_html = "".join(f"<li>{escape(name)}</li>" for name in similar)
+    status = str(profile.roster_status).replace("_", " ").title()
+    hierarchy = "—" if pd.isna(profile.hierarchical_cluster) else str(int(profile.hierarchical_cluster))
+    return f"""<section class="player-sheet{' is-selected' if selected else ''}" data-player="{escape(str(profile.fantrax_player_id))}" style="--primary:{escape(primary)};--secondary:{escape(secondary)};--team-text:{escape(text_color)}">
+      <header class="player-profile-hero"><div><span>{escape(str(profile.fantasy_team_name))} · {escape(status)}</span><h1>{escape(profile.player_name)}</h1><p>{escape(str(profile.eligible_positions))} · {escape(str(profile.nba_team))}</p></div><div class="player-archetype-identity"><small>Player Archetype</small><strong>{escape(profile.archetype_label)}</strong><span>Ward Branch {hierarchy}</span></div></header>
+      <div class="player-profile-body">
+        <div class="player-profile-heading"><div><small>Projected Skill Profile</small><h3>Skills Across All 13 Categories</h3></div></div>
+        {player_skill_cards(player)}
+        <div class="player-profile-columns">
+          <section><div class="player-profile-heading compact"><div><small>Fuzzy Membership</small><h3>Eight Archetype Scores</h3></div></div>{player_archetype_scores(profile)}</section>
+          <section class="similarity-card"><div class="player-profile-heading compact"><div><small>Hierarchical Clustering</small><h3>Closest Statistical Neighbors</h3></div></div><div class="branch-number"><span>Ward Branch</span><strong>{hierarchy}</strong></div><ol>{similar_html}</ol><p>Nearest-player similarity: <strong>{float(profile.closest_similarity):.1f}%</strong></p></section>
+        </div>
+        <div class="player-profile-heading"><div><small>Roster Context</small><h3>Chemistry Fit Across All 30 Teams</h3></div></div>
+        {player_team_fit_table(profile.fantrax_player_id, current_team_id)}
+      </div>
+    </section>"""
+
+def player_payload(profile):
+    player = canonical[canonical["fantrax_player_id"].eq(str(profile.fantrax_player_id))].iloc[0]
+    current_team_id = str(profile.fantasy_team_id)
+    brand_match = branding[branding["fantasy_team_id"].astype(str).eq(current_team_id)]
+    if len(brand_match):
+        brand = brand_match.iloc[0]
+        colors = {"primary": brand.primary_color, "secondary": brand.secondary_color, "text": brand.text_color}
+    else:
+        colors = {"primary": "#123a68", "secondary": "#6f8daa", "text": "#ffffff"}
+    games = float(player.games) if pd.notna(player.games) and player.games > 0 else None
+    projection_columns = {
+        "MP": "minutes", "TS%": "ts_pct", "2PT%": "two_pct", "3PT%": "three_pct", "FT%": "ft_pct",
+        "PTS": "points", "OREB": "offensive_rebounds", "DREB": "defensive_rebounds", "AST": "assists",
+        "STL": "steals", "BLK": "blocks", "TOV": "turnovers", "+/-": "plus_minus",
+    }
+    skills = []
+    for category in category_order:
+        raw = player[projection_columns[category]]
+        if category in {"TS%", "2PT%", "3PT%", "FT%"}:
+            projection = percentage(raw)
+        elif category == "MP":
+            projection = number(raw, 1)
+        elif category == "+/-":
+            projection = signed_number(raw / games, 1) if games else ""
+        else:
+            projection = number(raw / games, 1) if games else ""
+        rating = player[f"rating_{category}"]
+        skills.append({"category": category, "projection": projection or "—", "rating": None if pd.isna(rating) else round(float(rating), 1), "overall": False})
+    skills.append({"category": "Ovr", "projection": "All 13", "rating": round(float(profile.overall_rating), 1), "overall": True})
+    specialist_active = profile.primary_archetype == "Specialist" or profile.secondary_archetype == "Specialist"
+    specialist_type = str(profile.specialist_subtype) if specialist_active else ""
+    scores = [
+        {"label": specialist_type if key == "specialist" and specialist_active else label, "score": round(float(getattr(profile, f"score_{key}")), 1)}
+        for key, label in ARCHETYPE_NAMES.items()
+    ]
+    fits = player_team_chemistry[player_team_chemistry["fantrax_player_id"].eq(str(profile.fantrax_player_id))].copy()
+    fits = fits.sort_values(["team_fit_score", "player_chemistry"], ascending=[False, False])
+    fit_records = [
+        {
+            "team": row.target_team_name,
+            "current": str(row.target_team_id) == current_team_id,
+            "chemistry": round(float(row.player_chemistry), 1),
+            "fit": round(float(row.team_fit_score), 1),
+            "skill": round(float(row.skill_impact_pp), 2),
+            "score": round(float(row.expected_score_impact), 1),
+            "chemistry_impact": round(float(row.chemistry_impact_pp), 2),
+        }
+        for row in fits.itertuples(index=False)
+    ]
+    teammate_rows = player_teammate_chemistry[
+        player_teammate_chemistry["fantrax_player_id"].eq(str(profile.fantrax_player_id))
+    ].sort_values("pair_chemistry_impact_pp")
+    if len(teammate_rows):
+        least_teammate = teammate_rows.iloc[0]
+        favorite_teammate = teammate_rows.iloc[-1]
+        teammate_fit = {
+            "favorite": {
+                "name": favorite_teammate["teammate_name"],
+                "impact": round(float(favorite_teammate["pair_chemistry_impact_pp"]), 2),
+            },
+            "least": {
+                "name": least_teammate["teammate_name"],
+                "impact": round(float(least_teammate["pair_chemistry_impact_pp"]), 2),
+            },
+        }
+    else:
+        teammate_fit = {"favorite": {"name": "—", "impact": 0}, "least": {"name": "—", "impact": 0}}
+    return {
+        "id": str(profile.fantrax_player_id), "name": profile.player_name,
+        "fantasy_team": str(profile.fantasy_team_name), "status": str(profile.roster_status).replace("_", " ").title(),
+        "positions": str(profile.eligible_positions), "nba_team": str(profile.nba_team),
+        "archetype": profile.archetype_label, "specialist_type": specialist_type, "cluster": int(profile.hierarchical_cluster),
+        "overall": round(float(profile.overall_rating), 1), "similarity": round(float(profile.closest_similarity), 1),
+        "similar": [name for name in str(profile.similar_players).split(" | ") if name],
+        "colors": colors, "skills": skills, "scores": scores, "fits": fit_records,
+        "teammates": teammate_fit,
+    }
+
+team_id_by_name = canonical[["fantasy_team_id", "fantasy_team_name"]].drop_duplicates().set_index("fantasy_team_name")["fantasy_team_id"]
+branding["fantasy_team_id"] = branding["team_name"].map(team_id_by_name)
+branding = branding[branding["fantasy_team_id"].notna()].sort_values("team_name")
+default_team_id = str(branding.loc[branding["team_name"].eq("Vegas Blackjack"), "fantasy_team_id"].iloc[0])
+options = "".join(f'<option value="{escape(str(row.fantasy_team_id))}"{" selected" if str(row.fantasy_team_id) == default_team_id else ""}>{escape(row.team_name)}</option>' for row in branding.itertuples(index=False))
+panels = "".join(team_panel(row, str(row.fantasy_team_id) == default_team_id) for row in branding.itertuples(index=False))
+projected_archetypes = player_archetypes[player_archetypes["archetype_label"].ne("Unrated")].sort_values("player_name")
+default_player_id = str(projected_archetypes.loc[projected_archetypes["player_name"].eq("Nikola Jokic"), "fantrax_player_id"].iloc[0])
+player_options = "".join(
+    f'<option value="{escape(str(row.fantrax_player_id))}"{" selected" if str(row.fantrax_player_id) == default_player_id else ""}>{escape(row.player_name)} · {escape(str(row.fantasy_team_name))}</option>'
+    for row in projected_archetypes.itertuples(index=False)
+)
+player_data_json = json.dumps(
+    {str(row.fantrax_player_id): player_payload(row) for row in projected_archetypes.itertuples(index=False)},
+    ensure_ascii=False,
+).replace("</", "<\\/")
+player_app_script = r"""
+<script>
+(function(){
+  const selector=document.getElementById('player-selector');
+  const root=document.getElementById('player-profile-root');
+  const players=JSON.parse(document.getElementById('player-data').textContent);
+  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const signed=(value,digits=2)=>`${value>=0?'+':''}${Number(value).toFixed(digits)}`;
+  function render(){
+    const p=players[selector.value];
+    const favoriteClass=p.teammates.favorite.impact>=0?'positive':'negative';
+    const leastClass=p.teammates.least.impact>=0?'positive':'negative';
+    const skills=p.skills.map(item=>`<article class="${item.overall?'is-overall':''}"><header><span>${esc(item.category)}</span><strong>${esc(item.projection)}</strong></header><div class="player-skill-track"><i style="width:${item.rating===null?0:item.rating*10}%"></i></div><footer><span>${item.overall?'Overall Rating':'Category Rating'}</span><b>${item.rating===null?'—':item.rating.toFixed(1)}</b></footer></article>`).join('');
+    const scores=p.scores.map(item=>`<div class="archetype-score-row"><span>${esc(item.label)}</span><div><i style="width:${item.score}%"></i></div><strong>${item.score.toFixed(1)}</strong></div>`).join('');
+    const similar=p.similar.map(name=>`<li>${esc(name)}</li>`).join('');
+    const fits=p.fits.map(item=>`<tr class="${item.current?'is-current-team':''}"><td>${esc(item.team)} ${item.current?'<span class="current-team-badge">Current Team</span>':''}</td><td>${item.chemistry.toFixed(1)}</td><td>${item.fit.toFixed(1)}</td><td>${signed(item.skill)} pp</td><td>${signed(item.score,1)}</td><td>${signed(item.chemistry_impact)} pp</td></tr>`).join('');
+    root.innerHTML=`<section class="player-sheet is-selected" style="--primary:${esc(p.colors.primary)};--secondary:${esc(p.colors.secondary)};--team-text:${esc(p.colors.text)}">
+      <header class="player-profile-hero"><div><span>${esc(p.fantasy_team)} · ${esc(p.status)}</span><h1>${esc(p.name)}</h1><p>${esc(p.positions)} · ${esc(p.nba_team)}</p></div><div class="player-archetype-identity"><small>Player Archetype</small><strong>${esc(p.archetype)}</strong>${p.specialist_type?`<em>${esc(p.specialist_type)}</em>`:''}<span>Ward Branch ${p.cluster}</span></div></header>
+      <div class="player-profile-body"><div class="player-profile-heading"><div><small>Projected Skill Profile</small><h3>Skills Across All 13 Categories</h3></div></div><div class="player-skill-grid">${skills}</div>
+      <div class="player-profile-columns"><section><div class="player-profile-heading compact"><div><small>Fuzzy Membership</small><h3>Eight Archetype Scores</h3></div></div><div class="archetype-score-card">${scores}</div></section>
+      <section class="similarity-card"><div class="player-profile-heading compact"><div><small>Hierarchical Clustering</small><h3>Closest Statistical Neighbors</h3></div></div><div class="branch-number"><span>Ward Branch</span><strong>${p.cluster}</strong></div><ol>${similar}</ol><p>Nearest-player similarity: <strong>${p.similarity.toFixed(1)}%</strong></p></section>
+      <section class="teammate-card"><div class="player-profile-heading compact"><div><small>Pairwise Chemistry</small><h3>Teammate Fit</h3></div></div><div class="teammate-list"><div class="teammate-row"><span>Favorite</span><div><strong>${esc(p.teammates.favorite.name)}</strong><b class="${favoriteClass}">${signed(p.teammates.favorite.impact)} pp</b></div></div><div class="teammate-row"><span>Least Favorite</span><div><strong>${esc(p.teammates.least.name)}</strong><b class="${leastClass}">${signed(p.teammates.least.impact)} pp</b></div></div></div><p>Interaction beyond each player's standalone effect.</p></section></div>
+      <div class="player-profile-heading"><div><small>Roster Context</small><h3>Chemistry Fit Across All 30 Teams</h3></div></div><div class="player-fit-table-wrap"><table class="player-all-team-fit"><thead><tr><th>Franchise</th><th>Chemistry</th><th>Fit</th><th>Skill Impact</th><th>Score Impact</th><th>Chemistry Impact</th></tr></thead><tbody>${fits}</tbody></table></div>
+      <div class="chemistry-fit-notes"><p><strong>Chemistry</strong><span>0–10 global percentile of the player's change to team chemistry across all 12,150 player-team combinations.</span></p><p><strong>Fit</strong><span>Relative destination score: 65% of this player's within-player Chemistry rank plus 35% of the within-player Skill Impact rank across 30 teams.</span></p><p><strong>Skill Impact</strong><span>Percentage-point change in the full model's chance of defeating an average opponent.</span></p><p><strong>Score Impact</strong><span>Change in category-based Expected Score on the 413-point scale.</span></p><p><strong>Chemistry Impact</strong><span>Percentage-point change beyond the category baseline; positive means the player's category shape creates additional synergy.</span></p><div><strong>Why can the scores look low?</strong> Chemistry and Fit are percentile-based, not talent grades. Half of all global Chemistry combinations fall below 5.0, and each player's 30 Fit destinations are intentionally centered near 5. Use Chemistry Impact to determine whether the underlying effect is positive or negative.</div></div></div></section>`;
+    const url=new URL(window.location.href);url.searchParams.set('player',selector.value);window.history.replaceState({},'',url);
+  }
+  const requested=new URL(window.location.href).searchParams.get('player');
+  if(requested&&players[requested])selector.value=requested;
+  selector.addEventListener('change',render);render();
+})();
+</script>
+"""
+```
+
+::: {.panel-tabset .sbc-tabs}
+
+## League Overview
+
+```{python}
+display(HTML(overview_kpis()))
+```
+
+### Category Wins and Matchup Success
+
+How often did the eventual matchup winner also win each category? The measure uses all 6,777 completed SBCFBL matchups from 2021 through 2026. A tied category is not counted as a category win.
+
+```{python}
+display(HTML(category_win_bars()))
+```
+
+### Historical Winning Benchmarks
+
+For counting categories, each team total is divided by the number of NBA games played league-wide during that SBCFBL period. The table compares the average category winner, the average performance across all teams, and the average category loser. The four shooting categories are not divided by games; they retain each team's aggregate percentage.
+
+```{python}
+display(HTML(period_game_volume_note()))
+```
+
+```{python}
+display(HTML(winning_threshold_table()))
+```
+
+\* **TOV is lower-is-better.** Its benchmark is the lower-turnover team's total divided by the league-wide NBA games in that period.
+
+### Counting Category Win Models
+
+Nine separate logistic regressions estimate the probability that a team wins each counting category. Every historical team performance is standardized to a **24.93-NBA-game period** before modeling. The line is the fitted probability; dots show observed win rates within twelve equally populated performance bands. The dashed vertical line marks the projected total associated with a 50% chance of winning that category against a random historical opponent.
+
+```{python}
+display(HTML(counting_model_cards()))
+```
+
+```{python}
+display(HTML(counting_model_results_table()))
+```
+
+Standard errors are clustered by SBCFBL matchup because the two opposing team observations are paired. Tied category results are excluded. The odds ratio is the multiplicative change in win odds associated with one additional standardized category unit; for TOV, values below 1.00 correctly indicate that additional turnovers reduce the chance of winning.
+
+### Shooting Category Win Models
+
+The four shooting categories use **points gained**, which gives efficiency the volume it deserves:
+
+$$\text{Points Gained} = (\text{Team \%} - \text{Season League-Average \%}) \times \text{Attempts}$$
+
+For 2PT%, 3PT%, and FT%, attempts are 2PA, 3PA, and FTA. For TS%, attempts use its full scoring denominator, $2 \times (\text{FGA} + 0.44 \times \text{FTA})$, so TS points gained measures actual points scored above or below league-average true-shooting efficiency at the same volume. Each team-period value is then adjusted to 24.93 NBA games. A value near zero is league average; positive values helped the category and negative values hurt it.
+
+The line is the fitted probability of winning the category. The dots are the actual historical win rates in twelve equally populated points-gained bands—not individual teams or players.
+
+```{python}
+display(HTML(shooting_model_cards()))
+```
+
+```{python}
+display(HTML(shooting_model_results_table()))
+```
+
+The 50% marks landing near zero are an important validation: a team producing almost exactly league-average efficiency at its own shot volume should be close to a coin flip against a random historical opponent.
+
+### Overall Matchup-Win Model
+
+This model combines **all 13 categories at once** to estimate the probability that a team wins the full matchup. The nine counting totals and four shooting points-gained metrics are standardized to a 24.93-NBA-game period, then standardized again to one historical standard deviation so their conditional effects can be compared on the same scale.
+
+```{python}
+display(HTML(overall_model_visual()))
+```
+
+#### Plain-English Category Effects
+
+The chart answers: **holding the other 12 inputs constant, how do the matchup-win odds change when this category improves by one historical standard deviation?** A value above `1.00×` increases the odds; below `1.00×` decreases them. TOV correctly runs in the opposite direction. These are conditional effects, so overlapping shooting measures can look smaller here than in their standalone category-win models.
+
+```{python}
+display(HTML(overall_effect_chart()))
+```
+
+The mathematical form is $P(\text{matchup win}) = \operatorname{logit}^{-1}(\beta_0 + \beta_1x_1 + \cdots + \beta_{13}x_{13})$. Coefficients use standardized inputs, and clustered standard errors preserve the paired structure of each matchup.
+
+```{python}
+display(HTML(overall_coefficient_table()))
+```
+
+### Season-Based Model Backtesting
+
+Model diagnostics above describe fit on the complete historical dataset. This backtest asks the harder question: **how well does each model perform on a season it has never seen?** For each of the six completed seasons, the model is trained on the other five and used to predict every team result in the excluded season. The pooled scores below therefore contain only out-of-sample predictions.
+
+```{python}
+display(HTML(season_backtest_visual()))
+```
+
+**AUC** measures whether winners receive higher probabilities than losers; 0.50 is random and 1.00 is perfect ranking. **Brier score** and **log loss** measure probability accuracy and are lower-is-better. **Calibration error** is the observation-weighted gap between predicted and actual win rates across ten probability bands. Season ranges matter because a strong pooled result can still conceal a model that behaves inconsistently from year to year.
+
+### Category Relationship Matrix
+
+Each cell shows how often the same team won both categories when neither category was tied. This is a historical co-win rate—not a Pearson correlation of raw totals. Darker blue indicates categories that travel together; red indicates categories that more often split between opponents.
+
+```{python}
+display(HTML(category_cowin_heatmap()))
+```
+
+### Player Archetypes and Hierarchical Similarity
+
+The league-level models describe value one category at a time. This final section turns those outputs into a map of **player identity**. Every projected player receives eight continuous membership scores rather than being forced into one rigid bucket. A player receives a single label when one identity clearly dominates; when two identities are comparably strong, the ordered primary/secondary combination is used. That creates **64 possible core labels**—eight single archetypes plus 56 ordered two-archetype combinations—although only combinations supported by the projection pool appear.
+
+Do-It-All Superstar is deliberately exclusive: only the seven most valuable players with at least seven category strengths receive it, and it is always their only label. Specialists receive a separate K-means subtype describing whether their concentrated value is primarily shooting, scoring, playmaking, defense, or interior production.
+
+Ward hierarchical clustering is calculated independently of those names. It blends the 13 model-based category ratings with projected season totals and per-36 production. The 12-branch cut powers the comparable-player results on the Players page; it discovers statistical neighborhoods without dictating a player's named archetype.
+
+```{python}
+display(HTML(archetype_overview()))
+```
+
+```{python}
+display(HTML(archetype_landscape()))
+```
+
+```{python}
+display(HTML(archetype_mix_visual()))
+```
+
+#### Specialist K-Means Subtypes
+
+The core Specialist score is rules-based and interpretable: it rises when a player's positive value is concentrated in a small number of strong categories. K-means answers the next question—**what kind of specialist is this?** It is intentionally trained on relative category shape rather than raw talent, so an elite all-around player does not automatically absorb every specialist identity and a lower-Ovr player can still have a clear basketball role.
+
+```{python}
+display(HTML(specialist_kmeans_explainer()))
+```
+
+```{python}
+display(HTML(specialist_cluster_map()))
+```
+
+The model is deterministic. It uses farthest-first centroid initialization instead of random starting points, and the five discovered clusters are assigned one-to-one to the five domain names. Rebuilding the report from the same projection snapshot therefore produces the same subtype assignments.
+
+```{python}
+display(HTML(hierarchy_branch_cards()))
+```
+
+## Team Breakdown
+
+```{python}
+display(HTML(f"""<div class="team-control"><label for="team-selector">Select a Franchise</label><select id="team-selector">{options}</select><span>30 teams · live Phase 1 foundation</span></div><div id="team-panels">{panels}</div>
+<script>(function(){{const selector=document.getElementById('team-selector');const sheets=Array.from(document.querySelectorAll('.team-sheet'));function showTeam(){{sheets.forEach(sheet=>sheet.classList.toggle('is-selected',sheet.dataset.team===selector.value));const url=new URL(window.location.href);url.searchParams.set('team',selector.value);window.history.replaceState({{}},'',url)}}const requested=new URL(window.location.href).searchParams.get('team');if(requested&&sheets.some(sheet=>sheet.dataset.team===requested))selector.value=requested;selector.addEventListener('change',showTeam);showTeam()}})();</script>"""))
+```
+
+## Players
+
+```{python}
+display(HTML(f"""<div class="player-control"><label for="player-selector">Select a Player</label><select id="player-selector">{player_options}</select><span>{len(projected_archetypes)} projected players · 30-team chemistry matrix</span></div><div id="player-profile-root"></div><script type="application/json" id="player-data">{player_data_json}</script>""" + player_app_script))
+```
+
+## Methodology
+
+### Introduction
+
+The **Sports Business Classroom Fantasy Basketball League (SBCFBL)** is a 30-team league founded in 2020 by Sports Business Classroom alumni. It is built to feel more like running an NBA front office than playing a standard fantasy game: every organization has its own identity, manages a deep roster, and competes within a structure inspired by NBA team building and the collective bargaining agreement.
+
+This project asks a question that standings and raw totals cannot answer on their own: **how does a fantasy roster fit together?** Four related questions organize the analysis:
+
+1. How valuable is a player in each scoring category and across the complete matchup?
+2. How likely is a projected roster to defeat an average opponent?
+3. Does that roster convert its category strength into matchup wins efficiently, or is value stranded in categories it is already punting?
+4. Which players are statistically similar, and which roster destinations make the best use of their particular production?
+
+<div class="method-pipeline"><div><span>01</span><strong>Frozen Sources</strong><small>Fantrax · projections · six seasons · NBA schedules</small></div><i>→</i><div><span>02</span><strong>Canonical Data</strong><small>IDs · totals · rates · attempts · roster status</small></div><i>→</i><div><span>03</span><strong>Win Models</strong><small>13 categories · one overall matchup model</small></div><i>→</i><div><span>04</span><strong>Roster Simulation</strong><small>skill · expected score · chemistry · player fit</small></div><i>→</i><div><span>05</span><strong>Player Identity</strong><small>archetypes · specialists · Ward neighbors</small></div></div>
+
+### League Format and Scoring
+
+SBCFBL contains 30 organizations across two conferences and six divisions. Each team plays a **72-game regular season across 36 periods**. A period lasts approximately three to four days, and every team plays **two games simultaneously** during that window.
+
+Scoring is inspired by the United States Electoral College: each basketball category carries a different point value based on its importance to winning. A team earns that category's full weight by defeating its opponent in the category, producing a 413-point scoring system rather than a conventional one-category, one-point format.
+
+```{python}
+scoring = categories[["category", "weight"]].copy()
+scoring["category"] = scoring["category"].replace({"ST": "STL", "TO": "TOV"})
+scoring.loc[scoring["category"].eq("TOV"), "category"] = "TOV*"
+scoring_table = scoring.set_index("category")["weight"].to_frame().T
+scoring_table.index = ["Weight"]
+scoring_table.columns.name = "Category"
+display(scoring_table)
+```
+
+\* **TOV is lower-is-better.** Every other category is higher-is-better. The 13 category weights total **413**.
+
+The unequal weights are central to every downstream output. A one-point increase in the chance of winning PTS is worth six times the same probability change in MP because PTS carries 60 electoral points and MP carries 10. Expected Score therefore stays in the league's natural 413-point language rather than treating all categories as interchangeable.
+
+### Data Sources and Frozen Snapshots
+
+Current rosters, player identities, roster status, eligibility, and league scheduling are loaded from **Fantrax**. Player forecasts come from an external projection provider and are normalized into a common schema, allowing the source website to change without redesigning the analysis. Building an original NBA projection system would be an interesting project by itself, but it would combine two distinct research problems; this project treats external projections as the starting expectation and concentrates on their meaning inside SBCFBL.
+
+League-wide research uses a frozen, one-time snapshot from the sister SBC Streamlit project: six completed seasons of team-period statistics and matchup results, the SBCFBL period calendar, active-player NBA game counts, and the historical NBA schedule. The 2026–27 NBA schedule is also saved locally. Quarto reads processed files and **never refreshes a website while rendering**, so the same source files always produce the same report.
+
+| Source Layer | Grain | Role In The Project |
+|---|---:|---|
+| Fantrax roster export | One player-roster record | Franchise, roster status, eligibility, stable player ID |
+| Projection snapshot | One projected player | Games, minutes, counting totals, shooting makes and attempts |
+| Historical team-period results | One team in one matchup | Category totals, opponent, category outcomes, matchup outcome |
+| SBCFBL period calendar | One scoring period | Period dates and season structure |
+| NBA schedule archive | One NBA game | Actual NBA-game volume inside each SBCFBL period |
+
+### Canonical Player Data Pipeline
+
+Raw files are preserved before cleaning. Player names are display labels, not join keys: projections are reconciled to stable Fantrax IDs using reviewed aliases, then checked for one-to-one matches. NBA team abbreviations are normalized to `PHX`, `CHA`, `SAS`, and `NOP`; `(N/A)` becomes empty. A player without a current NBA team remains visible for roster accounting, but all projection values are set to zero so stale production cannot influence team models.
+
+The projection provider stores FG%, FT%, and 3PT% cells with percentage, makes, and attempts together. Those components are split into numeric fields. Two-point production is reconstructed rather than guessed:
+
+$$2PM = FGM - 3PM \qquad 2PA = FGA - 3PA \qquad 2PT\% = 2PM / 2PA$$
+
+True shooting is recalculated from the underlying volume:
+
+$$TS\% = \frac{PTS}{2 \times (FGA + 0.44 \times FTA)}$$
+
+Season totals remain the modeling source of truth. The roster board converts counting totals to per-game values for readability, while the model retains games, minutes, makes, attempts, and totals for additive roster simulation. Missing or undefined display values are blank rather than presented as false zeroes.
+
+### Historical Matchup Construction
+
+The modeling unit is a **team-matchup observation**. Every completed head-to-head matchup contributes two linked rows—one for each opponent—with binary targets for the overall result and for each category result. Tied category outcomes are excluded from that category's regression because neither team won it. The two rows are not independent, so standard errors are clustered by matchup ID.
+
+NBA opportunity varies by calendar window. To compare a short period with a long one, each historical counting total is converted to a common **24.93-NBA-game environment**, the observed mean across the archived regular-season periods:
+
+$$x_{24.93} = \frac{x_{observed}}{NBA\ games\ in\ period} \times 24.93$$
+
+This adjustment does not claim that one fantasy roster played 24.93 player-games. It controls for how many NBA games were available league-wide during the scoring window, which makes category thresholds comparable across periods.
+
+### Standalone Category-Win Models
+
+One logistic regression is fit for each of the 13 categories. For the nine counting categories—MP, PTS, OREB, DREB, AST, STL, BLK, TOV, and +/-—the only predictor is the category total standardized to 24.93 NBA games. The target is whether the team won that category:
+
+$$P(Y_c=1\mid x_c)=\operatorname{logit}^{-1}(\alpha_c+\beta_c x_c)$$
+
+The coefficient describes direction and steepness; the 50% threshold solves $-\alpha_c/\beta_c$; the odds ratio describes the multiplicative change in win odds from one additional unit. TOV is intentionally reversed: more turnovers should produce a negative coefficient and an odds ratio below 1. Curves are accompanied by observed win rates in 12 equally populated bins so model shape and empirical calibration can be judged together.
+
+### Shooting Categories and Points Gained
+
+Raw percentages ignore volume. A player shooting 50% on two attempts should not move a roster like a player shooting 50% on 500 attempts. TS%, 2PT%, 3PT%, and FT% therefore use **points gained** relative to that season's attempt-weighted league average:
+
+$$PG=(Player\% - League\ Average\%)\times Attempts$$
+
+For 2PT%, 3PT%, and FT%, attempts are 2PA, 3PA, and FTA. TS% uses the scoring denominator $2\times(FGA+0.44\times FTA)$, turning the percentage gap into points scored above or below league-average true-shooting efficiency at the same volume. Player contributions can be added directly to form a team-period value, remain centered near zero league-wide, and distinguish high-volume efficiency from small-sample percentage spikes. Historical shooting points gained is also adjusted to the 24.93-game environment before fitting the four category models.
+
+### Overall Matchup-Win Model
+
+The overall logistic regression uses all 13 category inputs simultaneously. Each is first expressed in the common 24.93-game environment and then z-standardized using the historical training distribution. Standardization makes coefficient magnitude comparable even though the inputs use different units:
+
+$$P(Win)=\operatorname{logit}^{-1}\left(\beta_0+\sum_{c=1}^{13}\beta_c z_c\right)$$
+
+This model estimates **conditional** effects. A shooting coefficient can appear modest when TS%, 2PT%, and 3PT% overlap because it asks what that metric adds after holding the other 12 inputs fixed. That is different from the standalone curve, which asks how often a team wins one category given only its performance in that category. AUC measures ranking ability, Brier score measures probability accuracy, and calibration bins compare predicted probabilities with observed matchup win rates.
+
+### Season-Based Backtesting
+
+Reported out-of-sample performance uses **leave-one-season-out cross-validation**. For each year from 2021 through 2026, every model is refit on the other five seasons and evaluated only on the excluded year. This produces six unseen-season folds for each of the 13 standalone category models and the overall matchup model. Fold predictions are pooled only after every season has served as the holdout.
+
+The transformation logic remains fixed inside each fold: counting totals use the 24.93-game standard, shooting inputs use season-relative points gained, and the overall model learns its feature means, standard deviations, and coefficients from the five training seasons only. The held-out result is never used to fit model coefficients or standardization parameters. Saved outputs include every out-of-sample probability, fold-level results, pooled metrics, and ten-bin calibration tables.
+
+Four metrics answer different questions. AUC measures winner-versus-loser ranking and is insensitive to the chosen probability threshold. Brier score is mean squared probability error. Log loss penalizes confident mistakes more severely. Calibration error is the observation-weighted absolute difference between predicted and observed win rates across probability bands. Reporting all four avoids declaring success from a single favorable statistic.
+
+### Player Category and Overall Ratings
+
+Each player rating is a controlled replacement experiment on an average 15-player roster. One average roster slot represents $24.93\div15=\mathbf{1.662}$ NBA games. For a category, the model removes one-fifteenth of the historical 50% benchmark, adds 1.662 games of the player's projected contribution, and recalculates the category-win probability. Ovr repeats that replacement across all 13 inputs and sends the complete profile through the overall matchup model.
+
+The raw output is a probability change, but the displayed rating is min-max standardized across all projected players:
+
+$$Rating_i=10\times\frac{Impact_i-\min(Impact)}{\max(Impact)-\min(Impact)}$$
+
+That choice deliberately spreads the scouting scale: the best projected player is 10.0 and the worst is 0.0. It is a **relative player scale**, not a claim that a 7.0 player independently has a 70% chance of winning. The underlying probability score is retained in the processed data. Minors receive portable ratings when projections exist, but they are excluded from team aggregation until promoted.
+
+### Team Aggregation and Skill
+
+Team profiles sum every projected player who is **not in the minors**. Active, reserve, and injured-list designations all count because SBCFBL lineups rarely require meaningful bench decisions; the analytical question is the strength of the full usable organization. Each roster is evaluated against an average projected opponent after the current 30-team pool is centered on the historical 50% benchmark.
+
+**Skill Level** is the overall 13-input model's probability of winning that matchup. **Expected Score** is calculated independently by multiplying each standalone category-win probability by its official weight and summing the 13 results:
+
+$$Expected\ Score=\sum_{c=1}^{13}P(Win\ Category_c)\times Weight_c$$
+
+League Rank orders current franchises by Skill Level. The variable-width Category Win Profile uses the same standalone probabilities: bar height is the chance of winning the category, and bar width is the category's share of the 413-point system.
+
+### Team Chemistry and Player Fit
+
+Chemistry measures whether the *combination* of category strengths works better or worse than its parts. First, Expected Score is translated into a historically calibrated baseline matchup probability. The residual is:
+
+$$Chemistry\ Residual=P_{overall\ model}(Win)-P_{score\ baseline}(Win)$$
+
+A positive residual means the full pattern of strengths—often a coherent punt with concentrated advantages—wins more often than the category-by-category score alone would imply. A negative residual means production is distributed in a less efficient way. Team Chemistry converts that residual into a historical percentile and divides by ten. A 5.0 is historically typical; an 8.0 exceeds 80% of completed team-period profiles. Because the reference distribution is fixed history rather than this season's best and worst teams, all 30 current teams can score well simultaneously.
+
+Player Chemistry is a counterfactual roster experiment. A current non-minor player is removed; an outside player or minor-leaguer is added. The change in chemistry residual is calculated for every one of the **405 × 30 = 12,150** player-team destinations, then expressed as a global 0–10 percentile. High chemistry means the player's useful contributions reinforce categories the destination is positioned to win and avoid wasting production in weak categories.
+
+Recommendation **Fit** is intentionally team-specific rather than another talent leaderboard. Within each player's 30 destinations, the chemistry-impact rank receives 65% weight and the Skill-impact rank receives 35%:
+
+$$Fit=10\times(0.65\times Rank_{chemistry}+0.35\times Rank_{skill})$$
+
+Favorite and Least Favorite Teammate use a pairwise second difference:
+
+$$Interaction(A,B)=C(A+B)-C(A)-C(B)+C(neither)$$
+
+Subtracting both standalone effects isolates what is unique about the pair. “Favorite” is the best available interaction, but it can still be negative if every teammate duplicates the same strengths.
+
+### Archetype Membership Scores
+
+Archetypes are explanatory scores, not hard unsupervised clusters. Each projected player receives a 0–100 membership score for eight basketball identities. Season totals capture usable fantasy volume; category breadth measures how many ways a player helps; per-minute quality separates skill from opportunity; shooting, TOV, and +/- capture downside.
+
+| Archetype | Statistical Idea | High Score Means |
+|---|---|---|
+| Do-It-All Superstar | Elite talent + breadth + strong floor + opportunity | Top-end value without meaningful category holes |
+| Star To Build Around | Talent + six-to-eight-category breadth + peak skills | A franchise anchor just below the exclusive superstar tier |
+| Role Player | Balanced middle talent + dependable opportunity + low downside | Stable production that fits many roster shapes |
+| Specialist | Strong peaks + concentrated positive value | Two or three categories can materially swing a matchup |
+| Minute Filler | High opportunity + ordinary rate quality | Accumulation is useful even when efficiency is not |
+| Negative Player | Opportunity + shooting/TOV/+/- downside + low talent | Playing the player can actively damage weighted categories |
+| Bench Warmer | Low opportunity + low rate value | Too little volume or quality to move a matchup |
+| Sleeper | Low opportunity + strong rate quality + peaks | More value could emerge if minutes increase |
+
+The highest eligible score becomes the primary archetype. A secondary is shown only when it is at least 60 and at least 86% of the primary score. Order matters, so `Specialist / Sleeper` is distinct from `Sleeper / Specialist`; eight single labels plus 56 ordered pairs create 64 theoretical core outcomes.
+
+Do-It-All Superstar is an exclusive top tier, never a secondary label. The tier size is constrained to five through ten players based on projection-pool size—seven currently—and candidates need at least seven category ratings of 6.0 or better. The highest-Ovr qualifiers receive the label; everyone else is prevented from using it so Star To Build Around remains meaningfully distinct.
+
+### Specialist K-Means Subtypes
+
+Specialist is one of the eight interpretable membership scores, but a separate five-cluster K-means model describes the *kind* of specialization. Five domain inputs summarize shooting, scoring, playmaking, defense, and interior production. Each player's domain mean is removed before clustering, which strips away general talent level and makes the algorithm focus on shape. Training candidates have a Specialist score of at least 50; inputs are standardized; deterministic farthest-first initialization makes the result reproducible.
+
+The five centroids are assigned one-to-one to Shooting, Scoring, Playmaking, Defensive, and Interior Specialist by maximizing the total centroid-to-domain match across every possible assignment. The subtype adds detail without changing the primary/secondary 64-state framework.
+
+### Ward Hierarchical Similarity
+
+Similarity is intentionally independent from the named archetypes. Its feature matrix includes all 13 category ratings, projected season totals for minutes and counting production, shooting-attempt volume, and per-36 counting production. Every input is standardized; category ratings receive full weight, per-36 features receive 75% weight, and raw totals receive 45% weight. This balances three different questions: what categories does the player help, how much projected production reaches a fantasy roster, and what does the player do when actually on the floor?
+
+Ward agglomerative clustering starts with one player per branch, then repeatedly merges the pair that causes the smallest increase in within-branch variance. The tree is cut at 12 branches for navigation. Nearest statistical neighbors are selected from the same branch whenever at least three candidates exist, using Euclidean distance in the **full weighted feature space**.
+
+The League Overview map uses principal component analysis to compress that feature space into two dimensions. PCA is display-only: dot proximity is a useful overview, but exact branches and neighbors still use all features. The axes are therefore labeled as statistical components, not as “offense,” “defense,” or player quality.
+
+### How To Read The Scales
+
+<div class="scale-guide"><article><strong>Probability</strong><span>0–100%. A direct model estimate of winning a category or matchup against the defined opponent.</span></article><article><strong>Expected Score</strong><span>0–413 points. Weighted sum of the 13 standalone category probabilities.</span></article><article><strong>Player Rating</strong><span>0.0–10.0. Relative min-max position in the current projected player pool.</span></article><article><strong>Chemistry</strong><span>0.0–10.0. Historical percentile of interaction beyond the category baseline.</span></article><article><strong>Percentage Points</strong><span>Absolute change in win probability. +2.0 pp means 50% becomes 52%, not 51%.</span></article><article><strong>Fit</strong><span>0.0–10.0. A player's relative destination rank, emphasizing chemistry over raw Skill impact.</span></article></div>
+
+### Provenance and Reproducibility
+
+- Fantrax raw JSON: `data/raw/fantrax/`
+- Projection raw CSV exports: `data/raw/projections/`
+- Clean current datasets: `data/processed/`
+- Source configuration and reviewed aliases: `config/`
+- Automated ingestion/matching/validation code: `src/fantasy_basketball/`
+- Regression tests: `tests/`
+- Frozen SBCFBL and NBA schedule inputs: `data/raw/sbc_streamlit/`
+- Reusable historical matchup and league-summary tables: `data/processed/`
+
+The original Google Sheet is read-only in this workflow. The source tab is never cleaned in place; each refresh preserves the raw export and produces a new normalized result. Historical league and schedule data are intentionally snapshotted once and remain local, so published results do not drift when the sister application changes.
+
+:::

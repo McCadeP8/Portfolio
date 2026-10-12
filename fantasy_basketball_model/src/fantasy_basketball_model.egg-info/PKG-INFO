@@ -1,0 +1,66 @@
+Metadata-Version: 2.4
+Name: fantasy-basketball-model
+Version: 0.1.0
+Summary: Reproducible Fantrax and projection data foundation for fantasy basketball analysis
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pandas<3,>=2.2
+Requires-Dist: numpy<3,>=2.0
+Requires-Dist: requests<3,>=2.32
+Requires-Dist: openpyxl<4,>=3.1
+Requires-Dist: lxml<7,>=5
+Requires-Dist: pyarrow<22,>=18
+Provides-Extra: dev
+Requires-Dist: pytest<10,>=8; extra == "dev"
+Provides-Extra: reports
+Requires-Dist: jupyter<2,>=1; extra == "reports"
+
+# Fantasy Basketball Analytics
+
+This repository contains the Phase 1 data foundation for the 2026–27 fantasy basketball analytics project. It reuses the successful Fantrax acquisition pattern from the sibling `SBC_Streamlit` app while separating network ingestion, immutable raw snapshots, normalization, validation, player matching, and reporting.
+
+The current Fantrax configuration identifies 30 teams and a 36-period regular-season schedule with two opponents per team per period. The authoritative 13 scoring categories total 413 points. Projection data has not yet been supplied; the pipeline reports that gap and does not invent it.
+
+## Setup
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev,reports]"
+```
+
+## Run Phase 1
+
+```powershell
+fantasy-basketball fetch-fantrax
+fantasy-basketball import-google-projections
+fantasy-basketball import-projections "C:\path\to\hashtag-projections.html" --snapshot-date 2026-10-09
+fantasy-basketball build
+pytest
+quarto render reports/data_audit.qmd
+```
+
+See [docs/input_formats.md](docs/input_formats.md) before adding categories or projections.
+
+## Outputs
+
+- `data/raw/`: timestamped, unchanged source snapshots (ignored by Git)
+- `data/processed/teams.csv`: stable Fantrax team IDs, names, and abbreviations
+- `data/processed/rosters.csv`: current ownership, roster slot, and status
+- `data/processed/schedule.csv`: one row per Fantrax matchup
+- `data/processed/fantrax_players.csv`: NBA-wide Fantrax player identity catalog
+- `data/processed/canonical_player_projections.csv`: roster/player/projection join
+- `data/processed/player_match_exceptions.csv`: unresolved identity suggestions
+- `data/processed/data_quality_issues.csv`: visible validation failures and warnings
+- `reports/data_audit.qmd`: reproducible Quarto HTML audit
+
+## Assumptions and unresolved inputs
+
+- The configured league is the 2026–27 SBCFBL league used by the sibling app.
+- Roster period 1 is the intended preseason/current snapshot. Pass `--period N` to choose another Fantrax period.
+- Fantrax's league-info response defines matchup pairings but does not expose the scoring weights used by this project.
+- The user confirmed that the sibling app's 13 category weights are authoritative and total 413.
+- Hashtag Basketball projections must be supplied by the user as a saved/exported file. No authenticated page is scraped and no unofficial API is assumed.
+- Player eligibility comes from the Fantrax NBA player catalog; assigned roster slots and active/reserve/minors status come from the league roster response.
+
+Phase 1 deliberately excludes ratings, chemistry, clustering, optimization, and simulations.

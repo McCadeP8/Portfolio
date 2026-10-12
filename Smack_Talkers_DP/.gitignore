@@ -6,6 +6,7 @@ __pycache__/
 # Local dependency and working directories
 .app_packages/
 .artifact_work/
+.local_runtime/
 .python_packages/
 .runtime_packages/
 

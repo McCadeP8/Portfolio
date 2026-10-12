@@ -1,0 +1,2 @@
+[console_scripts]
+fantasy-basketball = fantasy_basketball.cli:main

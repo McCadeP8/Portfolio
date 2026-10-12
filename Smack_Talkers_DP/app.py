@@ -1249,15 +1249,21 @@ with tab_pulse:
 
         display = all_play.copy()
         display["Owner"] = display["owner"].map(owner_sample_label)
-        display["Actual W%"] = display["actual_win_pct"].map(pct)
-        display["All-play W%"] = display["all_play_win_pct"].map(pct)
-        display["Wins + median W%"] = display["combined_win_pct"].map(pct)
-        display["Schedule lift"] = display["schedule_luck"].map(lambda value: f"{value:+.1%}")
+        display["Actual W%"] = display["actual_win_pct"] * 100
+        display["All-play W%"] = display["all_play_win_pct"] * 100
+        display["Wins + median W%"] = display["combined_win_pct"] * 100
+        display["Schedule lift"] = display["schedule_luck"] * 100
         display["Avg net vs median"] = display["average_net_points"].round(1)
         st.dataframe(
             display[["Owner", "weeks", "matchups", "Avg net vs median", "Actual W%", "Wins + median W%", "All-play W%", "Schedule lift"]].rename(columns={"weeks": "Scoring weeks", "matchups": "H2H matchups"}),
             hide_index=True,
             width="stretch",
+            column_config={
+                "Actual W%": st.column_config.NumberColumn(format="%.1f%%"),
+                "Wins + median W%": st.column_config.NumberColumn(format="%.1f%%"),
+                "All-play W%": st.column_config.NumberColumn(format="%.1f%%"),
+                "Schedule lift": st.column_config.NumberColumn(format="%+.1f%%"),
+            },
         )
         st.caption("Wins + median W% = (actual H2H result value + above-weekly-median result value) ÷ 2, calculated only where a recorded H2H matchup exists.")
 
@@ -1432,15 +1438,15 @@ with tab_owner_history:
             ledger_display["Team"] = ledger_display["team_name"]
             ledger_display["Result"] = ledger_display["final_result"]
             ledger_display["Record"] = ledger_display["h2h_record"]
-            ledger_display["H2H win %"] = ledger_display["h2h_win_pct"].map(pct)
+            ledger_display["H2H win %"] = ledger_display["h2h_win_pct"] * 100
             ledger_display["All-week points"] = ledger_display["all_season_points"].round(1)
             ledger_display["Points rank"] = ledger_display["all_week_points_rank"].map(ordinal)
             ledger_display["H2H PF"] = ledger_display["h2h_points_for"].round(1)
             ledger_display["H2H PA"] = ledger_display["h2h_points_against"].round(1)
             ledger_display["Avg net vs median"] = ledger_display["average_net_points"].round(1)
-            ledger_display["Lineup efficiency"] = ledger_display["lineup_efficiency"].map(pct)
-            ledger_display["Gross winnings"] = ledger_display["gross_winnings"].map(lambda value: f"${value:,.0f}")
-            ledger_display["Net profit"] = ledger_display["net_profit"].map(lambda value: f"${value:,.0f}")
+            ledger_display["Lineup efficiency"] = ledger_display["lineup_efficiency"] * 100
+            ledger_display["Gross winnings"] = ledger_display["gross_winnings"]
+            ledger_display["Net profit"] = ledger_display["net_profit"]
             st.dataframe(
                 ledger_display[
                     [
@@ -1451,6 +1457,12 @@ with tab_owner_history:
                 ],
                 hide_index=True,
                 width="stretch",
+                column_config={
+                    "H2H win %": st.column_config.NumberColumn(format="%.1f%%"),
+                    "Lineup efficiency": st.column_config.NumberColumn(format="%.1f%%"),
+                    "Gross winnings": st.column_config.NumberColumn(format="$%.0f"),
+                    "Net profit": st.column_config.NumberColumn(format="$%.0f"),
+                },
             )
             best_season = trajectory.dropna(subset=["average_net_points"]).nlargest(1, "average_net_points")
             if not best_season.empty:
@@ -1657,7 +1669,7 @@ with tab_owner_history:
             rivalry_display["Record"] = rivalry_display["record"]
             rivalry_display["Finish record"] = rivalry_display["finish_record"]
             rivalry_display["Points record"] = rivalry_display["points_record"]
-            rivalry_display["Win %"] = rivalry_display["win_pct"].map(pct)
+            rivalry_display["Win %"] = rivalry_display["win_pct"] * 100
             rivalry_display["PF"] = rivalry_display["points_for"].round(1)
             rivalry_display["PA"] = rivalry_display["points_against"].round(1)
             rivalry_display["Margin / game"] = rivalry_display["margin_per_game"].round(1)
@@ -1670,6 +1682,9 @@ with tab_owner_history:
                 ],
                 hide_index=True,
                 width="stretch",
+                column_config={
+                    "Win %": st.column_config.NumberColumn(format="%.1f%%"),
+                },
             )
             st.caption(
                 "All records are W-L-T from the selected owner's perspective. Finish record compares final standings rank; "
@@ -2400,7 +2415,7 @@ with tab_draft:
 
         decay_display = decay_summary.copy()
         decay_display["Owner"] = decay_display["owner"].map(owner_sample_label)
-        decay_display["latest_homegrown_share"] = decay_display["latest_homegrown_share"].map(pct)
+        decay_display["latest_homegrown_share"] = decay_display["latest_homegrown_share"] * 100
         st.dataframe(
             decay_display[
                 [
@@ -2423,6 +2438,9 @@ with tab_draft:
             ),
             hide_index=True,
             width="stretch",
+            column_config={
+                "Latest original share": st.column_config.NumberColumn(format="%.1f%%"),
+            },
         )
 
         st.markdown("### Starter identity")

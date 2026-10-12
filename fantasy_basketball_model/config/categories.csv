@@ -1,0 +1,15 @@
+category,weight,direction
+MP,11,higher
+TS%,41,higher
+2PT%,31,higher
+3PT%,31,higher
+FT%,21,higher
+PTS,61,higher
+OREB,31,higher
+DREB,31,higher
+AST,41,higher
+STL,31,higher
+BLK,31,higher
+TOV,21,lower
++/-,31,higher
+
