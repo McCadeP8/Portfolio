@@ -3035,6 +3035,7 @@ with scoreboard_tab:
             if isinstance(vampire_total, (int, float))
             and isinstance(adjusted_scores.get(creature["name"]), (int, float))
             and vampire_total > adjusted_scores[creature["name"]]
+            and not scoreboard_team_is_eliminated(creature)
             and len(lineups.get(creature["name"], [])) == 9
             and rosters_by_team.get(creature["name"])
             and (creature["name"] != "The Hydra" or hydra_claimable)
