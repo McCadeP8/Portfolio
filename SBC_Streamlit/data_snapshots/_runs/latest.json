@@ -1,15 +1,15 @@
 {
-  "finished_at": "2026-10-12T19:06:15.312663+00:00",
+  "finished_at": "2026-10-13T16:59:30.601695+00:00",
   "live_mode": "shadow",
   "results": [
     {
       "details": {
         "message": "Google Sheet snapshots refreshed with stale-cache fallback"
       },
-      "duration_seconds": 7.771,
-      "finished_at": "2026-10-12T19:04:51.318982+00:00",
+      "duration_seconds": 8.965,
+      "finished_at": "2026-10-13T16:58:16.965926+00:00",
       "name": "sheets",
-      "started_at": "2026-10-12T19:04:43.548274+00:00",
+      "started_at": "2026-10-13T16:58:08.001250+00:00",
       "status": "ok"
     },
     {
@@ -21,10 +21,10 @@
           "get_all_time_standings"
         ]
       },
-      "duration_seconds": 28.265,
-      "finished_at": "2026-10-12T19:05:19.583661+00:00",
+      "duration_seconds": 26.853,
+      "finished_at": "2026-10-13T16:58:43.818733+00:00",
       "name": "league",
-      "started_at": "2026-10-12T19:04:51.319039+00:00",
+      "started_at": "2026-10-13T16:58:16.965984+00:00",
       "status": "ok"
     },
     {
@@ -32,10 +32,10 @@
         "events_seen": 0,
         "message": "no completed ESPN games in lookback"
       },
-      "duration_seconds": 0.309,
-      "finished_at": "2026-10-12T19:05:19.892357+00:00",
+      "duration_seconds": 0.192,
+      "finished_at": "2026-10-13T16:58:44.011259+00:00",
       "name": "espn_boxscores",
-      "started_at": "2026-10-12T19:05:19.583740+00:00",
+      "started_at": "2026-10-13T16:58:43.818804+00:00",
       "status": "skipped"
     },
     {
@@ -43,20 +43,20 @@
         "archives_changed": false,
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/data_snapshots/shots"
       },
-      "duration_seconds": 0.06,
-      "finished_at": "2026-10-12T19:05:19.952644+00:00",
+      "duration_seconds": 0.057,
+      "finished_at": "2026-10-13T16:58:44.068072+00:00",
       "name": "shots",
-      "started_at": "2026-10-12T19:05:19.892450+00:00",
+      "started_at": "2026-10-13T16:58:44.011305+00:00",
       "status": "ok"
     },
     {
       "details": {
         "message": "no indexed games in lookback"
       },
-      "duration_seconds": 0.103,
-      "finished_at": "2026-10-12T19:05:20.055263+00:00",
+      "duration_seconds": 0.093,
+      "finished_at": "2026-10-13T16:58:44.161384+00:00",
       "name": "pbp",
-      "started_at": "2026-10-12T19:05:19.952704+00:00",
+      "started_at": "2026-10-13T16:58:44.068134+00:00",
       "status": "skipped"
     },
     {
@@ -64,10 +64,10 @@
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/sbc_player_matchup_stats.parquet",
         "rows": 119095
       },
-      "duration_seconds": 6.172,
-      "finished_at": "2026-10-12T19:05:26.227608+00:00",
+      "duration_seconds": 6.143,
+      "finished_at": "2026-10-13T16:58:50.304666+00:00",
       "name": "matchups",
-      "started_at": "2026-10-12T19:05:20.055335+00:00",
+      "started_at": "2026-10-13T16:58:44.161455+00:00",
       "status": "ok"
     },
     {
@@ -78,22 +78,22 @@
         "published": false
       },
       "duration_seconds": 0.003,
-      "finished_at": "2026-10-12T19:05:26.230514+00:00",
+      "finished_at": "2026-10-13T16:58:50.307396+00:00",
       "name": "live_shadow",
-      "started_at": "2026-10-12T19:05:26.227721+00:00",
+      "started_at": "2026-10-13T16:58:50.304747+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "bytes": 143768227,
+        "bytes": 143768201,
         "datasets": 19,
         "rows": 7348568,
         "warnings": 0
       },
-      "duration_seconds": 0.153,
-      "finished_at": "2026-10-12T19:05:26.383906+00:00",
+      "duration_seconds": 0.148,
+      "finished_at": "2026-10-13T16:58:50.455191+00:00",
       "name": "validate",
-      "started_at": "2026-10-12T19:05:26.230575+00:00",
+      "started_at": "2026-10-13T16:58:50.307450+00:00",
       "status": "ok"
     },
     {
@@ -105,83 +105,69 @@
         "planned": [],
         "published": [
           {
-            "bytes": 385794,
+            "bytes": 371199,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-overnight-scores-2026-p24.png",
             "kind": "overnight_scores"
           },
           {
-            "bytes": 464579,
+            "bytes": 442228,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-overnight-scores-2026-p24.png",
             "kind": "mobile_overnight_scores"
           },
           {
-            "bytes": 526065,
+            "bytes": 554373,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-matchup-recap-2026_698.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 587862,
+            "bytes": 615495,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-matchup-recap-2026_698.png",
             "kind": "mobile_matchup_recap"
           },
           {
-            "bytes": 468868,
+            "bytes": 502389,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-matchup-recap-2026_711.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 505332,
+            "bytes": 535124,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-matchup-recap-2026_711.png",
             "kind": "mobile_matchup_recap"
           },
           {
-            "bytes": 308845,
+            "bytes": 389839,
             "delivered": 1,
             "destinations": 1,
-            "filename": "sbcfbl-record-lincoln-blk-santi-aldama.png",
-            "kind": "record_leader"
-          },
-          {
-            "bytes": 355362,
-            "delivered": 1,
-            "destinations": 1,
-            "filename": "sbcfbl-record-manchester-gp-yves-missi.png",
-            "kind": "record_leader"
-          },
-          {
-            "bytes": 328803,
-            "delivered": 1,
-            "destinations": 1,
-            "filename": "sbcfbl-record-st. louis-3pt-bobby-portis.png",
+            "filename": "sbcfbl-record-vancouver-ft-keyonte-george.png",
             "kind": "record_leader"
           }
         ],
-        "publishing_date": "2026-01-11",
+        "publishing_date": "2026-01-12",
         "skipped": [],
         "slot": "opening",
         "year": 2026
       },
-      "duration_seconds": 48.928,
-      "finished_at": "2026-10-12T19:06:15.312218+00:00",
+      "duration_seconds": 40.146,
+      "finished_at": "2026-10-13T16:59:30.601284+00:00",
       "name": "fantrax_rotation",
-      "started_at": "2026-10-12T19:05:26.383964+00:00",
+      "started_at": "2026-10-13T16:58:50.455271+00:00",
       "status": "ok"
     }
   ],
   "schema_version": 1,
-  "started_at": "2026-10-12T19:04:43.548102+00:00",
+  "started_at": "2026-10-13T16:58:08.001072+00:00",
   "status": "ok",
-  "target_date": "2026-10-12"
+  "target_date": "2026-10-13"
 }
