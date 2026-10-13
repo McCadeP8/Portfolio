@@ -1,0 +1,1 @@
+"""Generic sports news desk."""

@@ -1,0 +1,7 @@
+printer_name: ""
+paper_size: letter
+orientation: portrait
+duplex: long_edge
+color_mode: grayscale
+copies: 1
+print_automatically: false

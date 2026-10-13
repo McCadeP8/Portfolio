@@ -1,0 +1,1 @@
+"""Enabled sport-desk registry."""

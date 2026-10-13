@@ -1,0 +1,10 @@
+name: Daily
+page_count: 6
+duplex: true
+sections:
+  - front_page
+  - scoreboard
+  - featured_box_scores
+  - standings_and_trends
+  - news_briefing
+  - back_page

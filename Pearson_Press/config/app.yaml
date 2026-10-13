@@ -1,0 +1,10 @@
+publication_name: Pearson Press
+timezone: America/Denver
+default_edition: daily
+default_profile: default
+output_format: pdf
+color_mode: grayscale
+retain_raw_data_days: 30
+archive_editions: true
+provider_discovery: true
+profile_schema_version: 1

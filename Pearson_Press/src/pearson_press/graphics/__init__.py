@@ -1,0 +1,1 @@
+"""Print-safe monochrome visuals."""

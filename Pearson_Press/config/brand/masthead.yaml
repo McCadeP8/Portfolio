@@ -1,0 +1,35 @@
+direction_id: engraved_standard
+direction_name: The Engraved Standard
+status: selected
+
+wordmark:
+  text: PEARSON PRESS
+  case: uppercase
+  alignment: centered
+  character: formal, premium, archival
+  prototype_font: Engravers MT
+  production_font: custom_or_licensed_tbd
+  customization_required: true
+
+front_page:
+  tagline: ESTABLISHED FOR THE FIRST EDITION / READ SLOWLY
+  show_date: true
+  show_edition_name: true
+  show_issue_number: true
+  top_rule: none
+  bottom_rules:
+    - heavy
+    - hairline
+
+inside_pages:
+  compact_wordmark: true
+  section_title_alignment: right
+  page_number_style: two_digits
+  divider_rule: hairline
+
+constraints:
+  monochrome_only: true
+  preserve_clear_space: true
+  no_drop_shadow: true
+  no_outline_effect: true
+  no_artificial_stretching: true

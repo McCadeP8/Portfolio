@@ -1,0 +1,10 @@
+id: fox_news
+display_name: Fox News
+kind: news
+enabled_by_default: false
+capabilities:
+  - world_news
+  - national_news
+authentication: to_be_determined
+attribution_required: true
+licensing_review_required: true

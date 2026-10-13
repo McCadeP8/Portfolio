@@ -1,0 +1,17 @@
+name: Sunday
+minimum_pages: 10
+maximum_pages: 12
+duplex: true
+sections:
+  - front_page
+  - weekly_scoreboard
+  - featured_box_scores
+  - standings_and_playoff_races
+  - week_in_review
+  - team_and_player_trends
+  - long_form_feature
+  - upcoming_week
+  - rankings_and_projections
+  - news_and_weather
+  - history_and_trivia
+  - back_page

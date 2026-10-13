@@ -1,0 +1,11 @@
+tiers:
+  guaranteed: []
+  seasonal: []
+  triggered: []
+  rotating: []
+  sunday_only: []
+rules:
+  avoid_duplicate_stories: true
+  require_source_attribution: true
+  require_fact_validation: true
+  enforce_even_page_count: true

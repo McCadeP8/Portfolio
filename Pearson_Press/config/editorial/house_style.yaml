@@ -1,0 +1,9 @@
+publication: Pearson Press
+voice: concise, factual, lively
+date_style: long
+score_style: away-first
+headline_case: title
+prohibited:
+  - fabricated_quotes
+  - unattributed_claims
+  - copied_article_text

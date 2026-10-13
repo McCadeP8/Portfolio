@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pearson-press"
+version = "0.1.0"
+description = "Automated personal newspaper publishing pipeline"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dashboard = ["streamlit>=1.40"]
+dev = ["pytest", "pytest-cov", "ruff", "mypy"]
+
+[project.scripts]
+pearson-press = "pearson_press.cli:main"
+pearson-press-dashboard = "pearson_press.dashboard.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pearson_press"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

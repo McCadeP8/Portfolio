@@ -1,0 +1,11 @@
+id: official_league_feeds
+display_name: Official League Feeds
+kind: structured_data
+enabled_by_default: true
+capabilities:
+  - scores
+  - schedules
+  - standings
+  - box_scores
+  - league_leaders
+authentication: provider_specific

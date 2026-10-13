@@ -1,0 +1,9 @@
+@media print {
+  * {
+    print-color-adjust: exact;
+  }
+
+  .page {
+    break-after: page;
+  }
+}

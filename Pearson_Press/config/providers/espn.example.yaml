@@ -1,0 +1,13 @@
+id: espn
+display_name: ESPN
+kind: mixed
+enabled_by_default: false
+capabilities:
+  - sports_news
+  - scores
+  - schedules
+  - standings
+  - box_scores
+authentication: to_be_determined
+attribution_required: true
+licensing_review_required: true

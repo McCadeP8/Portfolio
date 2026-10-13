@@ -1,0 +1,47 @@
+schema_version: 1
+profile_id: default
+name: My Pearson Press
+timezone: America/Denver
+locale: en-US
+
+coverage:
+  sports:
+    nba: true
+    nhl: true
+    mlb: true
+    nfl: true
+    ncaaf: true
+    ncaam: true
+    sbc: true
+    generic_sports: true
+  sections:
+    sports_news: true
+    world_news: true
+    local_news: false
+    weather: true
+    fantasy_football: true
+  favorite_teams: []
+  favorite_topics: []
+
+providers:
+  enabled:
+    - official_league_feeds
+  disabled: []
+
+editions:
+  daily:
+    enabled: true
+    page_count: 6
+  sunday:
+    enabled: true
+    minimum_pages: 10
+    maximum_pages: 12
+
+schedule:
+  build_time: "04:00"
+  print_time: "05:00"
+  late_game_policy: mark_in_progress
+
+delivery:
+  pdf_archive: true
+  printer: false

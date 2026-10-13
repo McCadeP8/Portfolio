@@ -1,0 +1,18 @@
+@page {
+  size: Letter portrait;
+  margin: 0.45in;
+}
+
+:root {
+  color-scheme: only light;
+  --ink: #000;
+  --paper: #fff;
+  --shade-light: #eee;
+  --shade-mid: #aaa;
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+}

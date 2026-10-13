@@ -1,0 +1,1 @@
+"""Common fantasy provider interface."""
