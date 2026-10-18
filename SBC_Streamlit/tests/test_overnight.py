@@ -122,8 +122,9 @@ class OvernightTests(unittest.TestCase):
         self.assertEqual(payload["jobs"], ["validate"])
 
     def test_simulated_date_starts_on_december_15_and_keeps_rolling(self):
-        self.assertEqual(simulated_today(date(2026, 9, 15)), date(2025, 12, 15))
-        self.assertEqual(simulated_today(date(2026, 9, 29)), date(2025, 12, 29))
+        self.assertEqual(simulated_today(date(2026, 9, 15), 274), date(2025, 12, 15))
+        self.assertEqual(simulated_today(date(2026, 9, 29), 274), date(2025, 12, 29))
+        self.assertEqual(simulated_today(date(2026, 10, 21)), date(2026, 10, 21))
 
     def test_opening_morning_rotation(self):
         period = RotationPeriod(2026, 34, date(2026, 2, 19), date(2026, 2, 20), date(2026, 2, 19))

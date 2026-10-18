@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Automated personal newspaper publishing pipeline"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["reportlab>=4.2", "pypdf>=5.0", "pyyaml>=6.0", "tzdata", "anthropic>=1.0"]
 
 [project.optional-dependencies]
 dashboard = ["streamlit>=1.40"]

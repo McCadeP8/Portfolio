@@ -25,7 +25,9 @@ BOX_SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS"
 CATEGORIES = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 WEIGHTS = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
 PERCENTAGES = {"TS%", "2PT%", "3PT%", "FT%"}
-SIMULATED_DATE_OFFSET_DAYS = 274
+# Real calendar by default. Set SBC_FANTRAX_DATE_OFFSET_DAYS to replay an older
+# period (274 maps mid-September back to the prior mid-December).
+SIMULATED_DATE_OFFSET_DAYS = 0
 
 
 @dataclass(frozen=True)
@@ -50,7 +52,7 @@ class FantraxPost:
 
 
 def simulated_today(real_today: date | None = None, offset_days: int = SIMULATED_DATE_OFFSET_DAYS) -> date:
-    """Advance from simulated Dec. 15 while the real offseason calendar advances."""
+    """Shift the real date back by offset_days; 0 publishes for the real date."""
     return (real_today or date.today()) - timedelta(days=int(offset_days))
 
 

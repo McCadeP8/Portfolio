@@ -2,9 +2,9 @@ name: Nightly Data Update
 
 on:
   schedule:
-    # 2:20 a.m. and 3:20 a.m. Mountain during daylight-saving time.
-    - cron: "20 8 * * *"
-    - cron: "20 9 * * *"
+    # One run at 14:30 UTC: 8:30 a.m. Mountain in daylight time, 7:30 a.m. after
+    # Nov. 1. GitHub often starts scheduled runs late, so this lands near 9 a.m.
+    - cron: "30 14 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -45,22 +45,14 @@ jobs:
           python -m pip install -r SBC_Streamlit/requirements.txt
 
       - name: Run tests
-        if: ${{ github.event.schedule != '20 8 * * *' }}
         working-directory: SBC_Streamlit
         run: python -m unittest discover -s tests -v
 
-      - name: Publish 2 a.m. Fantrax rotation
-        if: ${{ github.event.schedule == '20 8 * * *' }}
+      - name: Refresh data and publish the Fantrax rotation
         working-directory: SBC_Streamlit
-        run: python -m sbc_backend.jobs.overnight --strict --jobs fantrax_rotation --fantrax-slot overnight
-
-      - name: Refresh data and publish 3 a.m. rotation
-        if: ${{ github.event.schedule != '20 8 * * *' }}
-        working-directory: SBC_Streamlit
-        run: python -m sbc_backend.jobs.overnight --strict --lookback-days 3 --fantrax-slot "${{ github.event_name == 'schedule' && 'opening' || 'all' }}"
+        run: python -m sbc_backend.jobs.overnight --strict --lookback-days 3 --fantrax-slot all
 
       - name: Commit and push updated data
-        if: ${{ github.event.schedule != '20 8 * * *' }}
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
