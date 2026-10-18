@@ -6,6 +6,11 @@ on:
     # Nov. 1. GitHub often starts scheduled runs late, so this lands near 9 a.m.
     - cron: "30 14 * * *"
   workflow_dispatch:
+    inputs:
+      pretend_date:
+        description: Publish the Fantrax posts as if it were this date (YYYY-MM-DD). Leave blank for today.
+        required: false
+        default: ""
 
 concurrency:
   group: sbc-nightly-data-update
@@ -22,7 +27,9 @@ jobs:
       SBC_CURRENT_SBC_YEAR: "2027"
       SBC_LIVE_MODE: shadow
       SBC_RUNTIME_ROOT: .runtime
-      SBC_DISCORD_ROUTING_MODE: primary
+      # split: mobile_* images go to DISCORD_WEBHOOK_URL_MOBILE, the rest to
+      # DISCORD_WEBHOOK_URL_WEB, record announcements to both.
+      SBC_DISCORD_ROUTING_MODE: split
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       DISCORD_WEBHOOK_URLS: ${{ secrets.DISCORD_WEBHOOK_URLS }}
       DISCORD_WEBHOOK_URL_MOBILE: ${{ secrets.DISCORD_WEBHOOK_URL_MOBILE }}
@@ -50,7 +57,15 @@ jobs:
 
       - name: Refresh data and publish the Fantrax rotation
         working-directory: SBC_Streamlit
-        run: python -m sbc_backend.jobs.overnight --strict --lookback-days 3 --fantrax-slot all
+        env:
+          PRETEND_DATE: ${{ inputs.pretend_date }}
+        run: |
+          # A pretend date shifts only the Fantrax posts; the data refresh stays on today.
+          if [[ -n "$PRETEND_DATE" ]]; then
+            export SBC_FANTRAX_DATE_OFFSET_DAYS=$(( ( $(date -u +%s -d "$(date -u +%F)") - $(date -u +%s -d "$PRETEND_DATE") ) / 86400 ))
+            echo "Publishing as $PRETEND_DATE (offset $SBC_FANTRAX_DATE_OFFSET_DAYS days)"
+          fi
+          python -m sbc_backend.jobs.overnight --strict --lookback-days 3 --fantrax-slot all
 
       - name: Commit and push updated data
         run: |
