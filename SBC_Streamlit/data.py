@@ -1,7 +1,8 @@
 from datetime import date, timedelta
 from math import ceil
 
-league_start_date = date(2025, 10, 21)
+# Fantrax roster period 1 (getLeagueInfo rosterPeriods). Update every season.
+league_start_date = date(2026, 10, 20)
 today = date.today() + timedelta(days=0)
 period = max(1, min(163, (today - league_start_date).days + 1))
 

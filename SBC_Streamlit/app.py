@@ -23033,11 +23033,12 @@ if main_page == "Data Checks":
     stepien_check_df = stepien_data_check(dp)
     missing_fantrax, missing_fantrax_watch_df = _fantrax_functions.split_watch_rows(fantrax_players_check(df, ft_players, ft_roster))
     cap_sheet_to_fantrax_df, cap_sheet_watch_df = _fantrax_functions.split_watch_rows(fantrax_roster_check(df, ft_players, ft_roster))
-    positional_check_df = fantrax_positional_check(df, ft_players, ft_roster)
+    positional_check_df, positional_watch_df = _fantrax_functions.split_watch_rows(fantrax_positional_check(df, ft_players, ft_roster))
     # Watch lists are shown but never counted as open issues.
     watch_items = {
         "Pictures": ("Watch list: no NBA headshot exists yet; filled automatically when one appears", picture_watch_df),
         "Cap Sheet To Fantrax Translation": ("Notes: not in Fantrax because they are not on an NBA roster", missing_fantrax_watch_df),
+        "Fantrax Positional Check": ("Notes: open starting slots (allowed, but points left on the table)", positional_watch_df),
         "Cap Sheet To Fantrax Roster": ("Notes: unowned cap sheet rows and players out of the NBA; out-of-NBA players become issues if they sign", cap_sheet_watch_df),
     }
 
@@ -23049,7 +23050,7 @@ if main_page == "Data Checks":
         ("Stepien Rule Broken", "Draft assets that may violate Stepien protections.", stepien_check_df),
         ("Cap Sheet To Fantrax Translation", "Players that do not translate cleanly into Fantrax player data.", missing_fantrax),
         ("Cap Sheet To Fantrax Roster", "Roster mismatches between the cap sheet and Fantrax.", cap_sheet_to_fantrax_df),
-        ("Fantrax Positional Check", "Position eligibility mismatches that need manual review.", positional_check_df),
+        ("Fantrax Positional Check", "Fantrax lineups over the league limits: 1 starter per position, 3 Flex, 6 Reserve, 14 off IR.", positional_check_df),
     ]
     issue_count = sum(0 if table is None else table.shape[0] for _, _, table in check_items)
     clear_count = sum(1 for _, _, table in check_items if table is None or table.shape[0] == 0)

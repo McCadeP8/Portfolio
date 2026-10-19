@@ -2001,60 +2001,60 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: 
     df = df.rename(columns={'Team': 'Cap Sheet Team', 'team_name': 'Fantrax Team', 'Type': 'Cap Sheet Location', 'status': 'Fantrax Location'})
     return df.sort_values(['Issue', 'Cap Sheet Team', 'Player']).reset_index(drop=True)
 
+FANTRAX_DEFAULT_ROSTER_RULES = {
+    "positionConstraints": {"PG": {"maxActive": 1}, "SG": {"maxActive": 1}, "SF": {"maxActive": 1},
+                            "PF": {"maxActive": 1}, "C": {"maxActive": 1}, "Flx": {"maxActive": 3}},
+    "maxTotalPlayers": 14, "maxTotalActivePlayers": 8, "maxTotalReservePlayers": 6,
+}
+
+
+@st.cache_data(ttl=86400)
+def get_fantrax_roster_rules(year: int = current_year) -> dict:
+    """Lineup limits as configured in the Fantrax league (falls back to the known setup)."""
+    league_id = league_ids.get(year)
+    try:
+        response = requests.get(f"https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId={league_id}", timeout=20)
+        response.raise_for_status()
+        rules = response.json().get("rosterInfo") or {}
+        if rules.get("positionConstraints"):
+            return rules
+    except Exception:
+        pass
+    return FANTRAX_DEFAULT_ROSTER_RULES
+
+
 def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
-    df = _ensure_check_columns(df, ['Player', 'Type', 'Team']).copy()
-    # Keep only the fields this check owns. The player feed also includes a
-    # current NBA ``position`` now; allowing it through this merge makes pandas
-    # rename the roster slot to position_x/position_y and breaks the check.
-    ft_players = _ensure_check_columns(ft_players, ['name', 'fantraxId'])[
-        ['name', 'fantraxId']
-    ].copy()
-    ft_rosters = _ensure_check_columns(ft_rosters, ['id', 'position', 'status'])[
-        ['id', 'position', 'status']
-    ].copy()
-    if ft_players['fantraxId'].dropna().empty or ft_rosters['id'].dropna().empty:
-        return pd.DataFrame([{
-            'Team': 'Fantrax data unavailable',
-            'Type': 'Refresh Fantrax data and rerun checks',
-        }])
-    df_players = pd.DataFrame({
-        "Team": list(team_info.keys()),
-        "Active Players": [active_player_n(df, team) for team in team_info.keys()],})
-    df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
-    df = df[df['Type'] == "Active Players"]
-    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
-    df = df.merge(ft_rosters, how='outer', left_on='fantraxId', right_on='id')
+    """Each Fantrax lineup against the league's own roster limits, with the players involved."""
+    ft_rosters = _ensure_check_columns(ft_rosters, ['id', 'position', 'status', 'team_name'])
+    if ft_rosters['id'].dropna().empty:
+        return pd.DataFrame([{'Issue': 'Fantrax data unavailable', 'Team': 'Refresh Fantrax data and rerun checks'}])
+    rules = get_fantrax_roster_rules()
+    ft_players = _ensure_check_columns(ft_players, ['name', 'fantraxId'])
+    names = ft_players.assign(fantraxId=ft_players['fantraxId'].astype(str).str.strip('*')).drop_duplicates('fantraxId').set_index('fantraxId')['name']
+    roster = ft_rosters.copy()
+    roster['Player'] = roster['id'].astype(str).str.strip('*').map(names).fillna(roster['id'].astype(str))
+    rows = []
 
-    df_ir = df[df['status'] == "INJURED_RESERVE"]
-    df_ir = df_ir.groupby(['Team']).size().reset_index(name='Total')
-    df_ir = df_ir.merge(df_players, how='left', left_on='Team', right_on='Team')
-    df_ir['Count'] = df_ir['Active Players'] - df_ir['Total']
-    df_ir = df_ir[df_ir['Count'] > 14]
-    df_ir['Type'] = "IR"
-    df_ir = df_ir[['Team', 'Type']]
+    def add(issue, team, rule, count, limit, players):
+        rows.append({'Issue': issue, 'Team': team, 'Rule': rule, 'Count': int(count), 'Limit': int(limit), 'Players': ", ".join(players)})
 
-    df_starters = df[df['status'] == "ACTIVE"]
-    df_starters = df_starters[df_starters['position'].isin(['PG', 'SG', 'SF', 'PF', 'C'])]
-    df_starters = df_starters.groupby(['Team','position']).size().reset_index(name='Total')
-    df_starters = df_starters[df_starters['Total'] > 1]
-    df_starters['Type'] = "Starters"
-    df_starters = df_starters[['Team', 'Type']]
-
-    df_flex = df[df['status'] == "ACTIVE"]
-    df_flex = df_flex[df_flex['position'] == "Flx"]
-    df_flex = df_flex.groupby(['Team']).size().reset_index(name='Total')
-    df_flex = df_flex[df_flex['Total'] > 3]
-    df_flex['Type'] = "Flex"
-    df_flex = df_flex[['Team', 'Type']]
-
-    df_reserve = df[df['status'] == "RESERVE"]
-    df_reserve = df_reserve.groupby(['Team']).size().reset_index(name='Total')
-    df_reserve = df_reserve[df_reserve['Total'] > 6]
-    df_reserve['Type'] = "Reserve"
-    df_reserve = df_reserve[['Team', 'Type']]
-
-    df = pd.concat([df_ir, df_starters, df_flex, df_reserve], ignore_index=True)
-    return df
+    for team, group in roster.groupby('team_name'):
+        active = group[group['status'] == "ACTIVE"]
+        reserve = group[group['status'] == "RESERVE"]
+        for slot, limit in rules["positionConstraints"].items():
+            in_slot = active[active['position'] == slot]
+            cap = int(limit.get("maxActive", 0))
+            if len(in_slot) > cap:
+                add("Over a starting slot limit", team, f"{slot} starters", len(in_slot), cap, in_slot['Player'])
+            elif len(in_slot) < cap:
+                add(WATCH_ISSUE_PREFIX + "open starting slot", team, f"{slot} starters", len(in_slot), cap, in_slot['Player'])
+        if len(reserve) > rules["maxTotalReservePlayers"]:
+            add("Too many on Reserve", team, "Reserve", len(reserve), rules["maxTotalReservePlayers"], reserve['Player'])
+        healthy = pd.concat([active, reserve])
+        if len(healthy) > rules["maxTotalPlayers"]:
+            add("Too many players off IR/minors", team, "Active + Reserve", len(healthy), rules["maxTotalPlayers"], [])
+    columns = ['Issue', 'Team', 'Rule', 'Count', 'Limit', 'Players']
+    return pd.DataFrame(rows, columns=columns).sort_values(['Issue', 'Team']).reset_index(drop=True)
 
 def current_draft(df: pd.DataFrame, dp: pd.DataFrame, round: str) -> pd.DataFrame:
     required_standings = {"Year", "Period", "Record", "Team"}
