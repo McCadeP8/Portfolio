@@ -79,6 +79,10 @@ def get_data() -> pd.DataFrame:
 def get_pictures() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1180190150"
     df = read_csv_snapshot("player_pictures", csv_url)
+    # Raise instead of returning (and caching) a table the app cannot use.
+    missing = {"Player", "Picture_Online"} - set(df.columns)
+    if missing:
+        raise KeyError(f"player pictures sheet is missing {sorted(missing)}")
     df = df.drop(columns=["Picture"], errors="ignore")
     # Fill players the sheet has no link for with verified ESPN headshots
     # (sbc_backend.pictures, refreshed nightly). Sheet links always win.
@@ -1932,6 +1936,8 @@ def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster:
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
+    # Dead money is marked in the season's contract type (as dead_players reads it).
+    df = df[df.get(f"Type{current_year}", pd.Series("", index=df.index)) != "Dead"]
     df = df[df['Trade.Restriction'] != "Banned"]
     df['_player_key'] = df['Player'].map(normalize_player_key)
     df = df.merge(catalog, how='left', on='_player_key')
@@ -1966,6 +1972,8 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: 
     df['Player'] = df['Player'].replace(cap_sheets_to_fantrax_name_fix)
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
+    # Dead money is marked in the season's contract type (as dead_players reads it).
+    df = df[df.get(f"Type{current_year}", pd.Series("", index=df.index)) != "Dead"]
     df = df[df['Trade.Restriction'] != "Banned"]
     df['_player_key'] = df['Player'].map(normalize_player_key)
     df = df[~df['_player_key'].isin(_fantrax_check_exception_keys())]

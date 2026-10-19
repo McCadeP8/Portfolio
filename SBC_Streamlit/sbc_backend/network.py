@@ -87,6 +87,10 @@ class CachedHttpClient:
         try:
             response = self.session.get(url, timeout=self.timeout_seconds)
             response.raise_for_status()
+            # Google can answer a CSV export with a 200 HTML page (sign-in or
+            # rate-limit). Parsing it would cache a junk table over good data.
+            if "html" in response.headers.get("Content-Type", "").lower() or response.content.lstrip()[:15].lower().startswith((b"<!doctype", b"<html")):
+                raise ValueError(f"expected CSV but received HTML from {url}")
             frame = pd.read_csv(BytesIO(response.content), **read_csv_kwargs)
             atomic_write_parquet(frame, cache_path, row_group_size=row_group_size)
             return frame
