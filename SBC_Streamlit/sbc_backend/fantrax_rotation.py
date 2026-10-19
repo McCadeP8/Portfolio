@@ -3,12 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from io import BytesIO
+import itertools
 import re
 from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import requests
 
 from court_engine import CourtConfig, draw_branded_court
 from data import team_info
@@ -24,6 +26,7 @@ from .matchup_progress import starter_game_progress
 BOX_SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 CATEGORIES = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 WEIGHTS = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
+LINEUP_SLOTS = ["PG", "SG", "SF", "PF", "C"]
 PERCENTAGES = {"TS%", "2PT%", "3PT%", "FT%"}
 # Real calendar by default. Set SBC_FANTRAX_DATE_OFFSET_DAYS to replay an older
 # period (274 maps mid-September back to the prior mid-December).
@@ -405,6 +408,18 @@ class FantraxRotation:
             form[team] = {"Streak": f"{current}{streak_count}", "Last10": last_ten}
         return form
 
+    def _conference_finals_rematch_bonus(self, row: pd.Series) -> float:
+        prior = self.schedule[
+            (pd.to_numeric(self.schedule["Year"], errors="coerce") == self.period.year - 1)
+            & (self.schedule["Round"].astype(str) == "Conference Finals")
+        ]
+        pair = {str(row.get("TeamA")), str(row.get("TeamB"))}
+        for _, final in prior.iterrows():
+            if pair == {str(final["TeamA"]), str(final["TeamB"])}:
+                west = team_info.get(str(final["TeamA"]), {}).get("conf") == "West"
+                return 1000.0 + (1.0 if west else 0.0)
+        return 0.0
+
     def featured(self, slate: pd.DataFrame) -> list[pd.Series]:
         standings = pd.concat([self.standings_table("West"), self.standings_table("East")], ignore_index=True)
         lookup = {str(row["Team"]): {"wins": float(row["wins"]), "losses": float(row["losses"]), "seed": index + 1} for index, row in standings.iterrows()}
@@ -419,6 +434,11 @@ class FantraxRotation:
             bonus = {"Playoffs": 80, "Play-In": 70, "In-Season Tournament": 35}.get(str(row.get("Type")), 0)
             return strength + closeness + race + bonus
         ranked["_rank"] = ranked.apply(rank, axis=1)
+        period = getattr(self, "period", None)
+        if period is not None and period.period == 1 and hasattr(self, "schedule"):
+            # Opening week leads with last season's conference finals rematches,
+            # West first, ahead of anything the 0-0 standings could rank.
+            ranked["_rank"] += ranked.apply(self._conference_finals_rematch_bonus, axis=1)
         featured, reserved_teams = [], set()
         for _, row in ranked.sort_values("_rank", ascending=False).iterrows():
             matchup_teams = {str(row.get("TeamA", "")), str(row.get("TeamB", ""))}
@@ -483,21 +503,84 @@ class FantraxRotation:
     def lineup(self, team: str) -> pd.DataFrame:
         opening_days = self.calendar[(pd.to_numeric(self.calendar["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.calendar["Period"], errors="coerce") == self.period.period)]
         day = int(pd.to_numeric(opening_days["Day"], errors="coerce").min())
-        roster = self.rosters[(pd.to_numeric(self.rosters["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.rosters["period"], errors="coerce") == day) & (self.rosters["status"].astype(str).str.upper() == "ACTIVE")].copy()
-        roster = roster[roster["team_name"].map(_team_key) == team].rename(columns={"id": "fantrax_id", "position": "slot"})
-        roster["fantrax_id"] = roster["fantrax_id"].astype(str)
+        # Best five healthy players: Active + Reserve (not IR or minors), minus
+        # anyone ESPN lists as Out, ranked by per-game production.
+        status = self.rosters["status"].astype(str).str.upper()
+        roster = self.rosters[(pd.to_numeric(self.rosters["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.rosters["period"], errors="coerce") == day) & status.isin(["ACTIVE", "RESERVE"])].copy()
+        roster = roster[roster["team_name"].map(_team_key) == team].rename(columns={"id": "fantrax_id", "position": "fantrax_slot"})
+        roster["fantrax_id"] = roster["fantrax_id"].astype(str).str.strip("*")
         roster = roster.merge(self._bridge, on="fantrax_id", how="left")
+        roster = roster[~roster["espn_player_id"].astype(str).isin(self._out_espn_ids())]
+        values = self._player_values()
+        roster["value"] = roster["espn_player_id"].astype(str).map(values).fillna(0.0)
+        roster = roster.sort_values("value", ascending=False).reset_index(drop=True)
         roster["headshot"] = roster["espn_player_id"].map(lambda value: f"https://a.espncdn.com/i/headshots/nba/players/full/{value}.png" if pd.notna(value) else "")
-        slots, selected = ["PG", "SG", "SF", "PF", "C"], []
-        for slot in slots:
-            candidates = roster[(roster["slot"].astype(str).str.upper() == slot) & (~roster.index.isin(selected))]
-            if candidates.empty:
-                candidates = roster[~roster.index.isin(selected)]
-            if not candidates.empty:
-                selected.append(candidates.index[0])
-        result = roster.loc[selected].head(5).copy()
-        result["slot"] = slots[:len(result)]
+        eligibility = self._eligible_positions()
+        eligible = [set(eligibility.get(fid, [])) for fid in roster["fantrax_id"]]
+        picks = self._best_position_assignment(roster["value"].tolist(), eligible)
+        result = roster.loc[[index for index in picks if index is not None]].copy()
+        result["slot"] = [slot for slot, index in zip(LINEUP_SLOTS, picks) if index is not None]
         return result
+
+    @staticmethod
+    def _best_position_assignment(values: list[float], eligible: list[set[str]], pool: int = 10) -> list[int | None]:
+        """One player per PG/SG/SF/PF/C maximizing total value. A player may only fill a
+        position they are eligible for; a slot nobody can fill takes the best leftover."""
+        candidates = list(range(min(pool, len(values))))
+        best, best_total = [None] * len(LINEUP_SLOTS), -1.0
+        for combo in itertools.permutations(candidates + [None] * len(LINEUP_SLOTS), len(LINEUP_SLOTS)):
+            if any(index is not None and slot not in eligible[index] for slot, index in zip(LINEUP_SLOTS, combo)):
+                continue
+            total = sum(values[index] for index in combo if index is not None)
+            if total > best_total:
+                best, best_total = list(combo), total
+        used = {index for index in best if index is not None}
+        leftovers = iter(index for index in range(len(values)) if index not in used)
+        return [index if index is not None else next(leftovers, None) for index in best]
+
+    def _ranking_window(self) -> tuple[int, date | None]:
+        """Last season's numbers through Nov. 30, this season's from Dec. 1."""
+        season_start_year = self.period.year - 1
+        if self.as_of <= date(season_start_year, 11, 30):
+            return self.period.year - 1, None
+        return self.period.year, self.as_of
+
+    def _player_values(self) -> dict[str, float]:
+        if getattr(self, "_values_cache", None) is None:
+            sbc_year, through = self._ranking_window()
+            box = self.boxscores[pd.to_numeric(self.boxscores["sbc_year"], errors="coerce") == sbc_year].copy()
+            if through is not None:
+                box = box[pd.to_datetime(box["Date"], errors="coerce").dt.date < through]
+            stat = lambda column: pd.to_numeric(box.get(column), errors="coerce").fillna(0)
+            box["_value"] = (stat("PTS") + 1.2 * (stat("OREB") + stat("DREB")) + 1.5 * stat("AST")
+                             + 3 * stat("ST") + 3 * stat("BLK") - stat("TO"))
+            self._values_cache = box.groupby(box["nba_player_id"].astype(str).str.replace(r"\.0$", "", regex=True))["_value"].mean().to_dict()
+        return self._values_cache
+
+    def _out_espn_ids(self) -> set[str]:
+        """ESPN ids listed as Out on today's NBA injury report (empty if unavailable)."""
+        if getattr(self, "_out_cache", None) is None:
+            self._out_cache = set()
+            try:
+                response = requests.get("https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries", timeout=20)
+                response.raise_for_status()
+                for team_report in response.json().get("injuries", []):
+                    for injury in team_report.get("injuries", []):
+                        if str(injury.get("status", "")).casefold() == "out":
+                            match = re.search(r"/id/(\d+)", str((injury.get("athlete", {}).get("links") or [{}])[0].get("href", "")))
+                            if match:
+                                self._out_cache.add(match.group(1))
+            except (requests.RequestException, ValueError):
+                pass
+        return self._out_cache
+
+    def _eligible_positions(self) -> dict[str, list[str]]:
+        if getattr(self, "_positions_cache", None) is None:
+            path = self.root / "fantrax_player_history.csv"
+            table = pd.read_csv(path, dtype=str) if path.exists() else pd.DataFrame(columns=["fantraxId", "position"])
+            latest = table.dropna(subset=["position"]).drop_duplicates("fantraxId", keep="last")
+            self._positions_cache = {fid: [p.strip() for p in pos.split(",")] for fid, pos in zip(latest["fantraxId"], latest["position"])}
+        return self._positions_cache
 
     def _uniform_config(self, team: str, edition: str) -> tuple[JerseyConfig, str]:
         path = self.root / "jersey_team_configs.csv"

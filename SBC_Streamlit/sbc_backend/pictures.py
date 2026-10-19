@@ -61,6 +61,28 @@ def _headshot_exists(session: requests.Session, espn_id: str) -> bool:
     return session.head(HEADSHOT_URL.format(espn_id), timeout=15).status_code == 200
 
 
+def espn_portrait(session: requests.Session, espn_id: str) -> str:
+    """ESPN's transparent landscape PNG as a white-background portrait JPEG data URI,
+    matching Basketball-Reference headshots (transparent pixels render black in
+    Streamlit image cells and dark themes)."""
+    from io import BytesIO
+    import base64
+    from PIL import Image
+
+    response = session.get(HEADSHOT_URL.format(espn_id), timeout=20)
+    response.raise_for_status()
+    image = Image.open(BytesIO(response.content)).convert("RGBA")
+    flat = Image.new("RGB", image.size, (255, 255, 255))
+    flat.paste(image, mask=image.getchannel("A"))
+    width, height = flat.size
+    crop_width = min(width, round(height * 2 / 3))
+    left = (width - crop_width) // 2
+    portrait = flat.crop((left, 0, left + crop_width, height)).resize((160, 240), Image.LANCZOS)
+    buffer = BytesIO()
+    portrait.save(buffer, "JPEG", quality=85, optimize=True)
+    return "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
 def _read_table(root: Path) -> pd.DataFrame:
     path = root / AUTO_PICTURES_FILE
     return pd.read_csv(path, dtype=str) if path.exists() else pd.DataFrame(columns=COLUMNS)
@@ -86,6 +108,14 @@ def resolve_missing_pictures(players: list[str], root: Path = PROJECT_ROOT, paus
     """Resolve players without pictures and merge the hits into the auto file."""
     known = _known_espn_ids(root)
     existing = read_auto_pictures(root)
+    # Older rows stored ESPN's raw transparent URL; convert them in place.
+    session = requests.Session()
+    raw = existing["Picture_Online"].astype(str).str.startswith("http")
+    for index in existing.index[raw]:
+        try:
+            existing.loc[index, "Picture_Online"] = espn_portrait(session, str(existing.loc[index, "espn_player_id"]).replace(".0", ""))
+        except (requests.RequestException, OSError):
+            pass
     done = set(existing["Player"].map(player_key))  # pending players are retried
     session = requests.Session()
     added, unresolved = [], []
@@ -97,7 +127,7 @@ def resolve_missing_pictures(players: list[str], root: Path = PROJECT_ROOT, paus
             espn_id, source = _search_espn_id(session, name), "espn_search"
             time.sleep(pause)
         if espn_id and _headshot_exists(session, espn_id):
-            added.append({"Player": name, "Picture_Online": HEADSHOT_URL.format(espn_id), "espn_player_id": espn_id, "Source": source})
+            added.append({"Player": name, "Picture_Online": espn_portrait(session, espn_id), "espn_player_id": espn_id, "Source": source})
         else:
             unresolved.append(name)
     pending = [{"Player": name, "Picture_Online": "", "espn_player_id": "", "Source": PENDING} for name in unresolved]

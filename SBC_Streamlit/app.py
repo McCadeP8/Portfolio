@@ -23026,6 +23026,21 @@ if main_page == "About":
     '''
 
 if main_page == "Data Checks":
+    # The need_* flags come from session state read before the nav radio
+    # renders; Streamlit can drop that key for a run, so the flags may say
+    # "Overview" while the radio says Data Checks. Load what this page needs.
+    if df.empty:
+        df = load_required_data("Cap sheet data", get_data)
+    if not {"Player", "Picture_Online"}.issubset(pics.columns):
+        pics = load_required_data("Player pictures", get_pictures)
+    if base_cap.empty:
+        base_cap = load_required_data("Base cap", get_base_cap)
+    if dp.empty:
+        dp = load_required_data("Draft picks", get_draft_picks)
+    if ft_roster.empty:
+        ft_roster = load_optional_data("Fantrax rosters", lambda: get_fantrax_roster(current_year, period))
+    if "fantraxId" not in ft_players.columns or ft_players["fantraxId"].dropna().empty:
+        ft_players = ensure_columns(load_optional_data("Fantrax players", get_fantrax_players), ["name", "fantraxId"])
     picture_check, picture_watch_df = _fantrax_functions.split_watch_rows(data_picture_check(df, pics))
     roster_n_check = data_roster_check(df)
     missing_salary_check = data_missing_salary_check(df)
