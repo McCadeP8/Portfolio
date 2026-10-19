@@ -19,6 +19,7 @@ import json
 import altair as alt
 import unicodedata
 import re
+import difflib
 from matplotlib import font_manager
 from PIL import Image, ImageColor, ImageDraw, ImageFont
 from data import current_salary_cap, current_luxury_tax, current_apron_1, current_apron_2, tax_bracket_increment, league_ratio, columns_order, current_year, year_offset, team_info, cap_sheets_to_fantrax_name_fix, minimum_sal, max_minimum, league_ids, team_id_history, stat_to_scipId, today
@@ -79,6 +80,17 @@ def get_pictures() -> pd.DataFrame:
     csv_url = "https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1180190150"
     df = read_csv_snapshot("player_pictures", csv_url)
     df = df.drop(columns=["Picture"], errors="ignore")
+    # Fill players the sheet has no link for with verified ESPN headshots
+    # (sbc_backend.pictures, refreshed nightly). Sheet links always win.
+    from sbc_backend.pictures import read_auto_pictures
+    auto = read_auto_pictures(include_placeholders=True)[["Player", "Picture_Online"]]
+    if not auto.empty and "Player" in df.columns:
+        if "Picture_Online" not in df.columns:
+            df["Picture_Online"] = pd.NA
+        blank = df["Picture_Online"].isna() | df["Picture_Online"].astype(str).str.strip().eq("")
+        has_link = set(df.loc[~blank, "Player"])
+        auto = auto[~auto["Player"].isin(has_link)]
+        df = pd.concat([df[~(blank & df["Player"].isin(auto["Player"]))], auto], ignore_index=True)
     return df
 
 
@@ -1489,11 +1501,14 @@ def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def data_picture_check(df: pd.DataFrame, pics: pd.DataFrame) -> pd.DataFrame:
-    df = df.merge(pics[['Player', 'Picture_Online']], on='Player', how='left')
-    df = df[df['Picture_Online'].isna()]
-    df = df[['Player', 'Picture_Online']]
-    df = df.rename(columns={'Picture_Online': 'Picture'})
-    return df
+    """Issue: a player who shows no picture. Note: a player showing the silhouette."""
+    from sbc_backend.pictures import PLACEHOLDER_PICTURE
+    df = df.merge(pics[['Player', 'Picture_Online']].drop_duplicates('Player'), on='Player', how='left')
+    blank = df['Picture_Online'].isna() | df['Picture_Online'].astype(str).str.strip().eq('')
+    placeholder = df['Picture_Online'].eq(PLACEHOLDER_PICTURE)
+    df = df[blank | placeholder][['Player']].drop_duplicates().copy()
+    df.insert(0, 'Issue', np.where(placeholder.loc[df.index], WATCH_ISSUE_PREFIX + "silhouette until an NBA headshot exists; retried nightly", "No picture"))
+    return df.reset_index(drop=True)
 
 def data_roster_check(df: pd.DataFrame) -> pd.DataFrame:
     df = pd.DataFrame({
@@ -1514,7 +1529,9 @@ def data_missing_salary_check(df: pd.DataFrame) -> pd.DataFrame:
     type_long = df.melt(id_vars = ["Team", "Player"], value_vars = type_cols, var_name = "Year",  value_name = "Type")
     type_long["Year"] = type_long["Year"].str.replace("Type", "", regex=False)
     long_df = salary_long.merge(type_long,on=["Team", "Player", "Year"], how="left")
-    df = long_df[long_df["Type"].notna() & long_df["Salary"].isna()]
+    # get_data() pads years the sheet does not have yet with "" types; blank is not a contract.
+    has_type = long_df["Type"].notna() & long_df["Type"].astype(str).str.strip().ne("")
+    df = long_df[has_type & long_df["Salary"].isna()]
     return df
 
 def hard_cap_check(df: pd.DataFrame, base_cap: pd.DataFrame) -> str:
@@ -1878,8 +1895,31 @@ def _fantrax_identity_catalog(ft_players: pd.DataFrame) -> pd.DataFrame:
     return catalog[catalog['_player_key'].isin(safe_keys)].drop_duplicates('_player_key')
 
 
+WATCH_ISSUE_PREFIX = "Watch: "
+
+
+def fantrax_check_exceptions() -> pd.DataFrame:
+    """Cap sheet players Fantrax will not carry (college, G League, out of the NBA)."""
+    path = Path(__file__).resolve().parent / "fantrax_check_exceptions.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=['Player', 'Team', 'Reason', 'Review'])
+    return pd.read_csv(path)
+
+
+def _fantrax_check_exception_keys() -> set:
+    return set(fantrax_check_exceptions()['Player'].dropna().map(normalize_player_key))
+
+
+def split_watch_rows(check_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Separate counted issues from awareness-only watch rows."""
+    if check_df is None or 'Issue' not in check_df.columns:
+        return check_df, pd.DataFrame()
+    watch = check_df['Issue'].astype(str).str.startswith(WATCH_ISSUE_PREFIX)
+    return check_df[~watch].reset_index(drop=True), check_df[watch].reset_index(drop=True)
+
+
 def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
-    df = _ensure_check_columns(df, ['Player', 'Trade.Restriction']).copy()
+    df = _ensure_check_columns(df, ['Player', 'Trade.Restriction', 'Team']).copy()
     catalog = _fantrax_identity_catalog(ft_players)
     if catalog.empty:
         return pd.DataFrame([{
@@ -1895,10 +1935,22 @@ def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster:
     df = df[df['Trade.Restriction'] != "Banned"]
     df['_player_key'] = df['Player'].map(normalize_player_key)
     df = df.merge(catalog, how='left', on='_player_key')
-    df = df[df['fantraxId'].isna()]
-    df = df.rename(columns={'name': 'Fantrax Name'})
-    df = df.rename(columns={'fantraxId': 'Fantrax ID'})
-    return df[['Cap Sheet Name', 'Fantrax Name', 'Fantrax ID']].drop_duplicates().reset_index(drop=True)
+    df = df[df['fantraxId'].isna()][['Cap Sheet Name', 'Team', '_player_key']].drop_duplicates('Cap Sheet Name').copy()
+    # Fantrax carries every NBA player, so a miss is either a spelling problem
+    # (a near-identical Fantrax name exists: an issue) or a player outside the
+    # NBA (college, G League, overseas: a note).
+    keys = catalog['_player_key'].tolist()
+    names = dict(zip(catalog['_player_key'], catalog['name']))
+    ids = dict(zip(catalog['_player_key'], catalog['fantraxId']))
+    close = df['_player_key'].map(lambda key: next(iter(difflib.get_close_matches(key, keys, n=1, cutoff=0.85)), None))
+    df['Fantrax Name'] = close.map(names)
+    df['Fantrax ID'] = close.map(ids)
+    reasons = fantrax_check_exceptions()
+    reasons = dict(zip(reasons['Player'].map(normalize_player_key), reasons['Reason']))
+    df['Note'] = df['_player_key'].map(reasons)
+    df['Issue'] = np.where(close.notna(), "Possible spelling mismatch with Fantrax", WATCH_ISSUE_PREFIX + "not in Fantrax; not on an NBA roster")
+    df = df.rename(columns={'Team': 'Cap Sheet Team'})
+    return df[['Issue', 'Cap Sheet Name', 'Cap Sheet Team', 'Fantrax Name', 'Fantrax ID', 'Note']].reset_index(drop=True)
 
 def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: pd.DataFrame) -> pd.DataFrame:
     df = _ensure_check_columns(df, ['Player', 'Trade.Restriction', 'Type']).copy()
@@ -1915,14 +1967,31 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: 
     df = df[df['Player'] != "Minimum Salary Penalty"]
     df = df[df['Trade.Restriction'] != "Dead"]
     df = df[df['Trade.Restriction'] != "Banned"]
-    df = df.merge(ft_players, how='left', left_on='Player', right_on='name')
-    df = df.merge(ft_roster, how='outer', left_on='fantraxId', right_on='id')
+    df['_player_key'] = df['Player'].map(normalize_player_key)
+    df = df[~df['_player_key'].isin(_fantrax_check_exception_keys())]
+    # Same normalized matching as the translation check, so "Jr." and accents
+    # do not split one player into two mismatches.
+    catalog = _fantrax_identity_catalog(ft_players)[['_player_key', 'fantraxId']]
+    df = df.merge(catalog, how='left', on='_player_key')
+    roster = ft_roster[['id', 'team_name', 'status']].copy()
+    roster['id'] = roster['id'].astype(str).str.strip().str.strip('*')
+    df = df.merge(roster, how='outer', left_on='fantraxId', right_on='id')
+    names = ft_players.assign(fantraxId=ft_players['fantraxId'].astype(str).str.strip().str.strip('*')).drop_duplicates('fantraxId').set_index('fantraxId')['name']
+    df['Player'] = df['Player'].fillna(df['id'].map(names))
+    nba_teams = ft_players.assign(fantraxId=ft_players['fantraxId'].astype(str).str.strip().str.strip('*')).drop_duplicates('fantraxId').set_index('fantraxId').get('team', pd.Series(dtype=str))
+    df['NBA Team'] = df['fantraxId'].fillna(df['id']).map(nba_teams).replace({'(N/A)': pd.NA, '': pd.NA})
     df['status2'] = df['status'].apply(lambda x: "Non-Active Players" if x == "MINORS" else "Active Players")
     df = df[df['Type'] != df["status2"]]
-    df = df[['Player', 'team_name', 'Type', 'status']]
-    df = df.rename(columns={'Type': 'Cap Sheet Location'})
-    df = df.rename(columns={'status': 'Fantrax Locatoin'})
-    return df
+    # Out-of-NBA players Fantrax no longer rosters are fine; they move to a watch
+    # list and come back as real issues the moment they have an NBA team again.
+    df['Issue'] = np.select(
+        [df['Type'].notna() & df['Team'].isna(), df['status'].isna() & df['NBA Team'].isna(), df['status'].isna(), df['Type'].isna()],
+        [WATCH_ISSUE_PREFIX + "no SBC team on the cap sheet (unowned)", WATCH_ISSUE_PREFIX + "out of the NBA, not in Fantrax", "Has an NBA team, not on a Fantrax roster", "On a Fantrax roster, not on the cap sheet"],
+        "Active/minors location differs",
+    )
+    df = df[['Issue', 'Player', 'Team', 'NBA Team', 'team_name', 'Type', 'status']]
+    df = df.rename(columns={'Team': 'Cap Sheet Team', 'team_name': 'Fantrax Team', 'Type': 'Cap Sheet Location', 'status': 'Fantrax Location'})
+    return df.sort_values(['Issue', 'Cap Sheet Team', 'Player']).reset_index(drop=True)
 
 def fantrax_positional_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_rosters: pd.DataFrame) -> pd.DataFrame:
     df = _ensure_check_columns(df, ['Player', 'Type', 'Team']).copy()

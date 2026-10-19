@@ -217,7 +217,8 @@ class FantraxRotation:
         box["_key"] = box["player_name"].map(_normalize_name)
         unique = box.groupby("_key")["nba_player_id"].nunique()
         box = box[box["_key"].isin(unique[unique == 1].index)]
-        bridge = players.merge(box, on="_key", how="inner").rename(columns={"nba_player_id": "espn_player_id"})
+        # Left join: rookies have no box scores yet but still need their names.
+        bridge = players.merge(box, on="_key", how="left").rename(columns={"nba_player_id": "espn_player_id"})
         overrides = self.root / "player_id_overrides.csv"
         if overrides.exists():
             fixed = pd.read_csv(overrides).rename(columns={"fantraxId": "fantrax_id", "fantrax_name": "display_player"})
@@ -225,7 +226,8 @@ class FantraxRotation:
             fixed["fantrax_id"] = fixed["fantrax_id"].astype(str)
             bridge = bridge[~bridge["fantrax_id"].isin(fixed["fantrax_id"])]
             bridge = pd.concat([bridge, fixed], ignore_index=True, sort=False)
-        bridge["espn_player_id"] = bridge["espn_player_id"].astype(str)
+        ids = bridge["espn_player_id"]
+        bridge["espn_player_id"] = ids.where(ids.isna(), ids.astype(str).str.replace(r"\.0$", "", regex=True))
         return bridge[["fantrax_id", "display_player", "espn_player_id"]].drop_duplicates("fantrax_id")
 
     def matchup_rows(self, matchup: pd.Series | dict, through: date | None = None) -> pd.DataFrame:
@@ -326,7 +328,17 @@ class FantraxRotation:
         year = self.period.year if self.period else 0
         eligible = self.standings[(pd.to_numeric(self.standings["Year"], errors="coerce") == year) & (pd.to_numeric(self.standings["Period"], errors="coerce") <= through_period)].copy()
         if eligible.empty:
-            return self.standings
+            # Before the first period completes, every team starts this season at 0-0.
+            # Never fall back to the full multi-season table: that repeats teams.
+            season = self.standings[pd.to_numeric(self.standings["Year"], errors="coerce") == year]
+            if season.empty:
+                return season.copy()
+            first = pd.to_numeric(season["Period"], errors="coerce").min()
+            opening = season[pd.to_numeric(season["Period"], errors="coerce") == first].drop_duplicates("Team").copy()
+            for column in ("Record", "ConfRecord", "DivRecord", "GSRecord"):
+                if column in opening.columns:
+                    opening[column] = "0-0"
+            return opening
         chosen = int(pd.to_numeric(eligible["Period"], errors="coerce").max())
         return eligible[pd.to_numeric(eligible["Period"], errors="coerce") == chosen]
 
@@ -423,10 +435,8 @@ class FantraxRotation:
         source_year = self.period.year
         stats = self.team_stats[(stats_years == source_year) & (stats_periods < self.period.period)].copy()
         if stats.empty:
-            prior_years = stats_years[stats_years < self.period.year]
-            if not prior_years.empty:
-                source_year = int(prior_years.max())
-                stats = self.team_stats[stats_years == source_year].copy()
+            # No completed period this season yet: show zeros, not last season's numbers.
+            return {team: {**{category: 0.0 for category in CATEGORIES}, "FPPG": 0.0} for team in teams}
         schedule = self.schedule[
             (pd.to_numeric(self.schedule["Year"], errors="coerce") == source_year)
             & (

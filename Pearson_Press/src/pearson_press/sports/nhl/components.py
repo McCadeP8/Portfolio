@@ -59,6 +59,7 @@ class NHLTeamBox:
     team_stats: Mapping[str, str | int]
     period_scores: tuple[int, ...]
     headline_name: str | None = None
+    goalies: tuple = ()  # everyone who played in net; the record holder first
 
 
 @dataclass(frozen=True)
@@ -230,13 +231,26 @@ def _draw_goalies(pdf: Canvas, game: NHLSimpleBoxScore, x: float, top: float, wi
         pdf.setLineWidth(0.18)
         pdf.line(left, top - 1.6 * spacing, right, top - 1.6 * spacing)
         top -= 5.6 * spacing
-        goalie = team.goalie
-        _fit_text(pdf, goalie.name, left, top, name_edge - left - 1.5, "Helvetica", 4.4)
-        values = (goalie.strength_saves, goalie.shots_against, goalie.save_pct, goalie.time_on_ice)
-        pdf.setFont("Helvetica", 4.35)
-        for edge, value in zip(edges, values, strict=True):
-            pdf.drawRightString(edge, top, str(value))
-        top -= 5.1 * spacing
+        goalies = list(team.goalies) or [team.goalie]
+        for goalie in goalies:
+            _fit_text(pdf, goalie.name, left, top, name_edge - left - 1.5, "Helvetica", 4.4)
+            values = (goalie.strength_saves, goalie.shots_against, goalie.save_pct, goalie.time_on_ice)
+            pdf.setFont("Helvetica", 4.35)
+            for edge, value in zip(edges, values, strict=True):
+                pdf.drawRightString(edge, top, str(value))
+            top -= 5.1 * spacing
+        if len(goalies) > 1:
+            # A pulled goalie: the team total, like an NFL passing total.
+            es = sum(g.even_strength_saves for g in goalies)
+            pp = sum(g.power_play_saves for g in goalies)
+            sh = sum(g.short_handed_saves for g in goalies)
+            sa = sum(g.shots_against for g in goalies)
+            pct = f"{(es + pp + sh) / sa:.3f}".lstrip("0") if sa else "-"
+            pdf.setFont("Helvetica-Bold", 4.35)
+            pdf.drawString(left, top, "Total")
+            for edge, value in zip(edges, (f"{es}-{pp}-{sh}-{es + pp + sh}", sa, pct, ""), strict=True):
+                pdf.drawRightString(edge, top, str(value))
+            top -= 5.1 * spacing
     return top
 
 

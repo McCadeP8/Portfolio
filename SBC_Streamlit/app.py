@@ -22478,10 +22478,13 @@ def render_about_rule_card(title, items, accent="blue"):
     """)
 
 
-def render_check_card(title, description, check_df):
+def render_check_card(title, description, check_df, watch_label=None, watch_df=None):
     count = 0 if check_df is None else check_df.shape[0]
+    watch_count = 0 if watch_df is None else watch_df.shape[0]
     status = "clear" if count == 0 else "issue"
     status_text = "Clear" if count == 0 else f"{count} issues"
+    if watch_count:
+        status_text += f" · {watch_count} watching"
     render_html(f"""
         <section class="sbc-check-card sbc-check-{status}">
             <div class="sbc-check-top">
@@ -22496,6 +22499,9 @@ def render_check_card(title, description, check_df):
     if count > 0:
         with st.expander(f"Review {title}", expanded=False):
             st.dataframe(check_df, width="stretch", hide_index=True)
+    if watch_count:
+        with st.expander(f"{watch_label} ({watch_count})", expanded=False):
+            st.dataframe(watch_df, width="stretch", hide_index=True)
 
 
 if main_page == "League Hub" and selected_league_page == "History" and selected_history_page == "Awards" and selected_awards_page == "Award Count":
@@ -23020,14 +23026,20 @@ if main_page == "About":
     '''
 
 if main_page == "Data Checks":
-    picture_check = data_picture_check(df, pics)
+    picture_check, picture_watch_df = _fantrax_functions.split_watch_rows(data_picture_check(df, pics))
     roster_n_check = data_roster_check(df)
     missing_salary_check = data_missing_salary_check(df)
     hard_cap_check_df = hard_cap_check(df, base_cap)
     stepien_check_df = stepien_data_check(dp)
-    missing_fantrax = fantrax_players_check(df, ft_players, ft_roster)
-    cap_sheet_to_fantrax_df = fantrax_roster_check(df, ft_players, ft_roster)
+    missing_fantrax, missing_fantrax_watch_df = _fantrax_functions.split_watch_rows(fantrax_players_check(df, ft_players, ft_roster))
+    cap_sheet_to_fantrax_df, cap_sheet_watch_df = _fantrax_functions.split_watch_rows(fantrax_roster_check(df, ft_players, ft_roster))
     positional_check_df = fantrax_positional_check(df, ft_players, ft_roster)
+    # Watch lists are shown but never counted as open issues.
+    watch_items = {
+        "Pictures": ("Watch list: no NBA headshot exists yet; filled automatically when one appears", picture_watch_df),
+        "Cap Sheet To Fantrax Translation": ("Notes: not in Fantrax because they are not on an NBA roster", missing_fantrax_watch_df),
+        "Cap Sheet To Fantrax Roster": ("Notes: unowned cap sheet rows and players out of the NBA; out-of-NBA players become issues if they sign", cap_sheet_watch_df),
+    }
 
     check_items = [
         ("Pictures", "Players missing image links or mapped headshots.", picture_check),
@@ -23073,7 +23085,7 @@ if main_page == "Data Checks":
         cols = st.columns(2)
         for col, (title, description, table) in zip(cols, check_items[idx:idx + 2]):
             with col:
-                render_check_card(title, description, table)
+                render_check_card(title, description, table, *watch_items.get(title, (None, None)))
 
 
 render_data_updated_at()

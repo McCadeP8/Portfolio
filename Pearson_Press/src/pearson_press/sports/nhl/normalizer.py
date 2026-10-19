@@ -15,6 +15,33 @@ def _seconds(clock: str) -> int:
     return e.to_int(minutes) * 60 + e.to_int(seconds)
 
 
+def _goalies(side: e.Side) -> tuple[GoalieLine, ...]:
+    """Every goalie who played, most minutes first (usually one; two after a pull)."""
+
+    lines = []
+    for group in e.stat_groups(side):
+        if group.get("name") != "goalies" or not group["athletes"]:
+            continue
+        labels = group["labels"]
+        played = [a for a in group["athletes"] if _seconds(e.row(labels, a["stats"]).get("TOI", "0:00")) > 0]
+        for athlete in sorted(played, key=lambda a: -_seconds(e.row(labels, a["stats"]).get("TOI", "0:00"))):
+            stats = e.row(labels, athlete["stats"])
+            lines.append(_line(athlete, stats))
+    return tuple(lines)
+
+
+def _line(athlete, stats) -> GoalieLine:
+    return GoalieLine(
+        name=e.surname(athlete["athlete"]["displayName"]),
+        even_strength_saves=e.to_int(stats.get("ESSV")),
+        power_play_saves=e.to_int(stats.get("PPSV")),
+        short_handed_saves=e.to_int(stats.get("SHSV")),
+        shots_against=e.to_int(stats.get("SA")),
+        save_pct=stats.get("SV%", ".000"),
+        time_on_ice=stats.get("TOI", "0:00"),
+    )
+
+
 def _goalie(side: e.Side) -> GoalieLine:
     for group in e.stat_groups(side):
         if group.get("name") != "goalies" or not group["athletes"]:
@@ -57,6 +84,7 @@ def _team(side: e.Side, regulation_and_ot: int) -> NHLTeamBox:
         abbreviation=side.abbreviation,
         score=side.score,
         goalie=_goalie(side),
+        goalies=_goalies(side),
         penalty_minutes=_penalty_minutes(side),
         team_stats={
             "shots": e.team_stat(side, "shotsTotal"),

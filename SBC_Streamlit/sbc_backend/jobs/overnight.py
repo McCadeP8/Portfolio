@@ -92,6 +92,12 @@ def refresh_sheets(context: JobContext) -> dict[str, Any]:
     return {"message": "Google Sheet snapshots refreshed with stale-cache fallback"}
 
 
+def refresh_pictures(context: JobContext) -> dict[str, Any]:
+    from ..pictures import fill_missing_from_cap_sheet
+
+    return fill_missing_from_cap_sheet(PROJECT_ROOT)
+
+
 def refresh_league(context: JobContext) -> dict[str, Any]:
     import big_data
 
@@ -351,6 +357,7 @@ def publish_fantrax_rotation(context: JobContext) -> dict[str, Any]:
 
 JOBS: dict[str, JobFunction] = {
     "sheets": refresh_sheets,
+    "pictures": refresh_pictures,
     "league": refresh_league,
     "espn_boxscores": refresh_espn_boxscores,
     "shots": refresh_shots,
