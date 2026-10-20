@@ -25,6 +25,11 @@ from zoneinfo import ZoneInfo
 from functions import read_csv_snapshot, get_data, get_player_salary_history, get_pictures, get_articles, active_players, style_salaries, overseas_players, free_agent_players, dead_players, draft_retired_players, active_player_n, inactive_player_n, get_exceptions, exception_table, get_cap_total, get_tax_total, get_base_cap, team_hard_cap, team_hard_cap_n, base_fee, amount_paid, net_fee, luxury_fee, trade_restrictions, active_players_all, inactive_players_all, dead_players_all, draft_rights_all, retired_all, all_free_agents, trade_restrictions_all, overall_cap_table, unit_payout, tax_payout_champ, tax_payout_split, style_overall_cap, get_draft_picks, full_draft_picks, swap_draft_picks, split_draft_picks, locked_draft_picks, original_draft_picks, touched_draft_picks, all_full_draft_picks, all_swap_draft_picks, all_split_draft_picks, all_locked_draft_picks, data_picture_check, data_roster_check, tradeable_players_in, tradeable_players_out, tradeable_picks_in, tradeable_picks_out, players_out_table, players_in_table, picks_out_table, picks_in_table, net_players_check, no_cash, tpe_st_check, under_100_percent_check, no_bae_mle_check, stepien_check, tradeable_exceptions_in, tradeable_exceptions_out, exceptions_in_table, exceptions_out_table, data_missing_salary_check, hard_cap_check, stepien_data_check, get_fantrax_roster, get_fantrax_players, get_fantrax_transactions, get_original_team_rosters, fantrax_players_check, fantrax_roster_check, fantrax_positional_check, current_draft, get_standings, get_draft_history, past_draft, lottery_table, get_matchup_stats, format_live_stats_df, team_stats_line_chart, current_matchup_period, team_with_ranks, matchup_scoreboard, get_all_time_schedule, get_opponents, get_all_time_team_stats, get_all_time_rosters, get_award_history, get_single_award, get_team_award_history, get_team_award, get_all_stars_award, get_short_term_awards, render_scorebug, get_weekly_scores_df, get_standings_table, get_team_schedule, plot_team_flights, get_team_mileage, get_period_calendar, zero_future_matchup_scores
 import importlib as _importlib
 import functions as _fantrax_functions
+import data as _sbc_data
+
+# Keep "today" current on a long-running server: data.py and functions.py read it
+# once at import. The later `from data import ... period` picks up the refresh.
+_fantrax_functions.today, _ = _sbc_data.refresh_dates()
 
 _fantrax_renderer_names = [
     "build_live_scoreboard_image",
@@ -21153,10 +21158,24 @@ if main_page == "League Hub" and selected_league_page == "Draft Picks":
 if main_page == "Overview":
     # Open on the upcoming season without inventing dates that depend on the
     # NBA schedule release.
-    front_year, front_period = current_year, 1
+    front_year = current_year
+    season_started = _sbc_data.today >= _sbc_data.league_start_date
+    front_period = current_matchup_period() if season_started else 1
     front_scores = all_time_schedule.copy()
     front_scores["_a"] = pd.to_numeric(front_scores["TeamAScore"], errors="coerce")
     front_scores["_b"] = pd.to_numeric(front_scores["TeamBScore"], errors="coerce")
+    if season_started:
+        # The current matchup shows Fantrax live scoring, not the stored 0-0.
+        try:
+            live_front = get_weekly_scores_df(front_year, front_period, all_time_schedule, get_matchup_stats(front_year, front_period), standings)
+            if not live_front.empty and "Game_ID" in live_front.columns:
+                live_a = dict(zip(live_front["Game_ID"], pd.to_numeric(live_front["TeamA_Score"], errors="coerce")))
+                live_b = dict(zip(live_front["Game_ID"], pd.to_numeric(live_front["TeamB_Score"], errors="coerce")))
+                current_rows = (front_scores["Year"] == front_year) & (front_scores["Period"] == front_period)
+                front_scores.loc[current_rows, "_a"] = front_scores.loc[current_rows, "Game_ID"].map(live_a)
+                front_scores.loc[current_rows, "_b"] = front_scores.loc[current_rows, "Game_ID"].map(live_b)
+        except Exception as exc:
+            st.warning(f"Live scores could not be loaded right now: {exc}")
 
     def front_team_v2(team):
         name = str(team)
@@ -21164,11 +21183,23 @@ if main_page == "Overview":
         return {"name": name, "nick": str(info.get("nickname", name)), "abbr": TEAM_ABBREVIATIONS.get(name, name[:3].upper()), "logo": str(info.get("logo", LEAGUE_LOGO)), "wordmark": str(info.get("wordmark", info.get("logo", LEAGUE_LOGO))), "color": str(info.get("bg", LEAGUE_PRIMARY))}
 
     matchup_windows = []
-    window_specs = [
-        (front_year - 1, 42, period_date_label(front_year - 1, 42, "Championship"), period_date_label(front_year - 1, 42, "Championship"), "FINAL"),
-        (front_year, 1, period_date_label(front_year, 1, "Opening Week"), period_date_label(front_year, 1, "Opening Week"), "UPCOMING"),
-        (front_year, 2, period_date_label(front_year, 2, "Matchup 2"), period_date_label(front_year, 2, "Matchup 2"), "UPCOMING"),
-    ]
+    championship = (front_year - 1, 42, period_date_label(front_year - 1, 42, "Championship"), period_date_label(front_year - 1, 42, "Championship"), "FINAL")
+    if not season_started:
+        window_specs = [
+            championship,
+            (front_year, 1, period_date_label(front_year, 1, "Opening Week"), period_date_label(front_year, 1, "Opening Week"), "UPCOMING"),
+            (front_year, 2, period_date_label(front_year, 2, "Matchup 2"), period_date_label(front_year, 2, "Matchup 2"), "UPCOMING"),
+        ]
+    else:
+        # Last result, the matchup in progress, and the next one.
+        previous = championship if front_period == 1 else (front_year, front_period - 1, f"Matchup {front_period - 1}", period_date_label(front_year, front_period - 1, f"Matchup {front_period - 1}"), "FINAL")
+        current_label = "Opening Week" if front_period == 1 else f"Matchup {front_period}"
+        window_specs = [
+            previous,
+            (front_year, front_period, current_label, period_date_label(front_year, front_period, current_label), "LIVE"),
+            (front_year, front_period + 1, f"Matchup {front_period + 1}", period_date_label(front_year, front_period + 1, f"Matchup {front_period + 1}"), "UPCOMING"),
+        ]
+    window_status = {(year, period_number): status for year, period_number, _, _, status in window_specs}
     for matchup_year, matchup_period, label, date_label, status in window_specs:
         window_games = front_scores[(front_scores["Year"] == matchup_year) & (front_scores["Period"] == matchup_period)]
         games = []
@@ -21176,7 +21207,7 @@ if main_page == "Overview":
             a, b = front_team_v2(game.get("TeamA", "TBD")), front_team_v2(game.get("TeamB", "TBD"))
             av, bv = game.get("_a"), game.get("_b")
             display_type = str(game.get("Type", "Regular Season"))
-            show_scores = status == "FINAL"
+            show_scores = status in ("FINAL", "LIVE")
             games.append({"key": f"{matchup_year}-{matchup_period}-{game_index}", "a": a, "b": b, "as": round(float(av), 1) if show_scores and pd.notna(av) else None, "bs": round(float(bv), 1) if show_scores and pd.notna(bv) else None, "type": display_type, "round": str(game.get("Round", "")), "status": status, "id": str(game.get("Game_ID", ""))})
         matchup_windows.append({"label": label, "date": date_label, "period": matchup_period, "games": games})
 
@@ -21186,7 +21217,7 @@ if main_page == "Overview":
         if not 0 <= query_index < query_rows.shape[0]:
             return None
         matchup_dialog_row = query_rows.iloc[query_index].to_dict()
-        matchup_dialog_row["_display_status"] = "Final" if query_year < front_year else "Upcoming"
+        matchup_dialog_row["_display_status"] = {"FINAL": "Final", "LIVE": "Live"}.get(window_status.get((query_year, query_period)), "Final" if query_year < front_year else "Upcoming")
         return matchup_dialog_row
 
     front_dialog_opened = False

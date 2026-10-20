@@ -6,6 +6,15 @@ league_start_date = date(2026, 10, 20)
 today = date.today() + timedelta(days=0)
 period = max(1, min(163, (today - league_start_date).days + 1))
 
+
+def refresh_dates():
+    """Recompute today/period. Module values are fixed at import, and a Streamlit
+    server can run for days, so the app calls this at the top of every run."""
+    global today, period
+    today = date.today()
+    period = max(1, min(163, (today - league_start_date).days + 1))
+    return today, period
+
 if today.month in [7, 8, 9] or (today.month == 6 and today.day >= 30):
     year_offset = 0
 else:

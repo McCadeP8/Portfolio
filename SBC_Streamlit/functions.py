@@ -896,6 +896,7 @@ def current_matchup_period() -> float:
         return int(df2["Period"].iloc[0])
     return int(df2["Period"].iloc[-1])
 
+@st.cache_data(ttl=60, show_spinner=False)
 def get_matchup_stats(year: int, period: int) -> pd.DataFrame:
     league_id = league_ids.get(year)
     if not league_id:
@@ -1902,6 +1903,14 @@ def _fantrax_identity_catalog(ft_players: pd.DataFrame) -> pd.DataFrame:
 WATCH_ISSUE_PREFIX = "Watch: "
 
 
+def fantrax_placeholders() -> pd.DataFrame:
+    """Fantrax players rostered only to hold a spot for a cap sheet player Fantrax lacks."""
+    path = Path(__file__).resolve().parent / "fantrax_placeholders.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=['Fantrax Player', 'Team', 'Represents', 'Note'])
+    return pd.read_csv(path)
+
+
 def fantrax_check_exceptions() -> pd.DataFrame:
     """Cap sheet players Fantrax will not carry (college, G League, out of the NBA)."""
     path = Path(__file__).resolve().parent / "fantrax_check_exceptions.csv"
@@ -1954,6 +1963,10 @@ def fantrax_players_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster:
     reasons = fantrax_check_exceptions()
     reasons = dict(zip(reasons['Player'].map(normalize_player_key), reasons['Reason']))
     df['Note'] = df['_player_key'].map(reasons)
+    stand_ins = fantrax_placeholders()
+    stand_ins = dict(zip(stand_ins['Represents'].map(normalize_player_key), stand_ins['Fantrax Player']))
+    held = df['_player_key'].map(stand_ins)
+    df['Note'] = np.where(held.notna(), df['Note'].fillna('').str.cat(("Fantrax placeholder: " + held.fillna('')), sep=' ').str.strip(), df['Note'])
     df['Issue'] = np.where(close.notna(), "Possible spelling mismatch with Fantrax", WATCH_ISSUE_PREFIX + "not in Fantrax; not on an NBA roster")
     df = df.rename(columns={'Team': 'Cap Sheet Team'})
     return df[['Issue', 'Cap Sheet Name', 'Cap Sheet Team', 'Fantrax Name', 'Fantrax ID', 'Note']].reset_index(drop=True)
@@ -1976,6 +1989,7 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: 
     df = df[df.get(f"Type{current_year}", pd.Series("", index=df.index)) != "Dead"]
     df = df[df['Trade.Restriction'] != "Banned"]
     df['_player_key'] = df['Player'].map(normalize_player_key)
+    df_cap_locations = df[['_player_key', 'Type']].drop_duplicates('_player_key')
     df = df[~df['_player_key'].isin(_fantrax_check_exception_keys())]
     # Same normalized matching as the translation check, so "Jr." and accents
     # do not split one player into two mismatches.
@@ -1997,6 +2011,22 @@ def fantrax_roster_check(df: pd.DataFrame, ft_players: pd.DataFrame, ft_roster: 
         [WATCH_ISSUE_PREFIX + "no SBC team on the cap sheet (unowned)", WATCH_ISSUE_PREFIX + "out of the NBA, not in Fantrax", "Has an NBA team, not on a Fantrax roster", "On a Fantrax roster, not on the cap sheet"],
         "Active/minors location differs",
     )
+    # A placeholder on the represented player's team is expected, as long as it
+    # sits where that player sits (minors for a Non-Active cap sheet player).
+    stand_ins = fantrax_placeholders()
+    if not stand_ins.empty:
+        cap = df_cap_locations.set_index('_player_key')
+        for _, holder in stand_ins.iterrows():
+            rows = (df['Player'].map(normalize_player_key) == normalize_player_key(holder['Fantrax Player'])) \
+                & df['Type'].isna() & df['team_name'].astype(str).str.startswith(str(holder['Team']))
+            if not rows.any():
+                continue
+            expected = cap['Type'].get(normalize_player_key(holder['Represents']), "Non-Active Players")
+            in_minors = df.loc[rows, 'status'].eq("MINORS")
+            ok = in_minors if expected == "Non-Active Players" else ~in_minors
+            df.loc[rows, 'Issue'] = np.where(
+                ok, WATCH_ISSUE_PREFIX + f"roster placeholder for {holder['Represents']}",
+                f"Placeholder for {holder['Represents']} should be {'in the minors' if expected == 'Non-Active Players' else 'active'}")
     df = df[['Issue', 'Player', 'Team', 'NBA Team', 'team_name', 'Type', 'status']]
     df = df.rename(columns={'Team': 'Cap Sheet Team', 'team_name': 'Fantrax Team', 'Type': 'Cap Sheet Location', 'status': 'Fantrax Location'})
     return df.sort_values(['Issue', 'Cap Sheet Team', 'Player']).reset_index(drop=True)
