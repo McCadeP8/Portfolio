@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap">
   <style>
     * {
       box-sizing: border-box;
@@ -83,11 +85,11 @@
     }
 
     .game {
-      flex: 0 0 176px;
+      flex: 0 0 182px;
       border: 0;
-      border-right: 1px solid #ccd3da;
+      border-right: 1px solid #dfe4e9;
       background: #fff;
-      padding: 9px 11px;
+      padding: 8px 12px 7px;
       color: #17212b;
       cursor: pointer;
       font: inherit;
@@ -106,16 +108,52 @@
       justify-content: flex-start;
       gap: 5px;
       align-items: center;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
       color: #78838e;
-      font-size: 8px;
+      font-family: "Barlow Condensed", Arial, sans-serif;
+      font-size: 11px;
       font-weight: 800;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.1em;
       white-space: nowrap;
     }
 
     .meta b {
-      color: #d91f2b;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 4px;
+      padding: 2px 7px 1px;
+      background: #eef1f4;
+      color: #5b6672;
+      font-weight: 800;
+    }
+
+    .meta b.live {
+      background: #e32231;
+      color: #fff;
+    }
+
+    .meta b.live::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #fff;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .meta b.final {
+      background: #17212b;
+      color: #fff;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .meta b.live::before { animation: none; }
     }
 
     .meta i {
@@ -136,27 +174,59 @@
     }
 
     .team {
-      height: 29px;
+      position: relative;
+      height: 34px;
       display: grid;
-      grid-template-columns: 21px 1fr auto;
-      gap: 6px;
+      grid-template-columns: 24px 1fr auto;
+      gap: 8px;
       align-items: center;
+      padding-left: 9px;
+    }
+
+    .team::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 6px;
+      bottom: 6px;
+      width: 4px;
+      border-radius: 2px;
+      background: var(--team-color, #c5ccd3);
+      box-shadow: inset 0 0 0 1px rgba(23, 33, 43, 0.12);
     }
 
     .team img {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       object-fit: contain;
     }
 
     .team span {
-      font-size: 11px;
-      font-weight: 900;
+      font-family: "Barlow Condensed", Arial, sans-serif;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: #17212b;
     }
 
     .team strong {
-      font-size: 13px;
+      font-family: "Barlow Condensed", Arial, sans-serif;
+      font-size: 25px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0.01em;
       font-variant-numeric: tabular-nums;
+      color: #0b1218;
+    }
+
+    .team.trailing span,
+    .team.trailing strong {
+      color: #98a2ad;
+    }
+
+    .team strong.pending {
+      color: #b4bcc5;
+      font-size: 20px;
     }
 
     @media (max-width: 650px) {
@@ -266,7 +336,14 @@
     }
 
     function formatScore(value) {
-      return value === null ? "0–0" : Number(value).toFixed(1);
+      return value === null || value === undefined ? "–" : Number(value).toFixed(1);
+    }
+
+    function rowClass(own, other) {
+      if (own === null || other === null || own === undefined || other === undefined) {
+        return "team";
+      }
+      return Number(own) < Number(other) ? "team trailing" : "team";
     }
 
     function renderGames() {
@@ -291,16 +368,16 @@
           `Open full box score for ${game.a.name} versus ${game.b.name}`
         );
         button.innerHTML = `
-          <div class="meta"><b>${escapeHtml(game.status)}</b>${badge}</div>
-          <div class="team">
+          <div class="meta"><b class="${escapeHtml(String(game.status).toLowerCase())}">${escapeHtml(game.status)}</b>${badge}</div>
+          <div class="${rowClass(game.as, game.bs)}" style="--team-color: ${escapeHtml(game.a.color || "#c5ccd3")}">
             <img src="${escapeHtml(game.a.logo)}" alt="">
             <span>${escapeHtml(game.a.abbr)}</span>
-            <strong>${formatScore(game.as)}</strong>
+            <strong class="${game.as === null || game.as === undefined ? "pending" : ""}">${formatScore(game.as)}</strong>
           </div>
-          <div class="team">
+          <div class="${rowClass(game.bs, game.as)}" style="--team-color: ${escapeHtml(game.b.color || "#c5ccd3")}">
             <img src="${escapeHtml(game.b.logo)}" alt="">
             <span>${escapeHtml(game.b.abbr)}</span>
-            <strong>${formatScore(game.bs)}</strong>
+            <strong class="${game.bs === null || game.bs === undefined ? "pending" : ""}">${formatScore(game.bs)}</strong>
           </div>
         `;
         button.addEventListener("click", () => {
