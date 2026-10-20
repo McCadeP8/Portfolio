@@ -831,6 +831,60 @@ def load_nba_games_for_dates(date_values):
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
+@st.cache_data(ttl=60, max_entries=16, show_spinner=False)
+def load_live_espn_player_rows(date_values, sbc_year):
+    """Today's in-progress and final NBA player lines from ESPN, shaped like the
+    nightly box score archive, for days the archive does not have yet."""
+    client = EspnNBAClient(
+        cache_root=BACKEND_SETTINGS.runtime_root / "espn",
+        timeout_seconds=BACKEND_SETTINGS.http_timeout_seconds,
+        live_ttl_seconds=BACKEND_SETTINGS.live_cache_seconds,
+    )
+    frames = []
+    for value in date_values:
+        try:
+            players = client.snapshot(pd.Timestamp(value).date(), include_player_stats=True).player_stats
+        except Exception:
+            continue
+        if players is None or players.empty:
+            continue
+        # ESPN stamps late tip-offs with the next UTC day; keep the slate's date.
+        players = players.copy()
+        players["game_date"] = str(value)
+        frames.append(players)
+    if not frames:
+        return pd.DataFrame()
+    live = pd.concat(frames, ignore_index=True)
+    num = lambda column: pd.to_numeric(live.get(column), errors="coerce").fillna(0)
+    two_m, two_a = num("FGM") - num("3PTM"), num("FGA") - num("3PTA")
+    ratio = lambda made, attempts: (made / attempts.where(attempts > 0)).fillna(0.0)
+    opponents = live["matchup"].astype(str).str.split(r"\s(?:vs\.|@)\s", regex=True).str[-1]
+    return pd.DataFrame({
+        "sbc_year": int(sbc_year),
+        "nba_season": f"{int(sbc_year) - 1}-{str(int(sbc_year))[-2:]}",
+        "season_id": "",
+        "Date": pd.to_datetime(live["game_date"], errors="coerce").dt.date,
+        "nba_game_id": live["event_id"].astype(str),
+        "nba_player_id": live["espn_player_id"].astype(str),
+        "player_name": live["player_name"],
+        "nba_team_id": live["nba_team_id"].astype(str),
+        "nba_team": live["nba_team"],
+        "nba_team_name": live["nba_team_name"],
+        "opponent": opponents,
+        "matchup": live["matchup"],
+        "is_home": live["home_away"].eq("home"),
+        "wl": live["result"],
+        "GP": (num("MP") > 0).astype(int),
+        "MP": num("MP"),
+        "TS%": ratio(num("PTS"), 2 * (num("FGA") + 0.44 * num("FTA"))),
+        "2PTM": two_m.astype(int), "2PTA": two_a.astype(int), "2PT%": ratio(two_m, two_a),
+        "3PTM": num("3PTM").astype(int), "3PTA": num("3PTA").astype(int), "3PT%": ratio(num("3PTM"), num("3PTA")),
+        "FTM": num("FTM").astype(int), "FTA": num("FTA").astype(int), "FT%": ratio(num("FTM"), num("FTA")),
+        "PTS": num("PTS"), "OREB": num("OREB"), "DREB": num("DREB"), "AST": num("AST"),
+        "ST": num("ST"), "BLK": num("BLK"), "TO": num("TO"), "+/-": num("+/-"),
+    })
+
+
 def matchup_starter_progress(year, matchup_period, teams=(), as_of=None):
     calendar = period_calendar.copy()
     dates = calendar[
@@ -959,6 +1013,14 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
         return pd.DataFrame()
     box_years = pd.to_numeric(box_archive["sbc_year"], errors="coerce")
     box = box_archive[box_years == year].copy()
+    # Days already played that the nightly archive has not caught up on (tonight's
+    # games, or a missed refresh) come live from ESPN.
+    archived_dates = set(pd.to_datetime(box["Date"], errors="coerce").dt.date.dropna())
+    live_dates = tuple(sorted(str(day) for day in matchup_days["Date"] if day <= date.today() and day not in archived_dates))
+    if live_dates:
+        live_box = load_live_espn_player_rows(live_dates, year)
+        if not live_box.empty:
+            box = pd.concat([box, live_box], ignore_index=True, sort=False)
     preview_status = str(matchup_row.get("_display_status", "")).strip().lower()
     if box.empty and preview_status in {"preview", "future", "upcoming"}:
         prior_years = box_years[box_years < year]
@@ -3439,6 +3501,24 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
     """)
 
     rows = matchup_boxscore_rows(matchup_row, rosters_df)
+    if rows.empty and status_state == "live":
+        # Tonight's NBA games reach the player archive overnight; until then show
+        # each team's live Fantrax stat line, the numbers the live score uses.
+        live_totals = pd.DataFrame()
+        if pd.notna(matchup_year) and pd.notna(matchup_period_value):
+            try:
+                live_totals = get_matchup_stats(int(matchup_year), int(matchup_period_value))
+            except Exception:
+                live_totals = pd.DataFrame()
+        if not live_totals.empty and "Team" in live_totals.columns:
+            live_totals = live_totals[live_totals["Team"].astype(str).isin([team_a, team_b])].copy()
+            live_totals["Team"] = pd.Categorical(live_totals["Team"].astype(str), [team_a, team_b], ordered=True)
+            live_totals = live_totals.sort_values("Team")
+            live_totals["Team"] = live_totals["Team"].astype(str).map(live_team_full_name)
+            render_html('<div class="sbc-section-label">Live Team Totals</div>')
+            st.dataframe(live_totals, width="stretch", hide_index=True)
+        render_html('<div class="sbc-empty-state">Player box scores, shot charts and lineups for games in progress fill in after the overnight refresh.</div>')
+        return
     if rows.empty and status_state != "future":
         render_html('<div class="sbc-empty-state">No player-game box score rows matched this matchup yet. Check the Fantrax-to-ESPN mapping file for unmapped active players.</div>')
         return
@@ -21218,6 +21298,9 @@ if main_page == "Overview":
             return None
         matchup_dialog_row = query_rows.iloc[query_index].to_dict()
         matchup_dialog_row["_display_status"] = {"FINAL": "Final", "LIVE": "Live"}.get(window_status.get((query_year, query_period)), "Final" if query_year < front_year else "Upcoming")
+        # The box score reads TeamA_Score; carry the live score the scorebar shows.
+        matchup_dialog_row["TeamA_Score"] = matchup_dialog_row.get("_a")
+        matchup_dialog_row["TeamB_Score"] = matchup_dialog_row.get("_b")
         return matchup_dialog_row
 
     front_dialog_opened = False
@@ -21445,11 +21528,8 @@ if main_page == "Overview":
     if game_query and not front_dialog_opened:
         clear_front_dialog_query("sbc_game")
         try:
-            query_year, query_period, query_index = [int(value) for value in game_query.split("-", 2)]
-            query_rows = front_scores[(front_scores["Year"] == query_year) & (front_scores["Period"] == query_period)]
-            if 0 <= query_index < query_rows.shape[0]:
-                matchup_dialog_row = query_rows.iloc[query_index].to_dict()
-                matchup_dialog_row["_display_status"] = "Final" if query_year < front_year else "Upcoming"
+            matchup_dialog_row = front_dialog_matchup(game_query)
+            if matchup_dialog_row is not None:
                 clear_front_dialog_query("sbc_article")
                 front_dialog_opened = True
                 render_matchup_boxscore_dialog(matchup_dialog_row, all_time_rosters)
