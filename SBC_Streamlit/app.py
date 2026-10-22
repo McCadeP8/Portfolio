@@ -11320,7 +11320,7 @@ def render_scoreboard_cards(scores_df):
                 button_key = f"boxscore_{row.get('Game_ID', '')}_{row.get('Year', '')}_{row.get('Period', '')}_{team_a}_{team_b}"
                 is_preview = str(row.get("_display_status", "")).strip().lower() in {"preview", "future", "upcoming"}
                 button_label = "Game Preview" if is_preview else "Box Score"
-                if st.button(button_label, key=button_key, use_container_width=True, type="primary", help="Open matchup preview" if is_preview else "Open matchup box score"):
+                if st.button(button_label, key=button_key, use_container_width=True, type="secondary", help="Open matchup preview" if is_preview else "Open matchup box score"):
                     dialog_row = row.to_dict()
                     if is_preview:
                         dialog_row["_display_status"] = "Preview"
@@ -14295,6 +14295,50 @@ st.markdown(
         background: #111827;
         color: #ffffff;
         padding: 0.45rem 0.58rem;
+    }}
+
+    /* Box Score / Game Preview buttons under each scoreboard card */
+    [class*="st-key-boxscore_"] button {{
+        background: #ffffff !important;
+        color: #17212b !important;
+        border: 1px solid #d0d6dd !important;
+        border-radius: 0.55rem !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.02em;
+        box-shadow: 0 1px 2px rgba(23, 33, 43, 0.08);
+    }}
+
+    [class*="st-key-boxscore_"] button:hover,
+    [class*="st-key-boxscore_"] button:focus-visible {{
+        background: #f4f6f8 !important;
+        color: #0b1218 !important;
+        border-color: #e32231 !important;
+    }}
+
+    [class*="st-key-boxscore_"] button p {{
+        color: inherit !important;
+    }}
+
+    /* Front page "Full scoreboard" link */
+    .st-key-front_full_scoreboard button {{
+        background: #ffffff !important;
+        color: #17212b !important;
+        border: 1px solid #d0d6dd !important;
+        border-radius: 999px !important;
+        padding: 0.3rem 0.9rem !important;
+        font-weight: 800 !important;
+        box-shadow: 0 1px 2px rgba(23, 33, 43, 0.08);
+    }}
+
+    .st-key-front_full_scoreboard button p {{
+        color: inherit !important;
+    }}
+
+    .st-key-front_full_scoreboard button:hover,
+    .st-key-front_full_scoreboard button:focus-visible {{
+        background: #f4f6f8 !important;
+        border-color: #e32231 !important;
+        color: #e32231 !important;
     }}
 
     .sbc-score-status {{
@@ -21608,7 +21652,7 @@ if main_page == "Overview":
         st.session_state["sbc_league_page"] = "Scoreboard"
 
     scoreboard_link_cols = st.columns([5, 1.2])
-    scoreboard_link_cols[1].button("Full scoreboard →", key="front_full_scoreboard", type="tertiary", use_container_width=True, on_click=open_full_scoreboard)
+    scoreboard_link_cols[1].button("Full scoreboard →", key="front_full_scoreboard", type="secondary", use_container_width=True, on_click=open_full_scoreboard)
     if isinstance(scorebar_selection, dict):
         selection_nonce = str(scorebar_selection.get("nonce", ""))
         if selection_nonce and selection_nonce != st.session_state.get("front_scoreboard_selection_nonce"):
