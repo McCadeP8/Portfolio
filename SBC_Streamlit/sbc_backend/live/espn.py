@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
@@ -312,8 +312,10 @@ class EspnNBAClient:
     def snapshot(self, game_date: date, *, include_player_stats: bool = True) -> LiveSnapshot:
         fetched_at = datetime.now(timezone.utc).isoformat()
         scoreboard = self.scoreboard(game_date)
-        raw_events = [event for event in (scoreboard.get("events") or []) if event.get("id")]
-        games = tuple(parse_live_game(event, fetched_at=fetched_at) for event in raw_events)
+        # ESPN dates each event by its UTC tip-off, so games from 8 p.m. Eastern on
+        # land on the next day. Stamp everything with the slate that was asked for.
+        raw_events = [{**event, "sbc_game_date": game_date.isoformat()} for event in (scoreboard.get("events") or []) if event.get("id")]
+        games = tuple(replace(parse_live_game(event, fetched_at=fetched_at), game_date=game_date.isoformat()) for event in raw_events)
         player_frames: list[pd.DataFrame] = []
         if include_player_stats:
             for game, event in zip(games, raw_events):

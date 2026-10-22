@@ -1143,10 +1143,11 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
         right_on=["Day", "nba_player_id"],
         how="inner",
     )
-    if merged.empty:
-        return pd.DataFrame()
     game_dates = tuple(sorted(matchup_days["Date"].astype(str).unique()))
     game_statuses = load_nba_games_for_dates(game_dates)
+    dnp = starter_dnp_rows(active, matchup_days, merged, game_statuses)
+    if merged.empty and dnp.empty:
+        return pd.DataFrame()
     if not game_statuses.empty:
         status_columns = game_statuses[["event_id", "state", "status", "period", "clock", "completed"]].copy()
         status_columns = status_columns.rename(columns={
@@ -1160,8 +1161,44 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
         status_columns["nba_game_id"] = status_columns["nba_game_id"].astype(str)
         merged["nba_game_id"] = merged["nba_game_id"].astype(str)
         merged = merged.merge(status_columns.drop_duplicates("nba_game_id"), on="nba_game_id", how="left")
-    merged["display_player"] = merged["fantrax_name"].fillna(merged["player_name"])
+    if not dnp.empty:
+        merged = pd.concat([merged, dnp], ignore_index=True, sort=False)
+    merged["display_player"] = merged["fantrax_name"].fillna(merged.get("player_name"))
     return merged.sort_values(["sbc_team", "display_player", "Date", "nba_game_id"]).reset_index(drop=True)
+
+
+def starter_dnp_rows(active, matchup_days, played, games):
+    """Active starters whose NBA team has played or is playing that day but who
+    have no stat line: shown as DNP in the player box score only."""
+    if active.empty or games is None or games.empty:
+        return pd.DataFrame()
+    started = games[games["state"].astype(str).str.lower().isin(["in", "post"])].copy()
+    if started.empty:
+        return pd.DataFrame()
+    started["Date"] = pd.to_datetime(started["game_date"], errors="coerce").dt.date
+    sides = []
+    for side, other, home in (("home", "away", True), ("away", "home", False)):
+        frame = started[["Date", "event_id", "state", "status", "period", "clock", "completed"]].copy()
+        frame["nba_team"] = started[f"{side}_abbreviation"].map(normalize_nba_team)
+        own, opp = started[f"{side}_abbreviation"].astype(str), started[f"{other}_abbreviation"].astype(str)
+        frame["matchup"] = own + (" vs. " if home else " @ ") + opp
+        sides.append(frame)
+    team_games = pd.concat(sides, ignore_index=True)
+    starters = active.merge(matchup_days[["Day", "Date"]], on="Day", how="inner")
+    teams = load_fantrax_players_snapshot()[["fantraxId", "nba_team"]].copy()
+    teams["fantraxId"] = teams["fantraxId"].astype(str)
+    teams["nba_team"] = teams["nba_team"].map(normalize_nba_team)
+    starters = starters.drop(columns=["nba_team"], errors="ignore").merge(teams.drop_duplicates("fantraxId"), on="fantraxId", how="left")
+    starters = starters.merge(team_games, on=["Date", "nba_team"], how="inner")
+    if not played.empty:
+        seen = set(zip(played["Day"], played["espn_player_id"].astype(str)))
+        starters = starters[[(day, str(pid)) not in seen for day, pid in zip(starters["Day"], starters["espn_player_id"])]]
+    if starters.empty:
+        return pd.DataFrame()
+    return starters.rename(columns={
+        "event_id": "nba_game_id", "state": "nba_game_state", "status": "nba_game_status",
+        "period": "nba_game_period", "clock": "nba_game_clock", "completed": "nba_game_completed",
+    }).assign(_dnp=True, GP=0, nba_game_id=lambda frame: frame["nba_game_id"].astype(str))
 
 
 def aggregate_boxscore_players(rows):
@@ -1205,6 +1242,8 @@ def live_scores_from_boxscores(score_rows, rosters_df):
         except Exception:
             continue
         rows = all_rows[all_rows["sbc_team"].isin([team_a, team_b])] if not all_rows.empty else all_rows
+        if "_dnp" in rows.columns:
+            rows = rows[rows["_dnp"] != True]
         totals = team_boxscore_totals(rows) if not rows.empty else pd.DataFrame(columns=["sbc_team", *BOX_SCORE_SUM_STATS])
         # A team with no games played yet still takes the categories it wins at zero.
         for team in (team_a, team_b):
@@ -1453,7 +1492,10 @@ def render_player_boxscore_team(team_rows, team_name, aggregate):
                 )
                 last_date_text = date_text
             game_meta = f"<em>{escape(matchup_label_for_row(row))}</em>"
-        stat_cells = "".join(stat_cell_html(row, stat, show_gp=aggregate) for stat in stats)
+        if row.get("_dnp") is True:
+            stat_cells = '<td class="sbc-box-dnp">DNP</td>' + "<td>–</td>" * (len(stats) - 1)
+        else:
+            stat_cells = "".join(stat_cell_html(row, stat, show_gp=aggregate) for stat in stats)
         rows_html.append(f"""
             <tr>
                 <td class="sbc-box-player-cell">
@@ -1483,7 +1525,8 @@ def render_player_boxscore_team(team_rows, team_name, aggregate):
 
 
 def render_player_boxscore_split(rows, team_a, team_b, aggregate=False):
-    display_rows = aggregate_boxscore_players(rows) if aggregate else rows.copy()
+    played = rows[rows["_dnp"] != True] if "_dnp" in rows.columns else rows
+    display_rows = aggregate_boxscore_players(played) if aggregate else rows.copy()
     render_html(f"""
         <div class="sbc-box-player-grid">
             {render_player_boxscore_team(display_rows[display_rows["sbc_team"] == team_a], team_a, aggregate)}
@@ -3635,7 +3678,10 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
         </section>
     """)
 
-    rows = matchup_boxscore_rows(matchup_row, rosters_df)
+    box_rows = matchup_boxscore_rows(matchup_row, rosters_df)
+    # DNP starters appear in the player box score only; every total, chart and
+    # lineup uses the rows of players who actually played.
+    rows = box_rows[box_rows["_dnp"] != True].reset_index(drop=True) if "_dnp" in box_rows.columns else box_rows
     if rows.empty and status_state == "live":
         # Tonight's NBA games reach the player archive overnight; until then show
         # each team's live Fantrax stat line, the numbers the live score uses.
@@ -3691,7 +3737,7 @@ def render_matchup_boxscore(matchup_row, rosters_df, key_prefix="inline", show_p
             key=f"{key_prefix}_box_view_{matchup_row.get('Game_ID', matchup_row.get('Year', ''))}_{matchup_row.get('Period', '')}_{team_a}_{team_b}",
         )
         aggregate = view_mode == "Aggregate players"
-        render_player_boxscore_split(rows, team_a, team_b, aggregate=aggregate)
+        render_player_boxscore_split(box_rows, team_a, team_b, aggregate=aggregate)
     with pbp_tab:
         render_matchup_pbp_tab(
             rows,
@@ -3745,6 +3791,8 @@ def render_selected_team_player_boxscore(schedule_rows, selected_team, rosters_d
 def render_team_player_boxscore_for_matchup(matchup_row, team_name, rosters_df, aggregate=False):
     rows = matchup_boxscore_rows(matchup_row, rosters_df)
     rows = rows[rows["sbc_team"] == team_name] if not rows.empty else rows
+    if aggregate and "_dnp" in rows.columns:
+        rows = rows[rows["_dnp"] != True]
     if rows.empty:
         render_html(f'<div class="sbc-empty-state">No player-game rows matched {escape(live_team_full_name(team_name))} for this matchup.</div>')
         return
@@ -14716,6 +14764,12 @@ st.markdown(
     }}
 
     .sbc-box-category-table td,
+    .sbc-box-player-table td.sbc-box-dnp {{
+        color: #8a94a0;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+    }}
+
     .sbc-box-player-table td {{
         border-bottom: 1px solid rgba(23, 32, 42, 0.06);
         padding: 0.38rem 0.5rem;
