@@ -11225,6 +11225,23 @@ def ist_group_tables(selected_year, selected_period):
     return grouped
 
 
+def scoreboard_statuses(scores_df, year, started, finished):
+    """FINAL / UPCOMING, or for a matchup underway LIVE when either team has a
+    starter logging minutes right now and IN PROGRESS otherwise (front page rule)."""
+    if finished:
+        return "FINAL"
+    if not started:
+        return "UPCOMING"
+    try:
+        on_court = teams_with_players_on_court(int(year))
+    except Exception:
+        on_court = set()
+    return [
+        "LIVE" if {str(a), str(b)} & on_court else "IN PROGRESS"
+        for a, b in zip(scores_df["TeamA"], scores_df["TeamB"])
+    ]
+
+
 def render_scoreboard_cards(scores_df):
     if scores_df.empty:
         render_html('<div class="sbc-empty-state">No scoreboards are available for this period.</div>')
@@ -11270,11 +11287,16 @@ def render_scoreboard_cards(scores_df):
             round_label = row.get("Round", type_name)
             period_label = period_date_label(row.get("Year", ""), row.get("Period", ""), f'P{row.get("Period", "")}')
             col_idx = card_idx % len(matchup_cols)
+            live_status = str(row.get("_live_status", "") or "")
+            status_pill = (
+                f'<b class="sbc-score-status sbc-score-status-{escape(live_status.lower().replace(" ", "-"), quote=True)}">{escape(live_status)}</b>'
+                if live_status else ""
+            )
             with matchup_cols[col_idx]:
                 render_html(f"""
                 <article class="sbc-score-card">
                     <div class="sbc-score-card-top">
-                        <span>{escape(str(round_label))}</span>
+                        <span>{status_pill}{escape(str(round_label))}</span>
                         <em>{escape(period_label)}</em>
                     </div>
                     <div class="sbc-score-team {'sbc-score-winner' if a_winner else ''}" style="--score-color:{escape(str(color_a), quote=True)};">
@@ -14273,6 +14295,51 @@ st.markdown(
         background: #111827;
         color: #ffffff;
         padding: 0.45rem 0.58rem;
+    }}
+
+    .sbc-score-status {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        margin-right: 0.45rem;
+        border-radius: 0.25rem;
+        padding: 0.18rem 0.42rem 0.14rem;
+        background: #374151;
+        color: #ffffff;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+    }}
+
+    .sbc-score-status-live {{
+        background: #e32231;
+    }}
+
+    .sbc-score-status-live::before {{
+        content: "";
+        width: 0.38rem;
+        height: 0.38rem;
+        border-radius: 50%;
+        background: #ffffff;
+        animation: sbc-score-pulse 1.4s ease-in-out infinite;
+    }}
+
+    .sbc-score-status-in-progress {{
+        background: #fff1cc;
+        color: #7a4f00;
+    }}
+
+    .sbc-score-status-upcoming {{
+        background: #e5e7eb;
+        color: #374151;
+    }}
+
+    @keyframes sbc-score-pulse {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0.25; }}
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+        .sbc-score-status-live::before {{ animation: none; }}
     }}
 
     .sbc-score-card-top span,
@@ -20745,6 +20812,11 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
                 game_ids = live_stats_total_scores["Game_ID"].astype(str)
                 live_stats_total_scores["TeamA_Score"] = game_ids.map(lambda gid: live_scores.get(gid, (None, None))[0]).fillna(live_stats_total_scores["TeamA_Score"])
                 live_stats_total_scores["TeamB_Score"] = game_ids.map(lambda gid: live_scores.get(gid, (None, None))[1]).fillna(live_stats_total_scores["TeamB_Score"])
+            if not live_stats_total_scores.empty:
+                live_stats_total_scores["_live_status"] = scoreboard_statuses(
+                    live_stats_total_scores, SelectedYear2, matchup_started,
+                    matchup_dates.max().normalize() < scoreboard_today if not matchup_dates.empty else False,
+                )
 
     render_html('<div class="sbc-section-label">All Scores</div>')
     render_scoreboard_cards(live_stats_total_scores)
@@ -20781,6 +20853,8 @@ if main_page == "League Hub" and selected_league_page == "History" and selected_
         with st.spinner("Loading historical matchups..."):
             history_live_stats = get_matchup_stats(HistoryScoreYear, HistoryScorePeriod)
             history_scores = get_weekly_scores_df(HistoryScoreYear, HistoryScorePeriod, all_time_schedule, history_live_stats, standings)
+    if not history_scores.empty:
+        history_scores["_live_status"] = "FINAL"
     render_html('<div class="sbc-section-label">Historical Scores</div>')
     render_scoreboard_cards(history_scores)
 
@@ -21528,6 +21602,13 @@ if main_page == "Overview":
         key="front_scoreboard_component",
         default=None,
     )
+
+    def open_full_scoreboard():
+        st.session_state["sbc_main_page"] = "League Hub"
+        st.session_state["sbc_league_page"] = "Scoreboard"
+
+    scoreboard_link_cols = st.columns([5, 1.2])
+    scoreboard_link_cols[1].button("Full scoreboard →", key="front_full_scoreboard", type="tertiary", use_container_width=True, on_click=open_full_scoreboard)
     if isinstance(scorebar_selection, dict):
         selection_nonce = str(scorebar_selection.get("nonce", ""))
         if selection_nonce and selection_nonce != st.session_state.get("front_scoreboard_selection_nonce"):
