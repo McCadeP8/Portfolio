@@ -7,12 +7,9 @@ data_snapshots/nba_boxscore_cache/
 data_snapshots/pbp/**/*.parquet
 data_snapshots/pbp/**/*.csv
 data_snapshots/pbp/checkpoints_*/
-!data_snapshots/pbp/pbp_stat_events_202021.parquet
-!data_snapshots/pbp/pbp_stat_events_202122.parquet
-!data_snapshots/pbp/pbp_stat_events_202223.parquet
-!data_snapshots/pbp/pbp_stat_events_202324.parquet
-!data_snapshots/pbp/pbp_stat_events_202425.parquet
-!data_snapshots/pbp/pbp_stat_events_202526.parquet
+# Every season archive (pbp_stat_events_YYYYYY.parquet) is committed, including
+# future ones the nightly job creates; test slices and checkpoints stay ignored.
+!data_snapshots/pbp/pbp_stat_events_[0-9][0-9][0-9][0-9][0-9][0-9].parquet
 
 # Local Codex-generated artifact workspaces and dependency junctions.
 .codex_artifacts/
