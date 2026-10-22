@@ -885,6 +885,37 @@ def load_live_espn_player_rows(date_values, sbc_year):
     })
 
 
+@st.cache_data(ttl=300, max_entries=32, show_spinner=False)
+def load_fantrax_roster_day(year, day):
+    return get_fantrax_roster(int(year), int(day))
+
+
+def live_roster_days(rosters_df, matchup_days, year):
+    """Replace saved roster rows with the live Fantrax lineup for matchup days the
+    snapshot cannot be trusted for: anything dated on or after its last refresh
+    (lineups keep changing until each day locks)."""
+    rosters = rosters_df.copy()
+    year_rows = pd.to_numeric(rosters.get("Year"), errors="coerce") == year
+    created = pd.to_datetime(rosters.loc[year_rows, "Created"], errors="coerce") if "Created" in rosters.columns else pd.Series(dtype="datetime64[ns]")
+    snapshot_date = created.max().date() if created.notna().any() else None
+    stale = matchup_days[[day_date <= date.today() and (snapshot_date is None or day_date >= snapshot_date) for day_date in matchup_days["Date"]]]
+    frames = []
+    for day in stale["Day"].astype(int):
+        try:
+            live = load_fantrax_roster_day(year, day)
+        except Exception:
+            continue
+        if live is None or live.empty:
+            continue
+        live = live.copy()
+        live["id"] = live["id"].astype(str).str.strip("*")
+        live["Year"], live["period"] = year, day
+        frames.append(live[["id", "position", "status", "team_name", "period", "Year"]])
+        rosters = rosters[~(year_rows & (pd.to_numeric(rosters["period"], errors="coerce") == day))]
+        year_rows = pd.to_numeric(rosters.get("Year"), errors="coerce") == year
+    return pd.concat([rosters, *frames], ignore_index=True, sort=False) if frames else rosters
+
+
 def matchup_starter_progress(year, matchup_period, teams=(), as_of=None):
     calendar = period_calendar.copy()
     dates = calendar[
@@ -991,7 +1022,7 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
     if bridge.empty:
         return pd.DataFrame()
 
-    active = rosters_df.copy()
+    active = live_roster_days(rosters_df, matchup_days, year)
     active["Year"] = pd.to_numeric(active["Year"], errors="coerce")
     active["period"] = pd.to_numeric(active["period"], errors="coerce")
     active = active[
@@ -2431,7 +2462,9 @@ def render_pbp_all_categories_score_chart(chart_table, team_a, team_b, events=No
 def render_matchup_pbp_tab(rows, team_a, team_b, key_prefix, expected_score_a=None, expected_score_b=None, events=None):
     events = matchup_pbp_events(rows, team_a, team_b) if events is None else events
     if events.empty:
-        render_html('<div class="sbc-empty-state">No play-by-play rows are available for this matchup yet. The current PBP sample only covers the first 2024-25 matchup period.</div>')
+        # The archive covers every completed game; only today's (or a missed
+        # night's) games are absent until the overnight refresh adds them.
+        render_html('<div class="sbc-empty-state">Play-by-play for these games is added by the overnight refresh. Check back tomorrow morning.</div>')
         return
 
     category = st.selectbox(
