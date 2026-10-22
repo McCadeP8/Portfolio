@@ -61,9 +61,11 @@ def normalize_player_key(value):
     parts = [part for part in text.split() if part not in suffixes]
     return " ".join(parts)
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=3600)
 def get_data() -> pd.DataFrame:
-    refresh_key = int(pd.Timestamp.now().timestamp() // 60)
+    # The cap sheet feeds cap pages and Data Checks, never live scoring. Hourly
+    # is plenty; "Clear cache" in the app menu forces an immediate re-read.
+    refresh_key = int(pd.Timestamp.now().timestamp() // 3600)
     csv_url = f"https://docs.google.com/spreadsheets/d/11YuW1DTPVid5OUcludvPE4-EqU751qp5l21lDK6V7PE/export?format=csv&gid=1906653859&refresh={refresh_key}"
     df = read_csv_snapshot("cap_sheet_data", csv_url, ttl_seconds=0)
     for year in columns_order:

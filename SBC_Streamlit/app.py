@@ -890,9 +890,22 @@ def load_live_espn_player_rows(date_values, sbc_year):
     }), tuple(failed)
 
 
-@st.cache_data(ttl=300, max_entries=32, show_spinner=False)
-def load_fantrax_roster_day(year, day):
+@st.cache_data(ttl=1800, max_entries=8, show_spinner=False)
+def load_fantrax_roster_today(year, day):
+    # Today's lineup can still change before games lock.
     return get_fantrax_roster(int(year), int(day))
+
+
+@st.cache_data(ttl=86400, max_entries=64, show_spinner=False)
+def load_fantrax_roster_locked(year, day):
+    # A finished day's lineup is locked; there is nothing to refresh.
+    return get_fantrax_roster(int(year), int(day))
+
+
+def load_fantrax_roster_day(year, day, day_date):
+    if day_date < date.today():
+        return load_fantrax_roster_locked(year, day)
+    return load_fantrax_roster_today(year, day)
 
 
 def live_roster_days(rosters_df, matchup_days, year):
@@ -903,9 +916,9 @@ def live_roster_days(rosters_df, matchup_days, year):
     year_rows = pd.to_numeric(rosters.get("Year"), errors="coerce") == year
     stale = matchup_days[[day_date <= date.today() for day_date in matchup_days["Date"]]]
     frames = []
-    for day in stale["Day"].astype(int):
+    for day, day_date in zip(stale["Day"].astype(int), stale["Date"]):
         try:
-            live = load_fantrax_roster_day(year, day)
+            live = load_fantrax_roster_day(year, day, day_date)
         except Exception:
             continue
         if live is None or live.empty:
@@ -1006,7 +1019,9 @@ def recalc_shooting_stats(df):
 def matchup_boxscore_rows(matchup_row, rosters_df):
     year = int(matchup_row.get("Year", 0))
     matchup_period = int(matchup_row.get("Period", 0))
-    teams = [str(matchup_row.get("TeamA", "")), str(matchup_row.get("TeamB", ""))]
+    # "_all_teams" builds every team's rows in one pass (live scoring for the
+    # whole slate); otherwise only the two teams in this matchup.
+    teams = None if matchup_row.get("_all_teams") else [str(matchup_row.get("TeamA", "")), str(matchup_row.get("TeamB", ""))]
 
     if period_calendar.empty or rosters_df.empty:
         return pd.DataFrame()
@@ -1034,7 +1049,8 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
         & (active["period"].isin(matchup_days["Day"]))
     ].copy()
     active["sbc_team"] = active["team_name"].apply(team_short_name)
-    active = active[active["sbc_team"].isin(teams)].copy()
+    if teams is not None:
+        active = active[active["sbc_team"].isin(teams)].copy()
     active = active.rename(columns={"id": "fantraxId", "period": "Day"})
     active["fantraxId"] = active["fantraxId"].astype(str)
     active["Day"] = active["Day"].astype(int)
@@ -1124,6 +1140,13 @@ def team_boxscore_totals(rows):
     return grouped
 
 
+@st.cache_data(ttl=60, max_entries=8, show_spinner=False)
+def period_player_rows(year, matchup_period, roster_rows):
+    """Every team's player rows for one matchup period, built once and shared by
+    all of its matchups (scoring each matchup separately took ~1s apiece)."""
+    return matchup_boxscore_rows({"Year": year, "Period": matchup_period, "_all_teams": True, "_display_status": "Live"}, all_time_rosters)
+
+
 def live_scores_from_boxscores(score_rows, rosters_df):
     """Score matchups from live player box scores and each day's real Fantrax
     lineup. Fantrax's public live feed lags hours behind its own site, so it is
@@ -1131,12 +1154,17 @@ def live_scores_from_boxscores(score_rows, rosters_df):
     scores = {}
     if score_rows is None or score_rows.empty:
         return scores
+    period_rows = {}
     for _, game in score_rows.iterrows():
         team_a, team_b = str(game.get("TeamA", "")), str(game.get("TeamB", ""))
+        key = (int(game.get("Year", 0)), int(game.get("Period", 0)))
         try:
-            rows = matchup_boxscore_rows(game.to_dict(), rosters_df)
+            if key not in period_rows:
+                period_rows[key] = period_player_rows(key[0], key[1], len(rosters_df))
+            all_rows = period_rows[key]
         except Exception:
             continue
+        rows = all_rows[all_rows["sbc_team"].isin([team_a, team_b])] if not all_rows.empty else all_rows
         totals = team_boxscore_totals(rows) if not rows.empty else pd.DataFrame(columns=["sbc_team", *BOX_SCORE_SUM_STATS])
         # A team with no games played yet still takes the categories it wins at zero.
         for team in (team_a, team_b):
