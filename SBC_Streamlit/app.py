@@ -909,7 +909,8 @@ def load_fantrax_roster_day(year, day, day_date):
 
 
 def teams_with_players_on_court(year):
-    """SBC teams with an Active-slot player in an NBA game in progress right now.
+    """SBC teams with an Active-slot player who has logged minutes in an NBA game
+    in progress right now (a starter still at 0 minutes is a DNP so far, not live).
     Checks yesterday's and today's slates: on a UTC server tonight's games are
     "yesterday" after 8 p.m. Eastern."""
     today = date.today()
@@ -924,6 +925,14 @@ def teams_with_players_on_court(year):
     calendar["Date"] = pd.to_datetime(calendar["Date"], errors="coerce").dt.date
     calendar = calendar[pd.to_numeric(calendar["Year"], errors="coerce") == year]
     day_for_date = dict(zip(calendar["Date"], pd.to_numeric(calendar["Day"], errors="coerce")))
+    live_box, _ = load_live_espn_player_rows(slate_dates, year)
+    in_progress_ids = set(in_progress["event_id"].astype(str))
+    if live_box.empty:
+        return set()
+    minutes = live_box[live_box["nba_game_id"].astype(str).isin(in_progress_ids) & (pd.to_numeric(live_box["MP"], errors="coerce") > 0)]
+    playing_ids = set(minutes["nba_player_id"].astype(str))
+    bridge = build_fantrax_to_espn_bridge()
+    espn_of = dict(zip(bridge["fantraxId"].astype(str), bridge["espn_player_id"].astype(str)))
     nba_teams = load_fantrax_players_snapshot()[["fantraxId", "nba_team"]].copy()
     nba_teams["fantraxId"] = nba_teams["fantraxId"].astype(str)
     nba_teams["nba_team"] = nba_teams["nba_team"].map(normalize_nba_team)
@@ -943,7 +952,7 @@ def teams_with_players_on_court(year):
             continue
         active = lineup[lineup["status"].astype(str).str.upper().eq("ACTIVE")]
         for player_id, team_name in zip(active["id"].astype(str).str.strip("*"), active["team_name"]):
-            if team_of.get(player_id) in playing:
+            if team_of.get(player_id) in playing and espn_of.get(player_id) in playing_ids:
                 on_court.add(team_short_name(team_name))
     return on_court
 
