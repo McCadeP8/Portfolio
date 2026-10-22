@@ -1,4 +1,5 @@
 from collections import Counter
+from datetime import date
 from itertools import combinations
 from pathlib import Path
 import unittest
@@ -18,6 +19,14 @@ class ScheduleRolloverTests(unittest.TestCase):
         cls.prior = scores[(scores["Year"] == 2026) & (scores["Type"] == "Regular Season")]
         cls.current = scores[(scores["Year"] == 2027) & (scores["Type"] == "Regular Season")]
         cls.current_all = scores[scores["Year"] == 2027]
+        # Once the season tips off, played periods carry real scores; only periods
+        # that have not started yet must still be blank.
+        import functions
+        calendar = functions.get_period_calendar()
+        calendar = calendar[pd.to_numeric(calendar["Year"], errors="coerce") == 2027].copy()
+        calendar["Date"] = pd.to_datetime(calendar["Date"], errors="coerce").dt.date
+        started = pd.to_numeric(calendar.loc[calendar["Date"] <= date.today(), "Period"], errors="coerce")
+        cls.last_started_period = int(started.max()) if started.notna().any() else 0
 
     def rows_for_pair(self, frame, team_a, team_b):
         return frame[
@@ -47,8 +56,9 @@ class ScheduleRolloverTests(unittest.TestCase):
                 self.assertEqual(len(current_pair), 2, (team_a, team_b))
                 self.assertEqual(Counter(current_pair["TeamB"]), Counter({team_a: 1, team_b: 1}))
 
-    def test_scores_and_game_flags_are_ready_for_the_new_season(self):
-        self.assertTrue((self.current_all[["TeamAScore", "TeamBScore"]] == 0).all().all())
+    def test_unplayed_scores_and_game_flags(self):
+        future = self.current_all[pd.to_numeric(self.current_all["Period"], errors="coerce") > self.last_started_period]
+        self.assertTrue((future[["TeamAScore", "TeamBScore"]] == 0).all().all())
         expected_conference = self.current.apply(
             lambda row: int(team_info[row["TeamA"]]["conf"] == team_info[row["TeamB"]]["conf"]), axis=1
         )
@@ -60,12 +70,21 @@ class ScheduleRolloverTests(unittest.TestCase):
         postseason = self.current_all[self.current_all["Type"] != "Regular Season"]
         self.assertTrue((postseason[["ConferenceGame", "DivisionGame"]] == 0).all().all())
 
-    def test_new_season_standings_are_zeroed(self):
+    def test_unplayed_standings_carry_forward(self):
         standings = pd.read_parquet(ROOT / "all_time_standings.parquet")
         current = standings[standings["Year"] == 2027]
         self.assertEqual(set(current["Team"]), set(team_info))
         self.assertEqual(set(current["Period"]), set(range(1, 37)) | {99})
-        self.assertTrue((current[["Record", "ConfRecord", "DivRecord", "GSRecord"]] == "0-0").all().all())
+        columns = ["Record", "ConfRecord", "DivRecord", "GSRecord"]
+        if self.last_started_period == 0:
+            self.assertTrue((current[columns] == "0-0").all().all())
+            return
+        # A period's row is the record entering it, so period 1 is 0-0 and every
+        # period after the one in progress repeats the latest results.
+        self.assertTrue((current[current["Period"] == 1][columns] == "0-0").all().all())
+        latest = current[current["Period"] == self.last_started_period + 1].set_index("Team")[columns]
+        for _, period_rows in current[current["Period"] > self.last_started_period + 1].groupby("Period"):
+            pd.testing.assert_frame_equal(period_rows.set_index("Team")[columns].sort_index(), latest.sort_index())
 
 
 if __name__ == "__main__":

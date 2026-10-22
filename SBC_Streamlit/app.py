@@ -1117,6 +1117,33 @@ def team_boxscore_totals(rows):
     return grouped
 
 
+def live_scores_from_boxscores(score_rows, rosters_df):
+    """Score matchups from live player box scores and each day's real Fantrax
+    lineup. Fantrax's public live feed lags hours behind its own site, so it is
+    not used for scores in progress. Returns {Game_ID: (score_a, score_b)}."""
+    scores = {}
+    if score_rows is None or score_rows.empty:
+        return scores
+    for _, game in score_rows.iterrows():
+        team_a, team_b = str(game.get("TeamA", "")), str(game.get("TeamB", ""))
+        try:
+            rows = matchup_boxscore_rows(game.to_dict(), rosters_df)
+        except Exception:
+            continue
+        totals = team_boxscore_totals(rows) if not rows.empty else pd.DataFrame(columns=["sbc_team", *BOX_SCORE_SUM_STATS])
+        # A team with no games played yet still takes the categories it wins at zero.
+        for team in (team_a, team_b):
+            if team not in set(totals.get("sbc_team", [])):
+                empty = {"sbc_team": team, **{stat: 0 for stat in BOX_SCORE_SUM_STATS}}
+                totals = pd.concat([totals, recalc_shooting_stats(pd.DataFrame([empty]))], ignore_index=True)
+        if totals[BOX_SCORE_SUM_STATS].abs().to_numpy().sum() == 0:
+            scores[str(game.get("Game_ID", ""))] = (0.0, 0.0)
+            continue
+        _, score_a, score_b = matchup_category_results(totals, team_a, team_b)
+        scores[str(game.get("Game_ID", ""))] = (float(score_a), float(score_b))
+    return scores
+
+
 def matchup_category_results(team_totals, team_a, team_b):
     if team_totals.empty or team_totals["sbc_team"].nunique() < 2:
         return pd.DataFrame(), 0, 0
@@ -20574,6 +20601,12 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
             live_stats_total_scores = get_weekly_scores_df(SelectedYear2, SelectedPeriod2, all_time_schedule, live_stats_df2, standings)
             if not live_stats_total_scores.empty and not matchup_started:
                 live_stats_total_scores["_display_status"] = "Preview"
+            elif not live_stats_total_scores.empty and matchup_dates.max().normalize() >= scoreboard_today:
+                # In progress: score from live box scores, not Fantrax's lagging feed.
+                live_scores = live_scores_from_boxscores(live_stats_total_scores, all_time_rosters)
+                game_ids = live_stats_total_scores["Game_ID"].astype(str)
+                live_stats_total_scores["TeamA_Score"] = game_ids.map(lambda gid: live_scores.get(gid, (None, None))[0]).fillna(live_stats_total_scores["TeamA_Score"])
+                live_stats_total_scores["TeamB_Score"] = game_ids.map(lambda gid: live_scores.get(gid, (None, None))[1]).fillna(live_stats_total_scores["TeamB_Score"])
 
     render_html('<div class="sbc-section-label">All Scores</div>')
     render_scoreboard_cards(live_stats_total_scores)
@@ -21280,13 +21313,12 @@ if main_page == "Overview":
     if season_started:
         # The current matchup shows Fantrax live scoring, not the stored 0-0.
         try:
-            live_front = get_weekly_scores_df(front_year, front_period, all_time_schedule, get_matchup_stats(front_year, front_period), standings)
-            if not live_front.empty and "Game_ID" in live_front.columns:
-                live_a = dict(zip(live_front["Game_ID"], pd.to_numeric(live_front["TeamA_Score"], errors="coerce")))
-                live_b = dict(zip(live_front["Game_ID"], pd.to_numeric(live_front["TeamB_Score"], errors="coerce")))
-                current_rows = (front_scores["Year"] == front_year) & (front_scores["Period"] == front_period)
-                front_scores.loc[current_rows, "_a"] = front_scores.loc[current_rows, "Game_ID"].map(live_a)
-                front_scores.loc[current_rows, "_b"] = front_scores.loc[current_rows, "Game_ID"].map(live_b)
+            current_rows = (front_scores["Year"] == front_year) & (front_scores["Period"] == front_period)
+            live_scores = live_scores_from_boxscores(front_scores[current_rows], all_time_rosters)
+            if live_scores:
+                game_ids = front_scores.loc[current_rows, "Game_ID"].astype(str)
+                front_scores.loc[current_rows, "_a"] = game_ids.map(lambda gid: live_scores.get(gid, (None, None))[0])
+                front_scores.loc[current_rows, "_b"] = game_ids.map(lambda gid: live_scores.get(gid, (None, None))[1])
         except Exception as exc:
             st.warning(f"Live scores could not be loaded right now: {exc}")
 
