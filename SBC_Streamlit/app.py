@@ -831,6 +831,10 @@ def load_nba_games_for_dates(date_values):
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
+# Reset every run (the script re-executes); keeps one ESPN warning per page.
+LIVE_BOX_WARNING_SHOWN = []
+
+
 @st.cache_data(ttl=60, max_entries=16, show_spinner=False)
 def load_live_espn_player_rows(date_values, sbc_year):
     """Today's in-progress and final NBA player lines from ESPN, shaped like the
@@ -840,11 +844,12 @@ def load_live_espn_player_rows(date_values, sbc_year):
         timeout_seconds=BACKEND_SETTINGS.http_timeout_seconds,
         live_ttl_seconds=BACKEND_SETTINGS.live_cache_seconds,
     )
-    frames = []
+    frames, failed = [], []
     for value in date_values:
         try:
             players = client.snapshot(pd.Timestamp(value).date(), include_player_stats=True).player_stats
         except Exception:
+            failed.append(str(value))
             continue
         if players is None or players.empty:
             continue
@@ -853,7 +858,7 @@ def load_live_espn_player_rows(date_values, sbc_year):
         players["game_date"] = str(value)
         frames.append(players)
     if not frames:
-        return pd.DataFrame()
+        return pd.DataFrame(), tuple(failed)
     live = pd.concat(frames, ignore_index=True)
     num = lambda column: pd.to_numeric(live.get(column), errors="coerce").fillna(0)
     two_m, two_a = num("FGM") - num("3PTM"), num("FGA") - num("3PTA")
@@ -882,7 +887,7 @@ def load_live_espn_player_rows(date_values, sbc_year):
         "FTM": num("FTM").astype(int), "FTA": num("FTA").astype(int), "FT%": ratio(num("FTM"), num("FTA")),
         "PTS": num("PTS"), "OREB": num("OREB"), "DREB": num("DREB"), "AST": num("AST"),
         "ST": num("ST"), "BLK": num("BLK"), "TO": num("TO"), "+/-": num("+/-"),
-    })
+    }), tuple(failed)
 
 
 @st.cache_data(ttl=300, max_entries=32, show_spinner=False)
@@ -891,14 +896,12 @@ def load_fantrax_roster_day(year, day):
 
 
 def live_roster_days(rosters_df, matchup_days, year):
-    """Replace saved roster rows with the live Fantrax lineup for matchup days the
-    snapshot cannot be trusted for: anything dated on or after its last refresh
-    (lineups keep changing until each day locks)."""
+    """Use the live Fantrax lineup for every matchup day that has started.
+    Lineups change constantly, and Fantrax returns each past day's locked
+    lineup, so the nightly snapshot is only a fallback if Fantrax is down."""
     rosters = rosters_df.copy()
     year_rows = pd.to_numeric(rosters.get("Year"), errors="coerce") == year
-    created = pd.to_datetime(rosters.loc[year_rows, "Created"], errors="coerce") if "Created" in rosters.columns else pd.Series(dtype="datetime64[ns]")
-    snapshot_date = created.max().date() if created.notna().any() else None
-    stale = matchup_days[[day_date <= date.today() and (snapshot_date is None or day_date >= snapshot_date) for day_date in matchup_days["Date"]]]
+    stale = matchup_days[[day_date <= date.today() for day_date in matchup_days["Date"]]]
     frames = []
     for day in stale["Day"].astype(int):
         try:
@@ -1049,9 +1052,13 @@ def matchup_boxscore_rows(matchup_row, rosters_df):
     archived_dates = set(pd.to_datetime(box["Date"], errors="coerce").dt.date.dropna())
     live_dates = tuple(sorted(str(day) for day in matchup_days["Date"] if day <= date.today() and day not in archived_dates))
     if live_dates:
-        live_box = load_live_espn_player_rows(live_dates, year)
+        live_box, failed_dates = load_live_espn_player_rows(live_dates, year)
         if not live_box.empty:
             box = pd.concat([box, live_box], ignore_index=True, sort=False)
+        if failed_dates and not LIVE_BOX_WARNING_SHOWN:
+            LIVE_BOX_WARNING_SHOWN.append(True)
+            load_live_espn_player_rows.clear()
+            st.warning(f"Live NBA box scores for {', '.join(failed_dates)} could not be loaded from ESPN, so those games are missing. Try again in a minute.")
     preview_status = str(matchup_row.get("_display_status", "")).strip().lower()
     if box.empty and preview_status in {"preview", "future", "upcoming"}:
         prior_years = box_years[box_years < year]

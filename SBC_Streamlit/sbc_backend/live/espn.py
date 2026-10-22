@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+import json
 from pathlib import Path
 import re
 from typing import Any, Iterable
@@ -268,7 +269,11 @@ class EspnNBAClient:
 
     def scoreboard(self, game_date: date, *, allow_stale_on_error: bool = True) -> dict[str, Any]:
         cache_path = self.cache_root / "scoreboards" / f"{game_date:%Y%m%d}.json"
-        ttl = 365 * 24 * 60 * 60 if game_date < date.today() else self.live_ttl_seconds
+        # Servers run on UTC, where tonight's slate is "yesterday" after 8 p.m.
+        # Eastern. Cache a slate long-term only once it is over a day old and its
+        # cached copy shows every game final; otherwise it froze mid-game.
+        settled = game_date < date.today() - timedelta(days=1) and self._slate_final(cache_path)
+        ttl = 365 * 24 * 60 * 60 if settled else self.live_ttl_seconds
         return self.http.get_json(
             SCOREBOARD_URL,
             params={"dates": f"{game_date:%Y%m%d}", "limit": 100},
@@ -276,6 +281,14 @@ class EspnNBAClient:
             ttl_seconds=ttl,
             allow_stale_on_error=allow_stale_on_error,
         )
+
+    @staticmethod
+    def _slate_final(cache_path: Path) -> bool:
+        try:
+            events = json.loads(cache_path.read_text(encoding="utf-8")).get("events") or []
+        except (OSError, ValueError):
+            return False
+        return all((((event.get("status") or {}).get("type") or {}).get("completed")) for event in events)
 
     def summary(self, event_id: str, *, final: bool = False, allow_stale_on_error: bool = True) -> dict[str, Any]:
         cache_path = self.cache_root / "summaries" / f"{event_id}.json"
