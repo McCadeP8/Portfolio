@@ -79,10 +79,14 @@ def starter_game_progress(
     if "completed" not in games.columns:
         state = games["state"] if "state" in games.columns else pd.Series("", index=games.index)
         games["completed"] = state.astype(str).str.lower().eq("post")
+    games["fraction"] = [
+        game_fraction(row.get("state"), row.get("period"), row.get("clock"), row.get("completed"))
+        for row in games.to_dict("records")
+    ]
     scheduled = pd.concat(
         [
-            games[["game_date", "home_abbreviation", "completed"]].rename(columns={"home_abbreviation": "nba_team"}),
-            games[["game_date", "away_abbreviation", "completed"]].rename(columns={"away_abbreviation": "nba_team"}),
+            games[["game_date", "home_abbreviation", "fraction"]].rename(columns={"home_abbreviation": "nba_team"}),
+            games[["game_date", "away_abbreviation", "fraction"]].rename(columns={"away_abbreviation": "nba_team"}),
         ],
         ignore_index=True,
     )
@@ -93,5 +97,33 @@ def starter_game_progress(
     if assignments.empty:
         return 0.0
     cutoff = pd.Timestamp(as_of if as_of is not None else date.today()).normalize()
-    completed = assignments["completed"].fillna(False).astype(bool) & (assignments["game_date"] <= cutoff)
-    return round(float(completed.sum()) / float(len(assignments)) * 100.0, 1)
+    played = assignments["fraction"].fillna(0.0).where(assignments["game_date"] <= cutoff, 0.0)
+    return round(float(played.sum()) / float(len(assignments)) * 100.0, 1)
+
+
+def game_fraction(state, period, clock, completed) -> float:
+    """Share of one NBA game played: 0 before tip, 1 when final, and minutes
+    elapsed / 48 in between (8:33 left in the 3rd = 57%). Overtime, and the
+    end of regulation before ESPN marks it final, hold at 99.9% so a matchup
+    never reads Final before its last game ends."""
+    if bool(completed) or str(state).lower() == "post":
+        return 1.0
+    if str(state).lower() != "in":
+        return 0.0
+    try:
+        quarter = int(float(period))
+    except (TypeError, ValueError):
+        return 0.0
+    if quarter > 4:
+        return 0.999
+    text = str(clock or "").strip()
+    try:
+        if ":" in text:
+            minutes, seconds = text.split(":", 1)
+            remaining = int(minutes) + float(seconds) / 60
+        else:
+            remaining = float(text) / 60  # under a minute, ESPN sends seconds
+    except ValueError:
+        remaining = 12.0
+    elapsed = (quarter - 1) * 12 + (12 - min(max(remaining, 0.0), 12.0))
+    return round(min(max(elapsed / 48, 0.0), 0.999), 4)

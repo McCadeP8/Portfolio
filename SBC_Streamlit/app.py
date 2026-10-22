@@ -71,7 +71,7 @@ from sbc_backend import BackendSettings, get_repository
 from sbc_backend.awards import build_award_count_tables
 from sbc_backend.player_stats import prepare_matchup_archive_rows
 from sbc_backend.live import EspnNBAClient, format_live_game_status
-from sbc_backend.matchup_preview import project_player_rows
+from sbc_backend.matchup_preview import normalize_nba_team, project_player_rows
 import scorebug_creator as highlight_scorebug
 
 
@@ -812,7 +812,7 @@ def load_fantrax_players_snapshot():
     return df.dropna(subset=["name", "fantraxId"])
 
 
-@st.cache_data(ttl=300, max_entries=64)
+@st.cache_data(ttl=60, max_entries=64)
 def load_nba_games_for_dates(date_values):
     client = EspnNBAClient(
         cache_root=BACKEND_SETTINGS.runtime_root / "espn",
@@ -906,6 +906,46 @@ def load_fantrax_roster_day(year, day, day_date):
     if day_date < date.today():
         return load_fantrax_roster_locked(year, day)
     return load_fantrax_roster_today(year, day)
+
+
+def teams_with_players_on_court(year):
+    """SBC teams with an Active-slot player in an NBA game in progress right now.
+    Checks yesterday's and today's slates: on a UTC server tonight's games are
+    "yesterday" after 8 p.m. Eastern."""
+    today = date.today()
+    slate_dates = (str(today - pd.Timedelta(days=1).to_pytimedelta()), str(today))
+    games = load_nba_games_for_dates(slate_dates)
+    if games is None or games.empty or "state" not in games.columns:
+        return set()
+    in_progress = games[games["state"].astype(str).str.lower().eq("in")].copy()
+    if in_progress.empty:
+        return set()
+    calendar = period_calendar.copy()
+    calendar["Date"] = pd.to_datetime(calendar["Date"], errors="coerce").dt.date
+    calendar = calendar[pd.to_numeric(calendar["Year"], errors="coerce") == year]
+    day_for_date = dict(zip(calendar["Date"], pd.to_numeric(calendar["Day"], errors="coerce")))
+    nba_teams = load_fantrax_players_snapshot()[["fantraxId", "nba_team"]].copy()
+    nba_teams["fantraxId"] = nba_teams["fantraxId"].astype(str)
+    nba_teams["nba_team"] = nba_teams["nba_team"].map(normalize_nba_team)
+    team_of = dict(zip(nba_teams["fantraxId"], nba_teams["nba_team"]))
+    on_court = set()
+    in_progress["slate"] = pd.to_datetime(in_progress["game_date"], errors="coerce").dt.date
+    for slate, slate_games in in_progress.groupby("slate"):
+        day = day_for_date.get(slate)
+        if day is None or pd.isna(day):
+            continue
+        playing = {normalize_nba_team(team) for team in pd.concat([slate_games["home_abbreviation"], slate_games["away_abbreviation"]])}
+        try:
+            lineup = load_fantrax_roster_day(year, int(day), slate)
+        except Exception:
+            continue
+        if lineup is None or lineup.empty:
+            continue
+        active = lineup[lineup["status"].astype(str).str.upper().eq("ACTIVE")]
+        for player_id, team_name in zip(active["id"].astype(str).str.strip("*"), active["team_name"]):
+            if team_of.get(player_id) in playing:
+                on_court.add(team_short_name(team_name))
+    return on_court
 
 
 def live_roster_days(rosters_df, matchup_days, year):
@@ -21380,6 +21420,10 @@ if main_page == "Overview":
             (front_year, front_period + 1, f"Matchup {front_period + 1}", period_date_label(front_year, front_period + 1, f"Matchup {front_period + 1}"), "UPCOMING"),
         ]
     window_status = {(year, period_number): status for year, period_number, _, _, status in window_specs}
+    try:
+        on_court_teams = teams_with_players_on_court(front_year) if season_started else set()
+    except Exception:
+        on_court_teams = set()
     for matchup_year, matchup_period, label, date_label, status in window_specs:
         window_games = front_scores[(front_scores["Year"] == matchup_year) & (front_scores["Period"] == matchup_period)]
         games = []
@@ -21388,7 +21432,11 @@ if main_page == "Overview":
             av, bv = game.get("_a"), game.get("_b")
             display_type = str(game.get("Type", "Regular Season"))
             show_scores = status in ("FINAL", "LIVE")
-            games.append({"key": f"{matchup_year}-{matchup_period}-{game_index}", "a": a, "b": b, "as": round(float(av), 1) if show_scores and pd.notna(av) else None, "bs": round(float(bv), 1) if show_scores and pd.notna(bv) else None, "type": display_type, "round": str(game.get("Round", "")), "status": status, "id": str(game.get("Game_ID", ""))})
+            game_status = status
+            if status == "LIVE" and {str(game.get("TeamA", "")), str(game.get("TeamB", ""))}.isdisjoint(on_court_teams):
+                # Matchup underway but nobody from either side is on the floor right now.
+                game_status = "IN PROGRESS"
+            games.append({"key": f"{matchup_year}-{matchup_period}-{game_index}", "a": a, "b": b, "as": round(float(av), 1) if show_scores and pd.notna(av) else None, "bs": round(float(bv), 1) if show_scores and pd.notna(bv) else None, "type": display_type, "round": str(game.get("Round", "")), "status": game_status, "id": str(game.get("Game_ID", ""))})
         matchup_windows.append({"label": label, "date": date_label, "period": matchup_period, "games": games})
 
     def front_dialog_matchup(game_key):
