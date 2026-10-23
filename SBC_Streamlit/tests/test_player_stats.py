@@ -30,6 +30,9 @@ class PlayerStatAggregationTests(unittest.TestCase):
     def test_manchester_record_totals_match_player_pages(self):
         archive = pd.read_parquet(ROOT / "sbc_player_matchup_stats.parquet")
         regular = prepare_matchup_archive_rows(archive, matchup_type="Regular Season")
+        # Completed seasons only: these totals are fixed history, while the
+        # current season keeps adding points every night.
+        regular = regular[pd.to_numeric(regular["sbc_year"], errors="coerce") <= 2026]
         manchester = regular[regular["sbc_team_key"].astype(str) == "Manchester"]
         totals = manchester.groupby("fantrax_name")["PTS"].sum()
 

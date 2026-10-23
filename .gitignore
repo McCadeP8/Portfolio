@@ -13,3 +13,6 @@ SBC_Streamlit/outputs/austin_court_rotated.png
 
 # Pearson Press: kept out of this repo
 Pearson_Press/
+
+# Game theory calculator: local only
+Game_Theory_Calculator/
