@@ -14959,11 +14959,22 @@ st.markdown(
     }}
 
     .sbc-box-table-scroll {{
-        overflow-x: auto;
+        overflow: auto;
+        max-height: min(70vh, 44rem);
+        overscroll-behavior: contain;
     }}
 
     .sbc-box-player-table {{
         min-width: 54rem;
+    }}
+
+    /* Category headers stay pinned while the table scrolls, like the player column. */
+    .sbc-box-player-table thead th {{
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: #f3f5f8;
+        box-shadow: 0 6px 10px -10px rgba(15, 23, 42, 0.72);
     }}
 
     .sbc-box-player-table th:first-child,
@@ -14975,7 +14986,9 @@ st.markdown(
     }}
 
     .sbc-box-player-table th:first-child {{
-        z-index: 3;
+        z-index: 4;
+        top: 0;
+        background: #f3f5f8;
     }}
 
     .sbc-box-player-table td:first-child {{
@@ -15172,8 +15185,9 @@ st.markdown(
         }}
 
         .sbc-box-table-scroll {{
-            overflow-x: auto;
-            overscroll-behavior-x: contain;
+            overflow: auto;
+            max-height: 70vh;
+            overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
         }}
 

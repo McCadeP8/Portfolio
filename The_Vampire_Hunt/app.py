@@ -426,23 +426,39 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict, team_nam
     base_vampire = [row for row in base_rows if row.get("team") == "The Vampire" or row.get("team") == team_name]
     lives = next((row.get("lives_remaining") for row in base_vampire if row.get("lives_remaining") is not None), None)
     by_name = {player_match_key(row.get("player", "")): row for row in base_vampire}
+    # Names are not unique in Fantrax (e.g. Justin Jefferson MIN WR vs CLE LB),
+    # so keep every candidate and resolve by slot position below.
     by_directory_name = {}
     for player_id, player in players.items():
         name = display_player_name(player.get("name", ""))
         if name:
-            by_directory_name[player_match_key(name)] = (str(player_id), player)
+            by_directory_name.setdefault(player_match_key(name), []).append((str(player_id), player))
+    league_player_ids = {str(row.get("player_id", "")) for row in base_rows}
+
+    def directory_match(name_key: str, position: str) -> tuple[str, dict] | None:
+        candidates = by_directory_name.get(name_key, [])
+        if not candidates:
+            return None
+        flex_positions = {"RB", "WR", "TE"} if position in {"RWT FLEX", "FLX", "FLEX"} else {position}
+        return max(
+            candidates,
+            key=lambda entry: (
+                str(entry[1].get("position", "")) in flex_positions,
+                entry[0] in league_player_ids,
+            ),
+        )
     defense_ids = {defense_match_key(name): (team_id, nfl_team) for team_id, (name, nfl_team) in DEFENSE_TEAMS.items()}
 
     rebuilt = []
     for slot, player_name in slots:
         clean_name = re.sub(r"\s*\([^)]*\)\s*$", "", player_name).strip()
         existing = by_name.get(player_match_key(clean_name), {})
-        directory_entry = by_directory_name.get(player_match_key(clean_name))
+        position = slot.rstrip("0123456789")
+        directory_entry = directory_match(player_match_key(clean_name), position)
         player_id = str(existing.get("player_id", ""))
         player_info = {}
         if directory_entry:
             player_id, player_info = directory_entry
-        position = slot.rstrip("0123456789")
         defense_key = defense_match_key(clean_name)
         if position == "DST" and defense_key in defense_ids:
             player_id, nfl_team = defense_ids[defense_key]
