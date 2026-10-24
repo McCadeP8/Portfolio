@@ -74,4 +74,11 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add SBC_Streamlit/*.parquet SBC_Streamlit/data_snapshots/ SBC_Streamlit/player_pictures_auto.csv
           git diff --staged --quiet || git commit -m "Auto-update data files [skip ci]"
-          git push
+          # Code may have been pushed while this ran; stack the data commit on top
+          # of it instead of failing. Up to three tries in case of another race.
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "Push attempt $attempt failed; retrying"
+            sleep 5
+          done
+          exit 1
