@@ -9208,6 +9208,7 @@ def render_schedule_table(schedule_df, selected_team, rosters_df=None, show_boxs
 
     current_type = None
     render_html('<div class="sbc-schedule-list">')
+    schedule_period_states = {}
     for _, row in table_df.iterrows():
         is_home = row.get("TeamB") == selected_team
         opponent = row.get("TeamA") if is_home else row.get("TeamB")
@@ -9219,9 +9220,20 @@ def render_schedule_table(schedule_df, selected_team, rosters_df=None, show_boxs
         team_score = row.get("TeamBScore") if is_home else row.get("TeamAScore")
         opponent_score = row.get("TeamAScore") if is_home else row.get("TeamBScore")
         result = schedule_result(team_score, opponent_score, is_home)
-        result_class = {"W": "win", "L": "loss"}.get(result, "tbd")
+        # Stored scores include matchups still being played; W/L only once final.
+        year_value = pd.to_numeric(row.get("Year"), errors="coerce")
+        period_value = pd.to_numeric(row.get("Period"), errors="coerce")
+        state = "final"
+        if pd.notna(year_value) and pd.notna(period_value) and int(year_value) == current_year:
+            period_key = (int(year_value), int(period_value))
+            if period_key not in schedule_period_states:
+                schedule_period_states[period_key] = matchup_period_state(*period_key)
+            state = schedule_period_states[period_key]
+        if state == "upcoming":
+            result = "TBD"
+        result_class = {"W": "win", "L": "loss"}.get(result, "tbd") if state == "final" else "tbd"
         score_text = "" if result == "TBD" else f"{float(team_score):g}-{float(opponent_score):g}"
-        result_text = "" if result == "TBD" else result
+        result_text = "IN PROGRESS" if state == "live" else ("" if result == "TBD" else result)
         type_text = clean_pick_display(row.get("Type", ""))
         if type_text != current_type:
             current_type = type_text
@@ -9242,9 +9254,9 @@ def render_schedule_table(schedule_df, selected_team, rosters_df=None, show_boxs
         if show_boxscores and rosters_df is not None:
             button_key = f"team_schedule_boxscore_{row.get('Game_ID', '')}_{row.get('Year', '')}_{row.get('Period', '')}_{row.get('TeamA', '')}_{row.get('TeamB', '')}"
             button_label = "Game Preview" if result == "TBD" else "Box Score"
-            if st.button(button_label, key=button_key, use_container_width=True, type="primary"):
+            if st.button(button_label, key=button_key, use_container_width=True, type="secondary"):
                 dialog_row = row.to_dict()
-                dialog_row["_display_status"] = "Upcoming" if result == "TBD" else "Final"
+                dialog_row["_display_status"] = "Upcoming" if result == "TBD" else ("Live" if state == "live" else "Final")
                 render_matchup_boxscore_dialog(dialog_row, rosters_df)
     render_html('</div>')
 
@@ -11223,6 +11235,36 @@ def ist_group_tables(selected_year, selected_period):
             for table in conference_groups.values():
                 table["Tier"] = ["winner" if idx == 0 else "out" for idx, _ in table.iterrows()]
     return grouped
+
+
+def matchup_period_state(year, matchup_period):
+    """"upcoming", "live" or "final" for one matchup period.
+    Upcoming until the period's first NBA game tips off; final once its last day
+    has passed and every game that night is over (a UTC server reaches "tomorrow"
+    at 8 p.m. Eastern while the last games are still being played)."""
+    calendar = period_calendar.copy()
+    calendar["Date"] = pd.to_datetime(calendar["Date"], errors="coerce").dt.date
+    days = calendar[
+        (pd.to_numeric(calendar["Year"], errors="coerce") == int(year))
+        & (pd.to_numeric(calendar["Period"], errors="coerce") == int(matchup_period))
+    ]["Date"].dropna()
+    if days.empty:
+        return "upcoming"
+    first, last, today = min(days), max(days), date.today()
+    if today < first:
+        return "upcoming"
+    if today > last:
+        if today > last + pd.Timedelta(days=1).to_pytimedelta():
+            return "final"
+        games = load_nba_games_for_dates((str(last),))
+        if games is None or games.empty or "state" not in games.columns:
+            return "final"
+        return "final" if games["state"].astype(str).str.lower().eq("post").all() else "live"
+    if today == first:
+        games = load_nba_games_for_dates((str(first),))
+        if games is not None and not games.empty and "state" in games.columns and games["state"].astype(str).str.lower().eq("pre").all():
+            return "upcoming"
+    return "live"
 
 
 def scoreboard_statuses(scores_df, year, started, finished):
@@ -14298,7 +14340,8 @@ st.markdown(
     }}
 
     /* Box Score / Game Preview buttons under each scoreboard card */
-    [class*="st-key-boxscore_"] button {{
+    [class*="st-key-boxscore_"] button,
+    [class*="st-key-team_schedule_boxscore_"] button {{
         background: #ffffff !important;
         color: #17212b !important;
         border: 1px solid #d0d6dd !important;
@@ -14309,13 +14352,16 @@ st.markdown(
     }}
 
     [class*="st-key-boxscore_"] button:hover,
-    [class*="st-key-boxscore_"] button:focus-visible {{
+    [class*="st-key-boxscore_"] button:focus-visible,
+    [class*="st-key-team_schedule_boxscore_"] button:hover,
+    [class*="st-key-team_schedule_boxscore_"] button:focus-visible {{
         background: #f4f6f8 !important;
         color: #0b1218 !important;
         border-color: #e32231 !important;
     }}
 
-    [class*="st-key-boxscore_"] button p {{
+    [class*="st-key-boxscore_"] button p,
+    [class*="st-key-team_schedule_boxscore_"] button p {{
         color: inherit !important;
     }}
 
@@ -20871,9 +20917,9 @@ if main_page == "League Hub" and selected_league_page == "Scoreboard":
                 live_stats_total_scores["TeamA_Score"] = game_ids.map(lambda gid: live_scores.get(gid, (None, None))[0]).fillna(live_stats_total_scores["TeamA_Score"])
                 live_stats_total_scores["TeamB_Score"] = game_ids.map(lambda gid: live_scores.get(gid, (None, None))[1]).fillna(live_stats_total_scores["TeamB_Score"])
             if not live_stats_total_scores.empty:
+                period_state = matchup_period_state(SelectedYear2, SelectedPeriod2)
                 live_stats_total_scores["_live_status"] = scoreboard_statuses(
-                    live_stats_total_scores, SelectedYear2, matchup_started,
-                    matchup_dates.max().normalize() < scoreboard_today if not matchup_dates.empty else False,
+                    live_stats_total_scores, SelectedYear2, period_state != "upcoming", period_state == "final",
                 )
 
     render_html('<div class="sbc-section-label">All Scores</div>')
@@ -21577,6 +21623,11 @@ if main_page == "Overview":
     front_year = current_year
     season_started = _sbc_data.today >= _sbc_data.league_start_date
     front_period = current_matchup_period() if season_started else 1
+    if season_started and front_period > 1 and matchup_period_state(front_year, front_period - 1) == "live":
+        # Past midnight UTC the calendar says "next period" while last night's
+        # final games are still going; keep showing the period being decided.
+        front_period -= 1
+    front_state = matchup_period_state(front_year, front_period) if season_started else "upcoming"
     front_scores = all_time_schedule.copy()
     front_scores["_a"] = pd.to_numeric(front_scores["TeamAScore"], errors="coerce")
     front_scores["_b"] = pd.to_numeric(front_scores["TeamBScore"], errors="coerce")
@@ -21609,9 +21660,10 @@ if main_page == "Overview":
         # Last result, the matchup in progress, and the next one.
         previous = championship if front_period == 1 else (front_year, front_period - 1, f"Matchup {front_period - 1}", period_date_label(front_year, front_period - 1, f"Matchup {front_period - 1}"), "FINAL")
         current_label = "Opening Week" if front_period == 1 else f"Matchup {front_period}"
+        current_status = {"upcoming": "UPCOMING", "final": "FINAL"}.get(front_state, "LIVE")
         window_specs = [
             previous,
-            (front_year, front_period, current_label, period_date_label(front_year, front_period, current_label), "LIVE"),
+            (front_year, front_period, current_label, period_date_label(front_year, front_period, current_label), current_status),
             (front_year, front_period + 1, f"Matchup {front_period + 1}", period_date_label(front_year, front_period + 1, f"Matchup {front_period + 1}"), "UPCOMING"),
         ]
     window_status = {(year, period_number): status for year, period_number, _, _, status in window_specs}

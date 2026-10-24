@@ -882,9 +882,13 @@ def zero_future_matchup_scores(schedule: pd.DataFrame, period_calendar: pd.DataF
     return work
 
 def current_matchup_period() -> float:
-    csv_url = "https://docs.google.com/spreadsheets/d/1yQFnD0MK0cjO68_Mri6N115EmblyDW7Bza2hbY9Rerg/export?format=csv&gid=444367429"
-    df = read_csv_snapshot("schedule_calendar", csv_url, ttl_seconds=3600)
-    df["Date"] = pd.to_datetime(df["Date"]).dt.date
+    # The league period calendar (the one scoring and recaps use). The older
+    # schedule_calendar sheet has no 2026-27 rows and always fell back to period 1.
+    df = get_period_calendar().copy()
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
+    df["Year"] = pd.to_numeric(df["Year"], errors="coerce")
+    df["Period"] = pd.to_numeric(df["Period"], errors="coerce")
+    df = df.dropna(subset=["Date", "Year", "Period"])
     current_season = df[df["Year"] == current_year].sort_values("Date")
     df2 = current_season[current_season["Date"] == today]
     if len(df2) == 0:
@@ -3072,7 +3076,7 @@ def _draw_deciding_play(draw, box, text, max_size, min_size):
     wrapped onto up to two lines."""
     left, top, right, bottom = box
     draw.rounded_rectangle(box, radius=18, fill="#111827")
-    label = "DECIDING PLAY"
+    label = "LAST SCORE CHANGE"
     label_font = _scoreboard_font(max(min_size, max_size - 6), True)
     draw.text((left + 28, top + (bottom - top) // 2), label, font=label_font, fill="#fbbf24", anchor="lm")
     text_left = left + 28 + int(draw.textlength(label, font=label_font)) + 28
@@ -3135,14 +3139,14 @@ def build_matchup_recap_image(
     width = 3600
     margin = 48
     play_band = 116 if deciding_play else 0
-    category_top = 352 + play_band
+    category_top = 352
     category_height = 216
     box_top = category_top + category_height + 48
     table_top = box_top + 46
     lower_title_top = table_top + table_height + 48
     lower_box_top = lower_title_top + 42
     lower_box_bottom = lower_box_top + 600
-    height = lower_box_bottom + 76
+    height = lower_box_bottom + 76 + play_band
     image = Image.new("RGB", (width, height), "#f4f7fb")
     draw = ImageDraw.Draw(image)
 
@@ -3154,8 +3158,6 @@ def build_matchup_recap_image(
     draw.text((width // 2, 162), f"{score_a}  —  {score_b}", font=_scoreboard_font(78, True), fill="#172033", anchor="mm")
     draw.rounded_rectangle((width // 2 - 72, 216, width // 2 + 72, 258), radius=21, fill="#111111")
     draw.text((width // 2, 237), "FINAL", font=_scoreboard_font(17, True), fill="#ffffff", anchor="mm")
-    if deciding_play:
-        _draw_deciding_play(draw, (margin, 312, width - margin, 312 + play_band - 16), deciding_play, 34, 22)
 
     for team, name, logo_x, name_x, anchor, color in (
         (team_a, name_a, margin + 112, margin + 205, "lm", color_a),
@@ -3180,7 +3182,7 @@ def build_matchup_recap_image(
     draw.text((width // 2, 280), subtitle, font=_scoreboard_font(18, True), fill="#74869a", anchor="mm")
 
     # Horizontal 13-category scoreboard.
-    section_top = 318 + play_band
+    section_top = 318
     draw.text((margin, section_top), "13-CATEGORY SCOREBOARD", font=_scoreboard_font(30, True), fill="#172033", anchor="la")
     inner_width = width - margin * 2
     category_width = inner_width / 13
@@ -3455,6 +3457,8 @@ def build_matchup_recap_image(
     draw.text((width - margin, height - 30), "SBCFBL CATEGORY SCORING", font=_scoreboard_font(16, True), fill="#718398", anchor="rm")
 
     output = BytesIO()
+    if deciding_play:
+        _draw_deciding_play(draw, (margin, lower_box_bottom + 40, width - margin, lower_box_bottom + 40 + play_band - 16), deciding_play, 34, 22)
     image.save(output, format="PNG", optimize=True)
     return output.getvalue()
 
@@ -3497,7 +3501,7 @@ def build_mobile_matchup_recap_image(
 
     rosters = {team_a: roster_for(team_a), team_b: roster_for(team_b)}
     play_band = 150 if deciding_play else 0
-    header_height, category_top, category_height = 330, 400 + play_band, 90
+    header_height, category_top, category_height = 330, 400, 90
     categories_bottom = category_top + 13 * category_height
     players_title_y = categories_bottom + 34
     players_top = players_title_y + 40
@@ -3514,7 +3518,7 @@ def build_mobile_matchup_recap_image(
     look_top, look_bottom = look_title_y + 38, look_title_y + 798
     flow_title_y = look_bottom + 44
     chart_top, chart_bottom = flow_title_y + 38, flow_title_y + 518
-    height = chart_bottom + 66
+    height = chart_bottom + 66 + play_band
 
     image = Image.new("RGB", (width, height), "#f3f6fa")
     draw = ImageDraw.Draw(image)
@@ -3545,9 +3549,7 @@ def build_mobile_matchup_recap_image(
     draw.text((width // 2, 288), context, font=_fit_scoreboard_font(draw, context, width - 90, 19, 14), fill="#607286", anchor="mm")
 
     # Large one-row category comparisons.
-    if deciding_play:
-        _draw_deciding_play(draw, (margin, 346, width - margin, 346 + play_band - 20), deciding_play, 21, 15)
-    draw.text((margin, 370 + play_band), "13-CATEGORY RESULT", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
+    draw.text((margin, 370), "13-CATEGORY RESULT", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
     category_order = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     category_points = {"MP": 11, "TS%": 41, "2PT%": 31, "3PT%": 31, "FT%": 21, "PTS": 61, "OREB": 31, "DREB": 31, "AST": 41, "ST": 31, "BLK": 31, "TO": 21, "+/-": 31}
     category_lookup = category_table.set_index("Category") if category_table is not None and not category_table.empty else pd.DataFrame()
@@ -3740,6 +3742,8 @@ def build_mobile_matchup_recap_image(
     draw.text((margin, height - 26), f"SBCFBL • {generated}", font=_scoreboard_font(14, True), fill="#718398", anchor="lm")
     draw.text((width - margin, height - 26), "MATCHUP RECAP", font=_scoreboard_font(14, True), fill="#718398", anchor="rm")
     output = BytesIO()
+    if deciding_play:
+        _draw_deciding_play(draw, (margin, chart_bottom + 40, width - margin, chart_bottom + 40 + play_band - 20), deciding_play, 21, 15)
     image.save(output, format="PNG", optimize=True)
     return output.getvalue()
 

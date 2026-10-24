@@ -39,6 +39,15 @@ PBP_STAT_COLUMNS = {
 
 def _score_totals(a: dict, b: dict) -> tuple[float, float]:
     """Weighted 13-category score for two running stat totals."""
+    score_a, score_b, _ = _score_with_winners(a, b)
+    return score_a, score_b
+
+
+CATEGORY_LABELS = {"TS%": "TS%", "2PT%": "2P%", "3PT%": "3P%", "FT%": "FT%", "ST": "STL", "TO": "TOV"}
+
+
+def _score_with_winners(a: dict, b: dict) -> tuple[float, float, dict]:
+    """Weighted score plus each category's winner ("a", "b" or "tie")."""
     def derived(t):
         attempts = t["2PTA"] + t["3PTA"]
         return {
@@ -50,18 +59,22 @@ def _score_totals(a: dict, b: dict) -> tuple[float, float]:
         }
     da, db = derived(a), derived(b)
     score_a = score_b = 0.0
+    winners = {}
     for stat, weight in WEIGHTS.items():
         va, vb = da[stat], db[stat]
         a_wins = va < vb if stat == "TO" else va > vb
         b_wins = vb < va if stat == "TO" else vb > va
         if a_wins:
             score_a += weight
+            winners[stat] = "a"
         elif b_wins:
             score_b += weight
+            winners[stat] = "b"
         else:
             score_a += weight / 2
             score_b += weight / 2
-    return score_a, score_b
+            winners[stat] = "tie"
+    return score_a, score_b, winners
 
 
 LINEUP_SLOTS = ["PG", "SG", "SF", "PF", "C"]
@@ -769,7 +782,8 @@ class FantraxRotation:
         return assets
 
     def _trend(self, game: pd.Series) -> pd.DataFrame:
-        days = self.calendar[(pd.to_numeric(self.calendar["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.calendar["Period"], errors="coerce") == self.period.period)].copy()
+        year, period = int(game.get("Year", self.period.year)), int(game.get("Period", self.period.period))
+        days = self.calendar[(pd.to_numeric(self.calendar["Year"], errors="coerce") == year) & (pd.to_numeric(self.calendar["Period"], errors="coerce") == period)].copy()
         days["Date"] = pd.to_datetime(days["Date"], errors="coerce").dt.date
         points = []
         for day in sorted(value for value in days["Date"].dropna().unique() if value <= self.as_of):
@@ -907,30 +921,43 @@ class FantraxRotation:
         events["wallclock"] = pd.to_datetime(events["wallclock"], errors="coerce", utc=True)
         events = events.dropna(subset=["wallclock"]).sort_values("wallclock", kind="stable")
         totals = {team: dict.fromkeys(BOX_SUM_STATS, 0.0) for team in (team_a, team_b)}
-        leader, flips, last = None, 0, None
+        leader, flips, last, winners = None, 0, None, {}
+        trend, previous_score = [], None
         for event in events.itertuples(index=False):
             value = float(event.value) if pd.notna(event.value) else 0.0
             for column in PBP_STAT_COLUMNS[event.stat]:
                 totals[event.sbc_team][column] += value
-            score_a, score_b = _score_totals(totals[team_a], totals[team_b])
+            score_a, score_b, now_winners = _score_with_winners(totals[team_a], totals[team_b])
+            if (score_a, score_b) != previous_score:
+                trend.append({"game_date": str(event.game_date), "wallclock": event.wallclock, team_a: score_a, team_b: score_b})
+                previous_score = (score_a, score_b)
             now = team_a if score_a > score_b else team_b if score_b > score_a else None
             if now is not None and leader is not None and now != leader:
                 flips += 1
-                last = (event, now)
+                side = "a" if now == team_a else "b"
+                swung = [stat for stat, winner in now_winners.items() if winners.get(stat) != winner and winner == side]
+                last = (event, now, swung)
             if now is not None:
                 leader = now
+            winners = now_winners
         if last is None:
             return None
-        event, new_leader = last
+        event, new_leader, swung = last
         when = event.wallclock.tz_convert("America/New_York")
         stamp = f"{when:%b} {when.day}, {when.hour % 12 or 12}:{when:%M} {when:%p}"
         play = " ".join(str(event.description or "").split())
-        nickname = team_info.get(new_leader, {}).get("nickname", new_leader)
+        labels = [CATEGORY_LABELS.get(stat, stat) for stat in swung] or ["matchup"]
+        category = labels[0] if len(labels) == 1 else ", ".join(labels[:-1]) + " and " + labels[-1]
+        noun = "category" if len(labels) == 1 else "categories"
+        if labels == ["matchup"]:
+            noun, category = "", "matchup"
+        swing = f"to swing the {category} {noun}".rstrip()
         return {
             "game": game,
             "flips": flips,
             "time": event.wallclock,
-            "text": f"{play} ({stamp} ET) put the {nickname} ahead for good.",
+            "trend": pd.DataFrame(trend),
+            "text": f"{play} ({stamp} ET) {swing}.",
         }
 
     def final_recap_posts(self, count: int = 2) -> list[FantraxPost]:
@@ -970,7 +997,7 @@ class FantraxRotation:
             except Exception:
                 road, home = "Icon", "Association"
             kwargs = dict(
-                trend_table=self._trend(current), court_image=self.court(b, rows=rows, away_team=a),
+                trend_table=result["trend"], court_image=self.court(b, rows=rows, away_team=a),
                 road_jersey_image=self.jersey(a, road), home_jersey_image=self.jersey(b, home),
                 road_edition=road, home_edition=home, matchup_date_label=label, deciding_play=result["text"],
             )
