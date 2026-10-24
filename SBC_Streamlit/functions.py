@@ -3067,6 +3067,36 @@ def _recap_tint(color, white_mix=0.68):
     return tuple(round(channel * (1 - white_mix) + 255 * white_mix) for channel in rgb)
 
 
+def _draw_deciding_play(draw, box, text, max_size, min_size):
+    """Dark banner with the play that flipped a matchup for the last time,
+    wrapped onto up to two lines."""
+    left, top, right, bottom = box
+    draw.rounded_rectangle(box, radius=18, fill="#111827")
+    label = "DECIDING PLAY"
+    label_font = _scoreboard_font(max(min_size, max_size - 6), True)
+    draw.text((left + 28, top + (bottom - top) // 2), label, font=label_font, fill="#fbbf24", anchor="lm")
+    text_left = left + 28 + int(draw.textlength(label, font=label_font)) + 28
+    width = right - 28 - text_left
+    for size in range(max_size, min_size - 1, -1):
+        font = _scoreboard_font(size, True)
+        words, lines, line = text.split(), [], ""
+        for word in words:
+            trial = f"{line} {word}".strip()
+            if draw.textlength(trial, font=font) <= width:
+                line = trial
+            else:
+                lines.append(line)
+                line = word
+        lines.append(line)
+        if len(lines) <= 2:
+            break
+    lines = lines[:2]
+    line_height = size + 8
+    start = top + (bottom - top) // 2 - (len(lines) * line_height) // 2 + line_height // 2
+    for index, line in enumerate(lines):
+        draw.text((text_left, start + index * line_height), line, font=font, fill="#ffffff", anchor="lm")
+
+
 def build_matchup_recap_image(
     matchup_row,
     category_table: pd.DataFrame,
@@ -3080,6 +3110,7 @@ def build_matchup_recap_image(
     generated_at=None,
     matchup_date_label: str = "",
     events_table: pd.DataFrame | None = None,
+    deciding_play: str = "",
 ) -> bytes:
     """Build a single-page matchup recap from the app's existing box-score assets."""
     row = matchup_row.to_dict() if hasattr(matchup_row, "to_dict") else dict(matchup_row)
@@ -3103,7 +3134,8 @@ def build_matchup_recap_image(
 
     width = 3600
     margin = 48
-    category_top = 352
+    play_band = 116 if deciding_play else 0
+    category_top = 352 + play_band
     category_height = 216
     box_top = category_top + category_height + 48
     table_top = box_top + 46
@@ -3122,6 +3154,8 @@ def build_matchup_recap_image(
     draw.text((width // 2, 162), f"{score_a}  —  {score_b}", font=_scoreboard_font(78, True), fill="#172033", anchor="mm")
     draw.rounded_rectangle((width // 2 - 72, 216, width // 2 + 72, 258), radius=21, fill="#111111")
     draw.text((width // 2, 237), "FINAL", font=_scoreboard_font(17, True), fill="#ffffff", anchor="mm")
+    if deciding_play:
+        _draw_deciding_play(draw, (margin, 312, width - margin, 312 + play_band - 16), deciding_play, 34, 22)
 
     for team, name, logo_x, name_x, anchor, color in (
         (team_a, name_a, margin + 112, margin + 205, "lm", color_a),
@@ -3135,7 +3169,8 @@ def build_matchup_recap_image(
             draw.ellipse((logo_x - 52, 108, logo_x + 52, 212), fill=color)
         draw.text((name_x, 148), name, font=_fit_scoreboard_font(draw, name, 720, 40, 24), fill="#172033", anchor=anchor)
         record_key = "TeamA_record" if team == team_a else "TeamB_record"
-        record = str(row.get(record_key, "") or "")
+        record = row.get(record_key, "")
+        record = "" if record is None or (isinstance(record, float) and pd.isna(record)) else str(record)
         if record:
             draw.text((name_x, 203), record, font=_scoreboard_font(21, True), fill="#74869a", anchor=anchor)
 
@@ -3145,7 +3180,7 @@ def build_matchup_recap_image(
     draw.text((width // 2, 280), subtitle, font=_scoreboard_font(18, True), fill="#74869a", anchor="mm")
 
     # Horizontal 13-category scoreboard.
-    section_top = 318
+    section_top = 318 + play_band
     draw.text((margin, section_top), "13-CATEGORY SCOREBOARD", font=_scoreboard_font(30, True), fill="#172033", anchor="la")
     inner_width = width - margin * 2
     category_width = inner_width / 13
@@ -3436,6 +3471,7 @@ def build_mobile_matchup_recap_image(
     home_edition: str = "Home",
     generated_at=None,
     matchup_date_label: str = "",
+    deciding_play: str = "",
 ) -> bytes:
     """Build a phone-first matchup recap with readable, stacked detail sections."""
     row = matchup_row.to_dict() if hasattr(matchup_row, "to_dict") else dict(matchup_row)
@@ -3460,7 +3496,8 @@ def build_mobile_matchup_recap_image(
         return players.sort_values(["PTS", "display_player"], ascending=[False, True]).head(12)
 
     rosters = {team_a: roster_for(team_a), team_b: roster_for(team_b)}
-    header_height, category_top, category_height = 330, 400, 90
+    play_band = 150 if deciding_play else 0
+    header_height, category_top, category_height = 330, 400 + play_band, 90
     categories_bottom = category_top + 13 * category_height
     players_title_y = categories_bottom + 34
     players_top = players_title_y + 40
@@ -3508,7 +3545,9 @@ def build_mobile_matchup_recap_image(
     draw.text((width // 2, 288), context, font=_fit_scoreboard_font(draw, context, width - 90, 19, 14), fill="#607286", anchor="mm")
 
     # Large one-row category comparisons.
-    draw.text((margin, 370), "13-CATEGORY RESULT", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
+    if deciding_play:
+        _draw_deciding_play(draw, (margin, 346, width - margin, 346 + play_band - 20), deciding_play, 21, 15)
+    draw.text((margin, 370 + play_band), "13-CATEGORY RESULT", font=_scoreboard_font(26, True), fill=navy, anchor="lm")
     category_order = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
     category_points = {"MP": 11, "TS%": 41, "2PT%": 31, "3PT%": 31, "FT%": 21, "PTS": 61, "OREB": 31, "DREB": 31, "AST": 41, "ST": 31, "BLK": 31, "TO": 21, "+/-": 31}
     category_lookup = category_table.set_index("Category") if category_table is not None and not category_table.empty else pd.DataFrame()

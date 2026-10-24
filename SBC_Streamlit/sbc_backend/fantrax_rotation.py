@@ -26,6 +26,44 @@ from .matchup_progress import starter_game_progress
 BOX_SUM_STATS = ["GP", "MP", "2PTM", "2PTA", "3PTM", "3PTA", "FTM", "FTA", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 CATEGORIES = ["MP", "TS%", "2PT%", "3PT%", "FT%", "PTS", "OREB", "DREB", "AST", "ST", "BLK", "TO", "+/-"]
 WEIGHTS = {"PTS": 61, "AST": 41, "TS%": 41, "2PT%": 31, "+/-": 31, "3PT%": 31, "BLK": 31, "DREB": 31, "OREB": 31, "ST": 31, "FT%": 21, "MP": 11, "TO": 21}
+# Play-by-play stat names to the box score columns each play adds to.
+PBP_STAT_COLUMNS = {
+    "points": ("PTS",), "minutes played": ("MP",), "+/-": ("+/-",),
+    "defensive_rebound": ("DREB",), "offensive_rebound": ("OREB",), "assist": ("AST",),
+    "steal": ("ST",), "block": ("BLK",), "turnover": ("TO",),
+    "two-point make": ("2PTM", "2PTA"), "two-point miss": ("2PTA",),
+    "three-point make": ("3PTM", "3PTA"), "three-point miss": ("3PTA",),
+    "free-throw make": ("FTM", "FTA"), "free-throw miss": ("FTA",),
+}
+
+
+def _score_totals(a: dict, b: dict) -> tuple[float, float]:
+    """Weighted 13-category score for two running stat totals."""
+    def derived(t):
+        attempts = t["2PTA"] + t["3PTA"]
+        return {
+            **t,
+            "TS%": t["PTS"] / (2 * (attempts + 0.44 * t["FTA"])) if attempts + t["FTA"] else 0.0,
+            "2PT%": t["2PTM"] / t["2PTA"] if t["2PTA"] else 0.0,
+            "3PT%": t["3PTM"] / t["3PTA"] if t["3PTA"] else 0.0,
+            "FT%": t["FTM"] / t["FTA"] if t["FTA"] else 0.0,
+        }
+    da, db = derived(a), derived(b)
+    score_a = score_b = 0.0
+    for stat, weight in WEIGHTS.items():
+        va, vb = da[stat], db[stat]
+        a_wins = va < vb if stat == "TO" else va > vb
+        b_wins = vb < va if stat == "TO" else vb > va
+        if a_wins:
+            score_a += weight
+        elif b_wins:
+            score_b += weight
+        else:
+            score_a += weight / 2
+            score_b += weight / 2
+    return score_a, score_b
+
+
 LINEUP_SLOTS = ["PG", "SG", "SF", "PF", "C"]
 PERCENTAGES = {"TS%", "2PT%", "3PT%", "FT%"}
 # Real calendar by default. Set SBC_FANTRAX_DATE_OFFSET_DAYS to replay an older
@@ -314,7 +352,7 @@ class FantraxRotation:
                 totals.append(team_totals)
         # Every game in a period sees the same team aggregate, so deduplicate before scoring.
         live = pd.concat(totals, ignore_index=True).drop_duplicates("Team") if totals else pd.DataFrame()
-        scored = fantrax.get_weekly_scores_df(self.period.year, self.period.period, games, live, self._standings_source(self.period.period - 1))
+        scored = fantrax.get_weekly_scores_df(self.period.year, self.period.period, games, live, self._standings_source(self.period.period))
         if not live.empty:
             score_lookup = {}
             indexed = live.set_index("Team")
@@ -346,7 +384,9 @@ class FantraxRotation:
         return eligible[pd.to_numeric(eligible["Period"], errors="coerce") == chosen]
 
     def standings_table(self, conference: str) -> pd.DataFrame:
-        through = max(0, self.period.period - 1) if self.period else 0
+        # A period's standings row is the record entering it (period 1 is 0-0,
+        # period 2 holds period 1's results), so read the current period's row.
+        through = self.period.period if self.period else 0
         source = self._standings_source(through).copy()
         if source.empty:
             return source
@@ -845,9 +885,110 @@ class FantraxRotation:
             posts.append(FantraxPost("mobile_matchup_recap", f"sbcfbl-mobile-matchup-recap-{game_id}.png", fantrax.build_mobile_matchup_recap_image(current, categories, players, **kwargs)))
         return posts
 
-    def period_label(self) -> str:
+    def lead_changes(self, game: pd.Series | dict) -> dict[str, Any] | None:
+        """Replay a finished matchup play by play and find its last lead change.
+        Each play updates the running team totals; all 13 weighted categories are
+        rescored after every play, so a flip can come from any category."""
+        rows = self.matchup_rows(game)
+        if rows.empty:
+            return None
+        team_a, team_b = str(game["TeamA"]), str(game["TeamB"])
+        owners = rows[["nba_game_id", "espn_player_id", "sbc_team"]].dropna().astype(str)
+        owners = owners.drop_duplicates(["nba_game_id", "espn_player_id"])
+        events = self.repository.read_pbp(game_ids=owners["nba_game_id"].unique().tolist())
+        if events.empty:
+            return None
+        events = events.astype({"game_id": str, "player_id": str}).merge(
+            owners, left_on=["game_id", "player_id"], right_on=["nba_game_id", "espn_player_id"], how="inner"
+        )
+        events = events[events["stat"].isin(PBP_STAT_COLUMNS)].copy()
+        if events.empty:
+            return None
+        events["wallclock"] = pd.to_datetime(events["wallclock"], errors="coerce", utc=True)
+        events = events.dropna(subset=["wallclock"]).sort_values("wallclock", kind="stable")
+        totals = {team: dict.fromkeys(BOX_SUM_STATS, 0.0) for team in (team_a, team_b)}
+        leader, flips, last = None, 0, None
+        for event in events.itertuples(index=False):
+            value = float(event.value) if pd.notna(event.value) else 0.0
+            for column in PBP_STAT_COLUMNS[event.stat]:
+                totals[event.sbc_team][column] += value
+            score_a, score_b = _score_totals(totals[team_a], totals[team_b])
+            now = team_a if score_a > score_b else team_b if score_b > score_a else None
+            if now is not None and leader is not None and now != leader:
+                flips += 1
+                last = (event, now)
+            if now is not None:
+                leader = now
+        if last is None:
+            return None
+        event, new_leader = last
+        when = event.wallclock.tz_convert("America/New_York")
+        stamp = f"{when:%b} {when.day}, {when.hour % 12 or 12}:{when:%M} {when:%p}"
+        play = " ".join(str(event.description or "").split())
+        nickname = team_info.get(new_leader, {}).get("nickname", new_leader)
+        return {
+            "game": game,
+            "flips": flips,
+            "time": event.wallclock,
+            "text": f"{play} ({stamp} ET) put the {nickname} ahead for good.",
+        }
+
+    def final_recap_posts(self, count: int = 2) -> list[FantraxPost]:
+        """Recaps for the just-finished period's most exciting matchups: those whose
+        last lead change came latest, each with the play that flipped it."""
+        previous = self.period.period - 1
+        if previous < 1:
+            return []
+        year_mask = pd.to_numeric(self.schedule["Year"], errors="coerce") == self.period.year
+        games = self.schedule[year_mask & (pd.to_numeric(self.schedule["Period"], errors="coerce") == previous)]
+        ranked = [result for result in (self.lead_changes(game) for _, game in games.iterrows()) if result]
+        ranked.sort(key=lambda result: (result["time"], result["flips"]), reverse=True)
+        if not ranked:
+            return []
+        scored = fantrax.get_weekly_scores_df(self.period.year, previous, self.schedule, pd.DataFrame(), self._standings_source(self.period.period))
+        calendar_mask = (pd.to_numeric(self.calendar["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.calendar["Period"], errors="coerce") == previous)
+        dates = pd.to_datetime(self.calendar.loc[calendar_mask, "Date"], errors="coerce").dropna()
+        fmt = lambda value: f"{value:%b} {value.day}"
+        label = fmt(dates.min()) if dates.min() == dates.max() else f"{fmt(dates.min())}-{fmt(dates.max())}"
+        posts = []
+        for result in ranked[:count]:
+            game = result["game"]
+            game_id = str(game.get("Game_ID", ""))
+            match = scored[scored["Game_ID"].astype(str) == game_id] if not scored.empty else scored
+            current = match.iloc[0].copy() if not match.empty else game.copy()
+            # Records after the finished period: the current period's entering row.
+            after = self._standings_source(self.period.period)
+            records = dict(zip(after["Team"].astype(str), after["Record"].astype(str))) if not after.empty else {}
+            current["TeamA_record"] = records.get(str(current["TeamA"]), "")
+            current["TeamB_record"] = records.get(str(current["TeamB"]), "")
+            rows = self.matchup_rows(current)
+            players, totals = self.aggregate_players(rows), self.team_totals(rows)
+            a, b = str(current["TeamA"]), str(current["TeamB"])
+            categories, _, _ = self.category_results(totals, a, b)
+            try:
+                road, home, _ = select_game_uniforms(current, a, b, lambda team, edition: self._uniform_config(team, edition)[0])
+            except Exception:
+                road, home = "Icon", "Association"
+            kwargs = dict(
+                trend_table=self._trend(current), court_image=self.court(b, rows=rows, away_team=a),
+                road_jersey_image=self.jersey(a, road), home_jersey_image=self.jersey(b, home),
+                road_edition=road, home_edition=home, matchup_date_label=label, deciding_play=result["text"],
+            )
+            posts.append(FantraxPost("matchup_recap", f"sbcfbl-matchup-recap-{game_id}.png", fantrax.build_matchup_recap_image(current, categories, players, **kwargs)))
+            posts.append(FantraxPost("mobile_matchup_recap", f"sbcfbl-mobile-matchup-recap-{game_id}.png", fantrax.build_mobile_matchup_recap_image(current, categories, players, **kwargs)))
+        return posts
+
+    def period_label(self, period_number: int | None = None) -> str:
         def fmt(value): return pd.Timestamp(value).strftime("%b %d").replace(" 0", " ")
-        return fmt(self.period.start) if self.period.start == self.period.end else f"{fmt(self.period.start)}-{fmt(self.period.end)}"
+        if period_number is None or period_number == self.period.period:
+            start, end = self.period.start, self.period.end
+        else:
+            mask = (pd.to_numeric(self.calendar["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.calendar["Period"], errors="coerce") == period_number)
+            dates = pd.to_datetime(self.calendar.loc[mask, "Date"], errors="coerce").dropna()
+            if dates.empty:
+                return ""
+            start, end = dates.min(), dates.max()
+        return fmt(start) if start == end else f"{fmt(start)}-{fmt(end)}"
 
     def build_posts(self, kinds: list[str] | None = None) -> tuple[list[FantraxPost], list[str]]:
         kinds = kinds or planned_post_kinds(self.period)
@@ -878,12 +1019,16 @@ class FantraxRotation:
             west, east = self.standings_table("West"), self.standings_table("East")
             postseason = self.schedule[(pd.to_numeric(self.schedule["Year"], errors="coerce") == self.period.year) & (pd.to_numeric(self.schedule["Period"], errors="coerce") < self.period.period) & (self.schedule["Type"].astype(str).isin(["Play-In", "Playoffs"]))].copy()
             projected = postseason.empty
+            # Standings are "through" the last finished period, not the one starting.
+            through_label = self.period_label(self.period.period - 1) if self.period.period > 1 else self.period_label()
             if "standings" in kinds:
-                posts.append(FantraxPost("standings", f"sbcfbl-standings-{self.period.year}-p{self.period.period}.png", fantrax.build_standings_bracket_image(west, east, postseason, season, self.period_label(), projected, generated)))
+                posts.append(FantraxPost("standings", f"sbcfbl-standings-{self.period.year}-p{self.period.period}.png", fantrax.build_standings_bracket_image(west, east, postseason, season, through_label, projected, generated)))
             if "mobile_standings" in kinds:
-                posts.append(FantraxPost("mobile_standings", f"sbcfbl-mobile-standings-{self.period.year}-p{self.period.period}.png", fantrax.build_mobile_standings_image(west, east, postseason, season, self.period_label(), projected, generated)))
+                posts.append(FantraxPost("mobile_standings", f"sbcfbl-mobile-standings-{self.period.year}-p{self.period.period}.png", fantrax.build_mobile_standings_image(west, east, postseason, season, through_label, projected, generated)))
         if any(kind in kinds for kind in ("matchup_recap", "mobile_matchup_recap")):
-            recap_posts = self.recap_posts(slate, featured)
+            # Opening morning: final recaps of the period that just ended (its two
+            # most exciting matchups). Other mornings: the featured games so far.
+            recap_posts = self.final_recap_posts() if self.period.opening_morning else self.recap_posts(slate, featured)
             posts.extend(post for post in recap_posts if post.kind in kinds)
         if "record_leader" in kinds:
             changes = self.record_changes()
