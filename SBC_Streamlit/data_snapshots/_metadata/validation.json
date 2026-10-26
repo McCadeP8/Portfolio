@@ -12,7 +12,7 @@
       "dataset": "rosters",
       "message": "",
       "path": "all_time_rosters_history.parquet",
-      "rows": 551675,
+      "rows": 552187,
       "status": "ok"
     },
     {
@@ -33,14 +33,14 @@
       "dataset": "nba_boxscores",
       "message": "",
       "path": "nba_player_game_boxscores_2021_2026.parquet",
-      "rows": 155339,
+      "rows": 155496,
       "status": "ok"
     },
     {
       "dataset": "matchup_stats",
       "message": "",
       "path": "sbc_player_matchup_stats.parquet",
-      "rows": 119931,
+      "rows": 120149,
       "status": "ok"
     },
     {
@@ -96,7 +96,7 @@
       "dataset": "nba_shots_202627",
       "message": "",
       "path": "data_snapshots/shots/nba_shots_202627.parquet",
-      "rows": 6451,
+      "rows": 7695,
       "status": "ok"
     },
     {
@@ -145,7 +145,7 @@
       "dataset": "pbp_stat_events_202627",
       "message": "",
       "path": "data_snapshots/pbp/pbp_stat_events_202627.parquet",
-      "rows": 27853,
+      "rows": 33053,
       "status": "ok"
     }
   ],
