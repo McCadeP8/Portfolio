@@ -782,11 +782,16 @@ class FantraxRotation:
         return assets
 
     def _trend(self, game: pd.Series) -> pd.DataFrame:
+        # Every score change from the play-by-play, for finished days only (a day
+        # that has not been played yet would draw an empty panel).
+        replay = self.lead_changes(game, through=self.as_of - timedelta(days=1))
+        if replay is not None and not replay["trend"].empty:
+            return replay["trend"]
         year, period = int(game.get("Year", self.period.year)), int(game.get("Period", self.period.period))
         days = self.calendar[(pd.to_numeric(self.calendar["Year"], errors="coerce") == year) & (pd.to_numeric(self.calendar["Period"], errors="coerce") == period)].copy()
         days["Date"] = pd.to_datetime(days["Date"], errors="coerce").dt.date
         points = []
-        for day in sorted(value for value in days["Date"].dropna().unique() if value <= self.as_of):
+        for day in sorted(value for value in days["Date"].dropna().unique() if value < self.as_of):
             totals = self.team_totals(self.matchup_rows(game, day))
             _, a, b = self.category_results(totals, str(game["TeamA"]), str(game["TeamB"]))
             points.append({"game_date": pd.Timestamp(day).strftime("%Y%m%d"), "wallclock": pd.Timestamp(day, tz="America/New_York") + pd.Timedelta(hours=23), str(game["TeamA"]): a, str(game["TeamB"]): b})
@@ -899,11 +904,11 @@ class FantraxRotation:
             posts.append(FantraxPost("mobile_matchup_recap", f"sbcfbl-mobile-matchup-recap-{game_id}.png", fantrax.build_mobile_matchup_recap_image(current, categories, players, **kwargs)))
         return posts
 
-    def lead_changes(self, game: pd.Series | dict) -> dict[str, Any] | None:
+    def lead_changes(self, game: pd.Series | dict, through: date | None = None) -> dict[str, Any] | None:
         """Replay a finished matchup play by play and find its last lead change.
         Each play updates the running team totals; all 13 weighted categories are
         rescored after every play, so a flip can come from any category."""
-        rows = self.matchup_rows(game)
+        rows = self.matchup_rows(game, through)
         if rows.empty:
             return None
         team_a, team_b = str(game["TeamA"]), str(game["TeamB"])
@@ -941,7 +946,7 @@ class FantraxRotation:
                 leader = now
             winners = now_winners
         if last is None:
-            return None
+            return {"game": game, "flips": 0, "time": None, "trend": pd.DataFrame(trend), "text": ""}
         event, new_leader, swung = last
         when = event.wallclock.tz_convert("America/New_York")
         stamp = f"{when:%b} {when.day}, {when.hour % 12 or 12}:{when:%M} {when:%p}"
@@ -968,7 +973,7 @@ class FantraxRotation:
             return []
         year_mask = pd.to_numeric(self.schedule["Year"], errors="coerce") == self.period.year
         games = self.schedule[year_mask & (pd.to_numeric(self.schedule["Period"], errors="coerce") == previous)]
-        ranked = [result for result in (self.lead_changes(game) for _, game in games.iterrows()) if result]
+        ranked = [result for result in (self.lead_changes(game) for _, game in games.iterrows()) if result and result["time"] is not None]
         ranked.sort(key=lambda result: (result["time"], result["flips"]), reverse=True)
         if not ranked:
             return []
@@ -1004,6 +1009,49 @@ class FantraxRotation:
             posts.append(FantraxPost("matchup_recap", f"sbcfbl-matchup-recap-{game_id}.png", fantrax.build_matchup_recap_image(current, categories, players, **kwargs)))
             posts.append(FantraxPost("mobile_matchup_recap", f"sbcfbl-mobile-matchup-recap-{game_id}.png", fantrax.build_mobile_matchup_recap_image(current, categories, players, **kwargs)))
         return posts
+
+    def exciting(self, slate: pd.DataFrame, count: int = 2) -> list[pd.Series]:
+        """Matchups still in play ranked by how close they are:
+        remaining x (1/2 score closeness + 1/2 category closeness).
+        Category closeness rates all 13 categories (weighted), so a team leading
+        every category by thin margins still ranks high; a matchup with no starter
+        games left scores 0 however close it is."""
+        if slate.empty:
+            return []
+        progress = self.scoreboard_slate_with_progress(slate)
+        ranked = []
+        for _, game in progress.iterrows():
+            a, b = str(game["TeamA"]), str(game["TeamB"])
+            remaining = max(0.0, 1.0 - float(game.get("MatchupProgress", 0.0) or 0.0) / 100.0)
+            if remaining <= 0:
+                continue
+            totals = self.team_totals(self.matchup_rows(game, self.as_of), [a, b]).set_index("Team")
+            score_a = float(pd.to_numeric(game.get("TeamA_Score"), errors="coerce") or 0.0)
+            score_b = float(pd.to_numeric(game.get("TeamB_Score"), errors="coerce") or 0.0)
+            score_close = max(0.0, 1.0 - abs(score_a - score_b) / 206.5)
+            weighted = total_weight = 0.0
+            for stat, weight in WEIGHTS.items():
+                va, vb = float(totals.loc[a, stat]), float(totals.loc[b, stat])
+                if stat in PERCENTAGES:
+                    gap = abs(va - vb) / 0.06
+                elif stat == "+/-":
+                    gap = abs(va - vb) / max(20.0, (abs(va) + abs(vb)) / 2)
+                else:
+                    gap = abs(va - vb) / max(1.0, (va + vb) / 2) / 0.25
+                weighted += weight * max(0.0, 1.0 - gap)
+                total_weight += weight
+            category_close = weighted / total_weight if total_weight else 0.0
+            ranked.append((remaining * (0.5 * score_close + 0.5 * category_close), game))
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        picks, used = [], set()
+        for _, game in ranked:
+            teams = {str(game["TeamA"]), str(game["TeamB"])}
+            if used.isdisjoint(teams):
+                picks.append(game)
+                used |= teams
+            if len(picks) == count:
+                break
+        return picks
 
     def period_label(self, period_number: int | None = None) -> str:
         def fmt(value): return pd.Timestamp(value).strftime("%b %d").replace(" 0", " ")
@@ -1055,7 +1103,7 @@ class FantraxRotation:
         if any(kind in kinds for kind in ("matchup_recap", "mobile_matchup_recap")):
             # Opening morning: final recaps of the period that just ended (its two
             # most exciting matchups). Other mornings: the featured games so far.
-            recap_posts = self.final_recap_posts() if self.period.opening_morning else self.recap_posts(slate, featured)
+            recap_posts = self.final_recap_posts() if self.period.opening_morning else self.recap_posts(slate, self.exciting(slate))
             posts.extend(post for post in recap_posts if post.kind in kinds)
         if "record_leader" in kinds:
             changes = self.record_changes()
