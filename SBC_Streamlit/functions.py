@@ -1399,8 +1399,9 @@ def style_overall_cap(row):
             styles[i] = "color: red;"
     return styles
 
+# TwoYearLimit marks a protected pick that may roll into the next draft; it is
+# shown wherever the pick is, never used to hide it.
 def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['FullyOwned']]
@@ -1413,7 +1414,6 @@ def full_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def swap_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['PickSwap']]
@@ -1436,7 +1436,6 @@ def split_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['CurrentTeam'].str.contains(SelectedTeam, na=False))]
     df = df[df['Locked']]
@@ -1447,7 +1446,6 @@ def locked_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def original_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['OGTeam'] == SelectedTeam) & (df['CurrentTeam'].str.contains(SelectedTeam) == False)]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
@@ -1457,7 +1455,6 @@ def original_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def touched_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[(df['TeamTouched'].str.contains(SelectedTeam, na=False))]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
@@ -1467,7 +1464,6 @@ def touched_draft_picks(df: pd.DataFrame, SelectedTeam: str) -> pd.DataFrame:
     return df
 
 def all_full_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[df['FullyOwned']]
     df = df[df['Locked'] == False]  # noqa: E712
@@ -1479,10 +1475,8 @@ def all_full_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def all_swap_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[df['PickSwap']]
-    df = df[df['FullyOwned']]
     df = df[df['Locked'] == False]  # noqa: E712
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
     df["CurrentTeam"] = df["CurrentTeam"].map(lambda t: team_info.get(t, {}).get("logo", ""))
@@ -1502,7 +1496,6 @@ def all_split_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def all_locked_draft_picks(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[df['TwoYearLimit'] == False]  # noqa: E712
     df = df.drop(columns=["TwoYearLimit"])
     df = df[df['Locked']]
     df = df.drop(columns=['PickSwap', 'FullyOwned', 'Locked', 'Notes'])
