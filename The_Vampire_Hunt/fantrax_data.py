@@ -10,6 +10,8 @@ import requests
 
 
 LEAGUE_ID = "et040dehmtxkchmx"
+# Stage 2 (Siren, Cerberus, Werewolf) is drafted in its own Fantrax league.
+STAGE_TWO_LEAGUE_ID = "lklr1vl2mve7w1xg"
 BASE_URL = "https://www.fantrax.com/fxea/general"
 PRIVATE_API_URL = "https://www.fantrax.com/fxpa/req"
 SNAPSHOT_PATH = Path(__file__).parent / "data" / "fantrax_snapshot.json"
@@ -69,8 +71,17 @@ def _get_json(path: str, **params: Any) -> Any:
     return response.json()
 
 
+# Fantrax team labels are typed by hand ("Werewolf", "The SIren"); map them to
+# the creature names the app uses.
+CANONICAL_TEAM_NAMES = {
+    re.sub(r"^the\s+", "", name.casefold()): name
+    for name in ("The Siren", "The Cerberus", "The Werewolf", "Dracula")
+}
+
+
 def normalize_team_name(value: str) -> str:
-    return re.sub(r"\s*\(\d+\s+of\s+\d+\s+lives?\)\s*$", "", str(value), flags=re.I).strip()
+    name = re.sub(r"\s*\(\d+\s+of\s+\d+\s+lives?\)\s*$", "", str(value), flags=re.I).strip()
+    return CANONICAL_TEAM_NAMES.get(re.sub(r"^the\s+", "", name.casefold()), name)
 
 
 def parse_lives(value: str) -> int | None:
@@ -105,9 +116,13 @@ def fetch_player_directory() -> dict[str, Any]:
     return _get_json("getPlayerIds", sport="NFL")
 
 
-def fetch_roster_week(week: int, player_directory: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def fetch_roster_week(
+    week: int,
+    player_directory: dict[str, Any] | None = None,
+    league_id: str = LEAGUE_ID,
+) -> list[dict[str, Any]]:
     players = player_directory if player_directory is not None else fetch_player_directory()
-    payload = _get_json("getTeamRosters", leagueId=LEAGUE_ID, period=int(week))
+    payload = _get_json("getTeamRosters", leagueId=league_id, period=int(week))
     rows: list[dict[str, Any]] = []
     for team_id, roster in payload.get("rosters", {}).items():
         team_label = str(roster.get("teamName", ""))
@@ -171,7 +186,7 @@ def _score_from_cell(cell: Any) -> float | None:
     return None
 
 
-def _fetch_player_stats(week: int, status_filter: str) -> dict[str, Any]:
+def _fetch_player_stats(week: int, status_filter: str, league_id: str = LEAGUE_ID) -> dict[str, Any]:
     """Fetch one weekly Fantrax player table using this league's scoring."""
     params = {
         "view": "STATS",
@@ -187,7 +202,7 @@ def _fetch_player_stats(week: int, status_filter: str) -> dict[str, Any]:
     }
     response = requests.post(
         PRIVATE_API_URL,
-        params={"leagueId": LEAGUE_ID},
+        params={"leagueId": league_id},
         json={"msgs": [{"method": "getPlayerStats", "data": params}]},
         headers=HEADERS,
         timeout=20,
@@ -228,6 +243,12 @@ def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
         # Keep the normal rostered-player scores if the supplemental free-agent
         # table is briefly unavailable.
         pass
+    # Stage 2 creatures can roster players nobody owns in Stage 1; their
+    # official FPts come from the Stage 2 league's rostered-player table.
+    try:
+        data_sources.append(_fetch_player_stats(week, "ALL_TAKEN", STAGE_TWO_LEAGUE_ID))
+    except (requests.RequestException, FantraxUnavailable, ValueError, KeyError):
+        pass
 
     scores: dict[str, float] = {}
     for data in data_sources:
@@ -261,11 +282,11 @@ def fetch_player_scores(week: int, auth_cookie: str = "") -> dict[str, float]:
                 continue
             score = _score_from_cell(cells[score_index])
             if score is not None:
-                scores[scorer_id] = score
+                scores.setdefault(scorer_id, score)
                 # Roster payloads identify DST units by NFL team ID, while the
                 # Players table gives them a separate scorer ID.
                 if scorer.get("team") and scorer.get("teamId") is not None:
-                    scores[str(scorer["teamId"])] = score
+                    scores.setdefault(str(scorer["teamId"]), score)
     return scores
 
 

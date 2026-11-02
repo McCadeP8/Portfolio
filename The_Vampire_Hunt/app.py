@@ -3,6 +3,7 @@ import csv
 import hashlib
 import io
 from html import escape
+import os
 from pathlib import Path
 import re
 
@@ -10,6 +11,7 @@ import streamlit as st
 
 from fantrax_data import (
     DEFENSE_TEAMS,
+    STAGE_TWO_LEAGUE_ID,
     display_player_name,
     fetch_player_directory,
     fetch_roster_week,
@@ -227,6 +229,8 @@ CREATURES = [
     },
 ]
 
+# Stage 2 opens per realm the week after its last Stage 1 creature falls
+# (see tier_two_start_week); Week 7 is only the fallback for a TRUE switch.
 TIER_TWO_START_WEEK = 7
 TIER_TWO_WEEKS = list(range(TIER_TWO_START_WEEK, 19))
 TIER_TWO_SCORE_MULTIPLIER = 11 / 3
@@ -480,6 +484,14 @@ def sheet_vampire_rows(week: int, base_rows: list[dict], players: dict, team_nam
     return creature_rows + rebuilt
 
 
+def stage_two_roster_rows(week: int, players: dict) -> list[dict]:
+    """Siren, Cerberus and Werewolf rosters from the separate Stage 2 league."""
+    try:
+        return fetch_roster_week(int(week), players, STAGE_TWO_LEAGUE_ID)
+    except Exception:
+        return []
+
+
 @st.cache_data(ttl=30, show_spinner=False)
 def fantrax_roster_for_week(week: int) -> tuple[list[dict], str]:
     players = {}
@@ -487,11 +499,12 @@ def fantrax_roster_for_week(week: int) -> tuple[list[dict], str]:
         players = fantrax_player_directory()
         rows = fetch_roster_week(int(week), players)
         if rows:
+            rows += stage_two_roster_rows(int(week), players)
             return sheet_vampire_rows(int(week), rows, players), "live"
     except Exception:
         pass
     snapshot = load_snapshot()
-    rows = snapshot.get("rosters", {}).get(str(int(week)), [])
+    rows = snapshot.get("rosters", {}).get(str(int(week)), []) + stage_two_roster_rows(int(week), players)
     return sheet_vampire_rows(int(week), rows, players), "snapshot"
 
 
@@ -629,6 +642,27 @@ def send_tribute_to_discord(owner: str, week: int, creature: str, follower: str)
     response.raise_for_status()
 
 
+def send_stage_two_answer_to_discord(owner: str, week: int, accepted: bool) -> None:
+    """Announce an owner's answer to the Stage II invitation."""
+    import requests
+
+    webhook_url = str(st.secrets.get("DISCORD_WEBHOOK_URL", "")).strip()
+    if not webhook_url:
+        raise RuntimeError("The Discord webhook is not configured.")
+    if accepted:
+        message = (
+            f"🦇 **{owner} the Vampire has accepted the call of the Second Wave!**\n"
+            f"The Siren, the Cerberus, and the Werewolf are waiting. Stage II begins in Week {week}."
+        )
+    else:
+        message = (
+            f"🐺 **{owner} the Vampire tried to decline the Second Wave... and was told no.**\n"
+            f"There is no retirement plan for the undead. Stage II begins in Week {week} anyway."
+        )
+    response = requests.post(webhook_url, json={"username": "The Vampire Hunt", "content": message}, timeout=15)
+    response.raise_for_status()
+
+
 LINEUP_SLOTS = ["QB", "RB", "RB", "WR", "WR", "TE", "RWT FLEX", "DST", "K"]
 
 
@@ -747,13 +781,20 @@ VAMPIRE_TEAM["name"] = active_vampire_name
 active_vampire_label = f"{active_vampire_name} the Vampire"
 snapshot = load_snapshot()
 active_week, nfl_season = automatic_active_week(snapshot)
+# Local preview only (never set these on Streamlit Cloud):
+# VH_PREVIEW_WEEK=9 jumps the app to that week, and VH_PREVIEW_STAGE_TWO=1
+# treats every realm as having cleared Stage 1 the week before.
+PREVIEW_WEEK = os.environ.get("VH_PREVIEW_WEEK", "").strip()
+if PREVIEW_WEEK.isdigit():
+    active_week = max(1, min(18, int(PREVIEW_WEEK)))
+PREVIEW_STAGE_TWO = os.environ.get("VH_PREVIEW_STAGE_TWO", "").strip() == "1"
 
 
-def tier_is_unlocked(tier: int, realm_name: str | None = None) -> bool:
-    """Read realm unlock switches from the Week 19 control rows."""
+def tier_sheet_value(tier: int, realm_name: str | None = None) -> str:
+    """Read one realm's Week 19 control cell (TRUE/FALSE, or a start week)."""
     owner = realm_name or active_vampire_name
     slot_name = f"tier{int(tier)}"
-    value = next(
+    return next(
         (
             str(row.get(owner, "")).strip().casefold()
             for row in vampire_sheet_rows
@@ -762,10 +803,14 @@ def tier_is_unlocked(tier: int, realm_name: str | None = None) -> bool:
         ),
         "false",
     )
-    return value == "true"
 
 
-tier_two_unlocked = tier_is_unlocked(2)
+def tier_is_unlocked(tier: int, realm_name: str | None = None) -> bool:
+    if int(tier) == 2:
+        return tier_two_start_week(realm_name) is not None
+    return tier_sheet_value(tier, realm_name) == "true"
+
+
 tier_three_unlocked = tier_is_unlocked(3)
 tier_four_unlocked = tier_is_unlocked(4)
 previous_active_week = st.session_state.get("_automatic_active_week")
@@ -851,7 +896,8 @@ def mark_stolen_creature_followers(rows: list[dict], week: int, realm_name: str 
     stolen = stolen_followers_before(week, realm_name)
     if not stolen:
         return rows
-    creature_names = {creature["name"] for creature in CREATURES}
+    # Tribute stays stolen in every later stage, including Second Wave rosters.
+    creature_names = {creature["name"] for creature in (*CREATURES, *TIER_TWO_CREATURES, *TIER_THREE_CREATURES)}
     marked = []
     seen_stolen = set()
     for original in rows:
@@ -922,7 +968,7 @@ def add_weekly_projections(rows: list[dict], week: int) -> list[dict]:
 
 def mark_siren_target(rows: list[dict], week: int, realm_name: str) -> tuple[list[dict], dict | None]:
     """Flag the highest-projected member of the Vampire's projected starting nine."""
-    if int(week) not in TIER_TWO_WEEKS:
+    if not 1 <= int(week) <= 18:
         return rows, None
     projected_rows = add_weekly_projections(rows, int(week))
     vampire_roster = [row for row in projected_rows if row.get("team") == realm_name]
@@ -1159,7 +1205,7 @@ def calculate_tier_two_battle(
     cerberus_streak_before: int = 0,
 ) -> dict | None:
     """Resolve the second wave once its master rosters and projections are attached."""
-    if int(week) not in TIER_TWO_WEEKS or len(vampire_roster) < 9:
+    if not 1 <= int(week) <= 18 or len(vampire_roster) < 9:
         return None
     lineups = {"The Vampire": best_ball_lineup(vampire_roster)}
     lineups.update({name: best_ball_lineup(rows) for name, rows in tier_two_rosters.items()})
@@ -1312,12 +1358,25 @@ def hydra_life_due_this_week(week: int, realm_name: str) -> bool:
     return hydra_life_due_after(prior_wins)
 
 
+_realm_state_memo: dict[tuple[int, str], dict] = {}
+
+
 def realm_state_entering_week(week: int, realm_name: str) -> dict:
+    """Memoized per rerun; several tabs and every tier check ask for the same state."""
+    key = (int(week), realm_name)
+    if key not in _realm_state_memo:
+        _realm_state_memo[key] = _realm_state_entering_week(int(week), realm_name)
+    cached = _realm_state_memo[key]
+    return {**cached, "remaining": dict(cached["remaining"])}
+
+
+def _realm_state_entering_week(week: int, realm_name: str) -> dict:
     """Carry realm-specific lives and permanent powers through finalized weeks."""
     state = {
         "remaining": {creature["name"]: creature["lives"] for creature in CREATURES},
         "hydra_hit": False,
         "hunter_bonus": 0.0,
+        "stage_one_cleared_week": None,
     }
     for prior_week in range(1, int(week)):
         try:
@@ -1345,6 +1404,8 @@ def realm_state_entering_week(week: int, realm_name: str) -> dict:
             state["remaining"] = battle["remaining"]
             state["hydra_hit"] = battle["hydra_hit"]
             state["hunter_bonus"] = battle["hunter_bonus"]
+            if state["stage_one_cleared_week"] is None and not any(state["remaining"].values()):
+                state["stage_one_cleared_week"] = prior_week
         except Exception:
             break
     return state
@@ -1452,6 +1513,103 @@ def realm_state_with_settled_active_matchups(week: int, realm_name: str) -> dict
         if is_settled:
             live_state["remaining"][creature_name] = battle["remaining"][creature_name]
     return live_state
+
+
+def stage_one_cleared_week(realm_name: str | None = None) -> int | None:
+    """The finalized week in which this realm's last Stage 1 creature fell."""
+    owner = realm_name or active_vampire_name
+    cleared = realm_state_entering_week(active_week, owner)["stage_one_cleared_week"]
+    if cleared is None and PREVIEW_STAGE_TWO:
+        cleared = active_week - 1
+    return cleared
+
+
+def tier_two_start_week(realm_name: str | None = None) -> int | None:
+    """Stage 2 opens the week after a realm clears Stage 1.
+
+    A number in the realm's Week 19 Tier2 cell pins the start week instead,
+    and TRUE keeps the original Week 7 opening.
+    """
+    sheet_value = tier_sheet_value(2, realm_name)
+    if sheet_value.isdigit():
+        start = int(sheet_value)
+    elif sheet_value == "true":
+        start = TIER_TWO_START_WEEK
+    else:
+        cleared = stage_one_cleared_week(realm_name)
+        start = cleared + 1 if cleared is not None else None
+    return start if start is not None and 1 <= start <= 18 else None
+
+
+def tier_two_weeks_for(realm_name: str | None = None) -> list[int]:
+    start = tier_two_start_week(realm_name)
+    return list(range(start, 19)) if start else []
+
+
+tier_two_unlocked = tier_is_unlocked(2)
+active_tier_two_weeks = tier_two_weeks_for()
+active_tier_two_start = tier_two_start_week() or TIER_TWO_START_WEEK
+
+
+@st.dialog("🩸 The First Wave Has Fallen", width="medium")
+def stage_two_welcome() -> None:
+    answer_key = f"stage_two_answer:{active_vampire_name}:{active_week}"
+    answer = st.session_state.get(answer_key)
+    st.image(LEAGUE_LOGO, width=120)
+    if answer is None:
+        st.markdown(
+            f"**Congratulations on surviving the battle, {active_vampire_label}.**\n\n"
+            "All eleven bloodlines lie extinguished at your feet... but the night is not over. "
+            "Their dying screams carried farther than you meant them to, and **more creatures are coming**: "
+            "Melusine the Siren, Cindermaw the Cerberus, and Lucian the Werewolf.\n\n"
+            "*Would you like to continue the hunt?*"
+        )
+        yes_column, no_column = st.columns(2)
+        accepted = None
+        if yes_column.button("Yes — continue the hunt", type="primary", width="stretch"):
+            accepted = True
+        if no_column.button("No — let me rest", width="stretch"):
+            accepted = False
+        if accepted is not None:
+            st.session_state[answer_key] = "yes" if accepted else "no"
+            # Local previews never post to the league channel.
+            if not (PREVIEW_WEEK or PREVIEW_STAGE_TWO):
+                try:
+                    send_stage_two_answer_to_discord(active_vampire_name, active_week, accepted)
+                except Exception:
+                    pass
+            st.rerun(scope="fragment")
+        return
+    if answer == "yes":
+        st.markdown(
+            "🦇 **Spoken like a true apex predator.**\n\n"
+            "Melusine is already humming your best starter's name, Cindermaw is drooling from three mouths, "
+            "and Lucian can smell the stolen blood on your roster. Your stolen followers march with you.\n\n"
+            f"Sharpen your fangs — **Stage II begins in Week {active_week}.**"
+        )
+    else:
+        st.markdown(
+            "🐺 **Too bad — you're doing it anyway.**\n\n"
+            "There is no retirement plan for the undead. The contract was signed in blood, "
+            "the Cerberus has already memorized your scent (all three heads of it), "
+            "and your stolen followers refuse to go home.\n\n"
+            f"Your Stage II lineup is due before Week {active_week} kickoff."
+        )
+    if st.button("Enter Stage II", type="primary", width="stretch"):
+        st.rerun()
+
+
+# Monday night or Tuesday morning: once the final Stage 1 week is official,
+# the first Stage 2 week becomes active and each owner is welcomed once.
+stage_two_welcome_key = f"stage_two_welcomed:{active_vampire_name}:{active_week}"
+if (
+    tier_two_unlocked
+    and active_tier_two_start == active_week
+    and stage_one_cleared_week() is not None
+    and not st.session_state.get(stage_two_welcome_key)
+):
+    st.session_state[stage_two_welcome_key] = True
+    stage_two_welcome()
 
 
 st.markdown(
@@ -2279,7 +2437,7 @@ with overview_tab:
         st.markdown('<div class="section-kicker">The second wave</div>', unsafe_allow_html=True)
         st.markdown('<div class="section-title">Three greater horrors answer the bloodshed.</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="base-roster">Tier II · 30-player master rosters · Drafts will be attached later</div>',
+            f'<div class="base-roster">Stage II · 30-player Fantrax rosters · Begins Week {active_tier_two_start}</div>',
             unsafe_allow_html=True,
         )
         st.markdown(
@@ -2364,8 +2522,8 @@ with teams_tab:
     is_vampire = selected_name == active_vampire_name
     is_tier_two = selected_name in {team["name"] for team in TIER_TWO_CREATURES}
     is_tier_three = selected_name in {team["name"] for team in TIER_THREE_CREATURES}
-    roster_weeks = TIER_THREE_WEEKS if is_tier_three else TIER_TWO_WEEKS if is_tier_two else list(range(1, 19))
-    tier_start_week = TIER_THREE_START_WEEK if is_tier_three else TIER_TWO_START_WEEK
+    roster_weeks = TIER_THREE_WEEKS if is_tier_three else (active_tier_two_weeks or TIER_TWO_WEEKS) if is_tier_two else list(range(1, 19))
+    tier_start_week = TIER_THREE_START_WEEK if is_tier_three else active_tier_two_start
     default_roster_week = max(tier_start_week, active_week) if (is_tier_two or is_tier_three) else active_week
     selected_week = st.select_slider(
         "Roster week",
@@ -2376,15 +2534,22 @@ with teams_tab:
         key="tier_three_roster_week" if is_tier_three else "tier_two_roster_week" if is_tier_two else "creature_roster_week",
     )
 
-    if is_tier_two or is_tier_three:
+    if is_tier_three:
         roster_rows, roster_source, player_score_source, team_roster = [], "pending", "pending", []
+        selected_realm_state = None
+    elif is_tier_two:
+        roster_rows, roster_source = fantrax_roster_for_week(selected_week)
+        roster_rows = enrich_roster_rows(roster_rows)
+        roster_rows, player_score_source = add_fantrax_player_scores(roster_rows, selected_week)
+        roster_rows = mark_stolen_creature_followers(roster_rows, selected_week)
+        team_roster = [row for row in roster_rows if row.get("team") == selected_name]
         selected_realm_state = None
     else:
         roster_rows, roster_source = fantrax_roster_for_week(selected_week)
         roster_rows = enrich_roster_rows(roster_rows)
         roster_rows, player_score_source = add_fantrax_player_scores(roster_rows, selected_week)
         roster_rows = mark_stolen_creature_followers(roster_rows, selected_week)
-        if is_vampire and tier_two_unlocked and selected_week in TIER_TWO_WEEKS:
+        if is_vampire and selected_week in active_tier_two_weeks:
             roster_rows, _ = mark_siren_target(roster_rows, selected_week, active_vampire_name)
         team_roster = [row for row in roster_rows if row.get("team") == selected_name]
         selected_realm_state = (
@@ -2407,7 +2572,7 @@ with teams_tab:
     last_week_display = f"{last_week_score:.2f}" if isinstance(last_week_score, (int, float)) else "—"
     if is_tier_two or is_tier_three:
         tier_label = "Tier III" if is_tier_three else "Tier II"
-        tier_start = TIER_THREE_START_WEEK if is_tier_three else TIER_TWO_START_WEEK
+        tier_start = TIER_THREE_START_WEEK if is_tier_three else active_tier_two_start
         last_week_detail = f"{tier_label} begins in Week {tier_start}" if selected_week == tier_start else f"Awaiting {tier_label} results"
     elif isinstance(last_week_score, (int, float)):
         last_week_finish = 1 + sum(
@@ -2478,7 +2643,7 @@ with teams_tab:
         if follower in creature_followers and not is_vampire
     }
     timeline_bits = []
-    timeline_weeks = TIER_THREE_WEEKS if is_tier_three else TIER_TWO_WEEKS if is_tier_two else list(range(1, 19))
+    timeline_weeks = TIER_THREE_WEEKS if is_tier_three else (active_tier_two_weeks or TIER_TWO_WEEKS) if is_tier_two else list(range(1, 19))
     current_live_snapshot = (
         live_realm_battle_snapshot(active_week, active_vampire_name)
         if not is_vampire and not is_tier_two and not is_tier_three
@@ -2593,7 +2758,7 @@ with scoreboard_tab:
             st.rerun()
 
     scoreboard_is_tier_three = tier_three_unlocked and scoreboard_week in TIER_THREE_WEEKS
-    scoreboard_is_tier_two = not scoreboard_is_tier_three and tier_two_unlocked and scoreboard_week in TIER_TWO_WEEKS
+    scoreboard_is_tier_two = not scoreboard_is_tier_three and scoreboard_week in active_tier_two_weeks
     scoreboard_creatures = TIER_THREE_CREATURES if scoreboard_is_tier_three else TIER_TWO_CREATURES if scoreboard_is_tier_two else CREATURES
     scoreboard_teams = [VAMPIRE_TEAM, *scoreboard_creatures]
     scoreboard_roster_teams = [*ALL_TEAMS, *TIER_TWO_CREATURES, *TIER_THREE_CREATURES]
@@ -3160,7 +3325,7 @@ with realm_summary_tab:
             world_roster, _ = add_fantrax_player_scores(world_roster, battle_week)
             creature_roster = mark_stolen_creature_followers(weekly_creatures, battle_week, world_name)
             in_tier_three = tier_is_unlocked(3, world_name) and battle_week in TIER_THREE_WEEKS
-            in_tier_two = not in_tier_three and tier_is_unlocked(2, world_name) and battle_week in TIER_TWO_WEEKS
+            in_tier_two = not in_tier_three and battle_week in tier_two_weeks_for(world_name)
 
             if in_tier_three:
                 if state["dracula_remaining"] <= 0:
@@ -3191,7 +3356,7 @@ with realm_summary_tab:
             if in_tier_two:
                 projected_world_roster = add_weekly_projections(world_roster, battle_week)
                 tier_two_rosters = {
-                    creature["name"]: [row for row in weekly_creatures if row.get("team") == creature["name"]]
+                    creature["name"]: [row for row in creature_roster if row.get("team") == creature["name"]]
                     for creature in TIER_TWO_CREATURES
                 }
                 lives_before_battle = dict(state["tier_two_remaining"])
@@ -3363,23 +3528,38 @@ with realm_summary_tab:
         body_rows.append(f"<tr class='{row_classes}'><th>🧛 {escape(team_label(world_name))}<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th><td class='realm-score'>{score_text}</td>{cells}<td class='stolen'>{escape(stolen)}</td></tr>")
     st.markdown(f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th><th>Week {realm_week}</th>{header_cells}<th>Player stolen</th></tr></thead><tbody>{''.join(body_rows)}</tbody></table></div>", unsafe_allow_html=True)
 
-    tier_two_realms = [name for name in vampire_sheet_teams if tier_is_unlocked(2, name)]
-    if tier_two_realms and realm_week in TIER_TWO_WEEKS:
+    tier_two_realms = [name for name in vampire_sheet_teams if realm_week in tier_two_weeks_for(name)]
+    if tier_two_realms:
         tier_two_headers = "".join(
             f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>"
             for creature in TIER_TWO_CREATURES
         )
         tier_two_rows = []
         for world_name in tier_two_realms:
-            creature_cells = "".join(
-                f"<td class='life-diamonds' title='{creature['lives']} starting lives'>"
-                f"{life_diamonds(creature['lives'], creature['lives'])}<small class='pending'>SCHEDULED</small></td>"
-                for creature in TIER_TWO_CREATURES
-            )
+            state = realm_states[world_name]
+            tier_two_battle = state["tier_two_weeks"].get(realm_week)
+            creature_cells = ""
+            for creature in TIER_TWO_CREATURES:
+                remaining = state["tier_two_remaining"].get(creature["name"], creature["lives"])
+                outcome = tier_two_battle["outcomes"].get(creature["name"], "pending") if tier_two_battle and selected_week_final else "pending"
+                result_text, result_class = {
+                    "lost": ("BEAT", "beat"),
+                    "hit": ("HIT", "hit"),
+                    "survived": ("SAFE", "safe"),
+                    "pending": ("LIVE", "live") if tier_two_battle else ("SCHEDULED", "pending"),
+                }[outcome]
+                if outcome == "lost" and remaining == 0:
+                    result_text = "DEFEATED"
+                creature_cells += (
+                    f"<td class='life-diamonds' title='{remaining} of {creature['lives']} lives remaining'>"
+                    f"{life_diamonds(creature['lives'], remaining)}<small class='{result_class}'>{result_text}</small></td>"
+                )
+            vampire_score = tier_two_battle["scores"].get("The Vampire") if tier_two_battle else None
+            score_text = f"{vampire_score:.2f}" if isinstance(vampire_score, (int, float)) else "Awaiting lineup"
             tier_two_rows.append(
                 f"<tr class='{'active' if world_name == active_vampire_name else ''}'><th>🧛 {escape(team_label(world_name))}"
                 f"<small>{'You' if world_name == active_vampire_name else 'Universe'}</small></th>"
-                f"<td class='realm-score'>Awaiting draft</td>{creature_cells}</tr>"
+                f"<td class='realm-score'>{score_text}</td>{creature_cells}</tr>"
             )
         st.markdown(
             f"<div class='realm-cross-wrap'><table class='realm-cross'><thead><tr><th>Vampire</th>"
@@ -3450,10 +3630,19 @@ with realm_summary_tab:
 with available_tab:
     available_snapshot = load_snapshot()
     available_week = active_week
+    available_stage_two = available_week in active_tier_two_weeks
+    available_creatures = TIER_TWO_CREATURES if available_stage_two else CREATURES
+    available_roster_size = 30 if available_stage_two else 20
+    available_blurb = (
+        f"Stage II pool for {escape(active_vampire_label)}: followers who are not on the Siren, Cerberus, or Werewolf rosters. "
+        "Stage I rosters no longer matter, and every follower you stole in Stage I carries over and is marked 🩸."
+        if available_stage_two else
+        "Choose your followers: a complete 20-follower roster from the highest-ranked followers who are not owned by any of the eleven creatures. Current Vampire followers remain available to owners entering a new version of the hunt."
+    )
     st.markdown(
         f'''<div class="available-intro">
             <div><h2>Choose Your Followers</h2>
-            <p>Choose your followers: a complete 20-follower roster from the highest-ranked followers who are not owned by any of the eleven creatures. Current Vampire followers remain available to owners entering a new version of the hunt.</p></div>
+            <p>{available_blurb}</p></div>
             <div class="available-week">Week {available_week} · Recommendations</div>
         </div>''',
         unsafe_allow_html=True,
@@ -3462,7 +3651,7 @@ with available_tab:
     available_rosters, _ = fantrax_roster_for_week(available_week)
     available_rosters = mark_stolen_creature_followers(available_rosters, available_week)
     opponent_rows = [row for row in available_rosters if row.get("team") != active_vampire_name]
-    creature_roster_members = {creature["name"]: set() for creature in CREATURES}
+    creature_roster_members = {creature["name"]: set() for creature in available_creatures}
     for row in opponent_rows:
         team_name = row.get("team")
         if team_name in creature_roster_members:
@@ -3472,12 +3661,12 @@ with available_tab:
     changed_rosters = [
         f"{team_label(name)} ({len(members)} followers)"
         for name, members in creature_roster_members.items()
-        if members and len(members) != 20
+        if members and len(members) != available_roster_size
     ]
     if changed_rosters:
         st.warning(
             "Creature roster alert: " + ", ".join(changed_rosters)
-            + ". Each creature should have 20 followers; check these rosters before choosing your lineup.",
+            + f". Each creature should have {available_roster_size} followers; check these rosters before choosing your lineup.",
             icon="⚠️",
         )
     missing_rosters = [team_label(name) for name, members in creature_roster_members.items() if not members]
@@ -3487,17 +3676,31 @@ with available_tab:
             + ". Recommendations may include followers who are already taken.",
             icon="⚠️",
         )
-    still_owned_opponents = [row for row in opponent_rows if not row.get("stolen")]
+    creature_names_in_stage = set(creature_roster_members)
+    still_owned_opponents = [
+        row for row in opponent_rows
+        if row.get("team") in creature_names_in_stage and not row.get("stolen")
+    ]
     opponent_ids = {str(row.get("player_id", "")) for row in still_owned_opponents}
     opponent_names = {player_match_key(row.get("player", "")) for row in still_owned_opponents}
     opponent_dst_teams = {
         nfl_team_match_key(row.get("nfl_team", ""))
         for row in still_owned_opponents if row.get("position") == "DST"
     }
-    try:
-        player_pool = fantasypros_weekly_rankings(available_week)
-    except Exception:
-        player_pool = []
+    player_pool = []
+    rankings_week = available_week
+    # FantasyPros posts a new week's rankings Monday/Tuesday; until then use
+    # the latest published week so the lineup page is never empty.
+    for rankings_week in range(available_week, max(0, available_week - 3), -1):
+        try:
+            player_pool = fantasypros_weekly_rankings(rankings_week)
+        except Exception:
+            player_pool = []
+        if player_pool:
+            break
+    if player_pool and rankings_week != available_week:
+        st.caption(f"Week {available_week} rankings are not posted yet; ordering uses Week {rankings_week} rankings.")
+    full_rankings = list(player_pool)
 
     player_pool = [
         row for row in player_pool
@@ -3506,6 +3709,31 @@ with available_tab:
         and not (row.get("position") == "DST" and nfl_team_match_key(row.get("nfl_team", "")) in opponent_dst_teams)
     ]
     player_pool = complete_defense_recommendations(player_pool, opponent_dst_teams)
+    # Stage I tribute carries over: the owner's stolen followers stay
+    # selectable in Stage II even if a Stage II creature also rosters them.
+    carried_over = []
+    if available_stage_two:
+        ranked_by_name = {player_match_key(row.get("player", "")): row for row in full_rankings}
+        # Unranked tribute (injured, bye) still carries over; the Week 1
+        # Fantrax roster knows its position and NFL team.
+        original_by_name = {
+            player_match_key(row.get("player", "")): row
+            for row in enrich_roster_rows(available_snapshot.get("rosters", {}).get("1", []))
+        }
+        for stolen_name, claimed_week in claimed_followers_for_owner(active_vampire_name):
+            key = player_match_key(stolen_name)
+            source = ranked_by_name.get(key) or original_by_name.get(key)
+            if source:
+                carried_over.append({
+                    "player": source.get("player") or stolen_name,
+                    "position": source.get("position"),
+                    "nfl_team": source.get("nfl_team", "FA"),
+                    "rank": source.get("rank", 0),
+                    "carried_over": True,
+                    "stolen_week": claimed_week,
+                })
+        carried_keys = {player_match_key(row.get("player", "")) for row in carried_over}
+        player_pool = [row for row in player_pool if player_match_key(row.get("player", "")) not in carried_keys]
     pool_settings = {
         "QB": (8, 2, "#b94a5e"),
         "TE": (8, 2, "#349b8d"),
@@ -3521,12 +3749,12 @@ with available_tab:
         position_options = {}
         position_lookup = {}
         for position, (player_count, _, _) in pool_settings.items():
-            rows = sorted(
+            rows = [row for row in carried_over if row.get("position") == position] + sorted(
                 [row for row in player_pool if row.get("position") == position],
                 key=lambda row: int(row.get("rank", 9999)),
             )[:player_count]
             position_options[position] = [
-                f'''{row.get("player", "—")} — {row.get("nfl_team", "FA")}''' for row in rows
+                f'''{"🩸 " if row.get("carried_over") else ""}{row.get("player", "—")} — {row.get("nfl_team", "FA")}''' for row in rows
             ]
             position_lookup[position] = dict(zip(position_options[position], rows))
 
@@ -3553,7 +3781,7 @@ with available_tab:
                     table_rows = "".join(
                         f'''<div class="pool-row">
                             <div class="pool-rank">{rank:02d}</div>
-                            <div class="pool-player">{escape(str(row.get("player") or "—"))}</div>
+                            <div class="pool-player">{"🩸 " if row.get("carried_over") else ""}{escape(str(row.get("player") or "—"))}</div>
                             <div class="pool-team">{escape(str(row.get("nfl_team") or "FA"))}</div>
                         </div>'''
                         for rank, row in enumerate(rows, 1)
