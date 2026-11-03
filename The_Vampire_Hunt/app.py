@@ -11,7 +11,6 @@ import streamlit as st
 
 from fantrax_data import (
     DEFENSE_TEAMS,
-    STAGE_TWO_LEAGUE_ID,
     display_player_name,
     fetch_player_directory,
     fetch_roster_week,
@@ -86,6 +85,11 @@ except ImportError:
             if scorer.get("team") and scorer.get("teamId") is not None:
                 scores[str(scorer["teamId"])] = value
         return scores
+
+try:
+    from fantrax_data import STAGE_TWO_LEAGUE_ID
+except ImportError:
+    STAGE_TWO_LEAGUE_ID = "lklr1vl2mve7w1xg"
 
 try:
     from fantrax_data import fetch_available_players
