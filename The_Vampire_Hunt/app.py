@@ -234,7 +234,7 @@ CREATURES = [
 ]
 
 # Stage 2 opens per realm the week after its last Stage 1 creature falls
-# (see tier_two_start_week); Week 7 is only the fallback for a TRUE switch.
+# (see tier_two_start_week); Week 7 is only a display default before that.
 TIER_TWO_START_WEEK = 7
 TIER_TWO_WEEKS = list(range(TIER_TWO_START_WEEK, 19))
 TIER_TWO_SCORE_MULTIPLIER = 11 / 3
@@ -1531,17 +1531,16 @@ def stage_one_cleared_week(realm_name: str | None = None) -> int | None:
 def tier_two_start_week(realm_name: str | None = None) -> int | None:
     """Stage 2 opens the week after a realm clears Stage 1.
 
-    A number in the realm's Week 19 Tier2 cell pins the start week instead,
-    and TRUE keeps the original Week 7 opening.
+    TRUE/FALSE in the realm's Week 19 Tier2 cell never moves that week, so a
+    Stage 1 week can't be scored or claimed as Stage 2. Only a number pins a
+    start week, and only when Stage 1 can't be verified (it never opens
+    Stage 2 before the week after the clearing week).
     """
     sheet_value = tier_sheet_value(2, realm_name)
+    cleared = stage_one_cleared_week(realm_name)
+    start = cleared + 1 if cleared is not None else None
     if sheet_value.isdigit():
-        start = int(sheet_value)
-    elif sheet_value == "true":
-        start = TIER_TWO_START_WEEK
-    else:
-        cleared = stage_one_cleared_week(realm_name)
-        start = cleared + 1 if cleared is not None else None
+        start = max(int(sheet_value), start or 0)
     return start if start is not None and 1 <= start <= 18 else None
 
 
