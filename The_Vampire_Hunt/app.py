@@ -656,12 +656,14 @@ def send_stage_two_answer_to_discord(owner: str, week: int, accepted: bool) -> N
     if accepted:
         message = (
             f"🦇 **{owner} the Vampire has accepted the call of the Second Wave!**\n"
-            f"The Siren, the Cerberus, and the Werewolf are waiting. Stage II begins in Week {week}."
+            f"The Siren, the Cerberus, and the Werewolf are waiting. Stage II begins in Week {week}.\n"
+            f"Sheet entry: `{owner}` · Week `19` · `Tier2` → `TRUE`"
         )
     else:
         message = (
             f"🐺 **{owner} the Vampire tried to decline the Second Wave... and was told no.**\n"
-            f"There is no retirement plan for the undead. Stage II begins in Week {week} anyway."
+            f"There is no retirement plan for the undead. Stage II begins in Week {week} anyway.\n"
+            f"Sheet entry: `{owner}` · Week `19` · `Tier2` → `TRUE`"
         )
     response = requests.post(webhook_url, json={"username": "The Vampire Hunt", "content": message}, timeout=15)
     response.raise_for_status()
@@ -1604,9 +1606,11 @@ def stage_two_welcome() -> None:
 
 # Monday night or Tuesday morning: once the final Stage 1 week is official,
 # the first Stage 2 week becomes active and each owner is welcomed once.
+# TRUE in the realm's Week 19 Tier2 cell records that the owner already answered.
 stage_two_welcome_key = f"stage_two_welcomed:{active_vampire_name}:{active_week}"
 if (
     tier_two_unlocked
+    and tier_sheet_value(2) != "true"
     and active_tier_two_start == active_week
     and stage_one_cleared_week() is not None
     and not st.session_state.get(stage_two_welcome_key)
