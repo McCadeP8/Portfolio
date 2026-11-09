@@ -1203,12 +1203,35 @@ def calculate_realm_battle(
     }
 
 
+def siren_target_for(vampire_roster: list[dict]) -> dict | None:
+    """Fatal Chorus charms the highest-projected member of the projected starting nine."""
+    projected_lineup = best_ball_lineup(vampire_roster, _projected_first)
+    projected = [row for row in projected_lineup if isinstance(row.get("projection"), (int, float))]
+    return max(projected, key=lambda row: float(row["projection"]), default=None)
+
+
+def charmed_vampire_lineup(vampire_roster: list[dict], siren_target: dict | None) -> list[dict]:
+    """The Vampire's real best-ball nine with the charmed follower removed.
+
+    If the charmed follower was not an actual starter, the lineup is unchanged.
+    """
+    if siren_target is None:
+        return best_ball_lineup(vampire_roster)
+    charmed = follower_identity(siren_target)
+    return best_ball_lineup([row for row in vampire_roster if follower_identity(row) != charmed])
+
+
+def stolen_starter_count(lineup: list[dict], stolen_keys: dict[str, int] | set[str]) -> int:
+    return sum(1 for row in lineup if row.get("stolen") or player_match_key(row.get("player", "")) in stolen_keys)
+
+
 def calculate_tier_two_battle(
     week: int,
     vampire_roster: list[dict],
     tier_two_rosters: dict[str, list[dict]],
     lives_before: dict[str, int],
     cerberus_streak_before: int = 0,
+    stolen_keys: dict[str, int] | set[str] = frozenset(),
 ) -> dict | None:
     """Resolve the second wave once its master rosters and projections are attached."""
     if not 1 <= int(week) <= 18 or len(vampire_roster) < 9:
@@ -1226,28 +1249,13 @@ def calculate_tier_two_battle(
     bonuses = {team["name"]: 0.0 for team in TIER_TWO_CREATURES}
     notes = {team["name"]: "No weekly score bonus" for team in TIER_TWO_CREATURES}
 
-    # Fatal Chorus: transfer the charmed starter's actual points to the Siren
-    # and replace that starter with the best eligible bench follower.
-    vampire_lineup = lineups["The Vampire"]
-    projected_vampire_lineup = best_ball_lineup(vampire_roster, _projected_first)
-    projected = [row for row in projected_vampire_lineup if isinstance(row.get("projection"), (int, float))]
-    siren_target = max(projected, key=lambda row: float(row["projection"]), default=None)
+    # Fatal Chorus: the charmed follower's actual points belong to the Siren,
+    # and the Vampire's best ball is rebuilt without them.
+    siren_target = siren_target_for(vampire_roster)
+    vampire_lineup = charmed_vampire_lineup(vampire_roster, siren_target)
+    scores["The Vampire"] = sum(float(row.get("score") or 0.0) for row in vampire_lineup)
     if siren_target is not None:
-        target_positions = {"RB", "WR", "TE"} if siren_target.get("slot") == "RWT FLEX" else {siren_target.get("position")}
-        starter_ids = {str(row.get("player_id") or player_match_key(row.get("player", ""))) for row in projected_vampire_lineup}
-        replacements = [
-            row for row in vampire_roster
-            if str(row.get("player_id") or player_match_key(row.get("player", ""))) not in starter_ids
-            and row.get("position") in target_positions
-        ]
-        replacement = max(replacements, key=_projected_first, default=None)
         target_score = float(siren_target.get("score") or 0.0)
-        replacement_score = float(replacement.get("score") or 0.0) if replacement else 0.0
-        scores["The Vampire"] = sum(
-            float(row.get("score") or 0.0)
-            for row in projected_vampire_lineup
-            if row is not siren_target
-        ) + replacement_score
         scores["The Siren"] += target_score
         bonuses["The Siren"] = target_score
         notes["The Siren"] = f"Fatal Chorus · {siren_target.get('player', 'charmed starter')} transferred"
@@ -1257,11 +1265,11 @@ def calculate_tier_two_battle(
     bonuses["The Cerberus"] = cerberus_bonus
     notes["The Cerberus"] = f"The Three Gates · {cerberus_streak_before} head{'s' if cerberus_streak_before != 1 else ''} severed"
 
-    stolen_starters = [row for row in vampire_lineup if row.get("stolen")]
-    werewolf_bonus = float(3 * len(stolen_starters))
+    stolen_starters = stolen_starter_count(vampire_lineup, stolen_keys)
+    werewolf_bonus = float(3 * stolen_starters)
     scores["The Werewolf"] += werewolf_bonus
     bonuses["The Werewolf"] = werewolf_bonus
-    notes["The Werewolf"] = f"The Turning · {len(stolen_starters)} stolen starter{'s' if len(stolen_starters) != 1 else ''}"
+    notes["The Werewolf"] = f"The Turning · {stolen_starters} stolen starter{'s' if stolen_starters != 1 else ''}"
 
     lives_after = dict(lives_before)
     outcomes = {}
@@ -1519,6 +1527,52 @@ def realm_state_with_settled_active_matchups(week: int, realm_name: str) -> dict
         if is_settled:
             live_state["remaining"][creature_name] = battle["remaining"][creature_name]
     return live_state
+
+
+_tier_two_state_memo: dict[tuple[int, str], dict] = {}
+
+
+def tier_two_state_entering_week(week: int, realm_name: str) -> dict:
+    """Carry Second Wave lives and the Cerberus streak through finalized weeks."""
+    key = (int(week), realm_name)
+    if key in _tier_two_state_memo:
+        return _tier_two_state_memo[key]
+    state = {
+        "remaining": {creature["name"]: creature["lives"] for creature in TIER_TWO_CREATURES},
+        "cerberus_streak": 0,
+    }
+    for prior_week in tier_two_weeks_for(realm_name):
+        if prior_week >= int(week):
+            break
+        try:
+            if not games_are_final(nfl_week_games(nfl_season, prior_week)):
+                break
+            world_roster = vampire_world_rosters(prior_week).get(realm_name, [])
+            world_roster, _ = add_fantrax_player_scores(world_roster, prior_week)
+            world_roster = add_weekly_projections(world_roster, prior_week)
+            creature_roster, _ = fantrax_roster_for_week(prior_week)
+            creature_roster = enrich_roster_rows(creature_roster)
+            creature_roster, _ = add_fantrax_player_scores(creature_roster, prior_week)
+            creature_roster = mark_stolen_creature_followers(creature_roster, prior_week, realm_name)
+            battle = calculate_tier_two_battle(
+                prior_week,
+                world_roster,
+                {
+                    creature["name"]: [row for row in creature_roster if row.get("team") == creature["name"]]
+                    for creature in TIER_TWO_CREATURES
+                },
+                state["remaining"],
+                state["cerberus_streak"],
+                stolen_followers_before(prior_week, realm_name),
+            )
+        except Exception:
+            break
+        if battle is None:
+            state["cerberus_streak"] = 0
+            continue
+        state = {"remaining": battle["remaining"], "cerberus_streak": battle["cerberus_streak"]}
+    _tier_two_state_memo[key] = state
+    return state
 
 
 def stage_one_cleared_week(realm_name: str | None = None) -> int | None:
@@ -2810,6 +2864,7 @@ with scoreboard_tab:
     score_rosters = mark_stolen_creature_followers(score_rosters, scoreboard_week)
     if scoreboard_is_tier_two:
         score_rosters, _ = mark_siren_target(score_rosters, scoreboard_week, active_vampire_name)
+        score_rosters = add_weekly_projections(score_rosters, scoreboard_week)
     scores_revealed = scoreboard_week <= active_week
     try:
         week_games = nfl_week_games(nfl_season, scoreboard_week)
@@ -2821,6 +2876,14 @@ with scoreboard_tab:
         for team in scoreboard_roster_teams
     }
     lineups = {name: best_ball_lineup(rows) for name, rows in rosters_by_team.items()}
+    scoreboard_siren_target = None
+    scoreboard_stolen_keys = stolen_followers_before(scoreboard_week)
+    if scoreboard_is_tier_two and rosters_by_team.get(active_vampire_name):
+        # The charmed follower leaves the Vampire's nine before scoring.
+        scoreboard_siren_target = siren_target_for(rosters_by_team[active_vampire_name])
+        lineups[active_vampire_name] = charmed_vampire_lineup(
+            rosters_by_team[active_vampire_name], scoreboard_siren_target
+        )
     # Fantrax team totals are intentionally ignored. Every score is rebuilt
     # from the nine best-ball starters' individual weekly player FPts.
     base_scores = {}
@@ -2875,6 +2938,22 @@ with scoreboard_tab:
     bonus_notes["The Cerberus"] = "The Three Gates · all three heads intact"
     bonus_notes["The Werewolf"] = "The Turning · +3 per stolen starter"
     bonus_notes["Dracula"] = "The Final Form · 3 lives · +0"
+
+    if scoreboard_is_tier_two:
+        if scoreboard_siren_target is not None:
+            charmed_score = scoreboard_siren_target.get("score")
+            bonus_by_team["The Siren"] = float(charmed_score) if scores_revealed and isinstance(charmed_score, (int, float)) else 0.0
+            bonus_notes["The Siren"] = f"Fatal Chorus · {scoreboard_siren_target.get('player', 'charmed starter')} charmed"
+        tier_two_state = tier_two_state_entering_week(scoreboard_week, active_vampire_name)
+        cerberus_heads = max(0, min(2, int(tier_two_state["cerberus_streak"])))
+        bonus_by_team["The Cerberus"] = float(cerberus_heads * 3)
+        bonus_notes["The Cerberus"] = (
+            f"The Three Gates · {cerberus_heads} head{'s' if cerberus_heads != 1 else ''} severed"
+            if cerberus_heads else "The Three Gates · all three heads intact"
+        )
+        stolen_starters = stolen_starter_count(lineups.get(active_vampire_name, []), scoreboard_stolen_keys)
+        bonus_by_team["The Werewolf"] = float(3 * stolen_starters)
+        bonus_notes["The Werewolf"] = f"The Turning · {stolen_starters} stolen starter{'s' if stolen_starters != 1 else ''}"
 
     first_wave_team_names = {active_vampire_name} | {
         creature["name"]
@@ -3373,6 +3452,7 @@ with realm_summary_tab:
                     tier_two_rosters,
                     lives_before_battle,
                     state["cerberus_streak"],
+                    stolen_followers_before(battle_week, world_name),
                 )
                 if battle is not None:
                     state["tier_two_weeks"][battle_week] = battle
