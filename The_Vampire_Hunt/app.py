@@ -2507,11 +2507,14 @@ with overview_tab:
             </div>""",
             unsafe_allow_html=True,
         )
+        overview_tier_two_lives = tier_two_state_entering_week(active_week, active_vampire_name)["remaining"]
         for creature in TIER_TWO_CREATURES:
-            hearts = life_diamonds(creature["lives"], creature["lives"])
+            lives_left = overview_tier_two_lives.get(creature["name"], creature["lives"])
+            hearts = life_diamonds(creature["lives"], lives_left)
+            lives_label = "Defeated" if lives_left == 0 else f"{lives_left} {'life' if lives_left == 1 else 'lives'}"
             st.markdown(
-                f"""<div class="monster-card" data-sigil="{creature['emoji']}" style="--card-accent:{creature['accent']}">
-                    <div class="lives">{creature['lives']} {'life' if creature['lives'] == 1 else 'lives'} <span class="life-pips" title="{creature['lives']} starting lives">{hearts}</span></div>
+                f"""<div class="monster-card {'defeated' if lives_left == 0 else ''}" data-sigil="{creature['emoji']}" style="--card-accent:{creature['accent']}">
+                    <div class="lives">{lives_label} <span class="life-pips" title="{lives_left} of {creature['lives']} lives remain">{hearts}</span></div>
                     <img src="{creature['logo']}" alt="{creature['name']} logo">
                     <div><div class="creature-name"><span class="emoji">{creature['emoji']}</span>{escape(team_label(creature['name']))}</div>
                     <div class="ability-line"><strong>{creature['ability']}</strong> — {creature['rule']}</div></div>
@@ -2620,7 +2623,12 @@ with teams_tab:
         )
     if is_vampire:
         lives_display = "—"
-    elif is_tier_two or is_tier_three:
+    elif is_tier_two:
+        lives_display = str(
+            tier_two_state_entering_week(min(selected_week, active_week), active_vampire_name)["remaining"]
+            .get(selected_name, selected_team["lives"])
+        )
+    elif is_tier_three:
         lives_display = str(selected_team["lives"])
     else:
         lives_display = str(selected_realm_state["remaining"].get(selected_name, selected_team["lives"]))
@@ -2996,7 +3004,10 @@ with scoreboard_tab:
         name = team["name"]
         if name == active_vampire_name:
             return False
-        lives_before = scoreboard_realm_state["remaining"].get(name, team.get("lives") or 1)
+        if name in {creature["name"] for creature in TIER_TWO_CREATURES}:
+            lives_before = tier_two_state_entering_week(scoreboard_week, active_vampire_name)["remaining"].get(name, team["lives"])
+        else:
+            lives_before = scoreboard_realm_state["remaining"].get(name, team.get("lives") or 1)
         return lives_before <= 0
 
     def game_marker_html(nfl_team: str) -> str:
