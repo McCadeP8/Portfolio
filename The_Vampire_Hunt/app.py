@@ -1221,6 +1221,25 @@ def charmed_vampire_lineup(vampire_roster: list[dict], siren_target: dict | None
     return best_ball_lineup([row for row in vampire_roster if follower_identity(row) != charmed])
 
 
+def siren_chorus_bonus(vampire_roster: list[dict], siren_target: dict | None) -> tuple[float, float]:
+    """Fatal Chorus pays the Siren twice and never lowers the Vampire's own score.
+
+    Returns (charmed points, replacement cost): the charmed follower's actual
+    FPts, plus how much the Vampire's best ball would drop if rebuilt without
+    them (flex-aware, like the Wizard's hex; zero when they were on the bench).
+    """
+    if siren_target is None:
+        return 0.0, 0.0
+    lineup_total = lambda lineup: sum(float(row.get("score") or 0.0) for row in lineup)
+    charmed_points = float(siren_target.get("score") or 0.0)
+    replacement_cost = max(
+        0.0,
+        lineup_total(best_ball_lineup(vampire_roster))
+        - lineup_total(charmed_vampire_lineup(vampire_roster, siren_target)),
+    )
+    return charmed_points, replacement_cost
+
+
 def stolen_starter_count(lineup: list[dict], stolen_keys: dict[str, int] | set[str]) -> int:
     return sum(1 for row in lineup if row.get("stolen") or player_match_key(row.get("player", "")) in stolen_keys)
 
@@ -1249,16 +1268,18 @@ def calculate_tier_two_battle(
     bonuses = {team["name"]: 0.0 for team in TIER_TWO_CREATURES}
     notes = {team["name"]: "No weekly score bonus" for team in TIER_TWO_CREATURES}
 
-    # Fatal Chorus: the charmed follower's actual points belong to the Siren,
-    # and the Vampire's best ball is rebuilt without them.
+    # Fatal Chorus: the Siren gains the charmed follower's points plus the
+    # replacement cost; the Vampire keeps its full best-ball score.
     siren_target = siren_target_for(vampire_roster)
-    vampire_lineup = charmed_vampire_lineup(vampire_roster, siren_target)
-    scores["The Vampire"] = sum(float(row.get("score") or 0.0) for row in vampire_lineup)
+    vampire_lineup = lineups["The Vampire"]
     if siren_target is not None:
-        target_score = float(siren_target.get("score") or 0.0)
-        scores["The Siren"] += target_score
-        bonuses["The Siren"] = target_score
-        notes["The Siren"] = f"Fatal Chorus · {siren_target.get('player', 'charmed starter')} transferred"
+        charmed_points, replacement_cost = siren_chorus_bonus(vampire_roster, siren_target)
+        scores["The Siren"] += charmed_points + replacement_cost
+        bonuses["The Siren"] = charmed_points + replacement_cost
+        notes["The Siren"] = (
+            f"Fatal Chorus · {siren_target.get('player', 'charmed starter')} "
+            f"{charmed_points:.2f} + {replacement_cost:.2f} replacement"
+        )
 
     cerberus_bonus = float(max(0, min(2, int(cerberus_streak_before))) * 3)
     scores["The Cerberus"] += cerberus_bonus
@@ -2887,11 +2908,8 @@ with scoreboard_tab:
     scoreboard_siren_target = None
     scoreboard_stolen_keys = stolen_followers_before(scoreboard_week)
     if scoreboard_is_tier_two and rosters_by_team.get(active_vampire_name):
-        # The charmed follower leaves the Vampire's nine before scoring.
+        # The Vampire keeps its full nine; the charm only feeds the Siren.
         scoreboard_siren_target = siren_target_for(rosters_by_team[active_vampire_name])
-        lineups[active_vampire_name] = charmed_vampire_lineup(
-            rosters_by_team[active_vampire_name], scoreboard_siren_target
-        )
     # Fantrax team totals are intentionally ignored. Every score is rebuilt
     # from the nine best-ball starters' individual weekly player FPts.
     base_scores = {}
@@ -2949,9 +2967,14 @@ with scoreboard_tab:
 
     if scoreboard_is_tier_two:
         if scoreboard_siren_target is not None:
-            charmed_score = scoreboard_siren_target.get("score")
-            bonus_by_team["The Siren"] = float(charmed_score) if scores_revealed and isinstance(charmed_score, (int, float)) else 0.0
-            bonus_notes["The Siren"] = f"Fatal Chorus · {scoreboard_siren_target.get('player', 'charmed starter')} charmed"
+            charmed_points, replacement_cost = siren_chorus_bonus(
+                rosters_by_team[active_vampire_name], scoreboard_siren_target
+            )
+            bonus_by_team["The Siren"] = charmed_points + replacement_cost if scores_revealed else 0.0
+            bonus_notes["The Siren"] = (
+                f"Fatal Chorus · {scoreboard_siren_target.get('player', 'charmed starter')} "
+                f"{charmed_points:.2f} + {replacement_cost:.2f} replacement"
+            )
         tier_two_state = tier_two_state_entering_week(scoreboard_week, active_vampire_name)
         cerberus_heads = max(0, min(2, int(tier_two_state["cerberus_streak"])))
         bonus_by_team["The Cerberus"] = float(cerberus_heads * 3)
