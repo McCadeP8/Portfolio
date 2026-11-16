@@ -1,15 +1,15 @@
 {
-  "finished_at": "2026-11-14T15:20:08.113761+00:00",
+  "finished_at": "2026-11-15T15:50:38.089910+00:00",
   "live_mode": "shadow",
   "results": [
     {
       "details": {
         "message": "Google Sheet snapshots refreshed with stale-cache fallback"
       },
-      "duration_seconds": 5.834,
-      "finished_at": "2026-11-14T15:18:36.912920+00:00",
+      "duration_seconds": 7.291,
+      "finished_at": "2026-11-15T15:49:09.331976+00:00",
       "name": "sheets",
-      "started_at": "2026-11-14T15:18:31.079401+00:00",
+      "started_at": "2026-11-15T15:49:02.041179+00:00",
       "status": "ok"
     },
     {
@@ -23,10 +23,10 @@
           "Corey Camper"
         ]
       },
-      "duration_seconds": 1.91,
-      "finished_at": "2026-11-14T15:18:38.823216+00:00",
+      "duration_seconds": 1.416,
+      "finished_at": "2026-11-15T15:49:10.748010+00:00",
       "name": "pictures",
-      "started_at": "2026-11-14T15:18:36.912980+00:00",
+      "started_at": "2026-11-15T15:49:09.332026+00:00",
       "status": "ok"
     },
     {
@@ -38,23 +38,23 @@
           "get_all_time_standings"
         ]
       },
-      "duration_seconds": 28.905,
-      "finished_at": "2026-11-14T15:19:07.728253+00:00",
+      "duration_seconds": 35.877,
+      "finished_at": "2026-11-15T15:49:46.624991+00:00",
       "name": "league",
-      "started_at": "2026-11-14T15:18:38.823288+00:00",
+      "started_at": "2026-11-15T15:49:10.748074+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "games": 23,
-        "new_or_updated_rows": 506,
+        "games": 18,
+        "new_or_updated_rows": 390,
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/nba_player_game_boxscores_2021_2026.parquet",
-        "total_rows": 158653
+        "total_rows": 158760
       },
-      "duration_seconds": 2.079,
-      "finished_at": "2026-11-14T15:19:09.807350+00:00",
+      "duration_seconds": 1.866,
+      "finished_at": "2026-11-15T15:49:48.491442+00:00",
       "name": "espn_boxscores",
-      "started_at": "2026-11-14T15:19:07.728316+00:00",
+      "started_at": "2026-11-15T15:49:46.625056+00:00",
       "status": "ok"
     },
     {
@@ -62,59 +62,59 @@
         "archives_changed": true,
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/data_snapshots/shots"
       },
-      "duration_seconds": 0.838,
-      "finished_at": "2026-11-14T15:19:10.645459+00:00",
+      "duration_seconds": 0.686,
+      "finished_at": "2026-11-15T15:49:49.177724+00:00",
       "name": "shots",
-      "started_at": "2026-11-14T15:19:09.807425+00:00",
+      "started_at": "2026-11-15T15:49:48.491538+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "new_or_updated_rows": 17307,
+        "new_or_updated_rows": 13751,
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/data_snapshots/pbp/pbp_stat_events_202627.parquet",
-        "total_rows": 138049
+        "total_rows": 141872
       },
-      "duration_seconds": 5.512,
-      "finished_at": "2026-11-14T15:19:16.157985+00:00",
+      "duration_seconds": 3.942,
+      "finished_at": "2026-11-15T15:49:53.119263+00:00",
       "name": "pbp",
-      "started_at": "2026-11-14T15:19:10.645522+00:00",
+      "started_at": "2026-11-15T15:49:49.177788+00:00",
       "status": "ok"
     },
     {
       "details": {
         "path": "/home/runner/work/Portfolio/Portfolio/SBC_Streamlit/sbc_player_matchup_stats.parquet",
-        "rows": 123345
+        "rows": 123397
       },
-      "duration_seconds": 6.214,
-      "finished_at": "2026-11-14T15:19:22.372393+00:00",
+      "duration_seconds": 4.796,
+      "finished_at": "2026-11-15T15:49:57.915760+00:00",
       "name": "matchups",
-      "started_at": "2026-11-14T15:19:16.158102+00:00",
+      "started_at": "2026-11-15T15:49:53.119365+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "games": 5,
+        "games": 9,
         "mode": "shadow",
         "player_rows": 0,
         "published": false
       },
       "duration_seconds": 0.003,
-      "finished_at": "2026-11-14T15:19:22.375778+00:00",
+      "finished_at": "2026-11-15T15:49:57.919300+00:00",
       "name": "live_shadow",
-      "started_at": "2026-11-14T15:19:22.372487+00:00",
+      "started_at": "2026-11-15T15:49:57.915872+00:00",
       "status": "ok"
     },
     {
       "details": {
-        "bytes": 145993517,
+        "bytes": 146071876,
         "datasets": 21,
-        "rows": 7526471,
+        "rows": 7531355,
         "warnings": 0
       },
-      "duration_seconds": 0.154,
-      "finished_at": "2026-11-14T15:19:22.530095+00:00",
+      "duration_seconds": 0.16,
+      "finished_at": "2026-11-15T15:49:58.078832+00:00",
       "name": "validate",
-      "started_at": "2026-11-14T15:19:22.375831+00:00",
+      "started_at": "2026-11-15T15:49:57.919342+00:00",
       "status": "ok"
     },
     {
@@ -132,64 +132,64 @@
         ],
         "published": [
           {
-            "bytes": 374854,
+            "bytes": 374408,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-overnight-scores-2027-p8.png",
             "kind": "overnight_scores"
           },
           {
-            "bytes": 448096,
+            "bytes": 453422,
             "delivered": 1,
             "destinations": 1,
             "filename": "sbcfbl-mobile-overnight-scores-2027-p8.png",
             "kind": "mobile_overnight_scores"
           },
           {
-            "bytes": 483918,
+            "bytes": 495055,
             "delivered": 1,
             "destinations": 1,
-            "filename": "sbcfbl-matchup-recap-2027_225.png",
+            "filename": "sbcfbl-matchup-recap-2027_236.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 542158,
+            "bytes": 527221,
             "delivered": 1,
             "destinations": 1,
-            "filename": "sbcfbl-mobile-matchup-recap-2027_225.png",
+            "filename": "sbcfbl-mobile-matchup-recap-2027_236.png",
             "kind": "mobile_matchup_recap"
           },
           {
-            "bytes": 486149,
+            "bytes": 549583,
             "delivered": 1,
             "destinations": 1,
-            "filename": "sbcfbl-matchup-recap-2027_218.png",
+            "filename": "sbcfbl-matchup-recap-2027_234.png",
             "kind": "matchup_recap"
           },
           {
-            "bytes": 545520,
+            "bytes": 579878,
             "delivered": 1,
             "destinations": 1,
-            "filename": "sbcfbl-mobile-matchup-recap-2027_218.png",
+            "filename": "sbcfbl-mobile-matchup-recap-2027_234.png",
             "kind": "mobile_matchup_recap"
           }
         ],
-        "publishing_date": "2026-11-14",
+        "publishing_date": "2026-11-15",
         "skipped": [
           "record_leader:no-new-record"
         ],
         "slot": "all",
         "year": 2027
       },
-      "duration_seconds": 45.583,
-      "finished_at": "2026-11-14T15:20:08.113338+00:00",
+      "duration_seconds": 40.011,
+      "finished_at": "2026-11-15T15:50:38.089468+00:00",
       "name": "fantrax_rotation",
-      "started_at": "2026-11-14T15:19:22.530153+00:00",
+      "started_at": "2026-11-15T15:49:58.078894+00:00",
       "status": "ok"
     }
   ],
   "schema_version": 1,
-  "started_at": "2026-11-14T15:18:31.079238+00:00",
+  "started_at": "2026-11-15T15:49:02.041042+00:00",
   "status": "ok",
-  "target_date": "2026-11-14"
+  "target_date": "2026-11-15"
 }
