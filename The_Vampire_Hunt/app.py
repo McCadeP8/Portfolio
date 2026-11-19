@@ -271,6 +271,8 @@ TIER_TWO_CREATURES = [
     },
 ]
 
+# Dracula opens per realm from the sheet's Tier3 switch (see tier_three_start_week);
+# Week 11 is only a display default before that.
 TIER_THREE_START_WEEK = 11
 TIER_THREE_WEEKS = list(range(TIER_THREE_START_WEEK, 19))
 DRACULA_SCORE_MULTIPLIER = 11
@@ -286,6 +288,80 @@ TIER_THREE_CREATURES = [
         "roster_size": 50,
     },
 ]
+
+# Dracula's 50-player court, hard-coded instead of a Fantrax league.
+# (position, player, Fantrax player ID, NFL team); IDs keep official FPts.
+DRACULA_ROSTER = [
+    ("QB", "Josh Allen", "04mnz", "BUF"),
+    ("QB", "Joe Burrow", "05gtu", "CIN"),
+    ("QB", "Brock Purdy", "060tt", "SF"),
+    ("QB", "Caleb Williams", "06jdx", "CHI"),
+    ("QB", "Trevor Lawrence", "05rlt", "JAX"),
+    ("RB", "Jahmyr Gibbs", "06anq", "DET"),
+    ("RB", "Kenneth Walker III", "060lt", "KC"),
+    ("RB", "Bijan Robinson", "06anf", "ATL"),
+    ("RB", "Christian McCaffrey", "048xf", "SF"),
+    ("RB", "James Cook III", "060rf", "BUF"),
+    ("RB", "Chuba Hubbard", "05roy", "CAR"),
+    ("RB", "Bucky Irving", "06l7s", "TB"),
+    ("RB", "Javonte Williams", "05rmz", "DAL"),
+    ("RB", "D'Andre Swift", "05gu2", "CHI"),
+    ("RB", "Bhayshul Tuten", "06s78", "JAX"),
+    ("RB", "Jaylen Warren", "0614z", "PIT"),
+    ("RB", "Jonathan Taylor", "05gu7", "IND"),
+    ("RB", "Kyren Williams", "060ry", "LAR"),
+    ("RB", "Chase Brown", "06aqy", "CIN"),
+    ("RB", "Derrick Henry", "03wra", "BAL"),
+    ("WR", "Jaxon Smith-Njigba", "06an9", "SEA"),
+    ("WR", "Ja'Marr Chase", "05rlf", "CIN"),
+    ("WR", "Amon-Ra St. Brown", "05roj", "DET"),
+    ("WR", "CeeDee Lamb", "05gu3", "DAL"),
+    ("WR", "Malik Nabers", "06je1", "NYG"),
+    ("WR", "Christian Watson", "060kh", "GB"),
+    ("WR", "Tee Higgins", "05gui", "CIN"),
+    ("WR", "Matthew Golden", "06s4y", "GB"),
+    ("WR", "Justin Jefferson", "05gu5", "MIN"),
+    ("WR", "Chris Olave", "060kf", "NO"),
+    ("WR", "Drake London", "060jr", "ATL"),
+    ("WR", "Parker Washington", "06arv", "JAX"),
+    ("WR", "Nico Collins", "05rnp", "HOU"),
+    ("WR", "Zay Flowers", "06anj", "BAL"),
+    ("WR", "Luther Burden III", "06s4x", "CHI"),
+    ("TE", "Brock Bowers", "06je0", "LV"),
+    ("TE", "Trey McBride", "060qz", "ARI"),
+    ("TE", "George Kittle", "04cf1", "SF"),
+    ("TE", "Isaiah Likely", "060s4", "NYG"),
+    ("TE", "Colston Loveland", "06rpw", "CHI"),
+    ("K", "Ka'imi Fairbairn", "040uv", "HOU"),
+    ("K", "Cam Little", "06la8", "JAX"),
+    ("K", "Will Reichard", "06lb1", "MIN"),
+    ("K", "Brandon Aubrey", "06cpc", "DAL"),
+    ("K", "Evan McPherson", "05rpl", "CIN"),
+    ("DST", "Minnesota", "20240", "MIN"),
+    ("DST", "Seattle", "20320", "SEA"),
+    ("DST", "Jacksonville", "20110", "JAX"),
+    ("DST", "Denver", "20130", "DEN"),
+    ("DST", "Pittsburgh", "20080", "PIT"),
+]
+
+
+def dracula_roster_rows(week: int) -> list[dict]:
+    return [
+        {
+            "week": int(week),
+            "team_id": "dracula",
+            "team": "Dracula",
+            "lives_remaining": None,
+            "player_id": player_id,
+            "player": player,
+            "position": position,
+            "nfl_team": nfl_team,
+            "status": "ROSTERED",
+            "score": None,
+        }
+        for position, player, player_id, nfl_team in DRACULA_ROSTER
+    ]
+
 
 VAMPIRE_TEAM = {
     "name": "The Vampire",
@@ -503,12 +579,12 @@ def fantrax_roster_for_week(week: int) -> tuple[list[dict], str]:
         players = fantrax_player_directory()
         rows = fetch_roster_week(int(week), players)
         if rows:
-            rows += stage_two_roster_rows(int(week), players)
+            rows += stage_two_roster_rows(int(week), players) + dracula_roster_rows(int(week))
             return sheet_vampire_rows(int(week), rows, players), "live"
     except Exception:
         pass
     snapshot = load_snapshot()
-    rows = snapshot.get("rosters", {}).get(str(int(week)), []) + stage_two_roster_rows(int(week), players)
+    rows = snapshot.get("rosters", {}).get(str(int(week)), []) + stage_two_roster_rows(int(week), players) + dracula_roster_rows(int(week))
     return sheet_vampire_rows(int(week), rows, players), "snapshot"
 
 
@@ -814,10 +890,11 @@ def tier_sheet_value(tier: int, realm_name: str | None = None) -> str:
 def tier_is_unlocked(tier: int, realm_name: str | None = None) -> bool:
     if int(tier) == 2:
         return tier_two_start_week(realm_name) is not None
+    if int(tier) == 3:
+        return tier_three_start_week(realm_name) is not None
     return tier_sheet_value(tier, realm_name) == "true"
 
 
-tier_three_unlocked = tier_is_unlocked(3)
 tier_four_unlocked = tier_is_unlocked(4)
 previous_active_week = st.session_state.get("_automatic_active_week")
 if previous_active_week is not None and previous_active_week != active_week:
@@ -1334,7 +1411,7 @@ def calculate_tier_three_battle(
     lives_before: int,
 ) -> dict | None:
     """Resolve Dracula's final-tier battle once his 50-player roster is attached."""
-    if int(week) not in TIER_THREE_WEEKS:
+    if not 1 <= int(week) <= 18:
         return None
     vampire_lineup = best_ball_lineup(vampire_roster)
     dracula_lineup = best_ball_lineup(dracula_roster)
@@ -1561,8 +1638,12 @@ def tier_two_state_entering_week(week: int, realm_name: str) -> dict:
     state = {
         "remaining": {creature["name"]: creature["lives"] for creature in TIER_TWO_CREATURES},
         "cerberus_streak": 0,
+        "cleared_week": None,
     }
-    for prior_week in tier_two_weeks_for(realm_name):
+    tier_two_start = tier_two_start_week(realm_name)
+    for prior_week in range(tier_two_start, 19) if tier_two_start else []:
+        if state["cleared_week"] is not None:
+            break
         if prior_week >= int(week):
             break
         try:
@@ -1591,7 +1672,11 @@ def tier_two_state_entering_week(week: int, realm_name: str) -> dict:
         if battle is None:
             state["cerberus_streak"] = 0
             continue
-        state = {"remaining": battle["remaining"], "cerberus_streak": battle["cerberus_streak"]}
+        state = {
+            "remaining": battle["remaining"],
+            "cerberus_streak": battle["cerberus_streak"],
+            "cleared_week": prior_week if not any(battle["remaining"].values()) else None,
+        }
     _tier_two_state_memo[key] = state
     return state
 
@@ -1621,12 +1706,41 @@ def tier_two_start_week(realm_name: str | None = None) -> int | None:
     return start if start is not None and 1 <= start <= 18 else None
 
 
-def tier_two_weeks_for(realm_name: str | None = None) -> list[int]:
-    start = tier_two_start_week(realm_name)
+def tier_three_start_week(realm_name: str | None = None) -> int | None:
+    """Dracula opens only when the realm's Week 19 Tier3 cell is switched on.
+
+    TRUE starts him the week after that realm's Second Wave falls; a number
+    pins the start week. Either way he never starts before Stage 2 does.
+    """
+    sheet_value = tier_sheet_value(3, realm_name)
+    tier_two_start = tier_two_start_week(realm_name)
+    if sheet_value.isdigit():
+        start = max(int(sheet_value), (tier_two_start or 0) + 1)
+    elif sheet_value == "true":
+        owner = realm_name or active_vampire_name
+        cleared = tier_two_state_entering_week(active_week, owner)["cleared_week"]
+        start = cleared + 1 if cleared is not None else None
+    else:
+        start = None
+    return start if start is not None and 1 <= start <= 18 else None
+
+
+def tier_three_weeks_for(realm_name: str | None = None) -> list[int]:
+    start = tier_three_start_week(realm_name)
     return list(range(start, 19)) if start else []
 
 
+def tier_two_weeks_for(realm_name: str | None = None) -> list[int]:
+    """Stage 2 runs from its start until Dracula's first week."""
+    start = tier_two_start_week(realm_name)
+    end = tier_three_start_week(realm_name) or 19
+    return list(range(start, end)) if start else []
+
+
 tier_two_unlocked = tier_is_unlocked(2)
+tier_three_unlocked = tier_is_unlocked(3)
+active_tier_three_weeks = tier_three_weeks_for()
+active_tier_three_start = tier_three_start_week() or TIER_THREE_START_WEEK
 active_tier_two_weeks = tier_two_weeks_for()
 active_tier_two_start = tier_two_start_week() or TIER_TWO_START_WEEK
 
@@ -2607,8 +2721,8 @@ with teams_tab:
     is_vampire = selected_name == active_vampire_name
     is_tier_two = selected_name in {team["name"] for team in TIER_TWO_CREATURES}
     is_tier_three = selected_name in {team["name"] for team in TIER_THREE_CREATURES}
-    roster_weeks = TIER_THREE_WEEKS if is_tier_three else (active_tier_two_weeks or TIER_TWO_WEEKS) if is_tier_two else list(range(1, 19))
-    tier_start_week = TIER_THREE_START_WEEK if is_tier_three else active_tier_two_start
+    roster_weeks = (active_tier_three_weeks or TIER_THREE_WEEKS) if is_tier_three else (active_tier_two_weeks or TIER_TWO_WEEKS) if is_tier_two else list(range(1, 19))
+    tier_start_week = active_tier_three_start if is_tier_three else active_tier_two_start
     default_roster_week = max(tier_start_week, active_week) if (is_tier_two or is_tier_three) else active_week
     selected_week = st.select_slider(
         "Roster week",
@@ -2619,10 +2733,7 @@ with teams_tab:
         key="tier_three_roster_week" if is_tier_three else "tier_two_roster_week" if is_tier_two else "creature_roster_week",
     )
 
-    if is_tier_three:
-        roster_rows, roster_source, player_score_source, team_roster = [], "pending", "pending", []
-        selected_realm_state = None
-    elif is_tier_two:
+    if is_tier_two or is_tier_three:
         roster_rows, roster_source = fantrax_roster_for_week(selected_week)
         roster_rows = enrich_roster_rows(roster_rows)
         roster_rows, player_score_source = add_fantrax_player_scores(roster_rows, selected_week)
@@ -2662,7 +2773,7 @@ with teams_tab:
     last_week_display = f"{last_week_score:.2f}" if isinstance(last_week_score, (int, float)) else "—"
     if is_tier_two or is_tier_three:
         tier_label = "Tier III" if is_tier_three else "Tier II"
-        tier_start = TIER_THREE_START_WEEK if is_tier_three else active_tier_two_start
+        tier_start = active_tier_three_start if is_tier_three else active_tier_two_start
         last_week_detail = f"{tier_label} begins in Week {tier_start}" if selected_week == tier_start else f"Awaiting {tier_label} results"
     elif isinstance(last_week_score, (int, float)):
         last_week_finish = 1 + sum(
@@ -2733,7 +2844,7 @@ with teams_tab:
         if follower in creature_followers and not is_vampire
     }
     timeline_bits = []
-    timeline_weeks = TIER_THREE_WEEKS if is_tier_three else (active_tier_two_weeks or TIER_TWO_WEEKS) if is_tier_two else list(range(1, 19))
+    timeline_weeks = (active_tier_three_weeks or TIER_THREE_WEEKS) if is_tier_three else (active_tier_two_weeks or TIER_TWO_WEEKS) if is_tier_two else list(range(1, 19))
     current_live_snapshot = (
         live_realm_battle_snapshot(active_week, active_vampire_name)
         if not is_vampire and not is_tier_two and not is_tier_three
@@ -2847,7 +2958,7 @@ with scoreboard_tab:
             st.session_state["fantrax_refresh_notice"] = True
             st.rerun()
 
-    scoreboard_is_tier_three = tier_three_unlocked and scoreboard_week in TIER_THREE_WEEKS
+    scoreboard_is_tier_three = scoreboard_week in active_tier_three_weeks
     scoreboard_is_tier_two = not scoreboard_is_tier_three and scoreboard_week in active_tier_two_weeks
     scoreboard_creatures = TIER_THREE_CREATURES if scoreboard_is_tier_three else TIER_TWO_CREATURES if scoreboard_is_tier_two else CREATURES
     scoreboard_teams = [VAMPIRE_TEAM, *scoreboard_creatures]
@@ -3444,7 +3555,7 @@ with realm_summary_tab:
             world_roster = weekly_world_rosters.get(world_name, [])
             world_roster, _ = add_fantrax_player_scores(world_roster, battle_week)
             creature_roster = mark_stolen_creature_followers(weekly_creatures, battle_week, world_name)
-            in_tier_three = tier_is_unlocked(3, world_name) and battle_week in TIER_THREE_WEEKS
+            in_tier_three = battle_week in tier_three_weeks_for(world_name)
             in_tier_two = not in_tier_three and battle_week in tier_two_weeks_for(world_name)
 
             if in_tier_three:
@@ -3456,7 +3567,7 @@ with realm_summary_tab:
                         state["weekly_margin"][battle_week] = margin_points
                         state["total_score"] += margin_points
                     continue
-                dracula_roster = [row for row in weekly_creatures if row.get("team") == "Dracula"]
+                dracula_roster = [row for row in creature_roster if row.get("team") == "Dracula"]
                 battle = calculate_tier_three_battle(
                     battle_week, world_roster, dracula_roster, state["dracula_remaining"]
                 )
@@ -3688,8 +3799,8 @@ with realm_summary_tab:
             unsafe_allow_html=True,
         )
 
-    tier_three_realms = [name for name in vampire_sheet_teams if tier_is_unlocked(3, name)]
-    if tier_three_realms and realm_week in TIER_THREE_WEEKS:
+    tier_three_realms = [name for name in vampire_sheet_teams if realm_week in tier_three_weeks_for(name)]
+    if tier_three_realms:
         tier_three_headers = "".join(
             f"<th><img src='{creature['logo']}' alt='' /><span>{escape(team_label(creature['name']))}</span></th>"
             for creature in TIER_THREE_CREATURES
